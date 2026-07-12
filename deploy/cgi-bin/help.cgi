@@ -1,0 +1,748 @@
+#!/bin/sh
+# ==============================================
+# Entware Manager - справка
+# Версия: 0.70 (исправлены стили warning/note)
+# Дата: 2026-04-06
+# ==============================================
+
+. /opt/web_entware/lib/common.sh
+
+VERSION=$(get_version)
+
+html_header
+
+cat <<HELP
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Справка Entware Manager</title>
+    <link rel="stylesheet" href="/entware-manager/style.css">
+    <script src="/entware-manager/modal.js?v=2"></script>
+</head>
+<body>
+<div class="container">
+    <h2 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 32px; height: 32px; margin-right: 10px;">
+            <svg class="icon" width="32" height="32">
+                <use href="/entware-manager/icons.svg?v=2#icon-help"/>
+            </svg>
+        </span>
+        Справка по Entware Manager
+    </h2>
+    <p>Версия интерфейса: <strong>${VERSION}</strong> (дата: $(date -r /opt/web_entware/version.json +%Y-%m-%d 2>/dev/null || echo "?"), версия загружается из <code>/opt/web_entware/version.json</code>)</p>
+    <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
+
+    <!-- Статистика -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-stats"/>
+            </svg>
+        </span>
+        Статистика
+    </h3>
+    <p>Отображает общую информацию о системе:</p>
+    <ul>
+        <li>Модель устройства, имя хоста, архитектура, версия ядра, время работы.</li>
+        <li>Использование оперативной памяти (с прогресс-баром).</li>
+        <li>Информация о временных файловых системах (tmpfs) – кликабельные точки монтирования ведут в файловый менеджер.</li>
+        <li>Количество установленных и доступных пакетов Entware.</li>
+        <li>Использование дискового пространства для /opt.</li>
+        <li>Список смонтированных блочных устройств.</li>
+    </ul>
+    <p>Таблицы tmpfs и блочных устройств сортируются кликом по заголовку столбца. Повторный клик меняет порядок сортировки (▲/▼).</p>
+    <p>В нижней части страницы отображается блок <strong><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Полезные ссылки</strong>, который можно редактировать во вкладке «Настройки».</p>
+
+    <!-- История температур -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-thermometer"/>
+            </svg>
+        </span>
+        История температур
+    </h3>
+    <p>В сайдбаре отображаются температуры CPU и WiFi. Клик на любой из них открывает график истории:</p>
+    <ul>
+        <li><strong>CPU</strong> – кликабельный виджет показывает график температуры процессора за 7 дней.</li>
+        <li><strong>WiFi</strong> – кликабельный виджет показывает график температуры адаптеров WiFi0 и WiFi1 (две линии разных цветов).</li>
+        <li>Данные сохраняются в <code>/tmp/temp_history/</code> каждые 30 секунд.</li>
+        <li>Графики отображают мин/макс/среднюю/текущую температуру.</li>
+    </ul>
+    <p>Хранение данных: 7 дней в файлах <code>cpu.YYYY-MM-DD</code> и <code>wifi.YYYY-MM-DD</code>.</p>
+
+    <!-- Установленные пакеты -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-package"/>
+            </svg>
+        </span>
+        Установленные пакеты
+    </h3>
+    <p>Список установленных пакетов. Для каждого пакета доступна кнопка «Удалить». Клик по строке таблицы (не по кнопке) открывает модальное окно с подробной информацией о пакете (версия, описание, дата установки). Поле поиска фильтрует список по названию.</p>
+    <div class="command-block">
+        opkg list-installed                 # просмотр установленных пакетов<br>
+        opkg remove &lt;пакет&gt;                # удаление пакета<br>
+        opkg info &lt;пакет&gt;                   # подробная информация о пакете
+    </div>
+
+    <!-- Доступные пакеты -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-package"/>
+            </svg>
+        </span>
+        Доступные пакеты
+    </h3>
+    <p>Список всех пакетов, доступных в репозиториях Entware. Для каждого пакета показаны версия и описание, есть кнопка «Установить». Данные кешируются в браузере на 1 час для ускорения загрузки при переключении вкладок.</p>
+    <div class="command-block">
+        opkg list                           # просмотр доступных пакетов<br>
+        opkg install &lt;пакет&gt;                # установка пакета<br>
+        opkg update                         # обновление списков пакетов
+    </div>
+
+    <!-- Обновления и списки -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-update"/>
+            </svg>
+        </span>
+        Обновления и списки
+    </h3>
+    <p>Позволяет обновить локальные списки пакетов (кнопка «Обновить списки пакетов») и просмотреть пакеты, для которых доступны новые версии. Для каждого пакета показаны текущая и новая версии, есть кнопка «Обновить».</p>
+    <div class="command-block">
+        opkg update                         # обновить списки пакетов<br>
+        opkg list-upgradable                 # показать пакеты с обновлениями<br>
+        opkg upgrade &lt;пакет&gt;                # обновить конкретный пакет
+    </div>
+
+    <!-- Процессы (htop) -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-process"/>
+            </svg>
+        </span>
+        Процессы (htop)
+    </h3>
+    <p>Интерактивный монитор процессов <strong>htop</strong>, запущенный через ttyd. Если внутри iframe не работают функциональные клавиши, используйте кнопку «Открыть в новой вкладке».</p>
+    <p><strong>Горячие клавиши htop:</strong></p>
+    <ul>
+        <li><kbd>F6</kbd> – сортировка по выбранному столбцу</li>
+        <li><kbd>F9</kbd> – отправка сигнала процессу (kill)</li>
+        <li><kbd>F3</kbd> – поиск</li>
+        <li><kbd>F5</kbd> – древовидный режим</li>
+        <li><kbd>q</kbd> – выход</li>
+    </ul>
+
+    <!-- Терминал -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-terminal"/>
+            </svg>
+        </span>
+        Терминал (bash)
+    </h3>
+    <p>Полноценный доступ к командной строке роутера через веб-терминал ttyd. По умолчанию используется порт 9089. При первом запуске может потребоваться ввести пароль (устанавливается во вкладке «Настройки»).</p>
+
+    <!-- Сеть -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-router"/>
+            </svg>
+        </span>
+        Сеть
+    </h3>
+    <p>Модуль мониторинга сети с отображением интерфейсов, маршрутов, ARP-таблицы и событий watchdog демона.</p>
+    
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-router"/>
+            </svg>
+        </span>
+        Карточка сети на статистике
+    </h4>
+    <p>Отображает все активные сетевые интерфейсы с IP-адресами, статус WiFi и WAN. Обновляется автоматически при загрузке страницы статистики.</p>
+    
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-list"/>
+            </svg>
+        </span>
+        Вкладка "Сеть"
+    </h4>
+    <p>Детальная информация о сетевых настройках. Включает четыре вкладки:</p>
+    <ul>
+        <li><strong>Интерфейсы</strong> — список всех сетевых интерфейсов с состоянием (UP/DOWN), IP/MAC-адресами, типом и скоростью. Состояние интерфейса отображается цветом: <span class="stat-value-normal">UP</span> — зелёный, <span class="stat-value-critical">DOWN</span> — красный. Переключатель <strong>«Скрыть неизвестные»</strong> скрывает интерфейсы со состоянием UNKNOWN.</li>
+        <li><strong>Маршруты</strong> — таблица маршрутизации (destination, gateway, interface, metric).</li>
+        <li><strong>ARP</strong> — ARP-таблица с IP, MAC, интерфейсом, состоянием и именем хоста (определяется через getent hosts).</li>
+        <li><strong>События</strong> — лог событий от watchdog демона (изменения интерфейсов, пропадание интернета и т.д.).</li>
+    </ul>
+    
+    <h5>CGI-эндпоинты модуля «Сеть»</h5>
+    <div class="command-block">
+# Основные эндпоинты:<br>
+/opt/web_entware/cgi-bin/network_status.cgi         # JSON для sidebar виджета<br>
+/opt/web_entware/cgi-bin/network/status.cgi         # статус демона (running, pid)<br>
+/opt/web_entware/cgi-bin/network/interfaces.cgi    # список интерфейсов<br>
+/opt/web_entware/cgi-bin/network/routes.cgi        # таблица маршрутизации<br>
+/opt/web_entware/cgi-bin/network/arp.cgi            # ARP таблица<br>
+/opt/web_entware/cgi-bin/network/events.cgi        # события (параметр limit=N)<br>
+/opt/web_entware/cgi-bin/network/config.cgi        # чтение/сохранение конфига (GET/POST)<br>
+/opt/web_entware/cgi-bin/network/action.cgi        # управление демоном (POST: action=start|stop|restart)<br>
+<br>
+# Просмотр данных в терминале:<br>
+curl -s http://localhost:8087/entware-cgi/network_status.cgi | jq .<br>
+curl -s http://localhost:8087/entware-cgi/network/interfaces.cgi | jq .<br>
+curl -s http://localhost:8087/entware-cgi/network/arp.cgi | jq .<br>
+curl -s 'http://localhost:8087/entware-cgi/network/events.cgi?limit=5' | jq .
+    </div>
+    
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-services"/>
+            </svg>
+        </span>
+        Демон мониторинга сети
+    </h4>
+    <p>Watchdog демон отслеживает состояние сети и записывает события в лог:</p>
+    <ul>
+        <li>Переход интерфейса в DOWN</li>
+        <li>Восстановление интерфейса (UP)</li>
+        <li>Изменение IP-адреса</li>
+        <li>Пропадание интернета (ping 8.8.8.8)</li>
+    </ul>
+    
+    <h5>Управление демоном</h5>
+    <div class="command-block">
+# Напрямую скриптом:<br>
+/opt/web_entware/network_watchdog.sh start      # запустить демон<br>
+/opt/web_entware/network_watchdog.sh stop       # остановить демон<br>
+/opt/web_entware/network_watchdog.sh restart    # перезапустить демон<br>
+/opt/web_entware/network_watchdog.sh status     # проверить статус<br>
+<br>
+# Через CGI:<br>
+curl -X POST 'http://localhost:8087/entware-cgi/network/action.cgi?action=start'<br>
+curl -X POST 'http://localhost:8087/entware-cgi/network/action.cgi?action=stop'<br>
+curl -X POST 'http://localhost:8087/entware-cgi/network/action.cgi?action=restart'
+    </div>
+    
+    <h5>Конфигурация</h5>
+    <p>Файл <code>/opt/web_entware/network_config.json</code> — интервалы проверки, список интерфейсов для мониторинга.</p>
+    <div class="command-block">
+# Просмотр текущей конфигурации:<br>
+cat /opt/web_entware/network_config.json | jq .<br>
+<br>
+# Изменение интервала (через CGI):<br>
+curl -X POST -H 'Content-Type: application/json' -d '{"interval":60}' http://localhost:8087/entware-cgi/network/config.cgi
+    </div>
+    
+    <h5>Troubleshooting</h5>
+    <div class="command-block">
+# Проверить, запущен ли демон:<br>
+ps | grep network_watchdog<br>
+cat /tmp/network_watchdog.pid<br>
+<br>
+# Запустить вручную с отладкой:<br>
+sh -x /opt/web_entware/network_watchdog.sh<br>
+<br>
+# Проверить зависимости:<br>
+which ip<br>
+which ping<br>
+which jq<br>
+<br>
+# Проверить сетевые команды:<br>
+ip addr<br>
+ip route<br>
+ip neigh
+    </div>
+
+    <!-- Службы и Cron -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-services"/>
+            </svg>
+        </span>
+        Службы и Cron
+    </h3>
+    
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-services"/>
+            </svg>
+        </span>
+        Службы (init.d)
+    </h4>
+    <p>Показывает список всех служб, установленных в Entware (скрипты в <code>/opt/etc/init.d/</code> с префиксами S или K). Для каждой службы отображается:</p>
+    <ul>
+        <li><strong>Статус</strong> – running (работает) или stopped (остановлена). Статус определяется по наличию процесса (PID).</li>
+        <li><strong>PID</strong> – идентификатор процесса (если служба запущена).</li>
+        <li><strong>Автозапуск</strong> – 
+            <svg class="icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"><use href="/entware-manager/icons.svg#icon-check"/></svg> 
+            если имя скрипта начинается с S, 
+            <svg class="icon" width="16" height="16" style="display: inline-block; vertical-align: middle;"><use href="/entware-manager/icons.svg#icon-cross"/></svg> 
+            если с K или без префикса.
+        </li>
+        <li><strong>Действия</strong> – кнопки Запустить, Остановить, Перезапустить, а также переключение автозапуска (короткая кнопка «Авто»).</li>
+    </ul>
+    <p>При включении/отключении автозапуска скрипт переименовывается (меняется префикс S/K), что влияет на запуск при загрузке системы (через rc.unslung).</p>
+    <div class="command-block">
+        /opt/etc/init.d/S&lt;служба&gt; start     # запуск службы<br>
+        /opt/etc/init.d/S&lt;служба&gt; stop      # остановка<br>
+        /opt/etc/init.d/S&lt;служба&gt; restart   # перезапуск<br>
+        ls -l /opt/etc/rc.d/                 # просмотр ссылок автозапуска (не используются, но сохранено)
+    </div>
+    
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-shield"/>
+            </svg>
+        </span>
+        Мониторинг служб (service watchdog)
+    </h4>
+    <p>Демон отслеживает состояние служб и автоматически реагирует на их остановку. Все события записываются в лог <code>/tmp/entware/logs/service_events.log</code>.</p>
+    
+    <div class="note">
+        <strong>📌 Как это работает:</strong> Демон периодически проверяет PID каждой службы. Если PID изменился — значит служба была перезапущена. Если PID пропал — служба упала.
+    </div>
+    
+    <h5>🎛️ Переключатели в интерфейсе</h5>
+    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+        <tr style="background: var(--command-block-bg);">
+            <td style="padding: 8px; border: 1px solid var(--border-color);"><strong>Кастомный список</strong></td>
+            <td style="padding: 8px; border: 1px solid var(--border-color);">Включает режим <code>custom</code>. Появляется поле для ввода списка процессов через запятую.</td>
+        </tr>
+        <tr style="background: var(--command-block-bg);">
+            <td style="padding: 8px; border: 1px solid var(--border-color);"><strong>Исключения</strong></td>
+            <td style="padding: 8px; border: 1px solid var(--border-color);">Показывает/скрывает список исключённых служб (не мониторятся).</td>
+        </tr>
+        <tr style="background: var(--command-block-bg);">
+            <td style="padding: 8px; border: 1px solid var(--border-color);"><strong>Автоперезапуск</strong></td>
+            <td style="padding: 8px; border: 1px solid var(--border-color);">Автоматически перезапускает упавшую службу через init.d скрипт.</td>
+        </tr>
+    </table>
+    
+    <h5>📋 Режимы мониторинга</h5>
+    <ul>
+        <li><strong>initd</strong> (по умолчанию) – отслеживает все службы из <code>/opt/etc/init.d/S*</code></li>
+        <li><strong>custom</strong> – отслеживает только процессы из списка <code>watch_list</code></li>
+    </ul>
+    
+    <h5>⚡ Автоперезапуск</h5>
+    <p>Когда служба падает:</p>
+    <ol>
+        <li>Демон определяет что процесс остановился (ERROR)</li>
+        <li>Если <code>auto_restart: true</code> → ищет init.d скрипт</li>
+        <li>Выполняет <code>/opt/etc/init.d/SXXservice restart</code></li>
+        <li>Проверяет запустился ли процесс заново</li>
+        <li>Записывает результат в лог</li>
+    </ol>
+    
+    <div class="warning" style="background: var(--command-block-bg); border-left: 4px solid #f59e0b; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>⚠️ Важно:</strong> После автоперезапуска действует <strong>cooldown 60 секунд</strong> — повторный автоперезапуск той же службы блокируется. Это нужно чтобы не мешать ручному управлению.
+    </div>
+    
+    <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>📌 Как это работает:</strong> Демон периодически проверяет PID каждой службы. Если PID изменился — значит служба была перезапущена. Если PID пропал — служба упала.
+    </div>
+    
+    <h5>🚫 Список исключений</h5>
+    <p>Службы которые НЕ мониторятся:</p>
+    <ul>
+        <li><code>service_watchdog</code> – сам демон (обязательно)</li>
+        <li><code>dropbear</code> – SSH сервер (системный)</li>
+        <li><code>kvas-ws</code> – KVAS ( Keenetic)</li>
+    </ul>
+    <p>Можно добавить свои службы через поле ввода.</p>
+    <h5>CGI-эндпоинты</h5>
+    <div class="command-block">
+/opt/web_entware/cgi-bin/service_watchdog/status.cgi     # статус демона (running, pid, config)<br>
+/opt/web_entware/cgi-bin/service_watchdog/action.cgi     # управление (action=start|stop|restart)<br>
+/opt/web_entware/cgi-bin/service_watchdog/events.cgi      # события (limit=N)<br>
+/opt/web_entware/cgi-bin/service_watchdog/config.cgi      # конфигурация (GET/POST)<br>
+<br>
+# Примеры curl:<br>
+curl -s http://localhost:8087/entware-cgi/service_watchdog/status.cgi | jq .<br>
+curl -s 'http://localhost:8087/entware-cgi/service_watchdog/events.cgi?limit=10' | jq .<br>
+curl -X POST 'http://localhost:8087/entware-cgi/service_watchdog/action.cgi?action=start'
+    </div>
+    
+    <h5>Управление демоном</h5>
+    <div class="command-block">
+/opt/web_entware/service_watchdog.sh start      # запустить демон<br>
+/opt/web_entware/service_watchdog.sh stop       # остановить демон<br>
+/opt/web_entware/service_watchdog.sh restart    # перезапустить демон<br>
+/opt/web_entware/service_watchdog.sh status     # проверить статус
+    </div>
+    
+    <h5>Конфигурация (JSON)</h5>
+    <p>Файл: <code>/opt/web_entware/service_config.json</code></p>
+    <div class="command-block">
+{<br>
+  "enabled": true,<br>
+  "interval": 10,<br>
+  "mode": "initd",                    # initd или custom<br>
+  "watch_list": ["lighttpd","cron","ttyd"],  # кастомный список (режим custom)<br>
+  "auto_restart": false,               # автоперезапуск при падении<br>
+  "exclude_list": ["dropbear","kvas-ws","service_watchdog"],  # список исключений<br>
+  "log_to_monitor": true,<br>
+  "pid_history_days": 7<br>
+}
+    </div>
+    
+    <h5>Изменение конфигурации через CGI</h5>
+    <div class="command-block">
+# Переключить на custom режим:<br>
+curl -X POST -H 'Content-Type: application/json' -d '{"mode":"custom","watch_list":["lighttpd","cron"],"auto_restart":false}' http://localhost:8087/entware-cgi/service_watchdog/config.cgi<br>
+<br>
+# Включить автоперезапуск:<br>
+curl -X POST -H 'Content-Type: application/json' -d '{"auto_restart":true}' http://localhost:8087/entware-cgi/service_watchdog/config.cgi<br>
+<br>
+# Изменить список исключений:<br>
+curl -X POST -H 'Content-Type: application/json' -d '{"exclude_list":["dropbear","kvas-ws"]}' http://localhost:8087/entware-cgi/service_watchdog/config.cgi<br>
+<br>
+# Очистить список исключений (отправить null):<br>
+curl -X POST -H 'Content-Type: application/json' -d '{"exclude_list":null}' http://localhost:8087/entware-cgi/service_watchdog/config.cgi
+    </div>
+    
+    <h5>Управление демоном</h5>
+    <div class="command-block">
+/opt/web_entware/service_watchdog.sh start      # запустить демон<br>
+/opt/web_entware/service_watchdog.sh stop       # остановить демон<br>
+/opt/web_entware/service_watchdog.sh restart    # перезапустить демон<br>
+/opt/web_entware/service_watchdog.sh status     # проверить статус
+    </div>
+    
+    <h5>Конфигурация</h5>
+    <p>Файл: <code>/opt/web_entware/service_config.json</code></p>
+    <div class="command-block">
+{&quot;enabled&quot;:true,&quot;interval&quot;:10,&quot;mode&quot;:&quot;initd&quot;,&quot;watch_list&quot;:[&quot;lighttpd&quot;,&quot;cron&quot;,&quot;ttyd&quot;],&quot;log_to_monitor&quot;:true,&quot;pid_history_days&quot;:7}
+    </div>
+    
+    <h5>Файлы демона</h5>
+    <div class="command-block">
+/tmp/service_watchdog.pid              # PID процесса<br>
+/tmp/service_watchdog_pids.json        # история PID служб<br>
+/tmp/entware/logs/service_events.log    # лог событий (ротация при >1MB)<br>
+/tmp/service_watchdog_&lt;service&gt;.lock  # lock файл для cooldown (автоперезапуск)
+    </div>
+    
+    <h5>События в логе</h5>
+    <div class="command-block">
+# Просмотр событий служб в логе:<br>
+cat /tmp/entware/logs/service_events.log<br>
+<br>
+# Примеры событий:<br>
+2026-04-06 12:00:15 [INFO] [SERVICE] lighttpd: started (pid=1234)<br>
+2026-04-06 12:00:30 [INFO] [SERVICE] cron: stopped (old_pid=5678)<br>
+2026-04-06 12:00:45 [WARN] [SERVICE] ttyd: restarted (old_pid=9012 -> new_pid=9034)<br>
+2026-04-06 12:01:00 [ERROR] [SERVICE] AdGuardHome: stopped (old_pid=1111)<br>
+2026-04-06 12:01:05 [INFO] [SERVICE] AdGuardHome: auto_restart attempting...<br>
+2026-04-06 12:01:07 [INFO] [SERVICE] AdGuardHome: auto_restart_ok (new_pid=2222)<br>
+2026-04-06 12:02:00 [INFO] [SERVICE] AdGuardHome: auto_restart skipped (cooldown 60s)
+    </div>
+
+    <h4 style="display: flex; align-items: center;">
+        <span class="stat-icon" style="width: 20px; height: 20px;">
+            <svg class="icon" width="20" height="20">
+                <use href="/entware-manager/icons.svg?v=2#icon-list"/>
+            </svg>
+        </span>
+        Планировщик задач (crontab)
+    </h4>
+    <p>Представлены два независимых редактора:</p>
+    <ul>
+        <li><strong>Системный crontab</strong> – работает через команду <code>crontab -l</code> (обычно файл <code>/etc/crontabs/root</code>). Сохраняется через <code>crontab</code>.</li>
+        <li><strong>Entware crontab</strong> – файл <code>/opt/etc/crontab</code>, используемый некоторыми пакетами (например, cron из Entware).</li>
+    </ul>
+    <p>Каждый редактор имеет своё текстовое поле и кнопку сохранения. При сохранении системного crontab выполняется проверка синтаксиса; при сохранении файла /opt/etc/crontab демон cron получает сигнал HUP для перезагрузки задач.</p>
+    <div class="command-block">
+        crontab -l                          # просмотр системного crontab<br>
+        crontab -e                          # редактирование в редакторе (обычно vi)<br>
+        cat /opt/etc/crontab                 # просмотр файла Entware<br>
+        kill -HUP \$(pidof cron)              # перезагрузка cron после изменения файла
+    </div>
+
+    <!-- Настройки -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-settings"/>
+            </svg>
+        </span>
+        Настройки
+    </h3>
+    <p>Объединяет управление ttyd и редактирование ссылок на главной странице.</p>
+    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-terminal"/></svg> Управление ttyd</h4>
+    <ul>
+        <li>Показывает состояние процессов htop (порт 8089) и терминала (порт 9089).</li>
+        <li>Кнопки «Запустить», «Остановить», «Перезапустить» для каждого экземпляра.</li>
+        <li>Для терминала можно задать пароль (поле ввода скрыто звёздочками). Пароль не сохраняется в бэкапах, его нужно вводить при каждом запуске.</li>
+    </ul>
+    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Управление ссылками</h4>
+    <ul>
+        <li>Список ссылок, отображаемых на главной странице. Можно добавлять, редактировать, удалять.</li>
+        <li>Для каждой ссылки указывается иконка (выбор из списка), название и URL.</li>
+        <li>Изменения сохраняются в файле <code>/opt/web_entware/links.json</code> и видны всем устройствам.</li>
+    </ul>
+
+    <!-- Защита (мониторинг процессов) -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-shield"/>
+            </svg>
+        </span>
+        Защита от зависших процессов
+    </h3>
+    <p>Модуль защиты автоматически отслеживает процессы, потребляющие слишком много CPU в течение длительного времени, и завершает их. Это помогает предотвратить зависание системы.</p>
+    <ul>
+        <li><strong>Демон защиты</strong> – фоновый процесс, который запускается и останавливается через веб-интерфейс. Его статус (активен/остановлен) и PID отображаются на вкладке.</li>
+        <li><strong>Топ процессов</strong> – показывает пять процессов с наибольшей нагрузкой CPU (данные из <code>/opt/bin/ps -e -o pid,pcpu,etime,comm</code>). Для каждого доступна кнопка «Убить» – она отправляет сигнал SIGKILL выбранному процессу (используется для экстренного завершения).</li>
+        <li><strong>Лог событий</strong> – все действия демона (запуск, остановка, обнаружение превышений порогов) записываются в файл <code>/opt/temp/logs/monitor.log</code>. Можно просмотреть последние записи и очистить лог.</li>
+    </ul>
+
+    <h4>Настройки защиты</h4>
+    <ul>
+        <li><strong>Включить защиту (глобально)</strong> – основной переключатель демона.</li>
+        <li><strong>Интервал сканирования (сек)</strong> – частота опроса процессов. Рекомендуется 30–60 секунд.</li>
+        <li><strong>Индивидуальный режим</strong> – отслеживает каждый процесс отдельно по его имени и потреблению CPU.</li>
+        <li><strong>Порог CPU (%)</strong> – если процесс превышает этот процент, начинается отсчёт времени.</li>
+        <li><strong>Время непрерывной нагрузки (мин)</strong> – сколько минут процесс должен держаться выше порога, чтобы быть убитым.</li>
+        <li><strong>Игнорируемые процессы</strong> – список имён (через запятую) процессов, которые никогда не будут убиты. По умолчанию туда входят <code>lighttpd</code>, <code>cron</code>, <code>ttyd</code>, <code>watchdog</code> и <code>ps</code>.</li>
+        <li><strong>Исключать ps из мониторинга</strong> – убирает ложные предупреждения от самого демона.</li>
+        <li><strong>Максимум процессов для сканирования</strong> – ограничивает количество анализируемых процессов (10–1000, по умолчанию 200).</li>
+    </ul>
+    <p>После изменения настроек нажмите «Сохранить настройки». Демон защиты автоматически перечитает конфигурацию (будет отправлен сигнал HUP).</p>
+
+    <div class="command-block">
+        /opt/web_entware/watchdog.sh                 # ручной запуск демона<br>
+        kill -TERM \$(cat /tmp/watchdog.pid)          # остановка демона<br>
+        cat /opt/temp/logs/monitor.log                # просмотр лога<br>
+        /opt/bin/ps -e -o pid,pcpu,comm --no-headers | sort -k2 -rn | head  # просмотр топ-процессов
+    </div>
+
+    <!-- Файловый менеджер (tmpfs) -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-folder"/>
+            </svg>
+        </span>
+        Файловый менеджер (tmpfs)
+    </h3>
+    <p>При клике на любую точку монтирования tmpfs на вкладке «Статистика» открывается файловый менеджер, позволяющий просматривать содержимое временных файловых систем. Доступны следующие возможности:</p>
+    <ul>
+        <li><strong>Навигация</strong> – клик по папкам для входа, ссылка «наверх» для возврата.</li>
+        <li><strong>Сортировка</strong> – клик по заголовку «Размер» сортирует файлы по размеру (числовая сортировка). Повторный клик меняет порядок (▲/▼).</li>
+        <li><strong>Удаление</strong> – для каждого файла или пустой папки есть красная кнопка с корзиной. Удаление требует подтверждения, после чего страница обновляется.</li>
+    </ul>
+    <p><strong>Важно:</strong> Удаление работает только в пределах <code>/tmp</code> и <code>/dev/shm</code>. Папки удаляются только если они пусты, файлы – без ограничений.</p>
+    <div class="command-block">
+        # Управление файлами в tmpfs через терминал
+        ls -la /tmp                           # просмотр содержимого
+        rm /tmp/файл                          # удаление файла
+        rmdir /tmp/папка                      # удаление пустой папки
+    </div>
+
+    <!-- Логирование -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-list"/>
+            </svg>
+        </span>
+        Логирование
+    </h3>
+    <p>Вкладка «Логи» объединяет два режима просмотра записей о работе системы и действиях администратора.</p>
+
+    <h4>Действия менеджера</h4>
+    <p>Автоматически записываются все операции, выполняемые через веб-интерфейс:</p>
+    <ul>
+        <li>Установка, удаление, обновление пакетов</li>
+        <li>Запуск, остановка, перезапуск служб (init.d)</li>
+        <li>Изменение crontab (системного и Entware)</li>
+        <li>Сохранение ссылок на главной странице</li>
+        <li>Запуск/остановка ttyd (htop и терминал)</li>
+        <li>Управление демоном защиты (запуск, остановка, перезапуск, сохранение настроек)</li>
+        <li>Удаление файлов в tmpfs через файловый менеджер</li>
+    </ul>
+    <p>Формат записи: <code>[дата время] [уровень] [IP] [PID] [скрипт] сообщение</code>. Логи хранятся во временной папке <code>/tmp/entware/logs/</code> и ежедневно в 12:00 копируются в <code>/opt/var/log/entware/</code> (старые автоматически удаляются через 30 дней).</p>
+    <div class="command-block">
+        # Просмотр последних записей
+        tail -f /tmp/entware/logs/$(date +%Y-%m-%d).log
+
+        # Вручную скопировать вчерашний лог в постоянное хранилище
+        /opt/web_entware/logger/scripts/rotate.sh
+
+        # Включить/отключить запись логов (глобально)
+        echo '{"enabled":true}' > /opt/web_entware/logger/config.json   # включить
+        echo '{"enabled":false}' > /opt/web_entware/logger/config.json  # отключить
+    </div>
+
+    <h4>Системные логи</h4>
+    <p>Позволяет просматривать любые текстовые файлы логов, доступные на устройстве. По умолчанию в списке присутствуют:</p>
+    <ul>
+        <li><strong>Lighttpd ошибки</strong> – <code>/opt/var/log/lighttpd/error.log</code></li>
+        <li><strong>KVAS WebSocket</strong> – <code>/tmp/kvas-ws.log</code></li>
+        <li><strong>Демон защиты</strong> – <code>/opt/temp/logs/monitor.log</code></li>
+    </ul>
+    <p>С помощью кнопки <strong>«Поиск по имени»</strong> можно найти в каталоге <code>/tmp</code> все файлы, в имени которых содержится заданная строка, и добавить их в выпадающий список для быстрого доступа. Найденные источники сохраняются в браузере. Кнопка <strong>«Очистить источники»</strong> удаляет все сохранённые динамические источники логов. Выбранный файл отображается в виде последних 500 строк с возможностью фильтрации по тексту.</p>
+
+    <h4>Управление логированием</h4>
+    <p>На вкладке доступны кнопки:</p>
+    <ul>
+        <li><strong>Очистить логи старше 30 дней</strong> – удаляет из <code>/opt/var/log/entware/</code> файлы, дата изменения которых превышает 30 дней.</li>
+        <li><strong>Ротация сейчас</strong> – принудительно переносит вчерашний лог из временного хранилища в постоянное.</li>
+        <li><strong>Настройки логирования</strong> – включает или отключает запись всех действий менеджера (зелёный/красный индикатор).</li>
+        <li><strong>Системные события</strong> – открывает журнал системных событий (включение/выключение логирования). Файл: <code>/opt/var/log/entware/system.log</code>.</li>
+    </ul>
+
+    <h4>Системные события</h4>
+    <p>Кнопка <strong>«Системные события»</strong> открывает модальное окно с журналом событий логирования. В этом журнале фиксируются:</p>
+    <ul>
+        <li>Включение логирования</li>
+        <li>Отключение логирования</li>
+        <li>Предыдущее состояние (enabled/disabled)</li>
+    </ul>
+    <p>Журнал сохраняется в файл <code>/opt/var/log/entware/system.log</code>. Для очистки журнала используйте файловый менеджер. Журнал системных событий работает независимо от основного логирования — события записываются даже когда основное логирование отключено.</p>
+
+    <!-- Справка -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-help"/>
+            </svg>
+        </span>
+        Справка
+    </h3>
+    <p>Эта страница.</p>
+
+    <!-- Ночной режим -->
+    <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg> Ночной режим (тёмная тема)</h3>
+    <p>В правом верхнем углу есть кнопка <strong><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-sun"/></svg> / <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg></strong>, которая переключает тему оформления. Выбор сохраняется в <code>localStorage</code> браузера.</p>
+
+    <!-- Уведомления -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-bell"/>
+            </svg>
+        </span>
+        Уведомления
+    </h3>
+    <p>Для отображения сообщений об успешном выполнении операций и ошибках используются два типа уведомлений:</p>
+    <ul>
+        <li><strong>Модальное окно</strong> – открывается для подробных результатов (например, установка/удаление пакета, информация о пакете). Закрывается крестиком или кликом вне окна.</li>
+        <li><strong>Тост-уведомления</strong> – всплывающие сообщения, исчезающие через несколько секунд, используются для быстрых уведомлений (сохранение ссылок, управление ttyd и т.п.).</li>
+    </ul>
+    <p>Все уведомления оформлены в едином стиле и поддерживают тёмную тему.</p>
+
+    <!-- Резервное копирование -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-disk"/>
+            </svg>
+        </span>
+        Резервное копирование
+    </h3>
+    <p>Скрипт <code>/opt/web_entware/backup.sh</code> (версия 2.0) создаёт полную резервную копию интерфейса и конфигураций в <code>/opt/temp/backup/EntwareManager_backup_YYYYMMDD_HHMMSS/</code>. Копируются:</p>
+    <ul>
+        <li>Список установленных пакетов</li>
+        <li>Конфигурации <code>lighttpd.conf</code> и <code>rc.local</code></li>
+        <li>Весь каталог <code>/opt/web_entware</code> (включая <code>lib/</code>, <code>menu/</code>, <code>logger/</code>, <code>cgi-bin/</code>, <code>modal.js</code>, <code>watchdog.sh</code> и др.)</li>
+    </ul>
+    <p>В той же папке находится инструкция по восстановлению. Зависимости: lighttpd, ttyd, htop, jq, coreutils.</p>
+
+    <!-- Полный список команд -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-list"/>
+            </svg>
+        </span>
+        Полный список команд (для терминала)
+    </h3>
+    <h4>Управление пакетами</h4>
+    <div class="command-block">
+        opkg update                              # обновить списки пакетов
+        opkg list                                # показать все доступные пакеты
+        opkg list-installed                      # показать установленные пакеты
+        opkg list-upgradable                     # показать пакеты с доступными обновлениями
+        opkg install &lt;пакет&gt;                    # установить пакет
+        opkg remove &lt;пакет&gt;                     # удалить пакет
+        opkg upgrade &lt;пакет&gt;                    # обновить конкретный пакет
+        opkg upgrade                             # обновить все пакеты (осторожно!)
+        opkg info &lt;пакет&gt;                       # информация о пакете
+        opkg files &lt;пакет&gt;                      # список файлов, установленных пакетом
+        opkg search &lt;файл&gt;                      # найти пакет, содержащий файл
+    </div>
+    <h4>Управление службами</h4>
+    <div class="command-block">
+        /opt/etc/init.d/S&lt;служба&gt; start        # запуск службы
+        /opt/etc/init.d/S&lt;служба&gt; stop         # остановка
+        /opt/etc/init.d/S&lt;служба&gt; restart      # перезапуск
+        /opt/etc/init.d/S&lt;служба&gt; status       # статус (если поддерживается)
+        ps | grep &lt;служба&gt;                      # поиск процесса
+    </div>
+    <h4>Работа с cron</h4>
+    <div class="command-block">
+        crontab -l                               # просмотр задач текущего пользователя
+        crontab -e                               # редактирование (обычно vi)
+        crontab -r                               # удалить все задачи
+        cat /opt/etc/crontab                     # просмотр файла Entware
+        echo "0 5 * * * /opt/bin/backup.sh" >> /opt/etc/crontab   # добавить задачу вручную
+    </div>
+    <h4>Мониторинг системы</h4>
+    <div class="command-block">
+        htop                                     # интерактивный монитор процессов
+        top                                      # классический top
+        ps                                       # список процессов
+        free -h                                   # использование памяти
+        df -h                                     # использование дисков
+        du -sh /opt/*                            # размер папок в /opt
+        uptime                                    # время работы
+        cat /proc/cpuinfo                         # информация о процессоре
+        cat /proc/meminfo                         # детальная память
+        ifconfig                                  # сетевые интерфейсы
+        ip addr                                   # современный аналог
+    </div>
+    <h4>Работа с файлами и сетью</h4>
+    <div class="command-block">
+        ls -la                                    # список файлов
+        cd &lt;папка&gt;                               # переход в директорию
+        cp &lt;источник&gt; &lt;назначение&gt;               # копирование
+        mv &lt;источник&gt; &lt;назначение&gt;               # перемещение/переименование
+        rm &lt;файл&gt;                                # удаление файла
+        rm -rf &lt;папка&gt;                           # удаление папки рекурсивно
+        cat &lt;файл&gt;                               # просмотр файла
+        nano &lt;файл&gt;                              # редактирование (если установлен)
+        vi &lt;файл&gt;                                # редактирование
+        wget &lt;URL&gt;                               # скачать файл
+        curl &lt;URL&gt;                               # выполнить HTTP-запрос
+        ping ya.ru                                # проверить связь
+        traceroute ya.ru                          # трассировка маршрута
+    </div>
+
+    <div class="note">
+        <strong>⚠️ Важно:</strong> Команды, требующие прав root, выполняются от имени root. Будьте осторожны при удалении и обновлении пакетов. Для терминала рекомендуется использовать пароль.
+    </div>
+
+    <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
+</div>
+</body>
+</html>
+HELP

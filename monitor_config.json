@@ -1,0 +1,1 @@
+{"enabled":true,"interval":30,"individual":{"enabled":true,"threshold_cpu":30,"threshold_time":120},"ignore":["lighttpd","cron","ttyd","watchdog","ps"],"ignore_ps":true,"max_processes":111,"log_file":"/tmp/entware/logs/monitor.log","log_max_size":1048576}
