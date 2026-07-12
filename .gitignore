@@ -1,0 +1,5 @@
+deploy/
+tmp/
+*.tar.gz
+*.bak
+.DS_Store
