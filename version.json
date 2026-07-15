@@ -1,11 +1,9 @@
 {
-  "version": "1.03.13",
-  "date": "2026-07-07",
+  "version": "1.03.14",
+  "date": "2026-07-16",
   "changes": [
-    "⚠️ Основной функционал полностью сохранён",
-    "watchdog.sh: переписан — единый интерфейс start/stop/restart/status/daemon (как network_watchdog). start читает конфиг ДО запуска, daemon_loop больше не проверяет ENABLED (не выходит сам). Демон защиты теперь работает как другие демоны",
-    "monitor_action.cgi: использует watchdog.sh start/stop вместо прямого запуска скрипта. После start проверяет watchdog.sh status (ожидание 1с). kill -0 → pid_is_alive()",
-    "monitor_status.cgi: -d /proc/$pid → pid_is_alive() (защита от зомби-процессов)",
-    "watchdog.sh, service_watchdog.sh, network_watchdog.sh, watchdog.sh, cgi-status'ы, lib/common.sh: все kill -0 заменены на pid_is_alive(), все pgrep — на find_pids() с fallback ps w"
+    "links_load.cgi: cat → json_out() (добавлен Content-Type: application/json)",
+    "api.cgi: echo...jq → json_out() (исправлен fallthrough без HTTP-заголовка)",
+    "devlog.md: обновлены правила для LLM-ассистента до v2.1"
   ]
 }

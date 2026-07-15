@@ -40,4 +40,4 @@ if [ -n "$installed_time_raw" ]; then
     fi
 fi
 
-echo "$info" | /opt/bin/jq -R -s '{info: .}'
+json_out "$(echo "$info" | /opt/bin/jq -R -s '{info: .}')"
