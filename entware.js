@@ -11,6 +11,7 @@ function escapeHTML(str) {
         .replace(/"/g, '&quot;');
 }
 
+const BASE_URL = window.location.protocol + '//' + window.location.hostname;
 const CACHE_KEY = 'entware_available_packages';
 const CACHE_TIME_KEY = 'entware_available_timestamp';
 const CACHE_MAX_AGE = 3600 * 1000;
@@ -468,9 +469,9 @@ function renderProcessesTab() {
             Процессы (htop)
         </h2>
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <a href="http://192.168.3.1:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+            <a href="${BASE_URL}:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
         </div>
-        <iframe src="http://192.168.3.1:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+        <iframe src="${BASE_URL}:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
     `;
     contentDiv.innerHTML = html;
 }
@@ -484,9 +485,9 @@ function renderTerminalTab() {
             Терминал (bash)
         </h2>
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <a href="http://192.168.3.1:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+            <a href="${BASE_URL}:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
         </div>
-        <iframe src="http://192.168.3.1:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+        <iframe src="${BASE_URL}:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
     `;
     contentDiv.innerHTML = html;
 }
@@ -786,15 +787,18 @@ window.controlTtyd = async function(action, port, pass) {
     }
 };
 
-const DEFAULT_LINKS = [
-    { name: 'Роутер', url: 'http://192.168.3.1', icon: 'router' },
-    { name: 'Entware Manager', url: 'http://192.168.3.1:8087/entware-manager/', icon: 'package' },
-    { name: 'AdGuard Home', url: 'http://192.168.3.1:3000', icon: 'shield' },
-    { name: 'Transmission', url: 'http://192.168.3.1:9091', icon: 'download' },
-    { name: 'Netdata', url: 'http://192.168.3.1:19999', icon: 'chart' },
-    { name: 'htop (ttyd)', url: 'http://192.168.3.1:8089', icon: 'process' },
-    { name: 'Терминал (ttyd)', url: 'http://192.168.3.1:9089', icon: 'terminal' }
-];
+function getDefaultLinks() {
+    const h = BASE_URL;
+    return [
+        { name: 'Роутер', url: h, icon: 'router' },
+        { name: 'Entware Manager', url: h + ':8087/entware-manager/', icon: 'package' },
+        { name: 'AdGuard Home', url: h + ':3000', icon: 'shield' },
+        { name: 'Transmission', url: h + ':9091', icon: 'download' },
+        { name: 'Netdata', url: h + ':19999', icon: 'chart' },
+        { name: 'htop (ttyd)', url: h + ':8089', icon: 'process' },
+        { name: 'Терминал (ttyd)', url: h + ':9089', icon: 'terminal' }
+    ];
+}
 
 async function loadLinks() {
     try {
@@ -821,7 +825,7 @@ async function loadLinks() {
                 });
             } catch(e) {}
         }
-        return DEFAULT_LINKS;
+        return getDefaultLinks();
     }
 }
 
@@ -1076,7 +1080,7 @@ async function saveAllLinks() {
 
 async function resetDefaultLinks() {
     if (confirm('Восстановить ссылки по умолчанию? Текущие будут потеряны.')) {
-        await saveLinks(DEFAULT_LINKS);
+        await saveLinks(getDefaultLinks());
         Toast.show('Ссылки сброшены к настройкам по умолчанию');
         renderSettingsTab();
     }

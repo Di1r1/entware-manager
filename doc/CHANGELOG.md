@@ -68,6 +68,54 @@
 
 ---
 
+## 1.03.15 (2026-07-16)
+
+### Удаление хардкода IP 192.168.3.1
+
+- **entware.js**: добавлена константа `BASE_URL = window.location.protocol + '//' + window.location.hostname`; все жёсткие IP заменены на `BASE_URL`; `DEFAULT_LINKS` → функция `getDefaultLinks()`
+- **links_load.cgi**: IP определяется через `hostname -I`, fallback 192.168.3.1
+- **install.sh, backup.sh**: сообщения с IP генерируются динамически
+- **TECH_SPEC.md, Install/Install.txt**: IP заменён на плейсхолдер `<IP_роутера>`
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `entware.js` | BASE_URL, getDefaultLinks() вместо DEFAULT_LINKS |
+| `cgi-bin/links_load.cgi` | ROUTER_IP динамический |
+| `Install/install.sh` | IP через hostname -I |
+| `backup.sh` | IP через hostname -I |
+| `TECH_SPEC.md` | IP → `<IP_роутера>` |
+| `Install/Install.txt` | IP → `<IP_роутера>` |
+| `version.json` | 1.03.15 |
+
+---
+
+## 1.03.14 (2026-07-16)
+
+### Исправление Content-Type в CGI
+
+- **links_load.cgi**: `cat` → `json_out()` — добавлен HTTP-заголовок `Content-Type: application/json`, браузер корректно распознаёт JSON
+- **api.cgi:43**: `echo ... | jq` → `json_out()` — исправлен fallthrough без заголовка при успешном ответе
+
+### Правила для LLM-ассистента
+
+- **devlog.md**: обновлены правила до v2.1:
+  - Разделение `set -eu` для CGI (запрещён) и демонов/утилит (обязателен)
+  - Таблица статусов всех функций из `common.sh` (✅/❌)
+  - Добавлены пункты 12 (единая обработка ошибок CGI) и 13 (единый Content-Type)
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `cgi-bin/links_load.cgi` | cat → json_out() |
+| `cgi-bin/api.cgi` | echo...jq → json_out() |
+| `devlog.md` | Правила v2.1 |
+| `version.json` | 1.03.14 |
+
+---
+
 ## 1.03.13 (2026-07-07)
 
 ### Исправление демона защиты от зависших процессов

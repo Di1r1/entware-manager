@@ -174,7 +174,7 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 === ШАГ 8. Проверка работы ===
 Откройте в браузере:
 
-   http://192.168.3.1:8087/entware-manager/
+   http://$(hostname -I | awk '{print $1}'):8087/entware-manager/
 
 Проверьте все вкладки: статистика, пакеты, процессы, терминал, настройки, защита, логи.
 

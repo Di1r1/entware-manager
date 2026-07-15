@@ -1,9 +1,10 @@
 {
-  "version": "1.03.14",
+  "version": "1.03.15",
   "date": "2026-07-16",
   "changes": [
-    "links_load.cgi: cat → json_out() (добавлен Content-Type: application/json)",
-    "api.cgi: echo...jq → json_out() (исправлен fallthrough без HTTP-заголовка)",
-    "devlog.md: обновлены правила для LLM-ассистента до v2.1"
+    "hardcoded IP 192.168.3.1 удалён из кода и документов",
+    "entware.js: BASE_URL = window.location.hostname, DEFAULT_LINKS → getDefaultLinks()",
+    "links_load.cgi: ROUTER_IP = hostname -I, fallback 192.168.3.1",
+    "install.sh, backup.sh, doc: хардкод заменён на динамический IP"
   ]
 }

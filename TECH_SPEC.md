@@ -252,7 +252,7 @@ Entware Manager — веб-интерфейс для управления пак
 3. Скопировать файлы проекта в `/opt/web_entware/`
 4. Настроить lighttpd (алиасы) – пример конфигурации в `/opt/web_entware/lighttpd.conf.example`
 5. Запустить lighttpd: `/opt/etc/init.d/S80lighttpd start`
-6. Открыть браузер: `http://192.168.3.1:8087/entware-manager/`
+6. Открыть браузер: `http://<IP_роутера>:8087/entware-manager/`
 7. Настроить cron для ротации логов: добавить строку в `/opt/etc/crontab`:
 0 12 * * * /opt/web_entware/logger/scripts/rotate.sh >> /opt/tmp/log_rotate.log 2>&1
 
