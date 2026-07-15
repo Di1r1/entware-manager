@@ -68,6 +68,23 @@
 
 ---
 
+## 1.03.16 (2026-07-16)
+
+### Удаление дубликата escapeHTML (XSS)
+
+- **entware.js**: удалена `escapeHTML()` — не экранировала `'`, создавала XSS-уязвимость. Все вызовы переведены на `escapeHtml()` из `lib/utils.js`
+- **network.js**: `this.escapeHtml()` теперь делегирует глобальной `escapeHtml()` из `lib/utils.js`
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `entware.js` | Удалена escapeHTML(), escapeHTML(...) → escapeHtml(...) |
+| `network.js` | this.escapeHtml() → делегат на глобальную escapeHtml() |
+| `version.json` | 1.03.16 |
+
+---
+
 ## 1.03.15 (2026-07-16)
 
 ### Удаление хардкода IP 192.168.3.1

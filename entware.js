@@ -2,15 +2,6 @@
 // Версия: 0.82 (исправления XSS, безопасность)
 // Дата: 2026-04-06
 
-function escapeHTML(str) {
-    if (!str) return '';
-    return str.toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
 const BASE_URL = window.location.protocol + '//' + window.location.hostname;
 const CACHE_KEY = 'entware_available_packages';
 const CACHE_TIME_KEY = 'entware_available_timestamp';
@@ -1546,11 +1537,11 @@ const SERVICE_WATCHDOG = {
                 container.innerHTML = data.events.map(e => {
                     const levelColor = e.level === 'ERROR' ? '#ef4444' : e.level === 'WARN' ? '#f59e0b' : '#10b981';
                     return `<div style="padding: 4px 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem;">
-                        <span style="color: var(--text-muted);">${escapeHTML(e.timestamp.split(' ')[1])}</span>
-                        <span style="color: ${levelColor}; margin-left: 8px;">[${escapeHTML(e.level)}]</span>
-                        <strong style="margin-left: 8px;">${escapeHTML(e.service)}</strong>
-                        <span style="margin-left: 4px;">${escapeHTML(e.event)}</span>
-                        <span style="color: var(--text-muted);">${escapeHTML(e.details)}</span>
+                        <span style="color: var(--text-muted);">${escapeHtml(e.timestamp.split(' ')[1])}</span>
+                        <span style="color: ${levelColor}; margin-left: 8px;">[${escapeHtml(e.level)}]</span>
+                        <strong style="margin-left: 8px;">${escapeHtml(e.service)}</strong>
+                        <span style="margin-left: 4px;">${escapeHtml(e.event)}</span>
+                        <span style="color: var(--text-muted);">${escapeHtml(e.details)}</span>
                     </div>`;
                 }).join('');
             } else {
