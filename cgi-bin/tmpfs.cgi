@@ -113,7 +113,7 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
         } else {
             icon = "file"
             icon_class = "file"
-            name_link = name
+            name_link = "<a href=\"#\" class=\"file-link\" data-path=\"" realpath "/" name "\">" name "</a>"
             action = "<button class=\"delete-file-btn\" data-path=\"" realpath "/" name "\" data-name=\"" name "\" data-type=\"file\"><svg class=\"icon\" width=\"14\" height=\"14\"><use href=\"/entware-manager/icons.svg?v=2#icon-trash\"/></svg></button>"
         }
         if (size ~ /^[0-9]+$/) {
@@ -169,7 +169,7 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
                 if [ "$icon_class" = "folder" ]; then
                     name_link="<a href=\"?path=$full_path\">$name_esc</a>"
                 else
-                    name_link="$name_esc"
+                    name_link="<a href=\"#\" class=\"file-link\" data-path=\"$full_path\">$name_esc</a>"
                 fi
                 echo "<tr><td><span class='file-icon $icon_class'><svg class='icon' width='16' height='16'><use href='/entware-manager/icons.svg?v=2#icon-$icon'/></svg></span> $name_link</td><td>$size</td><td>$date_str</td><td>$perms</td><td>$user:$group</td><td>$action</td></tr>"
             done
@@ -299,12 +299,40 @@ cat <<'JSEOF'
         });
     }
 
+    function escapeHtml(str) {
+        return str.replace(/[&<>"]/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m];
+        });
+    }
+
+    function viewFile(path) {
+        fetch('/entware-cgi/view_file.cgi?path=' + encodeURIComponent(path))
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    var html = '<pre style="max-height:70vh;overflow:auto;background:#1a1a2e;padding:16px;border-radius:8px;font-size:13px;line-height:1.4;color:#e0e0e0;white-space:pre-wrap;word-wrap:break-word;">' + escapeHtml(data.content) + '</pre>';
+                    Modal.info(html, 'Файл: ' + data.name);
+                } else {
+                    Toast.show('Ошибка: ' + data.message, true);
+                }
+            })
+            .catch(function(err) {
+                Toast.show('Ошибка запроса: ' + err.message, true);
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         enableSorting();
         document.querySelectorAll('.delete-file-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 deleteFile(this.dataset.path, this.dataset.type, this.dataset.name);
+            });
+        });
+        document.querySelectorAll('.file-link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                viewFile(this.dataset.path);
             });
         });
     });

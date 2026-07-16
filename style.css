@@ -1710,3 +1710,13 @@ body.night #toast {
 .stat-card.packages .top-mem .pkg-change-error td:nth-child(2) {
     color: #e53e3e;
 }
+
+.file-link {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+}
+.file-link:hover {
+    text-decoration: underline;
+    color: var(--accent-dark);
+}
