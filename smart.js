@@ -164,45 +164,37 @@ const SMART = {
                 const value = parseInt(attr.value) || 0;
                 const threshold = parseInt(attr.threshold) || 0;
                 const id = parseInt(attr.id) || 0;
-                let nameClass = '';
+                let impClass = '';
                 let statusClass = 'status-running';
                 let statusIcon = 'icon-check';
                 let statusText = 'OK';
 
-                // Категория важности атрибута
+                // Важность атрибута (цвет текста)
                 const CRITICAL_ATTRS = [5, 10, 187, 196, 197, 198];
                 const IMPORTANT_ATTRS = [1, 3, 4, 7, 9, 12, 184, 188, 189, 190, 193, 194, 199];
 
-                let attrTag = '';
-                let attrTagClass = '';
                 if (CRITICAL_ATTRS.includes(id)) {
-                    attrTag = 'Критичный';
-                    attrTagClass = 'attr-tag attr-tag-critical';
+                    impClass = 'smart-imp-critical';
                 } else if (IMPORTANT_ATTRS.includes(id)) {
-                    attrTag = 'Важный';
-                    attrTagClass = 'attr-tag attr-tag-important';
+                    impClass = 'smart-imp-important';
                 }
 
                 if (threshold > 0) {
                     if (value <= threshold) {
-                        nameClass = 'smart-name-critical';
                         statusClass = 'status-stopped';
                         statusIcon = 'icon-cross';
                         statusText = 'КРИТИЧНО';
                     } else if (value - threshold < 10) {
-                        nameClass = 'smart-name-warning';
                         statusClass = 'status-warning';
                         statusIcon = 'icon-cross';
                         statusText = 'Предупреждение';
                     }
                 }
 
-                const nameDisplay = attrTag ? `${escapeHtml(attr.name)} <span class="${attrTagClass}">${attrTag}</span>` : escapeHtml(attr.name);
-
                 html += `
                     <tr class="smart-row-ok">
                         <td>${id}</td>
-                        <td><span class="${nameClass}">${nameDisplay}</span></td>
+                        <td><span class="${impClass}">${escapeHtml(attr.name)}</span></td>
                         <td>${value}</td>
                         <td>${parseInt(attr.worst) || 0}</td>
                         <td>${threshold}</td>
@@ -219,25 +211,23 @@ const SMART = {
                 <div class="smart-legend">
                     <span class="smart-legend-item">
                         <span class="smart-legend-dot ok"></span>
-                        OK — атрибут в норме
+                        OK
                     </span>
                     <span class="smart-legend-item">
                         <span class="smart-legend-dot warning"></span>
-                        Предупреждение — значение близко к порогу
+                        Предупреждение
                     </span>
                     <span class="smart-legend-item">
                         <span class="smart-legend-dot critical"></span>
-                        Критично — значение ниже порога
-                    </span>
-                </div>
-                <div class="smart-legend" style="border-top: none; padding-top: 0;">
-                    <span class="smart-legend-item">
-                        <span class="attr-tag attr-tag-critical">Критичный</span>
-                        Атрибуты, критичные для здоровья диска
+                        Критично
                     </span>
                     <span class="smart-legend-item">
-                        <span class="attr-tag attr-tag-important">Важный</span>
-                        Важные атрибуты для мониторинга
+                        <span style="color: #e53e3e; font-weight: 700; font-size: 12px;">Критичный</span>
+                        <span style="font-size: 12px;">атрибут</span>
+                    </span>
+                    <span class="smart-legend-item">
+                        <span style="color: #d69e2e; font-weight: 600; font-size: 12px;">Важный</span>
+                        <span style="font-size: 12px;">атрибут</span>
                     </span>
                 </div>
             `;
