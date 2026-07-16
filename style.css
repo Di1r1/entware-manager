@@ -1076,6 +1076,62 @@ input[type="submit"]:disabled,
     background: var(--scrollbar-thumb);
     border-radius: 4px;
 }
+
+/* Статус-бейджи для SMART и других модулей */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.status-running {
+    background: var(--stat-normal-bg);
+    color: var(--stat-normal-text);
+}
+.status-stopped {
+    background: var(--stat-critical-bg);
+    color: var(--stat-critical-text);
+}
+.status-warning {
+    background: var(--stat-warning-bg);
+    color: var(--stat-warning-text);
+}
+
+/* Цветовые классы для строк таблиц */
+.smart-row-ok { background: transparent; }
+.smart-row-warning { background: var(--stat-warning-bg); }
+.smart-row-critical { background: var(--stat-critical-bg); }
+.smart-row-critical td { color: var(--stat-critical-text); }
+.smart-row-warning td { color: var(--stat-warning-text); }
+
+/* Легенда для модалок */
+.smart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    padding: 8px 0;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+.smart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.smart-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.smart-legend-dot.ok { background: var(--stat-normal-text); }
+.smart-legend-dot.warning { background: var(--stat-warning-text); }
+.smart-legend-dot.critical { background: var(--stat-critical-text); }
+
 @keyframes modalFadeIn {
     from { opacity: 0; transform: translateY(-30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }

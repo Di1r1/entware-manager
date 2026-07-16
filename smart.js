@@ -161,25 +161,59 @@ const SMART = {
             `;
 
             (data.attributes || []).forEach(attr => {
-                const isCritical = attr.value <= attr.threshold && attr.threshold > 0;
-                const statusClass = isCritical ? 'status-stopped' : 'status-running';
-                const statusIcon = isCritical ? 'icon-cross' : 'icon-check';
-                const statusText = isCritical ? 'КРИТИЧНО' : 'OK';
+                const value = parseInt(attr.value) || 0;
+                const threshold = parseInt(attr.threshold) || 0;
+                let rowClass = 'smart-row-ok';
+                let statusClass = 'status-running';
+                let statusIcon = 'icon-check';
+                let statusText = 'OK';
+
+                if (threshold > 0) {
+                    if (value <= threshold) {
+                        rowClass = 'smart-row-critical';
+                        statusClass = 'status-stopped';
+                        statusIcon = 'icon-cross';
+                        statusText = 'КРИТИЧНО';
+                    } else if (value - threshold < 10) {
+                        rowClass = 'smart-row-warning';
+                        statusClass = 'status-warning';
+                        statusIcon = 'icon-cross';
+                        statusText = 'Предупреждение';
+                    }
+                }
 
                 html += `
-                    <tr class="${isCritical ? 'text-red' : ''}">
+                    <tr class="${rowClass}">
                         <td>${attr.id}</td>
                         <td>${escapeHtml(attr.name)}</td>
-                        <td>${attr.value}</td>
-                        <td>${attr.worst}</td>
-                        <td>${attr.threshold}</td>
-                        <td>${attr.raw}</td>
+                        <td>${value}</td>
+                        <td>${parseInt(attr.worst) || 0}</td>
+                        <td>${threshold}</td>
+                        <td>${escapeHtml(attr.raw)}</td>
                         <td><span class="status-badge ${statusClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${statusIcon}"/></svg> ${statusText}</span></td>
                     </tr>
                 `;
             });
 
-            html += `</tbody></table></div>`;
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="smart-legend">
+                    <span class="smart-legend-item">
+                        <span class="smart-legend-dot ok"></span>
+                        OK — атрибут в норме
+                    </span>
+                    <span class="smart-legend-item">
+                        <span class="smart-legend-dot warning"></span>
+                        Предупреждение — значение приближается к порогу
+                    </span>
+                    <span class="smart-legend-item">
+                        <span class="smart-legend-dot critical"></span>
+                        Критично — значение ниже порога
+                    </span>
+                </div>
+            `;
             Modal.show(html, false, `SMART атрибуты — ${escapeHtml(device)}`);
         } catch (err) {
             Modal.error('Ошибка: ' + err.message);
