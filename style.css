@@ -1128,9 +1128,9 @@ input[type="submit"]:disabled,
     border-radius: 50%;
     flex-shrink: 0;
 }
-.smart-legend-dot.ok { background: var(--stat-normal-text); }
-.smart-legend-dot.warning { background: var(--stat-warning-text); }
-.smart-legend-dot.critical { background: var(--stat-critical-text); }
+.smart-legend-dot.ok { background: var(--stat-normal-bg); border: 2px solid var(--stat-normal-text); }
+.smart-legend-dot.warning { background: var(--stat-warning-bg); border: 2px solid var(--stat-warning-text); }
+.smart-legend-dot.critical { background: var(--stat-critical-bg); border: 2px solid var(--stat-critical-text); }
 
 @keyframes modalFadeIn {
     from { opacity: 0; transform: translateY(-30px) scale(0.95); }
