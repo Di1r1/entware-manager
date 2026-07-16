@@ -184,6 +184,16 @@ cat <<'HTMLFOOT'
 </div>
 HTMLFOOT
 
+cat <<'MODALHTML'
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle"></h2>
+        <div id="modalBody"></div>
+    </div>
+</div>
+MODALHTML
+
 echo '<script>
 (function() {'
 echo "var AUTH_ENABLED = ${FILEMGR_AUTH:-false};"
