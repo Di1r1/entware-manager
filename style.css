@@ -1055,6 +1055,8 @@ input[type="submit"]:disabled,
     padding: 24px;
     width: 90%;
     max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
     border-radius: 32px;
     box-shadow: var(--shadow-lg);
     color: var(--text-primary);
@@ -1245,6 +1247,7 @@ input[type="submit"]:disabled,
         width: 95%;
         margin: 10% auto;
         padding: 16px;
+        max-height: 75vh;
     }
 }
 
