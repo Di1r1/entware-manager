@@ -191,6 +191,13 @@ async function loadTab(tabName) {
     if (tabName === 'monitor') { loadMonitorTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'logs') { loadLogsTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'network') { loadNetworkTab(); Menu.setActiveTab(tabName); return; }
+    if (tabName === 'smart') {
+        if (!window.SMART_LOADED) {
+            await loadScript('/entware-manager/smart.js?v=1');
+            window.SMART_LOADED = true;
+        }
+        loadSmartTab(); Menu.setActiveTab(tabName); return;
+    }
 
     contentDiv.innerHTML = '<p>Загрузка...</p>';
     try {
