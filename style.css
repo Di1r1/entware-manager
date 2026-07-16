@@ -1058,7 +1058,7 @@ input[type="submit"]:disabled,
     max-height: 85vh;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-color: var(--scrollbar-thumb) transparent;
     border-radius: 32px;
     box-shadow: var(--shadow-lg);
     color: var(--text-primary);
@@ -1069,7 +1069,8 @@ input[type="submit"]:disabled,
     width: 8px;
 }
 .modal-content::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
+    background: transparent;
+    margin-block: 4px;
 }
 .modal-content::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
