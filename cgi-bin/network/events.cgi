@@ -7,7 +7,7 @@
 
 export PATH=/opt/bin:/bin:/usr/bin:/sbin:/usr/sbin:/opt/sbin:/usr/sbin
 
-LOG_FILE="/tmp/entware/logs/network_events.log"
+LOG_FILE="/tmp/entware/logs/$(date '+%Y-%m-%d').log"
 QUERY_STRING="${QUERY_STRING:-}"
 LIMIT=$(echo "$QUERY_STRING" | sed -n 's/.*limit=\([0-9]*\).*/\1/p')
 [ -z "$LIMIT" ] && LIMIT=20
@@ -18,7 +18,7 @@ if [ ! -f "$LOG_FILE" ]; then
     json_out '{"events":[]}'
 fi
 
-EVENTS=$(tail -n 1000 "$LOG_FILE" 2>/dev/null | grep '\[NETWORK\]' | tail -n "$LIMIT")
+EVENTS=$(tail -n 1000 "$LOG_FILE" 2>/dev/null | grep -i '\[network\]' | tail -n "$LIMIT")
 
 if [ -z "$EVENTS" ]; then
     json_out '{"events":[]}'
@@ -31,9 +31,9 @@ while IFS= read -r line; do
     ts=$(echo "$line" | cut -c1-19)
     lvl=$(echo "$line" | sed -n 's/.*\[\(INFO\|WARN\|ERROR\)\].*/\1/p')
     
-    rest=$(echo "$line" | sed 's/.*\[NETWORK\] //')
+    rest=$(echo "$line" | sed 's/.*\[network\] //I')
     
-    service=$(echo "$rest" | awk '{print $1}')
+    service=$(echo "$rest" | awk '{print $1}' | tr -d ':')
     
     rest_after_service=$(echo "$rest" | sed "s/^$service //")
     evt=$(echo "$rest_after_service" | sed 's/ .*//')

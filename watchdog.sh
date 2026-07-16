@@ -119,7 +119,7 @@ daemon_loop() {
             if [ -n "$size" ] && [ "$size" -gt 1048576 ]; then
                 mv "$LOG_FILE" "${LOG_FILE}.old"
                 touch "$LOG_FILE"
-                log "INFO" "Лог ротирован"
+                log_message "INFO" "[monitor] Лог ротирован"
             fi
         fi
 

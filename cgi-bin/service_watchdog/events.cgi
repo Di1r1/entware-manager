@@ -9,7 +9,7 @@ export PATH=/opt/bin:/bin:/usr/bin:/sbin:/usr/sbin:/opt/sbin:/usr/sbin
 
 . /opt/web_entware/lib/common.sh
 
-LOG_FILE="/tmp/entware/logs/service_events.log"
+LOG_FILE="/tmp/entware/logs/$(date '+%Y-%m-%d').log"
 QUERY_STRING="${QUERY_STRING:-}"
 LIMIT=$(echo "$QUERY_STRING" | sed -n 's/.*limit=\([0-9]*\).*/\1/p')
 [ -z "$LIMIT" ] && LIMIT=20
@@ -18,7 +18,7 @@ if [ ! -f "$LOG_FILE" ]; then
     json_out '{"events":[]}'
 fi
 
-EVENTS=$(tail -n 1000 "$LOG_FILE" 2>/dev/null | grep '\[SERVICE\]' | tail -n "$LIMIT")
+EVENTS=$(tail -n 1000 "$LOG_FILE" 2>/dev/null | grep -i '\[service\]' | tail -n "$LIMIT")
 
 if [ -z "$EVENTS" ]; then
     json_out '{"events":[]}'
@@ -32,9 +32,9 @@ while IFS= read -r line; do
     lvl=$(echo "$line" | sed -n 's/.*\[\(INFO\|WARN\|ERROR\)\].*/\1/p')
     [ -z "$lvl" ] && lvl="INFO"
     
-    rest=$(echo "$line" | sed 's/.*\[SERVICE\] //')
+    rest=$(echo "$line" | sed 's/.*\[service\] //I')
     
-    svc=$(echo "$rest" | awk '{print $1}')
+    svc=$(echo "$rest" | awk '{print $1}' | tr -d ':')
     [ -z "$svc" ] && svc="unknown"
     
     rest_after_svc=$(echo "$rest" | sed "s/^$svc //")

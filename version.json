@@ -1,7 +1,8 @@
 {
-  "version": "1.03.21",
+  "version": "1.03.22",
   "date": "2026-07-16",
   "changes": [
+    "#9 fix: log() undefined в watchdog.sh (ротация), log-viewer CGIs переведены на дневной лог",
     "#6: cache-buster (?_=Date.now()) добавлен во все 6 fetch-запросов network.js",
     "common.sh 2.6: добавлены die(), log_message(), html_escape(), human_size(), load_config(). Локальные html_escape() удалены из stats.cgi, tmpfs.cgi",
     "#9: унификация логирования. log_service/service_watchdog, log_event/network_watchdog, log/watchdog.sh заменены на log_message(). log_action() делегирует log_message() в fallback"
