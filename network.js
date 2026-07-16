@@ -99,7 +99,7 @@ const NETWORK = {
         if (!statusSpan) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/status.cgi?_=' + Date.now());
+            const res = await fetch(API_BASE + '/network/status.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.running) {
@@ -122,7 +122,7 @@ const NETWORK = {
         const hideUnknown = document.getElementById('hide-unknown-ifaces')?.checked;
         
         try {
-            const res = await fetch('/entware-cgi/network/interfaces.cgi?_=' + Date.now());
+            const res = await fetch(API_BASE + '/network/interfaces.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.interfaces && data.interfaces.length > 0) {
@@ -133,12 +133,12 @@ const NETWORK = {
                 if (ifaces.length > 0) {
                     tbody.innerHTML = ifaces.map(iface => `
                         <tr>
-                            <td><strong>${this.escapeHtml(iface.name)}</strong></td>
-                            <td><span class="${iface.state === 'UP' ? 'stat-value-normal' : 'stat-value-critical'}">${this.escapeHtml(iface.state)}</span></td>
-                            <td>${this.escapeHtml(iface.ip)}</td>
-                            <td><code>${this.escapeHtml(iface.mac)}</code></td>
-                            <td>${this.escapeHtml(iface.type)}${iface.ssid ? ` (${this.escapeHtml(iface.ssid)})` : ''}</td>
-                            <td>${this.escapeHtml(iface.speed)}</td>
+                            <td><strong>${escapeHtml(iface.name)}</strong></td>
+                            <td><span class="${iface.state === 'UP' ? 'stat-value-normal' : 'stat-value-critical'}">${escapeHtml(iface.state)}</span></td>
+                            <td>${escapeHtml(iface.ip)}</td>
+                            <td><code>${escapeHtml(iface.mac)}</code></td>
+                            <td>${escapeHtml(iface.type)}${iface.ssid ? ` (${escapeHtml(iface.ssid)})` : ''}</td>
+                            <td>${escapeHtml(iface.speed)}</td>
                         </tr>
                     `).join('');
                 } else {
@@ -157,16 +157,16 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/routes.cgi?_=' + Date.now());
+            const res = await fetch(API_BASE + '/network/routes.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.routes && data.routes.length > 0) {
                 tbody.innerHTML = data.routes.map(route => `
                     <tr>
-                        <td><code>${this.escapeHtml(route.destination)}</code></td>
-                        <td><code>${this.escapeHtml(route.gateway)}</code></td>
-                        <td>${this.escapeHtml(route.interface)}</td>
-                        <td>${route.metric ? this.escapeHtml(route.metric) : '-'}</td>
+                        <td><code>${escapeHtml(route.destination)}</code></td>
+                        <td><code>${escapeHtml(route.gateway)}</code></td>
+                        <td>${escapeHtml(route.interface)}</td>
+                        <td>${route.metric ? escapeHtml(route.metric) : '-'}</td>
                     </tr>
                 `).join('');
             } else {
@@ -182,17 +182,17 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/arp.cgi?_=' + Date.now());
+            const res = await fetch(API_BASE + '/network/arp.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.entries && data.entries.length > 0) {
                 tbody.innerHTML = data.entries.map(entry => `
                     <tr>
-                        <td><code>${this.escapeHtml(entry.ip)}</code></td>
-                        <td>${this.escapeHtml(entry.name || '-')}</td>
-                        <td><code>${this.escapeHtml(entry.mac)}</code></td>
-                        <td>${this.escapeHtml(entry.interface)}</td>
-                        <td>${this.escapeHtml(entry.state)}</td>
+                        <td><code>${escapeHtml(entry.ip)}</code></td>
+                        <td>${escapeHtml(entry.name || '-')}</td>
+                        <td><code>${escapeHtml(entry.mac)}</code></td>
+                        <td>${escapeHtml(entry.interface)}</td>
+                        <td>${escapeHtml(entry.state)}</td>
                     </tr>
                 `).join('');
             } else {
@@ -208,20 +208,20 @@ const NETWORK = {
         if (!container) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/events.cgi?limit=20&_=' + Date.now());
+            const res = await fetch(API_BASE + '/network/events.cgi?limit=20&_=' + Date.now());
             const data = await res.json();
             
             if (data.events && data.events.length > 0) {
                 container.innerHTML = data.events.map(event => `
                     <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
-                        <span style="color: var(--text-muted);">${this.escapeHtml(event.timestamp)}</span>
+                        <span style="color: var(--text-muted);">${escapeHtml(event.timestamp)}</span>
                         <span style="padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.75rem; margin-left: 0.5rem;
                             ${event.level === 'ERROR' ? 'background: #fee2e2; color: #b91c1c;' : ''}
                             ${event.level === 'WARN' ? 'background: #fef3c7; color: #92400e;' : ''}
                             ${event.level === 'INFO' ? 'background: #dcfce7; color: #166534;' : ''}
-                        ">${this.escapeHtml(event.level)}</span>
+                        ">${escapeHtml(event.level)}</span>
                         <br>
-                        <strong>${this.escapeHtml(event.service)}</strong>: ${this.escapeHtml(event.event)} ${this.escapeHtml(event.details)}
+                        <strong>${escapeHtml(event.service)}</strong>: ${escapeHtml(event.event)} ${escapeHtml(event.details)}
                     </div>
                 `).join('');
             } else {
@@ -259,7 +259,7 @@ const NETWORK = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await fetch('/entware-cgi/network/action.cgi?action=' + action + '&_=' + Date.now(), {
+            const res = await fetch(API_BASE + '/network/action.cgi?action=' + action + '&_=' + Date.now(), {
                 method: 'POST'
             });
             
@@ -282,8 +282,6 @@ const NETWORK = {
         if (btn) btn.disabled = false;
     },
 
-    escapeHtml(text) {
-        return typeof escapeHtml === 'function' ? escapeHtml(text) : (text || '');
     }
 };
 

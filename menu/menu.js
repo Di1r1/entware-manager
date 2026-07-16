@@ -12,7 +12,7 @@ const Menu = (() => {
     // Загрузка данных меню из JSON
     async function loadMenuData() {
         try {
-            const response = await fetch('/entware-manager/menu/menu.json?_=' + Date.now());
+            const response = await fetch(UI_BASE + '/menu/menu.json?_=' + Date.now());
             if (!response.ok) throw new Error('Network error');
             const data = await response.json();
             // ожидаем структуру { version, comment, items }

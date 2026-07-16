@@ -3,21 +3,21 @@ export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 . /opt/web_entware/lib/common.sh
 
-DEMON_PID_FILE="/tmp/entware/pid/watchdog.pid"
+DAEMON_PID_FILE="/tmp/entware/pid/watchdog.pid"
 
-if [ -f "$DEMON_PID_FILE" ]; then
-    pid=$(cat "$DEMON_PID_FILE")
+if [ -f "$DAEMON_PID_FILE" ]; then
+    pid=$(cat "$DAEMON_PID_FILE")
     if pid_is_alive "$pid"; then
-        demon_status="running"
-        demon_pid="$pid"
+        daemon_status="running"
+        daemon_pid="$pid"
     else
-        demon_status="stopped"
-        demon_pid=""
-        rm -f "$DEMON_PID_FILE"
+        daemon_status="stopped"
+        daemon_pid=""
+        rm -f "$DAEMON_PID_FILE"
     fi
 else
-    demon_status="stopped"
-    demon_pid=""
+    daemon_status="stopped"
+    daemon_pid=""
 fi
 
 top5=$(top -bn1 2>/dev/null | sed -n '/^  PID/,$ p' | sed '1d' | head -5 | awk '
@@ -37,8 +37,8 @@ END { print "\n]" }')
 
 json_out "$(cat <<JSON
 {
-    "demon_status": "$demon_status",
-    "demon_pid": "$demon_pid",
+    "daemon_status": "$daemon_status",
+    "daemon_pid": "$daemon_pid",
     "processes": $top5
 }
 JSON

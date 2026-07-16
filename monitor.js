@@ -35,7 +35,7 @@ const MONITOR = {
             </h2>
             <div id="monitor-status-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                    <span><strong>Статус демона:</strong> <span id="demon-status" class="stat-value-normal">загрузка...</span></span>
+                    <span><strong>Статус демона:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
                     <button id="monitor-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
                     <button id="monitor-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
                     <button id="monitor-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
@@ -106,15 +106,15 @@ const MONITOR = {
     },
 
     async updateStatus() {
-        const statusSpan = document.getElementById('demon-status');
+        const statusSpan = document.getElementById('daemon-status');
         const tbody = document.getElementById('processes-tbody');
         if (!statusSpan || !tbody) return;
 
         try {
-            const resp = await fetch('/entware-cgi/monitor/monitor_status.cgi?_=' + Date.now());
+            const resp = await fetch(API_BASE + '/monitor/monitor_status.cgi?_=' + Date.now());
             const data = await resp.json();
-            if (data.demon_status === 'running') {
-                statusSpan.textContent = `активен (PID ${data.demon_pid})`;
+            if (data.daemon_status === 'running') {
+                statusSpan.textContent = 'активен (PID ' + data.daemon_pid + ')';
                 statusSpan.className = 'stat-value-normal';
             } else {
                 statusSpan.textContent = 'остановлен';
@@ -145,7 +145,7 @@ const MONITOR = {
 
     async loadConfig() {
         try {
-            const resp = await fetch('/entware-cgi/monitor/monitor_config.cgi');
+            const resp = await fetch(API_BASE + '/monitor/monitor_config.cgi');
             const cfg = await resp.json();
             document.getElementById('settings-enabled').checked = cfg.enabled;
             document.getElementById('settings-interval').value = cfg.interval;
@@ -173,12 +173,10 @@ const MONITOR = {
             },
             ignore: document.getElementById('settings-ignore').value.split(',').map(s => s.trim()).filter(s => s),
             ignore_ps: document.getElementById('settings-ignore-ps').checked,
-            max_processes: maxProcesses,
-            log_file: "/opt/temp/logs/monitor.log",
-            log_max_size: 1048576
+            max_processes: maxProcesses
         };
         try {
-            const resp = await fetch('/entware-cgi/monitor/monitor_config.cgi', {
+            const resp = await fetch(API_BASE + '/monitor/monitor_config.cgi', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(config)
@@ -186,7 +184,7 @@ const MONITOR = {
             const result = await resp.json();
             if (result.status === 'ok') {
                 Toast.show('Настройки сохранены');
-                await fetch('/entware-cgi/monitor/monitor_action.cgi', {
+                await fetch(API_BASE + '/monitor/monitor_action.cgi', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'action=restart'
@@ -203,7 +201,7 @@ const MONITOR = {
         const form = new URLSearchParams();
         form.append('action', action);
         try {
-            const resp = await fetch('/entware-cgi/monitor/monitor_action.cgi', { method: 'POST', body: form });
+            const resp = await fetch(API_BASE + '/monitor/monitor_action.cgi', { method: 'POST', body: form });
             const res = await resp.json();
             Toast.show(res.message);
             this.updateStatus();
@@ -213,12 +211,12 @@ const MONITOR = {
     },
 
     async killProcess(pid) {
-        if (confirm(`Убить процесс ${pid}?`)) {
+        if (confirm('Убить процесс ' + pid + '?')) {
             const form = new URLSearchParams();
             form.append('action', 'kill');
             form.append('pid', pid);
             try {
-                const resp = await fetch('/entware-cgi/monitor/monitor_action.cgi', { method: 'POST', body: form });
+                const resp = await fetch(API_BASE + '/monitor/monitor_action.cgi', { method: 'POST', body: form });
                 const res = await resp.json();
                 Toast.show(res.message);
                 this.updateStatus();
@@ -233,7 +231,7 @@ const MONITOR = {
         if (!logPre) return;
 
         try {
-            const resp = await fetch('/entware-cgi/monitor/monitor_log.cgi?_=' + Date.now());
+            const resp = await fetch(API_BASE + '/monitor/monitor_log.cgi?_=' + Date.now());
             const text = await resp.text();
             logPre.innerText = text;
         } catch(e) {

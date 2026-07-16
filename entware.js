@@ -194,7 +194,7 @@ async function loadTab(tabName) {
 
     contentDiv.innerHTML = '<p>Загрузка...</p>';
     try {
-        const response = await fetch(`/entware-cgi/${tabName}.cgi`);
+        const response = await fetch(API_BASE + '/' + tabName + '.cgi');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const html = await response.text();
         contentDiv.innerHTML = html;
@@ -230,7 +230,7 @@ function initStatsTabs() {
 async function showPackageInfo(pkg) {
     Modal.loading(`Загрузка информации о ${pkg}...`);
     try {
-        const response = await fetch(`/entware-cgi/api.cgi?action=info&package=${encodeURIComponent(pkg)}`);
+        const response = await fetch(API_BASE + '/api.cgi?action=info&package=' + encodeURIComponent(pkg));
         const data = await response.json();
         if (data.error) Modal.error(data.error);
         else Modal.info(`<pre>${data.info}</pre>`, `Пакет: ${pkg}`);
@@ -240,23 +240,10 @@ async function showPackageInfo(pkg) {
 }
 
 function initPackagesSearch() {
-    const input = document.getElementById('searchInput');
-    if (!input) return;
+    initTableSearch('searchInput', 'packagesTable', 0);
     const table = document.getElementById('packagesTable');
     if (!table) return;
     const rows = table.getElementsByTagName('tr');
-    const filterRows = () => {
-        const filter = input.value.toLowerCase();
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            if (cells.length) {
-                const packageName = cells[0].textContent.toLowerCase();
-                rows[i].style.display = packageName.includes(filter) ? '' : 'none';
-            }
-        }
-    };
-    input.addEventListener('keyup', filterRows);
-    filterRows();
     for (let i = 1; i < rows.length; i++) {
         rows[i].style.cursor = 'pointer';
         rows[i].addEventListener('click', function(e) {
@@ -301,22 +288,7 @@ function renderAvailableTable(packages) {
     html += '</tbody></table></div>';
     contentDiv.innerHTML = html;
 
-    const input = document.getElementById('searchAvailable');
-    const table = document.getElementById('availableTable');
-    const rows = table.getElementsByTagName('tr');
-    const filterRows = () => {
-        const filter = input.value.toLowerCase();
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            if (cells.length) {
-                const packageName = cells[0].textContent.toLowerCase();
-                rows[i].style.display = packageName.includes(filter) ? '' : 'none';
-            }
-        }
-    };
-    input.addEventListener('keyup', filterRows);
-    filterRows();
-
+    initTableSearch('searchAvailable', 'availableTable', 0);
     document.getElementById('refreshAvailable').addEventListener('click', () => loadAvailableTab(true));
 }
 
@@ -330,7 +302,7 @@ async function loadAvailableTab(forceRefresh = false) {
     } else {
         contentDiv.innerHTML = '<p>Загрузка...</p>';
         try {
-            const response = await fetch('/entware-cgi/available.cgi');
+            const response = await fetch(API_BASE + '/available.cgi');
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const packages = await response.json();
             localStorage.setItem(CACHE_KEY, JSON.stringify(packages));
@@ -344,7 +316,7 @@ async function loadAvailableTab(forceRefresh = false) {
 
 async function fetchUpgradable() {
     try {
-        const response = await fetch('/entware-cgi/upgradable.cgi');
+        const response = await fetch(API_BASE + '/upgradable.cgi');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         let data = await response.json();
         data = data.filter(pkg => pkg.package && pkg.current && pkg.new && pkg.package !== 'undefined');
@@ -363,7 +335,7 @@ async function runUpdate() {
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
-        const response = await fetch('/entware-cgi/update.cgi?run=1');
+        const response = await fetch(API_BASE + '/update.cgi?run=1');
         const text = await response.text();
         resultDiv.innerHTML = `<pre>${text}</pre>`;
         await fetchUpgradable();
@@ -388,7 +360,7 @@ async function upgradeAll() {
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        const response = await fetch('/entware-cgi/upgrade.cgi', {
+        const response = await fetch(API_BASE + '/upgrade.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'upgrade_all=1'
@@ -563,7 +535,7 @@ function loadLogsTab() {
             const query = prompt('Введите текст для поиска в имени файла (в /tmp):');
             if (!query || !query.trim()) return;
             try {
-                const resp = await fetch('/entware-cgi/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
+                const resp = await fetch(API_BASE + '/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
                 const files = await resp.json();
                 if (files.length === 0) { Toast.show('Файлы не найдены.', true); return; }
                 let added = 0;
@@ -601,7 +573,7 @@ function loadLogsTab() {
             const sourceName = select.value;
             if (sourceName && filePath) {
                 const iframe = document.getElementById('logsFrame');
-                iframe.src = '/entware-cgi/logger/system_logs.cgi?file=' + encodeURIComponent(filePath) + '&_=' + Date.now();
+                iframe.src = API_BASE + '/logger/system_logs.cgi?file=' + encodeURIComponent(filePath) + '&_=' + Date.now();
             }
         });
     }
@@ -614,7 +586,7 @@ function loadLogsTab() {
             const sourceName = sourceSelect.value;
             const iframe = document.getElementById('logsFrame');
             if (sourceName && filePath) {
-                iframe.src = '/entware-cgi/logger/system_logs.cgi?file=' + encodeURIComponent(filePath) + '&_=' + Date.now();
+                iframe.src = API_BASE + '/logger/system_logs.cgi?file=' + encodeURIComponent(filePath) + '&_=' + Date.now();
             } else {
                 iframe.src = 'about:blank';
             }
@@ -632,7 +604,7 @@ function loadLogsTab() {
         tabSystem.classList.remove('active');
         managerControls.style.display = 'flex';
         systemControls.style.display = 'none';
-        logsFrame.src = '/entware-cgi/logger/view.cgi?_=' + Date.now();
+        logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now();
     });
 
     tabSystem.addEventListener('click', async () => {
@@ -646,28 +618,28 @@ function loadLogsTab() {
 
     document.getElementById('clearOldLogsBtn').addEventListener('click', async () => {
         if (!confirm('Удалить все логи старше 30 дней?')) return;
-        const resp = await fetch('/entware-cgi/logger/clear.cgi', { method: 'POST' });
+        const resp = await fetch(API_BASE + '/logger/clear.cgi', { method: 'POST' });
         const data = await resp.json();
         Toast.show(data.message);
-        logsFrame.src = '/entware-cgi/logger/view.cgi?_=' + Date.now();
+        logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now();
     });
 
     document.getElementById('rotateNowBtn').addEventListener('click', async () => {
         if (!confirm('Запустить ротацию логов сейчас?')) return;
-        const resp = await fetch('/entware-cgi/logger/rotate.cgi', { method: 'POST' });
+        const resp = await fetch(API_BASE + '/logger/rotate.cgi', { method: 'POST' });
         const data = await resp.json();
         Toast.show(data.message);
-        setTimeout(() => logsFrame.src = '/entware-cgi/logger/view.cgi?_=' + Date.now(), 1000);
+        setTimeout(() => logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now(), 1000);
     });
 
     document.getElementById('toggleLoggingBtn').addEventListener('click', async () => {
-        const resp = await fetch('/entware-cgi/logger/config.cgi');
+        const resp = await fetch(API_BASE + '/logger/config.cgi');
         const cfg = await resp.json();
         const enabled = cfg.enabled;
         const newState = confirm(`Логирование сейчас ${enabled ? 'включено' : 'отключено'}. Хотите изменить?`);
         if (newState) {
             const newCfg = { ...cfg, enabled: !enabled };
-            const saveResp = await fetch('/entware-cgi/logger/config.cgi', {
+            const saveResp = await fetch(API_BASE + '/logger/config.cgi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newCfg)
@@ -680,7 +652,7 @@ function loadLogsTab() {
 
     async function updateLoggingStatus() {
         try {
-            const resp = await fetch('/entware-cgi/logger/config.cgi?_=' + Date.now());
+            const resp = await fetch(API_BASE + '/logger/config.cgi?_=' + Date.now());
             const cfg = await resp.json();
             const indicator = document.getElementById('loggingStatusIndicator');
             if (indicator) {
@@ -711,7 +683,7 @@ function loadLogsTab() {
         
         // Fetch and display system log
         try {
-            const resp = await fetch('/entware-cgi/logger/system_log.cgi?_=' + Date.now());
+            const resp = await fetch(API_BASE + '/logger/system_log.cgi?_=' + Date.now());
             const html = await resp.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
@@ -725,7 +697,7 @@ function loadLogsTab() {
 
 async function fetchTtydStatus() {
     try {
-        const response = await fetch('/entware-cgi/ttyd_control.cgi');
+        const response = await fetch(API_BASE + '/ttyd_control.cgi');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         updateTtydStatus(data);
@@ -765,7 +737,7 @@ window.controlTtyd = async function(action, port, pass) {
     formData.append('port', port);
     if (pass) formData.append('pass', pass);
     try {
-        const response = await fetch('/entware-cgi/ttyd_control.cgi', {
+        const response = await fetch(API_BASE + '/ttyd_control.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
@@ -793,7 +765,7 @@ function getDefaultLinks() {
 
 async function loadLinks() {
     try {
-        const response = await fetch('/entware-cgi/links_load.cgi');
+        const response = await fetch(API_BASE + '/links_load.cgi');
         if (!response.ok) throw new Error('Network error');
         const links = await response.json();
         return links.map(link => {
@@ -822,7 +794,7 @@ async function loadLinks() {
 
 async function saveLinks(links) {
     try {
-        const response = await fetch('/entware-cgi/links_save.cgi', {
+        const response = await fetch(API_BASE + '/links_save.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(links)
@@ -849,7 +821,7 @@ async function loadNetworkStatus() {
     if (!table) return;
     
     try {
-        const res = await fetch('/entware-cgi/network_status.cgi');
+        const res = await fetch(API_BASE + '/network_status.cgi');
         const data = await res.json();
         
         let html = '<div class="stat-table">';
@@ -1081,9 +1053,9 @@ async function opkgAction(event, action, pkg) {
     event.preventDefault();
     Modal.loading('Выполнение...');
     let url;
-    if (action === 'install') url = '/entware-cgi/install.cgi';
-    else if (action === 'remove') url = '/entware-cgi/remove.cgi';
-    else if (action === 'upgrade') url = '/entware-cgi/upgrade.cgi';
+    if (action === 'install') url = API_BASE + '/install.cgi';
+    else if (action === 'remove') url = API_BASE + '/remove.cgi';
+    else if (action === 'upgrade') url = API_BASE + '/upgrade.cgi';
     else return;
     const formData = new URLSearchParams();
     formData.append('package', pkg);
@@ -1195,7 +1167,7 @@ async function fetchServices() {
     if (!container) return;
     
     try {
-        const response = await fetch('/entware-cgi/services.cgi');
+        const response = await fetch(API_BASE + '/services.cgi');
         const services = await response.json();
         renderServices(services);
     } catch (err) {
@@ -1240,7 +1212,7 @@ function renderServices(services) {
 
 window.showProcessList = function(serviceName) {
     // Найти службу по имени в уже загруженных данных
-    fetch('/entware-cgi/services.cgi')
+    fetch(API_BASE + '/services.cgi')
         .then(r => r.json())
         .then(services => {
             const svc = services.find(s => s.name === serviceName);
@@ -1270,7 +1242,7 @@ window.killProcess = async function(pid, serviceName) {
     const formData = new URLSearchParams();
     formData.append('pid', pid);
     try {
-        const response = await fetch('/entware-cgi/kill_pid.cgi', {
+        const response = await fetch(API_BASE + '/kill_pid.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
@@ -1293,7 +1265,7 @@ window.serviceAction = async function(name, action) {
     formData.append('name', name);
     formData.append('action', action);
     try {
-        const response = await fetch('/entware-cgi/service_action.cgi', {
+        const response = await fetch(API_BASE + '/service_action.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
@@ -1312,7 +1284,7 @@ window.serviceAction = async function(name, action) {
 
 async function fetchCrontabType(type, textareaId) {
     try {
-        const response = await fetch(`/entware-cgi/crontab.cgi?type=${type}`);
+        const response = await fetch(API_BASE + '/crontab.cgi?type=' + type);
         const data = await response.json();
         document.getElementById(textareaId).value = data.crontab || '';
     } catch (err) {
@@ -1327,7 +1299,7 @@ async function saveCrontabType(type, textareaId, messageId) {
     formData.append('type', type);
     formData.append('crontab', content);
     try {
-        const response = await fetch('/entware-cgi/crontab_update.cgi', {
+        const response = await fetch(API_BASE + '/crontab_update.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
@@ -1480,7 +1452,7 @@ const SERVICE_WATCHDOG = {
         if (!statusSpan) return;
         
         try {
-            const res = await fetch('/entware-cgi/service_watchdog/status.cgi');
+            const res = await fetch(API_BASE + '/service_watchdog/status.cgi');
             const data = await res.json();
             
             if (data.running) {
@@ -1530,7 +1502,7 @@ const SERVICE_WATCHDOG = {
         if (!container) return;
         
         try {
-            const res = await fetch('/entware-cgi/service_watchdog/events.cgi?limit=15');
+            const res = await fetch(API_BASE + '/service_watchdog/events.cgi?limit=15');
             const data = await res.json();
             
             if (data.events && data.events.length > 0) {
@@ -1602,7 +1574,7 @@ const SERVICE_WATCHDOG = {
         }
         
         try {
-            const res = await fetch('/entware-cgi/service_watchdog/config.cgi', {
+            const res = await fetch(API_BASE + '/service_watchdog/config.cgi', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ mode: mode, watch_list: watchList, auto_restart: auto_restart, exclude_list: exclude_list })
@@ -1625,7 +1597,7 @@ const SERVICE_WATCHDOG = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await fetch('/entware-cgi/service_watchdog/action.cgi?action=' + action, { method: 'POST' });
+            const res = await fetch(API_BASE + '/service_watchdog/action.cgi?action=' + action, { method: 'POST' });
             const data = await res.json();
             
             if (data.status === 'ok') {
@@ -1664,7 +1636,7 @@ function initServiceWatchdog() {
 async function checkSystemDeps() {
     Modal.loading('Проверка системных зависимостей...');
     try {
-        const res = await fetch('/entware-cgi/check_deps.cgi?_=' + Date.now());
+        const res = await fetch(API_BASE + '/check_deps.cgi?_=' + Date.now());
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
