@@ -12,7 +12,7 @@ CONFIG_FILE="/opt/web_entware/monitor_config.json"
 if [ "$REQUEST_METHOD" = "GET" ]; then
     if [ -f "$CONFIG_FILE" ]; then
         if ! grep -q '"max_processes"' "$CONFIG_FILE" 2>/dev/null; then
-            sed -i 's/"ignore_ps": true,/"ignore_ps": true,\n  "max_processes": 200,/' "$CONFIG_FILE"
+            jq '. + {"max_processes": 200}' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" 2>/dev/null && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
         fi
         /opt/bin/cat "$CONFIG_FILE"
     else

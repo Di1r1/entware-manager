@@ -37,7 +37,7 @@ case "$type" in
         mkdir -p "$(dirname "$CRONTAB_FILE")"
         echo "$crontab" > "$CRONTAB_FILE"
         if [ $? -eq 0 ]; then
-            pid=$(pgrep -f "cron" | grep -v grep | head -1)
+            pid=$(find_pids "cron" | head -1)
             [ -n "$pid" ] && kill -HUP "$pid" 2>/dev/null
             log_action "INFO" "Сохранён crontab (opt)"
             json_out '{"status":"ok"}'

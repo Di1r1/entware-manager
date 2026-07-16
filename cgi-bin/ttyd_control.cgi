@@ -14,7 +14,7 @@ get_status() {
     pid_8089=""
     pid_9089=""
 
-    for pid in $(pgrep ttyd 2>/dev/null); do
+    for pid in $(find_pids "ttyd" 2>/dev/null); do
         if [ -r "/proc/$pid/cmdline" ]; then
             cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
             case "$cmdline" in
@@ -72,11 +72,11 @@ start_ttyd() {
 
 stop_ttyd() {
     port="$1"
-    pids=$(pgrep -f "ttyd.*-p $port")
+    pids=$(find_pids "ttyd.*-p $port" 2>/dev/null)
     if [ -n "$pids" ]; then
         kill $pids 2>/dev/null
         sleep 1
-        if pgrep -f "ttyd.*-p $port" >/dev/null; then
+        if find_pids "ttyd.*-p $port" | head -1 >/dev/null 2>&1; then
             echo "{\"status\":\"error\",\"message\":\"Не удалось остановить ttyd на порту $port\"}"
         else
             log_action "INFO" "ttyd остановлен на порту $port"
@@ -90,7 +90,7 @@ stop_ttyd() {
 restart_ttyd() {
     port="$1"
     pass="$2"
-    pids=$(pgrep -f "ttyd.*-p $port")
+    pids=$(find_pids "ttyd.*-p $port" 2>/dev/null)
     [ -n "$pids" ] && kill $pids 2>/dev/null
     sleep 1
     start_ttyd "$port" "$pass"

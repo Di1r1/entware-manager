@@ -115,7 +115,7 @@ daemon_loop() {
         done
 
         if [ -f "$LOG_FILE" ]; then
-            size=$(stat -c %s "$LOG_FILE" 2>/dev/null)
+            size=$(wc -c < "$LOG_FILE" 2>/dev/null)
             if [ -n "$size" ] && [ "$size" -gt 1048576 ]; then
                 mv "$LOG_FILE" "${LOG_FILE}.old"
                 touch "$LOG_FILE"

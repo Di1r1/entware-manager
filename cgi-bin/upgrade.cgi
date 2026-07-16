@@ -37,7 +37,7 @@ if [ -z "$pkg_clean" ]; then
     exit 0
 fi
 
-echo "<h2>Обновление пакета: $(echo "$pkg_clean" | sed 's/&/\&amp;/g')</h2>"
+echo "<h2>Обновление пакета: $(html_escape "$pkg_clean")</h2>"
 echo '<pre>'
 if /opt/bin/opkg upgrade "$pkg_clean" 2>&1; then
     echo '</pre><p class="success">Пакет успешно обновлён.</p>'

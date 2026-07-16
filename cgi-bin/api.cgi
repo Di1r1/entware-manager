@@ -34,9 +34,10 @@ fi
 
 installed_time_raw=$(echo "$info" | grep "^Installed-Time:" | cut -d' ' -f2)
 if [ -n "$installed_time_raw" ]; then
-    installed_date=$(date -d "@$installed_time_raw" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
+    installed_date=$(date -D "%s" -d "$installed_time_raw" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || awk "BEGIN {print strftime(\"%Y-%m-%d %H:%M:%S\", $installed_time_raw)}" 2>/dev/null)
     if [ -n "$installed_date" ]; then
-        info="$info"$'\n'"Installed-Date: $installed_date"
+        info="${info}
+Installed-Date: ${installed_date}"
     fi
 fi
 

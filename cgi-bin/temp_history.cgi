@@ -40,7 +40,8 @@ get_history() {
     for f in $(ls -1t "$BASE_DIR"/cpu.* 2>/dev/null); do
         [ -f "$f" ] || continue
         line=$(cat "$f" 2>/dev/null)
-        [ -n "$line" ] && result="${result}${line}"$'\n'
+        [ -n "$line" ] && result="${result}${line}
+"
     done
     printf "%s" "$result"
 }

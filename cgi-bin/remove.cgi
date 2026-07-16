@@ -22,7 +22,7 @@ if [ -z "$pkg_clean" ]; then
     exit 0
 fi
 
-echo "<h2>Удаление пакета: $(echo "$pkg_clean" | sed 's/&/\&amp;/g')</h2>"
+echo "<h2>Удаление пакета: $(html_escape "$pkg_clean")</h2>"
 echo '<pre>'
 if /opt/bin/opkg remove "$pkg_clean" 2>&1; then
     echo '</pre><p class="success">Пакет успешно удалён.</p>'
