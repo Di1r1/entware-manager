@@ -22,8 +22,6 @@ if [ ! -d "$real_path" ]; then
     echo "<p class='error'>Директория не существует: $real_path</p>"; exit 0
 fi
 
-html_escape() { echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'; }
-
 human_size() {
     size=$1
     if [ $size -lt 1024 ]; then echo "${size}B"

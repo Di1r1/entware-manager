@@ -1,8 +1,8 @@
 #!/bin/sh
 # ==============================================
 # Entware Manager - общие функции для CGI
-# Версия: 2.5 (чистая версия без DEBUG)
-# Дата: 2026-04-01
+# Версия: 2.6 (добавлены die, log_message, html_escape, human_size, load_config)
+# Дата: 2026-07-16
 # ==============================================
 
 export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
@@ -119,6 +119,51 @@ find_pids() {
     else
         ps w 2>/dev/null | grep -v grep | grep -E "$pattern" | awk '{print $1}'
     fi
+}
+
+# --- Фатальная ошибка (для демонов с set -eu) ---
+die() {
+    echo "[FATAL] $1" >&2
+    exit "${2:-1}"
+}
+
+# --- Единое логирование в /tmp/entware/logs/ ---
+log_message() {
+    local level="$1" msg="$2"
+    local log_dir="/tmp/entware/logs"
+    mkdir -p "$log_dir" 2>/dev/null
+    local ts
+    ts=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$ts] [$level] [$$] $msg" >> "$log_dir/$(date '+%Y-%m-%d').log"
+}
+
+# --- Экранирование HTML (sed) ---
+html_escape() {
+    echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
+}
+
+# --- Байты в человекочитаемый размер (BusyBox-совместимо) ---
+human_size() {
+    local b="$1"
+    if [ "$b" -lt 1024 ]; then
+        echo "${b} B"
+    elif [ "$b" -lt 1048576 ]; then
+        echo "$((b / 1024)).$(((b % 1024) * 10 / 1024)) KiB"
+    elif [ "$b" -lt 1073741824 ]; then
+        echo "$((b / 1048576)).$(((b % 1048576) * 10 / 1048576)) MiB"
+    else
+        echo "$((b / 1073741824)).$(((b % 1073741824) * 10 / 1073741824)) GiB"
+    fi
+}
+
+# --- Загрузка JSON-конфига (проверка существования + валидация) ---
+load_config() {
+    local cfg="$1"
+    if [ -f "$cfg" ] && command -v jq >/dev/null 2>&1; then
+        jq -e '.' "$cfg" >/dev/null 2>&1 || return 1
+        return 0
+    fi
+    return 1
 }
 
 # --- Логирование (с PID) ---

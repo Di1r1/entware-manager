@@ -9,10 +9,6 @@
 
 html_header
 
-html_escape() {
-    echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
-}
-
 get_value() {
     value=$(eval "$1" 2>/dev/null)
     if [ -z "$value" ]; then
