@@ -166,6 +166,60 @@ load_config() {
     return 1
 }
 
+# --- Парсинг событий из дневного лога в JSON ---
+parse_log_events() {
+    local tag="$1" limit="${2:-20}"
+    local log_file="/tmp/entware/logs/$(date '+%Y-%m-%d').log"
+
+    if [ ! -f "$log_file" ]; then
+        echo '{"events":[]}'
+        return
+    fi
+
+    local events
+    events=$(tail -n 1000 "$log_file" 2>/dev/null | grep -i "\[$tag\]" | tail -n "$limit" | tr '[:upper:]' '[:lower:]')
+
+    if [ -z "$events" ]; then
+        echo '{"events":[]}'
+        return
+    fi
+
+    local first=1 result=""
+    while IFS= read -r line; do
+        local ts lvl rest
+        ts=$(echo "$line" | cut -c1-19)
+        lvl=$(echo "$line" | sed -n 's/.*\[\(info\|warn\|error\)\].*/\1/p' | tr '[:lower:]' '[:upper:]')
+        [ -z "$lvl" ] && lvl="INFO"
+
+        rest=$(echo "$line" | sed "s/.*\[$tag\] //")
+
+        local svc evt dtl
+        svc=$(echo "$rest" | awk '{print $1}' | tr -d ':')
+        [ -z "$svc" ] && svc="unknown"
+
+        local rest_after_svc
+        rest_after_svc=$(echo "$rest" | sed "s/^$svc //")
+
+        evt=$(echo "$rest_after_svc" | awk '{print $1}')
+        [ -z "$evt" ] && evt="unknown"
+
+        dtl=$(echo "$rest_after_svc" | sed "s/^$evt //" | tr -d '()')
+        [ -z "$dtl" ] && dtl="-"
+
+        # JSON-экранирование
+        svc=$(echo "$svc" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        evt=$(echo "$evt" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        dtl=$(echo "$dtl" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+        [ "$first" -eq 1 ] && first=0 || result="${result},"
+        result="${result}{\"timestamp\":\"${ts}\",\"level\":\"${lvl}\",\"service\":\"${svc}\",\"event\":\"${evt}\",\"details\":\"${dtl}\"}"
+    done <<EOF
+$events
+EOF
+
+    echo "{\"events\":[${result}]}"
+}
+
 # --- CGI-логирование (обёртка над log_message с IP/script_name) ---
 log_action() {
     level="$1"
