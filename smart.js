@@ -164,6 +164,7 @@ const SMART = {
                 const value = parseInt(attr.value) || 0;
                 const threshold = parseInt(attr.threshold) || 0;
                 let rowClass = 'smart-row-ok';
+                let nameClass = '';
                 let statusClass = 'status-running';
                 let statusIcon = 'icon-check';
                 let statusText = 'OK';
@@ -171,11 +172,13 @@ const SMART = {
                 if (threshold > 0) {
                     if (value <= threshold) {
                         rowClass = 'smart-row-critical';
+                        nameClass = 'smart-name-critical';
                         statusClass = 'status-stopped';
                         statusIcon = 'icon-cross';
                         statusText = 'КРИТИЧНО';
                     } else if (value - threshold < 10) {
                         rowClass = 'smart-row-warning';
+                        nameClass = 'smart-name-warning';
                         statusClass = 'status-warning';
                         statusIcon = 'icon-cross';
                         statusText = 'Предупреждение';
@@ -185,7 +188,7 @@ const SMART = {
                 html += `
                     <tr class="${rowClass}">
                         <td>${attr.id}</td>
-                        <td>${escapeHtml(attr.name)}</td>
+                        <td><span class="${nameClass}">${escapeHtml(attr.name)}</span></td>
                         <td>${value}</td>
                         <td>${parseInt(attr.worst) || 0}</td>
                         <td>${threshold}</td>

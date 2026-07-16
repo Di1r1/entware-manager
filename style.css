@@ -1108,6 +1108,16 @@ input[type="submit"]:disabled,
 .smart-row-critical td { color: var(--stat-critical-text); }
 .smart-row-warning td { color: var(--stat-warning-text); }
 
+/* Выделение названий критических атрибутов */
+.smart-name-critical {
+    font-weight: 700;
+    color: var(--stat-critical-text);
+}
+.smart-name-warning {
+    font-weight: 600;
+    color: var(--stat-warning-text);
+}
+
 /* Легенда для модалок */
 .smart-legend {
     display: flex;
