@@ -14,6 +14,7 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
     exit 0
 fi
 
+_POST_BODY=$(cat); export _POST_BODY
 upgrade_all=$(post_param "upgrade_all" "")
 pkg_raw=$(post_param "package" "")
 
@@ -42,7 +43,10 @@ echo '<pre>'
 if /opt/bin/opkg upgrade "$pkg_clean" 2>&1; then
     echo '</pre><p class="success">Пакет успешно обновлён.</p>'
     log_action "INFO" "Обновлён пакет $pkg_clean"
+    mkdir -p /tmp/entware/logs 2>/dev/null
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | upgrade | $pkg_clean | success" >> /tmp/entware/logs/package_changes.log
 else
     echo '</pre><p class="error">Ошибка при обновлении. Проверьте логи opkg.</p>'
     log_action "ERROR" "Ошибка обновления пакета $pkg_clean"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | upgrade | $pkg_clean | error" >> /tmp/entware/logs/package_changes.log
 fi

@@ -96,6 +96,22 @@ else
     available_count="н/д"
 fi
 
+# Последние изменения пакетов
+PKG_LOG="/tmp/entware/logs/package_changes.log"
+PKG_CHANGES=""
+if [ -f "$PKG_LOG" ]; then
+    PKG_CHANGES=$(tail -n 6 "$PKG_LOG" | awk -F' \\| ' '{
+        ts=$1; act=$2; pkg=$3; st=$4
+        if (st == "success") { icon="✓"; cls="pkg-change-ok" }
+        else if (st == "error") { icon="✗"; cls="pkg-change-error" }
+        else { icon="?"; cls="" }
+        if (act == "install") act_ru=(st=="error")?"ошибка установки":"установлен"
+        else if (act == "remove") act_ru=(st=="error")?"ошибка удаления":"удалён"
+        else act_ru=(st=="error")?"ошибка обновления":"обновлён"
+        printf "<tr class=\"%s\"><td class=\"pkg-change-icon\">%s</td><td class=\"pkg-change-pkg\">%s</td><td class=\"pkg-change-act\">%s</td><td class=\"pkg-change-ts\">%s</td></tr>\n", cls, icon, pkg, act_ru, ts
+    }')
+fi
+
 df_output=$(df -h /opt 2>/dev/null | tail -n 1)
 if [ -n "$df_output" ]; then
     fs_size=$(echo "$df_output" | awk '{print $2}')
@@ -172,6 +188,7 @@ cat <<STATS
             <tr><td>Установлено:</td><td>$(html_escape "$installed_count")</td></tr>
             <tr><td>Доступно:</td><td>$(html_escape "$available_count")</td></tr>
         </table>
+        $(if [ -n "$PKG_CHANGES" ]; then echo '<div class="top-mem-wrapper"><table class="top-mem"><tr><th colspan="4">Последние изменения</th></tr>'"$PKG_CHANGES"'</table></div>'; fi)
     </div>
 
     <div class="stat-card disk">

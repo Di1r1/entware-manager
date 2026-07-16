@@ -1636,3 +1636,77 @@ body.night #toast {
 .process-kill-btn:hover {
     background: #c53030 !important;
 }
+
+.stat-card.packages .top-mem-wrapper {
+    margin-top: 8px;
+    border-radius: 8px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform;
+    position: relative;
+    z-index: 1;
+}
+.stat-card.packages .top-mem-wrapper:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3), 0 20px 40px -8px rgba(139, 92, 246, 0.5);
+}
+.stat-card.packages .top-mem-wrapper:hover td {
+    background: rgba(139, 92, 246, 0.12) !important;
+}
+.stat-card.packages .top-mem-wrapper:hover th {
+    background: rgba(139, 92, 246, 0.06) !important;
+}
+.stat-card.packages .top-mem {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+.stat-card.packages .top-mem th {
+    font-weight: 400;
+    color: var(--text-muted);
+    padding: 4px 0.5rem 2px;
+    text-align: left;
+    font-size: 0.7rem;
+    background: transparent;
+    text-transform: none;
+    letter-spacing: normal;
+}
+.stat-card.packages .top-mem td {
+    padding: 2px 0.5rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.stat-card.packages .top-mem tr:nth-child(even) td {
+    background-color: var(--table-row-even);
+}
+.stat-card.packages .top-mem td:first-child {
+    width: 16px;
+    text-align: center;
+    font-size: 0.75rem;
+}
+.stat-card.packages .top-mem td:nth-child(2) {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.stat-card.packages .top-mem td:nth-child(3) {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+.stat-card.packages .top-mem td:last-child {
+    text-align: right;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+.stat-card.packages .top-mem .pkg-change-ok td:first-child {
+    color: #2ecc71;
+}
+.stat-card.packages .top-mem .pkg-change-error td:first-child {
+    color: #e53e3e;
+}
+.stat-card.packages .top-mem .pkg-change-error td:nth-child(2) {
+    color: #e53e3e;
+}
