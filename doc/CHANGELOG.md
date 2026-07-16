@@ -1,5 +1,7 @@
 # Изменения проекта
 
+Правила проекта: [`RULES.md`](../RULES.md)
+
 ## 1.04.00 (2026-07-17)
 
 ### SMART-модуль мониторинга дисков
@@ -122,6 +124,93 @@
 | `cgi-bin/service_action.cgi` | _POST_BODY |
 | `cgi-bin/kill_pid.cgi` | _POST_BODY + исправлен GET/POST |
 | `version.json` | 1.03.18 |
+
+---
+
+## 1.03.25 (2026-07-16)
+
+### #19–23 — JS-рефакторинг
+
+- **lib/utils.js**: добавлены константы `API_BASE` (`/entware-cgi`), `UI_BASE` (`/entware-manager`), `ICONS`. Функция `initTableSearch(inputId, tableId, cellIndex)`.
+- **cgi-bin/monitor/monitor_status.cgi**: `demon_*` → `daemon_*` (опечатка)
+- **monitor.js**: `demon` → `daemon`, все fetch через `API_BASE`, удалён хардкод `log_file/log_max_size` из saveConfig
+- **network.js**: удалён `escapeHtml()` wrapper (делегировал глобальной), все fetch через `API_BASE`
+- **entware.js**: все fetch через `API_BASE`, дубликаты `initPackagesSearch`/`renderAvailableTable` заменены на `initTableSearch()` (+40 строк → +10)
+- **menu/menu.js**: fetch через `UI_BASE`
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `lib/utils.js` | API_BASE, UI_BASE, ICONS, initTableSearch |
+| `monitor.js` | fetch через API_BASE, demon → daemon |
+| `network.js` | fetch через API_BASE, escapeHtml wrapper удалён |
+| `entware.js` | fetch через API_BASE, initTableSearch |
+| `menu/menu.js` | fetch через UI_BASE |
+| `cgi-bin/monitor/monitor_status.cgi` | demon → daemon |
+| `version.json` | 1.03.25 |
+
+---
+
+## 1.03.23 (2026-07-16)
+
+### parse_log_events() — унифицированный парсинг событий
+
+- **lib/common.sh**: добавлена функция `parse_log_events(tag, limit)` — читает дневной лог, фильтрует по тегу, парсит строки в JSON-массив событий (timestamp, level, service, event, details). JSON-экранирование через sed.
+- **network/events.cgi** и **service_watchdog/events.cgi**: сокращены с ~60 строк до 10 строк (один вызов `parse_log_events`)
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `lib/common.sh` | parse_log_events() |
+| `cgi-bin/network/events.cgi` | Упрощён до 3 строк |
+| `cgi-bin/service_watchdog/events.cgi` | Упрощён до 3 строк |
+| `version.json` | 1.03.23 |
+
+---
+
+## 1.03.22 (2026-07-16)
+
+### #9 fix — undefined log(), log-viewer CGIs
+
+- **watchdog.sh**: `log "INFO" "Лог ротирован"` → `log_message "INFO" "[monitor] Лог ротирован"` (вызывал "not found" при ротации)
+- **monitor_log.cgi**: теперь читает из `/tmp/entware/logs/YYYY-MM-DD.log`, фильтр `[monitor]`
+- **network/events.cgi**, **service_watchdog/events.cgi**: переведены на дневной лог, grep -i, регистронезависимый парсинг
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `watchdog.sh` | log → log_message |
+| `cgi-bin/monitor/monitor_log.cgi` | Чтение из дневного лога |
+| `cgi-bin/network/events.cgi` | grep -i, дневной лог |
+| `cgi-bin/service_watchdog/events.cgi` | grep -i, дневной лог |
+| `version.json` | 1.03.22 |
+
+---
+
+## 1.03.21 (2026-07-16)
+
+### Унификация логирования — log_service/log_event → log_message()
+
+- **watchdog.sh**: `log()` → `log_message()` (локальная функция удалена)
+- **network_watchdog.sh**: `log_event()` → `log_message()` (локальная функция удалена)
+- **service_watchdog.sh**: `log_service()` → `log_message()` (локальная функция удалена)
+- **lib/common.sh**: `log_action()` fallback теперь делегирует `log_message()` вместо дублирования mkdir/echo
+- Все `log_action()` в start/stop/restart всех 3 демонов → `log_message()`
+- Формат сообщений: `[модуль] подсистема: событие (детали)`
+- Все пишут в `/tmp/entware/logs/YYYY-MM-DD.log` через единый `log_message()`
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `lib/common.sh` | log_action fallback → log_message |
+| `watchdog.sh` | log → log_message |
+| `network_watchdog.sh` | log_event → log_message |
+| `service_watchdog.sh` | log_service → log_message |
+| `version.json` | 1.03.21 |
 
 ---
 
