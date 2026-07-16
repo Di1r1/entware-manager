@@ -2,6 +2,20 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.01 (2026-07-17)
+
+### Унификация модального окна
+
+- **modal scrollbar**: приведён к единому стилю с `.content` — `scrollbar-width: thin`, WebKit 8px, `border-radius: 4px`, track прозрачный (не выпирает за `border-radius: 32px`)
+- **modal padding**: `24px` единый (убрано `24px 0 24px 24px` + workaround `#modalBody padding-right`)
+- **.close**: убран `float: right` (родитель использует `display: flex; justify-content: space-between`)
+- **кастомный scrollbar 6px**: удалён (был с `transparent` треком — выбивался из дизайн-системы)
+
+### Инфраструктура
+
+- **RULES.md**: правила для LLM-ассистента выделены из devlog.md, таблица функций актуализирована
+- **devlog.md → CHANGELOG.md**: devlog.md удалён, содержимое перенесено в CHANGELOG (добавлены версии 1.03.21-1.03.25)
+
 ## 1.04.00 (2026-07-17)
 
 ### SMART-модуль мониторинга дисков
