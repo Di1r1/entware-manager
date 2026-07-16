@@ -99,7 +99,7 @@ const NETWORK = {
         if (!statusSpan) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/status.cgi');
+            const res = await fetch('/entware-cgi/network/status.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.running) {
@@ -122,7 +122,7 @@ const NETWORK = {
         const hideUnknown = document.getElementById('hide-unknown-ifaces')?.checked;
         
         try {
-            const res = await fetch('/entware-cgi/network/interfaces.cgi');
+            const res = await fetch('/entware-cgi/network/interfaces.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.interfaces && data.interfaces.length > 0) {
@@ -157,7 +157,7 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/routes.cgi');
+            const res = await fetch('/entware-cgi/network/routes.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.routes && data.routes.length > 0) {
@@ -182,7 +182,7 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/arp.cgi');
+            const res = await fetch('/entware-cgi/network/arp.cgi?_=' + Date.now());
             const data = await res.json();
             
             if (data.entries && data.entries.length > 0) {
@@ -208,7 +208,7 @@ const NETWORK = {
         if (!container) return;
         
         try {
-            const res = await fetch('/entware-cgi/network/events.cgi?limit=20');
+            const res = await fetch('/entware-cgi/network/events.cgi?limit=20&_=' + Date.now());
             const data = await res.json();
             
             if (data.events && data.events.length > 0) {
@@ -259,7 +259,7 @@ const NETWORK = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await fetch('/entware-cgi/network/action.cgi?action=' + action, {
+            const res = await fetch('/entware-cgi/network/action.cgi?action=' + action + '&_=' + Date.now(), {
                 method: 'POST'
             });
             

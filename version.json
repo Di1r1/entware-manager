@@ -1,7 +1,7 @@
 {
-  "version": "1.03.18",
+  "version": "1.03.19",
   "date": "2026-07-16",
   "changes": [
-    "BUGFIX: post_param() терял POST-данные между вызовами в subshell (brokettyd_control.cgi, crontab_update.cgi и др.). post_param() переведён на $_POST_BODY. Добавлен _POST_BODY=$(cat) в CGI."
+    "#6: cache-buster (?_=Date.now()) добавлен во все 6 fetch-запросов network.js"
   ]
 }
