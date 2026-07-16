@@ -17,28 +17,6 @@ SERVICES_DIR="/opt/etc/init.d"
 
 . /opt/web_entware/lib/common.sh
 
-log_service() {
-    level="$1"
-    service="$2"
-    event="$3"
-    details="$4"
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
-    mkdir -p /opt/var/log/entware 2>/dev/null
-    
-    if [ -f "$LOG_FILE" ]; then
-        size=$(ls -l "$LOG_FILE" 2>/dev/null | awk '{print $5}')
-        if [ -n "$size" ] && [ "$size" -gt "$LOG_MAX_SIZE" ]; then
-            ts=$(date +%Y%m%d_%H%M%S)
-            mv "$LOG_FILE" "${LOG_FILE}.${ts}.old"
-            touch "$LOG_FILE"
-            cp "$LOG_FILE" /opt/var/log/entware/service_events.log 2>/dev/null
-        fi
-    fi
-    
-    echo "$timestamp [$level] [SERVICE] $service: $event $details" >> "$LOG_FILE"
-}
-
 load_config() {
     if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
         ENABLED=$(jq -r '.enabled' "$CONFIG")
@@ -211,11 +189,11 @@ check_service() {
     
     if [ -n "$current_pid" ]; then
         if [ -z "$saved_pid" ]; then
-            log_service "INFO" "$service" "started" "(pid=$current_pid)"
+            log_message "INFO" "[service] $service: started (pid=$current_pid)"
             save_pid_state "$service" "$current_pid"
         elif [ "$current_pid" != "$saved_pid" ]; then
             if pid_is_alive "$current_pid"; then
-                log_service "WARN" "$service" "restarted" "(old_pid=$saved_pid -> new_pid=$current_pid)"
+                log_message "WARN" "[service] $service: restarted (old_pid=$saved_pid -> new_pid=$current_pid)"
                 save_pid_state "$service" "$current_pid"
             fi
         else
@@ -223,7 +201,7 @@ check_service() {
         fi
     else
         if [ -n "$saved_pid" ]; then
-            log_service "ERROR" "$service" "stopped" "(old_pid=$saved_pid)"
+            log_message "ERROR" "[service] $service: stopped (old_pid=$saved_pid)"
             if [ "$AUTO_RESTART" = "true" ]; then
                 local lock_file="/tmp/entware/pid/service_watchdog_${service}.lock"
                 local now=$(date +%s)
@@ -243,22 +221,22 @@ check_service() {
                     init_script=$(ls /opt/etc/init.d/S* 2>/dev/null | grep -iE "/S[0-9]+${service}" | head -1)
                     if [ -n "$init_script" ] && [ -x "$init_script" ]; then
                         echo "$now" > "$lock_file"
-                        log_service "INFO" "$service" "auto_restart" "attempting..."
+                        log_message "INFO" "[service] $service: auto_restart attempting..."
                         $init_script restart >/dev/null 2>&1
                         sleep 2
                         local new_pid
                         new_pid=$(get_service_pids "$service" | awk '{print $1}')
                         if [ -n "$new_pid" ]; then
-                            log_service "INFO" "$service" "auto_restart_ok" "(new_pid=$new_pid)"
+                            log_message "INFO" "[service] $service: auto_restart_ok (new_pid=$new_pid)"
                             save_pid_state "$service" "$new_pid"
                         else
-                            log_service "ERROR" "$service" "auto_restart_failed" ""
+                            log_message "ERROR" "[service] $service: auto_restart_failed"
                         fi
                     else
-                        log_service "ERROR" "$service" "auto_restart_failed" "script not found"
+                        log_message "ERROR" "[service] $service: auto_restart_failed (script not found)"
                     fi
                 else
-                    log_service "INFO" "$service" "auto_restart" "skipped (cooldown 60s)"
+                    log_message "INFO" "[service] $service: auto_restart skipped (cooldown 60s)"
                 fi
             fi
             if command -v jq >/dev/null 2>&1 && [ -f "$PID_STATE" ]; then
@@ -276,10 +254,10 @@ daemon_loop() {
 
     mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$PIDFILE")" 2>/dev/null
 
-    log_service "INFO" "service_watchdog" "started" "(interval=${INTERVAL}s, mode=$MODE, auto_restart=$AUTO_RESTART, exclude=$EXCLUDE_LIST, pid=$$)"
+    log_message "INFO" "[service] watchdog started (interval=${INTERVAL}s, mode=$MODE, auto_restart=$AUTO_RESTART, exclude=$EXCLUDE_LIST, pid=$$)"
 
-    trap 'log_service "INFO" "service_watchdog" "stopped" "(pid=$$)"; rm -f "$PIDFILE"; exit 0' TERM
-    trap 'log_service "INFO" "service_watchdog" "config_reload_triggered" "(pid=$$)"; sleep 1; exec "$0" daemon' HUP
+    trap 'log_message "INFO" "[service] watchdog stopped (pid=$$)"; rm -f "$PIDFILE"; exit 0' TERM
+    trap 'log_message "INFO" "[service] watchdog config_reload_triggered (pid=$$)"; sleep 1; exec "$0" daemon' HUP
 
     while true; do
         case "$MODE" in
@@ -325,7 +303,7 @@ case "$1" in
 
         sh "$0" daemon >> "$LOG_FILE" 2>&1 &
         echo $! > "$PIDFILE"
-        log_action "INFO" "Демон мониторинга служб запущен (PID: $(cat $PIDFILE))"
+        log_message "INFO" "[service] Демон мониторинга служб запущен (PID: $(cat $PIDFILE))"
         ;;
     stop)
         for p in $(find_pids "service_watchdog\.sh daemon" 2>/dev/null); do
@@ -333,7 +311,7 @@ case "$1" in
         done
         rm -f "$PIDFILE"
         rm -f "$PID_STATE"
-        log_action "INFO" "Демон мониторинга служб остановлен"
+        log_message "INFO" "[service] Демон мониторинга служб остановлен"
         ;;
     restart)
         "$0" stop
@@ -348,7 +326,7 @@ case "$1" in
         if [ "$ENABLED" = "true" ]; then
             sh "$0" daemon >> "$LOG_FILE" 2>&1 &
             echo $! > "$PIDFILE"
-            log_action "INFO" "Демон мониторинга служб перезапущен (PID: $(cat $PIDFILE))"
+            log_message "INFO" "[service] Демон мониторинга служб перезапущен (PID: $(cat $PIDFILE))"
         else
             echo "Disabled"
         fi

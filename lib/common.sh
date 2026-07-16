@@ -166,7 +166,7 @@ load_config() {
     return 1
 }
 
-# --- Логирование (с PID) ---
+# --- CGI-логирование (обёртка над log_message с IP/script_name) ---
 log_action() {
     level="$1"
     message="$2"
@@ -179,14 +179,10 @@ log_action() {
         fi
         return 0
     fi
-    # Fallback - если logging.sh не найден (никогда не должен выполняться)
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    # Fallback — через log_message
     ip="${REMOTE_ADDR:-localhost}"
-    pid=$$
-    script_base=$(basename "$SCRIPT_NAME" .cgi)
-    LOG_DIR="/tmp/entware/logs"
-    mkdir -p "$LOG_DIR" 2>/dev/null
-    echo "[$timestamp] [$level] [$ip] [$pid] [$script_base] $message" >> "$LOG_DIR/$(date +%Y-%m-%d).log"
+    script_base=$(basename "${SCRIPT_NAME:-unknown}" .cgi)
+    log_message "$level" "[$ip] [$script_base] $message"
 }
 
 get_version() {

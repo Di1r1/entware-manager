@@ -15,12 +15,6 @@ PIDFILE="/tmp/entware/pid/watchdog.pid"
 LOG_FILE="/tmp/entware/logs/monitor.log"
 LOG_INTERVAL=30
 
-log() {
-    level="$1"
-    message="$2"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] $message" >> "$LOG_FILE"
-}
-
 read_config() {
     if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
         ENABLED=$(jq -r '.enabled' "$CONFIG")
@@ -47,13 +41,13 @@ read_config() {
         INDIVIDUAL_TIME=120
         IGNORE_LIST="lighttpd|cron|ttyd|watchdog|ps|top"
         IGNORE_PS=true
-        log "WARN" "jq не найден, использую настройки по умолчанию"
+        log_message "WARN" "[monitor] jq не найден, использую настройки по умолчанию"
     fi
 }
 
 kill_process() {
     pid=$1
-    log "INFO" "Убиваю процесс $pid"
+    log_message "INFO" "[monitor] Убиваю процесс $pid"
     kill -9 "$pid" 2>/dev/null
 }
 
@@ -61,12 +55,12 @@ daemon_loop() {
     read_config
     mkdir -p "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$(dirname "$PIDFILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
 
-    log "INFO" "Демон запущен (PID $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
+    log_message "INFO" "[monitor] Демон запущен (PID $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
 
     rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*
 
-    trap 'log "INFO" "Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR"; exit 0' TERM
-    trap 'read_config; log "INFO" "Конфигурация перечитана (CPU=$INDIVIDUAL_CPU TIME=$INDIVIDUAL_TIME IGNORE_PS=$IGNORE_PS MAX_PROCESSES=$MAX_PROCESSES)"' HUP
+    trap 'log_message "INFO" "[monitor] Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR"; exit 0' TERM
+    trap 'read_config; log_message "INFO" "[monitor] Конфигурация перечитана (CPU=$INDIVIDUAL_CPU TIME=$INDIVIDUAL_TIME IGNORE_PS=$IGNORE_PS MAX_PROCESSES=$MAX_PROCESSES)"' HUP
 
     while true; do
         top -bn1 2>/dev/null | sed -n '/^  PID/,$ p' | sed '1d' | head -$MAX_PROCESSES | while read pid ppid user stat vsz cpuid cpu comm; do
@@ -102,15 +96,15 @@ daemon_loop() {
                 echo "$count" > "$counter_file"
 
                 if [ $((count % LOG_INTERVAL)) -eq 0 ] && [ "$count" -lt "$INDIVIDUAL_TIME" ]; then
-                    log "WARN" "$type процесс $pid ($comm) CPU $cpu% держится уже $count сек"
+                    log_message "WARN" "[monitor] $type процесс $pid ($comm) CPU $cpu% держится уже $count сек"
                 fi
 
                 if [ "$count" -ge "$INDIVIDUAL_TIME" ]; then
                     if [ "$is_ignore" -eq 1 ]; then
-                        log "WARN" "ИГНОРИРУЕМЫЙ процесс $pid ($comm) CPU $cpu% держится уже $INDIVIDUAL_TIME сек (не убит)"
+                        log_message "WARN" "[monitor] ИГНОРИРУЕМЫЙ процесс $pid ($comm) CPU $cpu% держится уже $INDIVIDUAL_TIME сек (не убит)"
                         rm -f "$counter_file"
                     else
-                        log "ERROR" "Превышен порог: процесс $pid ($comm) CPU $cpu% в течение $INDIVIDUAL_TIME сек"
+                        log_message "ERROR" "[monitor] Превышен порог: процесс $pid ($comm) CPU $cpu% в течение $INDIVIDUAL_TIME сек"
                         kill_process "$pid"
                         rm -f "$counter_file"
                     fi
@@ -157,7 +151,7 @@ case "$1" in
         fi
         sh "$0" daemon >> "$LOG_FILE" 2>&1 &
         echo $! > "$PIDFILE"
-        log_action "INFO" "Демон защиты запущен (PID: $(cat $PIDFILE))"
+        log_message "INFO" "[monitor] Демон защиты запущен (PID: $(cat $PIDFILE))"
         echo "Started with PID $(cat $PIDFILE)"
         ;;
     stop)
@@ -166,7 +160,7 @@ case "$1" in
         done
         rm -f "$PIDFILE"
         rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/* 2>/dev/null
-        log_action "INFO" "Демон защиты остановлен"
+        log_message "INFO" "[monitor] Демон защиты остановлен"
         echo "Stopped"
         ;;
     restart)
@@ -179,7 +173,7 @@ case "$1" in
         sleep 1
         sh "$0" daemon >> "$LOG_FILE" 2>&1 &
         echo $! > "$PIDFILE"
-        log_action "INFO" "Демон защиты перезапущен (PID: $(cat $PIDFILE))"
+        log_message "INFO" "[monitor] Демон защиты перезапущен (PID: $(cat $PIDFILE))"
         echo "Restarted with PID $(cat $PIDFILE)"
         ;;
     status)

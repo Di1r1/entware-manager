@@ -16,27 +16,6 @@ STATE_FILE="/tmp/entware/pid/network_watchdog_state.json"
 LOG_FILE="/tmp/entware/logs/network_events.log"
 LOG_MAX_SIZE=1048576
 
-log_event() {
-    level="$1"
-    event="$2"
-    details="$3"
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
-    mkdir -p /opt/var/log/entware 2>/dev/null
-    
-    if [ -f "$LOG_FILE" ]; then
-        size=$(stat -c %s "$LOG_FILE" 2>/dev/null)
-        if [ -n "$size" ] && [ "$size" -gt "$LOG_MAX_SIZE" ]; then
-            ts=$(date +%Y%m%d_%H%M%S)
-            mv "$LOG_FILE" "${LOG_FILE}.${ts}.old"
-            touch "$LOG_FILE"
-            cp "$LOG_FILE" /opt/var/log/entware/network_events.log 2>/dev/null
-        fi
-    fi
-    
-    echo "$timestamp [$level] [NETWORK] $event $details" >> "$LOG_FILE"
-}
-
 load_config() {
     if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
         INTERVAL=$(jq -r '.watchdog.interval // 30' "$CONFIG_FILE")
@@ -69,18 +48,18 @@ check_interfaces() {
         local previous_state=$(jq -r ".interfaces.\"$iface\".state // \"\"" "$STATE_FILE" 2>/dev/null)
         
         if [ "$current_state" = "DOWN" ] && [ "$previous_state" = "UP" ]; then
-            log_event "ERROR" "$iface" "interface_down (was UP)"
+            log_message "ERROR" "[network] $iface: interface_down (was UP)"
         fi
         
         if [ "$current_state" = "UP" ] && [ "$previous_state" = "DOWN" ]; then
-            log_event "INFO" "$iface" "interface_up"
+            log_message "INFO" "[network] $iface: interface_up"
         fi
         
         local current_ip=$(get_interface_ip "$iface")
         local previous_ip=$(jq -r ".interfaces.\"$iface\".ip // \"\"" "$STATE_FILE" 2>/dev/null)
         
         if [ -n "$current_ip" ] && [ -n "$previous_ip" ] && [ "$current_ip" != "$previous_ip" ]; then
-            log_event "INFO" "$iface" "ip_changed ($previous_ip -> $current_ip)"
+            log_message "INFO" "[network] $iface: ip_changed ($previous_ip -> $current_ip)"
         fi
     done
 }
@@ -93,7 +72,7 @@ check_internet() {
     
     if [ $ping_ok -ne 0 ]; then
         if [ "$previous_internet" = "true" ]; then
-            log_event "WARN" "internet" "no_internet (ping $PING_HOST)"
+            log_message "WARN" "[network] internet: no_internet (ping $PING_HOST)"
         fi
         echo "false"
     else
@@ -122,10 +101,10 @@ daemon_loop() {
     
     mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
     
-    log_event "INFO" "network_watchdog" "started (interval=${INTERVAL}s, ping=$PING_HOST, pid=$$)"
+    log_message "INFO" "[network] watchdog started (interval=${INTERVAL}s, ping=$PING_HOST, pid=$$)"
     
-    trap 'log_event "INFO" "network_watchdog" "stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
-    trap 'load_config; log_event "INFO" "network_watchdog" "config_reloaded (interval=$INTERVAL)"' HUP
+    trap 'log_message "INFO" "[network] watchdog stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
+    trap 'load_config; log_message "INFO" "[network] watchdog config_reloaded (interval=$INTERVAL)"' HUP
     
     while true; do
         check_interfaces
@@ -160,7 +139,7 @@ case "$1" in
         
         sh "$0" daemon >> "$LOG_FILE" 2>&1 &
         echo $! > "$PID_FILE"
-        log_action "INFO" "Демон мониторинга сети запущен (PID: $(cat $PID_FILE))"
+        log_message "INFO" "[network] Демон мониторинга сети запущен (PID: $(cat $PID_FILE))"
         ;;
     stop)
         for p in $(find_pids "network_watchdog\.sh daemon" 2>/dev/null); do
@@ -168,7 +147,7 @@ case "$1" in
         done
         rm -f "$PID_FILE"
         rm -f "$STATE_FILE"
-        log_action "INFO" "Демон мониторинга сети остановлен"
+        log_message "INFO" "[network] Демон мониторинга сети остановлен"
         ;;
     restart)
         "$0" stop
@@ -185,7 +164,7 @@ case "$1" in
         
         sh "$0" daemon >> "$LOG_FILE" 2>&1 &
         echo $! > "$PID_FILE"
-        log_action "INFO" "Демон мониторинга сети перезапущен (PID: $(cat $PID_FILE))"
+        log_message "INFO" "[network] Демон мониторинга сети перезапущен (PID: $(cat $PID_FILE))"
         ;;
     status)
         pid=""
