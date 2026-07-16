@@ -1057,11 +1057,23 @@ input[type="submit"]:disabled,
     max-width: 800px;
     max-height: 85vh;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     border-radius: 32px;
     box-shadow: var(--shadow-lg);
     color: var(--text-primary);
     position: relative;
     animation: modalFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-content::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
 }
 @keyframes modalFadeIn {
     from { opacity: 0; transform: translateY(-30px) scale(0.95); }
