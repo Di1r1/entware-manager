@@ -163,7 +163,6 @@ const SMART = {
             (data.attributes || []).forEach(attr => {
                 const value = parseInt(attr.value) || 0;
                 const threshold = parseInt(attr.threshold) || 0;
-                let rowClass = 'smart-row-ok';
                 let nameClass = '';
                 let statusClass = 'status-running';
                 let statusIcon = 'icon-check';
@@ -171,13 +170,11 @@ const SMART = {
 
                 if (threshold > 0) {
                     if (value <= threshold) {
-                        rowClass = 'smart-row-critical';
                         nameClass = 'smart-name-critical';
                         statusClass = 'status-stopped';
                         statusIcon = 'icon-cross';
                         statusText = 'КРИТИЧНО';
                     } else if (value - threshold < 10) {
-                        rowClass = 'smart-row-warning';
                         nameClass = 'smart-name-warning';
                         statusClass = 'status-warning';
                         statusIcon = 'icon-cross';
@@ -186,7 +183,7 @@ const SMART = {
                 }
 
                 html += `
-                    <tr class="${rowClass}">
+                    <tr class="smart-row-ok">
                         <td>${attr.id}</td>
                         <td><span class="${nameClass}">${escapeHtml(attr.name)}</span></td>
                         <td>${value}</td>

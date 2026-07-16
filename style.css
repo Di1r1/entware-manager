@@ -1101,12 +1101,8 @@ input[type="submit"]:disabled,
     color: var(--stat-warning-text);
 }
 
-/* Цветовые классы для строк таблиц */
-.smart-row-ok { background: transparent; }
-.smart-row-warning { background: var(--stat-warning-bg); }
-.smart-row-critical { background: var(--stat-critical-bg); }
-.smart-row-critical td { color: var(--stat-critical-text); }
-.smart-row-warning td { color: var(--stat-warning-text); }
+/* Цветовые классы для строк таблиц — только название + бейдж */
+.smart-row-ok td { color: var(--text-primary); }
 
 /* Выделение названий критических атрибутов */
 .smart-name-critical {
