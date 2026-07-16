@@ -1,5 +1,5 @@
 {
-  "version": "1.03.23",
+  "version": "1.03.24",
   "date": "2026-07-16",
   "changes": [
     "#15: parse_log_events() в common.sh — унифицированный парсинг событий из лога. events.cgi упрощены до 3 строк",

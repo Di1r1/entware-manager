@@ -187,7 +187,7 @@ parse_log_events() {
     local first=1 result=""
     while IFS= read -r line; do
         local ts lvl rest
-        ts=$(echo "$line" | cut -c1-19)
+        ts=$(echo "$line" | cut -c2-20)
         lvl=$(echo "$line" | sed -n 's/.*\[\(info\|warn\|error\)\].*/\1/p' | tr '[:lower:]' '[:upper:]')
         [ -z "$lvl" ] && lvl="INFO"
 
