@@ -1114,6 +1114,39 @@ input[type="submit"]:disabled,
     color: #d69e2e !important;
 }
 
+/* Теги категорий атрибутов */
+.attr-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.attr-tag-critical {
+    background: #fee2e2;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+.attr-tag-important {
+    background: #fefcbf;
+    color: #975a16;
+    border: 1px solid #f6e05e;
+}
+body.night .attr-tag-critical {
+    background: #742a2a;
+    color: #fed7d7;
+    border-color: #9b2c2c;
+}
+body.night .attr-tag-important {
+    background: #744210;
+    color: #fefcbf;
+    border-color: #975a16;
+}
+
 /* Легенда */
 .smart-legend {
     display: flex;
