@@ -44,9 +44,10 @@ elif [ -f /etc/openwrt_release ]; then
 fi
 
 MEM_TOTAL=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
-MEM_FREE=$(grep MemFree /proc/meminfo 2>/dev/null | awk '{print $2}')
-if [ -n "$MEM_TOTAL" ] && [ -n "$MEM_FREE" ]; then
-    MEM_USED=$((MEM_TOTAL - MEM_FREE))
+MEM_AVAIL=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
+[ -z "$MEM_AVAIL" ] && MEM_AVAIL=$(grep MemFree /proc/meminfo 2>/dev/null | awk '{print $2}')
+if [ -n "$MEM_TOTAL" ] && [ -n "$MEM_AVAIL" ]; then
+    MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
     MEM_TOTAL_MB=$((MEM_TOTAL / 1024))
     MEM_USED_MB=$((MEM_USED / 1024))
     MEM_INFO="${MEM_USED_MB} MB / ${MEM_TOTAL_MB} MB"
