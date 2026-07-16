@@ -80,13 +80,13 @@ cat <<HTMLMID
         </div>
         <table class="file-table">
             <thead>
-                <th>Имя</th><th>Размер</th><th>Права</th><th>Владелец</th><th>Действие</th>
+                <th>Имя</th><th>Размер</th><th>Изменён</th><th>Права</th><th>Владелец</th><th>Действие</th>
             </thead>
             <tbody>
 HTMLMID
 
 if [ "$real_path" != "/" ] && [ "$real_path" != "/tmp" ] && [ "$real_path" != "/dev" ] && [ "$real_path" != "/dev/shm" ]; then
-    echo "    <tr><td colspan='5'><a href=\"?path=$parent_path\"><svg class=\"icon\" width=\"14\" height=\"14\"><use href=\"/entware-manager/icons.svg?v=2#icon-arrow-left\"/></svg> .. (наверх)</a></td></tr>"
+    echo "    <tr><td colspan='6'><a href=\"?path=$parent_path\"><svg class=\"icon\" width=\"14\" height=\"14\"><use href=\"/entware-manager/icons.svg?v=2#icon-arrow-left\"/></svg> .. (наверх)</a></td></tr>"
 fi
 
 ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware-manager/icons.svg?v=2" '
@@ -122,21 +122,22 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
             else if (size < 1073741824) hsize = int(size/1048576) "M"
             else hsize = int(size/1073741824) "G"
         } else hsize = "-"
-        printf "    <tr><td><span class=\"file-icon %s\"><svg class=\"icon\" width=\"16\" height=\"16\"><use href=\"%s#icon-%s\"/></svg></span> %s</td><td>%s</td><td>%s</td><td>%s:%s</td><td>%s</td></tr>\n",
-            icon_class, base, icon, name_link, hsize, perms, user, group, action
+        date_str = month " " day " " time
+        printf "    <tr><td><span class=\"file-icon %s\"><svg class=\"icon\" width=\"16\" height=\"16\"><use href=\"%s#icon-%s\"/></svg></span> %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s:%s</td><td>%s</td></tr>\n",
+            icon_class, base, icon, name_link, hsize, date_str, perms, user, group, action
     }' || {
         file_list=$(ls -1A "$real_path" 2>&1)
         if [ $? -ne 0 ]; then
-            echo "<tr><td colspan='5' style='text-align:center; color:red;'>Ошибка доступа: $file_list</td></tr>"
+            echo "<tr><td colspan='6' style='text-align:center; color:red;'>Ошибка доступа: $file_list</td></tr>"
         elif [ -z "$file_list" ]; then
-            echo '<tr><td colspan="5" style="text-align:center;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-default"/></svg> Директория пуста</td></tr>'
+            echo '<tr><td colspan="6" style="text-align:center;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-default"/></svg> Директория пуста</td></tr>'
         else
             echo "$file_list" | while read name; do
                 [ -z "$name" ] && continue
                 full_path="$real_path/$name"
                 ls_line=$(ls -ld "$full_path" 2>/dev/null)
                 if [ -z "$ls_line" ]; then
-                    perms="?"; size="?"; user="?"; group="?"
+                    perms="?"; size="?"; user="?"; group="?"; date_str="?"
                     if [ -d "$full_path" ]; then
                         icon="folder"; icon_class="folder"
                         action="<button class='delete-file-btn' data-path='$full_path' data-name='$name' data-type='dir'><svg class=\"icon\" width=\"14\" height=\"14\"><use href=\"/entware-manager/icons.svg?v=2#icon-trash\"/></svg></button>"
@@ -149,6 +150,10 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
                     user=$(echo "$ls_line" | awk '{print $3}')
                     group=$(echo "$ls_line" | awk '{print $4}')
                     size=$(echo "$ls_line" | awk '{print $5}')
+                    month=$(echo "$ls_line" | awk '{print $6}')
+                    day=$(echo "$ls_line" | awk '{print $7}')
+                    time=$(echo "$ls_line" | awk '{print $8}')
+                    date_str="$month $day $time"
                     if [ "${perms:0:1}" = "d" ]; then
                         icon="folder"; icon_class="folder"
                         action="<button class='delete-file-btn' data-path='$full_path' data-name='$name' data-type='dir'><svg class=\"icon\" width=\"14\" height=\"14\"><use href=\"/entware-manager/icons.svg?v=2#icon-trash\"/></svg></button>"
@@ -166,7 +171,7 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
                 else
                     name_link="$name_esc"
                 fi
-                echo "<tr><td><span class='file-icon $icon_class'><svg class='icon' width='16' height='16'><use href='/entware-manager/icons.svg?v=2#icon-$icon'/></svg></span> $name_link</td><td>$size</td><td>$perms</td><td>$user:$group</td><td>$action</td></tr>"
+                echo "<tr><td><span class='file-icon $icon_class'><svg class='icon' width='16' height='16'><use href='/entware-manager/icons.svg?v=2#icon-$icon'/></svg></span> $name_link</td><td>$size</td><td>$date_str</td><td>$perms</td><td>$user:$group</td><td>$action</td></tr>"
             done
         fi
     }
