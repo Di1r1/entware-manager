@@ -19,7 +19,13 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             if [ ${#password} -lt 4 ]; then
                 json_out '{"status":"error","message":"Пароль должен быть минимум 4 символа"}'
             fi
-            password_hash=$(echo -n "$password" | sha256sum | cut -d' ' -f1)
+            if command -v sha256sum >/dev/null 2>&1; then
+                password_hash=$(echo -n "$password" | sha256sum 2>/dev/null | cut -d' ' -f1)
+            elif command -v openssl >/dev/null 2>&1; then
+                password_hash=$(echo -n "$password" | openssl dgst -sha256 2>/dev/null | cut -d' ' -f2)
+            else
+                json_out '{"status":"error","message":"Нет sha256sum или openssl для хэширования пароля"}'
+            fi
         else
             # Сохраняем старый хэш, если файл существует
             if [ -f "$CONFIG" ]; then

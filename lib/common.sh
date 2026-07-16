@@ -311,7 +311,15 @@ check_filemgr_auth() {
     local stored_hash; stored_hash=$(jq -r '.password_hash // ""' "$cfg" 2>/dev/null)
     [ -n "$stored_hash" ] || return 0
     local user_pass; user_pass=$(post_param "$pass_field" "")
-    local user_hash; user_hash=$(echo -n "$user_pass" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    local user_hash
+    if command -v sha256sum >/dev/null 2>&1; then
+        user_hash=$(echo -n "$user_pass" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    elif command -v openssl >/dev/null 2>&1; then
+        user_hash=$(echo -n "$user_pass" | openssl dgst -sha256 2>/dev/null | cut -d' ' -f2)
+    else
+        # Fallback — отключаем проверку если нет sha256sum
+        return 0
+    fi
     [ "$user_hash" = "$stored_hash" ] && return 0
     return 1
 }

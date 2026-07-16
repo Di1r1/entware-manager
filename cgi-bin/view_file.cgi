@@ -33,7 +33,9 @@ size=$(wc -c < "$path" 2>/dev/null || echo 0)
 [ "$size" -gt 1048576 ] && error_out "Файл слишком большой (макс. 1 MB)"
 
 # Проверка на бинарный файл (null-байты в первых 4KB)
-head -c 4096 "$path" 2>/dev/null | od -An -tx1 2>/dev/null | tr -d ' \n' | grep -q '00' && error_out "Невозможно отобразить бинарный файл"
+if command -v od >/dev/null 2>&1; then
+    head -c 4096 "$path" 2>/dev/null | od -An -tx1 2>/dev/null | tr -d ' \n' | grep -q '00' && error_out "Невозможно отобразить бинарный файл"
+fi
 
 name=$(basename "$path")
 
