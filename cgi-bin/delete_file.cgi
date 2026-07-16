@@ -12,6 +12,8 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
     exit 0
 fi
 
+_POST_BODY=$(cat); export _POST_BODY
+
 path_raw=$(post_param "path" "")
 path=$(url_decode "$path_raw")
 
@@ -23,6 +25,12 @@ case "$path" in
         exit 0
         ;;
 esac
+
+if ! check_filemgr_auth; then
+    log_action "WARN" "Неверный пароль при удалении: $path"
+    json_out '{"status":"error","message":"Неверный пароль"}'
+    exit 0
+fi
 
 real_path="$path"
 

@@ -299,6 +299,23 @@ daemon_status() {
     exit 1
 }
 
+# --- Проверка пароля файлового менеджера ---
+# check_filemgr_auth password_field
+# Возвращает 0 если пароль верный или защита выключена
+check_filemgr_auth() {
+    local pass_field="${1:-password}"
+    local cfg="/opt/web_entware/auth_config.json"
+    [ -f "$cfg" ] || return 0
+    local enabled; enabled=$(jq -r '.enabled // false' "$cfg" 2>/dev/null)
+    [ "$enabled" = "true" ] || return 0
+    local stored_hash; stored_hash=$(jq -r '.password_hash // ""' "$cfg" 2>/dev/null)
+    [ -n "$stored_hash" ] || return 0
+    local user_pass; user_pass=$(post_param "$pass_field" "")
+    local user_hash; user_hash=$(echo -n "$user_pass" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    [ "$user_hash" = "$stored_hash" ] && return 0
+    return 1
+}
+
 get_version() {
     version_file="/opt/web_entware/version.json"
     if [ -f "$version_file" ] && /opt/bin/jq --version >/dev/null 2>&1; then

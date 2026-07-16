@@ -933,6 +933,11 @@ async function renderSettingsTab() {
             Управление веб-терминалами ttyd. Для терминала требуется пароль.<br>
             После изменения состояния обновите вкладки "Процессы" и "Терминал".
         </p>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg> Защита файлового менеджера</h3>
+        <p>Включите пароль для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs).</p>
+        <div id="filemgr-auth-settings">
+            <div class="loading-spinner"></div>
+        </div>
     `;
     contentDiv.innerHTML = html;
     fetchTtydStatus();
@@ -941,7 +946,69 @@ async function renderSettingsTab() {
     document.getElementById('addLinkBtn').addEventListener('click', addLinkRow);
     document.getElementById('saveAllLinksBtn').addEventListener('click', saveAllLinks);
     document.getElementById('resetDefaultLinksBtn').addEventListener('click', resetDefaultLinks);
+    loadAuthConfig();
 }
+
+async function loadAuthConfig() {
+    try {
+        const data = await apiGet('/auth_config.cgi');
+        const enabled = data.enabled;
+        let html = `
+            <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                <input type="checkbox" id="filemgrAuthEnabled" ${enabled ? 'checked' : ''} onchange="toggleFilemgrPassFields()">
+                Включить защиту паролем
+            </label>
+            <div id="filemgrPassFields" style="display: ${enabled ? 'block' : 'none'}; margin: 10px 0;">
+                <div style="margin-bottom: 8px;">
+                    <label>Новый пароль (мин. 4 символа):</label>
+                    <input type="password" id="filemgrPass" placeholder="Оставьте пустым чтобы не менять" style="width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <label>Подтверждение:</label>
+                    <input type="password" id="filemgrPassConfirm" placeholder="Повторите пароль" style="width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <button class="packages-delete-btn" style="background:#4a5568;" onclick="saveAuthConfig()">Сохранить</button>
+                <span id="filemgrAuthStatus" style="margin-left: 10px;"></span>
+            </div>
+        `;
+        document.getElementById('filemgr-auth-settings').innerHTML = html;
+    } catch (err) {
+        document.getElementById('filemgr-auth-settings').innerHTML = '<p class="error">Ошибка загрузки настроек</p>';
+    }
+}
+
+window.toggleFilemgrPassFields = function() {
+    const enabled = document.getElementById('filemgrAuthEnabled').checked;
+    document.getElementById('filemgrPassFields').style.display = enabled ? 'block' : 'none';
+};
+
+window.saveAuthConfig = async function() {
+    const enabled = document.getElementById('filemgrAuthEnabled').checked;
+    const password = document.getElementById('filemgrPass').value;
+    const confirm = document.getElementById('filemgrPassConfirm').value;
+    const statusEl = document.getElementById('filemgrAuthStatus');
+
+    if (enabled && password && password !== confirm) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Пароли не совпадают</span>';
+        return;
+    }
+    if (enabled && password && password.length < 4) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Пароль должен быть минимум 4 символа</span>';
+        return;
+    }
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append('enabled', enabled ? 'true' : 'false');
+        formData.append('password', password);
+        const data = await apiPost('/auth_config.cgi', formData.toString());
+        statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Настройки сохранены</span>';
+        document.getElementById('filemgrPass').value = '';
+        document.getElementById('filemgrPassConfirm').value = '';
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+    }
+};
 
 function addLinkRow() {
     const tbody = document.getElementById('linksTableBody');

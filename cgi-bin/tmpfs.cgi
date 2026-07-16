@@ -22,6 +22,12 @@ if [ ! -d "$real_path" ]; then
     echo "<p class='error'>Директория не существует: $real_path</p>"; exit 0
 fi
 
+FILEMGR_AUTH="false"
+if [ -f "/opt/web_entware/auth_config.json" ]; then
+    enabled=$(jq -r '.enabled // false' "/opt/web_entware/auth_config.json" 2>/dev/null)
+    [ "$enabled" = "true" ] && FILEMGR_AUTH="true"
+fi
+
 human_size() {
     size=$1
     if [ $size -lt 1024 ]; then echo "${size}B"
@@ -165,14 +171,20 @@ ls -lA "$real_path" 2>/dev/null | awk -v realpath="$real_path" -v base="/entware
         fi
     }
 
-cat <<HTMLFOOT
+cat <<'HTMLFOOT'
             </tbody>
          </table>
         <p style="margin-top:1rem;"><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
     </div>
 </div>
-<script>
-(function() {
+HTMLFOOT
+
+echo '<script>
+(function() {'
+echo "var AUTH_ENABLED = ${FILEMGR_AUTH:-false};"
+echo "var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pass') || ''; } catch(e) { return ''; } })();"
+
+cat <<'JSEOF'
     function parseSize(str) {
         if (!str) return 0;
         str = str.trim();
@@ -246,27 +258,45 @@ cat <<HTMLFOOT
     }
 
     function deleteFile(path, type, name) {
-    if (!confirm(`Удалить ${type === 'dir' ? 'папку' : 'файл'} "${name}"?`)) return;
-    fetch('/entware-cgi/delete_file.cgi', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'path=' + encodeURIComponent(path)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'ok') {
-            Toast.show('Удаление выполнено', false);
-            setTimeout(() => location.reload(), 1500); // задержка для отображения тоста
-        } else {
-            Toast.show('Ошибка: ' + data.message, true);
+        if (!confirm('Удалить ' + (type === 'dir' ? 'папку' : 'файл') + ' "' + name + '"?')) return;
+
+        var body = 'path=' + encodeURIComponent(path);
+
+        if (AUTH_ENABLED) {
+            if (!FILEMGR_PASS) {
+                FILEMGR_PASS = prompt('Введите пароль для доступа к файловому менеджеру:');
+                if (!FILEMGR_PASS) return;
+                sessionStorage.setItem('filemgr_pass', FILEMGR_PASS);
+            }
+            body += '&password=' + encodeURIComponent(FILEMGR_PASS);
         }
-    })
-    .catch(err => Toast.show('Ошибка запроса: ' + err.message, true));
-}
+
+        fetch('/entware-cgi/delete_file.cgi', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                Toast.show('Удаление выполнено', false);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else if (data.status === 'error' && data.message === 'Неверный пароль') {
+                FILEMGR_PASS = '';
+                sessionStorage.removeItem('filemgr_pass');
+                Toast.show('Неверный пароль', true);
+            } else {
+                Toast.show('Ошибка: ' + data.message, true);
+            }
+        })
+        .catch(function(err) {
+            Toast.show('Ошибка запроса: ' + err.message, true);
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         enableSorting();
-        document.querySelectorAll('.delete-file-btn').forEach(btn => {
+        document.querySelectorAll('.delete-file-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 deleteFile(this.dataset.path, this.dataset.type, this.dataset.name);
@@ -277,4 +307,4 @@ cat <<HTMLFOOT
 </script>
 </body>
 </html>
-HTMLFOOT
+JSEOF
