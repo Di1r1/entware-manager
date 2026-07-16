@@ -306,7 +306,9 @@ cat <<'JSEOF'
     }
 
     function viewFile(path) {
-        fetch('/entware-cgi/view_file.cgi?path=' + encodeURIComponent(path))
+        fetch('/entware-cgi/view_file.cgi?path=' + encodeURIComponent(path), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.status === 'ok') {

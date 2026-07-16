@@ -1720,3 +1720,17 @@ body.night #toast {
     text-decoration: underline;
     color: var(--accent-dark);
 }
+
+.file-viewer-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 80vh;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid var(--border-color);
+}
