@@ -33,9 +33,13 @@ ttyd|/opt/bin/ttyd
 htop|/opt/bin/htop
 jq|/opt/bin/jq
 coreutils-base|/opt/bin/dirname
+coreutils-timeout|/opt/bin/timeout
 procps-ng|/opt/bin/ps
 bridge-utils|/opt/sbin/brctl
-ip-full|/opt/sbin/ip"
+ip-full|/opt/sbin/ip
+sudo|/opt/bin/sudo
+smartmontools|/opt/sbin/smartctl
+smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 
 # Проверка busybox/встроенных утилит (не opkg)
 MISSING_UTILS=""
@@ -174,6 +178,16 @@ mkdir -p "$TARGET_DIR"
 cp -a "$SELF_DIR"/* "$TARGET_DIR/"
 
 echo "  ✓ файлы скопированы в $TARGET_DIR"
+
+# ========== 5.1. SUDOERS для smartctl ==========
+if [ -x /opt/bin/sudo ] && [ ! -f /opt/etc/sudoers.d/entware-smartctl ]; then
+    echo ""
+    echo ">>> Шаг 4a: настройка sudoers для smartctl..."
+    mkdir -p /opt/etc/sudoers.d
+    echo 'nobody ALL=(ALL) NOPASSWD: /opt/sbin/smartctl' > /opt/etc/sudoers.d/entware-smartctl
+    chmod 440 /opt/etc/sudoers.d/entware-smartctl
+    echo "  ✓ sudoers: nobody → smartctl без пароля"
+fi
 
 # ========== 6. ПРАВА ДОСТУПА ==========
 echo ""

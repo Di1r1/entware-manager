@@ -1,13 +1,13 @@
 {
-  "version": "1.03.26",
-  "date": "2026-07-16",
+  "version": "1.04.00",
+  "date": "2026-07-17",
   "changes": [
-    "#17: apiFetch/apiGet/apiPost/apiPostJSON — единый fetch-враппер в utils.js. Все ~45 fetch(API_BASE+...) заменены",
-    "#19-23: JS-рефакторинг — API_BASE/UI_BASE/ICONS в utils.js, demon→daemon, initTableSearch, escapeHtml wrapper удалён",
-    "#15: parse_log_events() в common.sh — унифицированный парсинг событий из лога. events.cgi упрощены до 3 строк",
-    "#9 fix: log() undefined в watchdog.sh (ротация), log-viewer CGIs переведены на дневной лог",
-    "#6: cache-buster (?_=Date.now()) добавлен во все 6 fetch-запросов network.js",
-    "common.sh 2.6: добавлены die(), log_message(), html_escape(), human_size(), load_config(). Локальные html_escape() удалены из stats.cgi, tmpfs.cgi",
-    "#9: унификация логирования. log_service/service_watchdog, log_event/network_watchdog, log/watchdog.sh заменены на log_message(). log_action() делегирует log_message() в fallback"
+    "SMART-модуль: lib/smart.sh + cgi-bin/smart.cgi — обнаружение дисков, атрибуты, health, самотесты",
+    "smart.js: UI-таб SMART (таблица, модалки атрибутов/health, запуск тестов)",
+    "icon-hdd: иконка диска в icons.svg",
+    "menu/menu.json: добавлен пункт SMART",
+    "loadScript() добавлен в lib/utils.js — динамическая загрузка JS-модулей",
+    "build-deploy.sh: копирование lib/*.sh в deploy (smart.sh)",
+    "Install/install.sh: добавлены sudo, smartmontools, smartmontools-drivedb + sudoers для nobody"
   ]
 }

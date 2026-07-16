@@ -1,5 +1,37 @@
 # Изменения проекта
 
+## 1.04.00 (2026-07-17)
+
+### SMART-модуль мониторинга дисков
+
+- **lib/smart.sh** — новая библиотека для работы со SMART:
+  - `smart_discover_disks()` — обнаружение дисков через `/proc/partitions` (BusyBox)
+  - `smart_disk_json()` — парсинг `smartctl -a` в JSON (модель, серийник, размер, health, температура, power-on)
+  - `smart_attributes_json()` — парсинг `smartctl -A` в JSON-массив атрибутов
+  - `smart_health_json()`, `smart_info_json()` — health и базовая информация
+  - `smart_test_start()`, `smart_test_status()` — запуск и мониторинг самотестов
+  - `smartctl_run()` — вызов `smartctl` через `sudo` с таймаутом
+
+- **cgi-bin/smart.cgi** — REST API по `action=list|info|attributes|health|selftest`
+
+- **smart.js** — UI-таб SMART:
+  - Таблица дисков (устройство, модель, серийник, размер, тип, health, температура, power-on, действия)
+  - Модалка атрибутов (цветовая индикация: value ≤ threshold = красный)
+  - Модалка health и запуск самотестов (short/long/conveyance) через POST + поллинг
+  - Поиск по таблице
+  - Унифицирован как `const SMART = { init(), stopUpdates(), ... }`
+
+- **icons.svg** — добавлена иконка `#icon-hdd` (диск)
+
+- **menu/menu.json** — пункт `{ "tab": "smart", "icon": "hdd", "text": "SMART" }` после "Сеть"
+
+- **lib/utils.js** — добавлена `loadScript(src)` для динамической загрузки JS-модулей
+
+### Инфраструктура
+
+- **build-deploy.sh** — копирует `lib/*.sh` (нужно для `lib/smart.sh` на роутере)
+- **Install/install.sh** — в `PACKAGES` добавлены `sudo`, `smartmontools`, `smartmontools-drivedb`; создаётся `/opt/etc/sudoers.d/entware-smartctl` (nobody → smartctl без пароля)
+
 ## 1.03.12 (2026-07-07)
 
 ### Стандартизация путей и исправление lighttpd
