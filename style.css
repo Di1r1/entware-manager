@@ -541,22 +541,6 @@ body {
     border-radius: 4px;
 }
 
-/* Скролл для модальных окон */
-.modal-content {
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-.modal-content::-webkit-scrollbar {
-    width: 6px;
-}
-.modal-content::-webkit-scrollbar-track {
-    background: transparent;
-}
-.modal-content::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 3px;
-}
-
 .footer {
     margin-top: 30px;
     font-size: 12px;
@@ -1068,7 +1052,7 @@ input[type="submit"]:disabled,
 .modal-content {
     background: var(--modal-bg);
     margin: 5% auto;
-    padding: 24px 0 24px 24px;
+    padding: 24px;
     width: 90%;
     max-width: 800px;
     max-height: 85vh;
@@ -1095,7 +1079,6 @@ input[type="submit"]:disabled,
 }
 .close {
     color: var(--text-muted);
-    float: right;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
@@ -1104,9 +1087,6 @@ input[type="submit"]:disabled,
 }
 .close:hover {
     color: var(--text-primary);
-}
-#modalBody {
-    padding-right: 24px;
 }
 #modalBody pre {
     background: var(--pre-bg);
@@ -1265,14 +1245,11 @@ input[type="submit"]:disabled,
     .modal-content {
         width: 95%;
         margin: 10% auto;
-        padding: 16px 0 16px 16px;
+        padding: 16px;
         max-height: 75vh;
     }
-    #modalBody {
-        padding-right: 16px;
-    }
     .modal-header {
-        padding: 0 16px 8px 0;
+        padding: 0 0 8px 0;
     }
 }
 
@@ -1563,7 +1540,7 @@ th.sort-desc::after {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 24px 10px 0;
+    padding: 0 0 10px 0;
     margin-bottom: 15px;
     border-bottom: 1px solid var(--border-color);
 }
