@@ -1,13 +1,14 @@
 #!/bin/sh
 # ==============================================
 # Entware Manager - управление демоном защиты
-# Версия: 2.0 (использует watchdog.sh start/stop)
+# Версия: 2.1 (единый JSON с pid)
 # ==============================================
 
 . /opt/web_entware/lib/common.sh
 export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 DEMON_SCRIPT="/opt/web_entware/watchdog.sh"
+PIDFILE="/tmp/entware/pid/watchdog.pid"
 LOG_FILE="/tmp/entware/logs/monitor.log"
 
 log() {
@@ -31,42 +32,49 @@ action=$(echo "$action" | tr -d '\n\r')
 case "$action" in
     start)
         log "INFO" "Запрос на ЗАПУСК демона"
-        result=$($DEMON_SCRIPT start 2>&1)
+        $DEMON_SCRIPT start >/dev/null 2>&1
         exit_code=$?
         if [ $exit_code -eq 0 ]; then
             sleep 1
-            alive=$($DEMON_SCRIPT status 2>&1)
-            if [ $? -eq 0 ]; then
-                log "INFO" "Демон запущен: $alive"
-                json_out '{"status":"ok","message":"'"$alive"'"}'
-                log_action "INFO" "Демон защиты запущен: $alive"
+            pid=$(cat "$PIDFILE" 2>/dev/null)
+            if [ -n "$pid" ] && pid_is_alive "$pid"; then
+                log "INFO" "Демон запущен (PID: $pid)"
+                json_out "{\"status\":\"ok\",\"message\":\"Демон запущен\",\"pid\":$pid}"
+                log_action "INFO" "Демон защиты запущен (PID: $pid)"
             else
-                log "ERROR" "Демон не запустился: $alive"
+                log "ERROR" "Демон не запустился"
                 json_out '{"status":"error","message":"Демон не запустился"}'
             fi
         else
-            log "ERROR" "Не удалось запустить демон: $result"
-            json_out '{"status":"error","message":"'"$result"'"}'
+            log "ERROR" "Не удалось запустить демон"
+            json_out '{"status":"error","message":"Не удалось запустить демон"}'
         fi
         ;;
     stop)
         log "INFO" "Запрос на ОСТАНОВКУ демона"
         $DEMON_SCRIPT stop >/dev/null 2>&1
         log "INFO" "Демон остановлен"
-        json_out '{"status":"ok","message":"Защита остановлена"}'
+        json_out '{"status":"ok","message":"Демон остановлен"}'
         log_action "INFO" "Демон защиты остановлен"
         ;;
     restart)
         log "INFO" "Запрос на ПЕРЕЗАПУСК демона"
-        result=$($DEMON_SCRIPT restart 2>&1)
+        $DEMON_SCRIPT restart >/dev/null 2>&1
         exit_code=$?
         if [ $exit_code -eq 0 ]; then
-            log "INFO" "Демон перезапущен: $result"
-            json_out '{"status":"ok","message":"Защита перезапущена"}'
-            log_action "INFO" "Демон защиты перезапущен"
+            sleep 1
+            pid=$(cat "$PIDFILE" 2>/dev/null)
+            if [ -n "$pid" ] && pid_is_alive "$pid"; then
+                log "INFO" "Демон перезапущен (PID: $pid)"
+                json_out "{\"status\":\"ok\",\"message\":\"Демон перезапущен\",\"pid\":$pid}"
+                log_action "INFO" "Демон защиты перезапущен (PID: $pid)"
+            else
+                log "ERROR" "Демон не перезапустился"
+                json_out '{"status":"error","message":"Демон не перезапустился"}'
+            fi
         else
-            log "ERROR" "Не удалось перезапустить демон: $result"
-            json_out '{"status":"error","message":"'"$result"'"}'
+            log "ERROR" "Не удалось перезапустить демон"
+            json_out '{"status":"error","message":"Не удалось перезапустить демон"}'
         fi
         ;;
     kill)

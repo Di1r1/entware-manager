@@ -19,7 +19,7 @@ case "$action" in
             if [ -f "$PIDFILE" ]; then
                 pid=$(cat "$PIDFILE" 2>/dev/null)
                 if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-                    json_out "{\"status\":\"error\",\"message\":\"Демон уже запущен (PID: $pid)\"}"
+                    json_out "{\"status\":\"error\",\"message\":\"Демон уже запущен\",\"pid\":$pid}"
                 fi
                 rm -f "$PIDFILE"
             fi
@@ -30,7 +30,7 @@ case "$action" in
             if [ -f "$PIDFILE" ]; then
                 new_pid=$(cat "$PIDFILE")
                 log_action "INFO" "Демон watchdog запущен вручную (PID: $new_pid)"
-                json_out "{\"status\":\"ok\",\"message\":\"Демон запущен (PID: $new_pid)\"}"
+                json_out "{\"status\":\"ok\",\"message\":\"Демон запущен\",\"pid\":$new_pid}"
             else
                 log_action "ERROR" "Не удалось запустить демон watchdog"
                 json_out "{\"status\":\"error\",\"message\":\"Не удалось запустить демон\"}"
@@ -51,7 +51,7 @@ case "$action" in
         if [ -f "$PIDFILE" ]; then
             new_pid=$(cat "$PIDFILE")
             log_action "INFO" "Демон watchdog перезапущен вручную (PID: $new_pid)"
-            json_out "{\"status\":\"ok\",\"message\":\"Демон перезапущен (PID: $new_pid)\"}"
+            json_out "{\"status\":\"ok\",\"message\":\"Демон перезапущен\",\"pid\":$new_pid}"
         else
             log_action "ERROR" "Не удалось перезапустить демон watchdog"
             json_out "{\"status\":\"error\",\"message\":\"Не удалось перезапустить демон\"}"
