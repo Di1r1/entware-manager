@@ -20,8 +20,7 @@ log_system() {
 }
 
 show_pretty_config() {
-    echo "Content-type: text/html"
-    echo ""
+    html_header
     
     cat <<'HEAD'
 <!DOCTYPE html>
@@ -99,18 +98,16 @@ TAIL
 }
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    echo "Content-type: application/json; charset=utf-8"
-    echo ""
     if [ -n "$(echo "$QUERY_STRING" | grep -o 'pretty')" ]; then
         show_pretty_config
+        exit 0
     else
         if [ -f "$CONFIG_FILE" ]; then
-            cat "$CONFIG_FILE"
+            json_out "$(cat "$CONFIG_FILE")"
         else
-            echo '{"enabled":true}'
+            json_out '{"enabled":true}'
         fi
     fi
-    exit 0
 fi
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
@@ -118,12 +115,10 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     
     if [ -z "$POST_DATA" ]; then
         json_out '{"status":"error","message":"Empty request"}'
-        exit 0
     fi
     
     if ! echo "$POST_DATA" | /opt/bin/jq empty 2>/dev/null; then
         json_out '{"status":"error","message":"Invalid JSON"}'
-        exit 0
     fi
     
     NEW_ENABLED=$(echo "$POST_DATA" | /opt/bin/jq -r '.enabled' 2>/dev/null)
@@ -139,7 +134,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     
     echo "$POST_DATA" > "$CONFIG_FILE"
     json_out '{"status":"ok"}'
-    exit 0
 fi
 
 json_out '{"error":"Method not allowed"}'

@@ -51,23 +51,16 @@ if [ "$action" = "save" ]; then
     cleanup_old
     temp=$(get_param "temp" "")
     save_temp "$temp"
-    echo "Content-type: application/json"
-    echo ""
-    echo '{"status":"ok"}'
-    exit 0
+    json_out '{"status":"ok"}'
 fi
-
-echo "Content-type: application/json"
-echo ""
 
 hist_data=$(get_history)
 
 if [ -z "$hist_data" ]; then
-    echo "[]"
-    exit 0
+    json_out '[]'
 fi
 
-echo "$hist_data" | awk '
+result=$(echo "$hist_data" | awk '
 BEGIN { first = 1; printf "[" }
 {
     n = split($0, arr, "|")
@@ -78,4 +71,5 @@ BEGIN { first = 1; printf "[" }
         }
     }
 }
-END { print "]" }'
+END { print "]" }')
+json_out "$result"

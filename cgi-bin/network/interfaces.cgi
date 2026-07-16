@@ -8,9 +8,6 @@
 . /opt/web_entware/lib/common.sh
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    echo "Content-type: application/json"
-    echo ""
-    
     ip -o link show 2>/dev/null > /tmp/.net_ifaces
     
     result=""
@@ -37,8 +34,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     
     rm -f /tmp/.net_ifaces
     
-    echo "{\"interfaces\":[$result]}"
-    exit 0
+    json_out "{\"interfaces\":[$result]}"
 fi
 
 json_out '{"error":"Method not allowed"}'

@@ -8,9 +8,6 @@
 . /opt/web_entware/lib/common.sh
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    echo "Content-type: application/json"
-    echo ""
-    
     ip route show 2>/dev/null > /tmp/.net_routes
     
     result=""
@@ -50,8 +47,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     
     rm -f /tmp/.net_routes
     
-    echo "{\"routes\":[$result]}"
-    exit 0
+    json_out "{\"routes\":[$result]}"
 fi
 
 json_out '{"error":"Method not allowed"}'

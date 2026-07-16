@@ -16,20 +16,16 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [$level] [ACTION] $message" >> "$LOG_FILE"
 }
 
-echo "Content-type: application/json; charset=utf-8"
-echo ""
-
 method="$REQUEST_METHOD"
 action=""
 
 if [ "$method" = "POST" ]; then
-    POST_DATA=$(cat)
-    action=$(echo "$POST_DATA" | sed -n 's/.*action=\([^&]*\).*/\1/p')
+    action=$(post_param "action" "")
 elif [ "$method" = "GET" ]; then
-    action=$(echo "$QUERY_STRING" | sed -n 's/.*action=\([^&]*\).*/\1/p')
+    action=$(get_param "action" "")
 fi
 
-action=$(printf '%b' "$(echo "$action" | sed 's/+/ /g; s/%/\\x/g')")
+action=$(url_decode "$action")
 action=$(echo "$action" | tr -d '\n\r')
 
 case "$action" in
@@ -42,22 +38,22 @@ case "$action" in
             alive=$($DEMON_SCRIPT status 2>&1)
             if [ $? -eq 0 ]; then
                 log "INFO" "Демон запущен: $alive"
-                echo '{"status":"ok","message":"'"$alive"'"}'
+                json_out '{"status":"ok","message":"'"$alive"'"}'
                 log_action "INFO" "Демон защиты запущен: $alive"
             else
                 log "ERROR" "Демон не запустился: $alive"
-                echo '{"status":"error","message":"Демон не запустился"}'
+                json_out '{"status":"error","message":"Демон не запустился"}'
             fi
         else
             log "ERROR" "Не удалось запустить демон: $result"
-            echo '{"status":"error","message":"'"$result"'"}'
+            json_out '{"status":"error","message":"'"$result"'"}'
         fi
         ;;
     stop)
         log "INFO" "Запрос на ОСТАНОВКУ демона"
         $DEMON_SCRIPT stop >/dev/null 2>&1
         log "INFO" "Демон остановлен"
-        echo '{"status":"ok","message":"Защита остановлена"}'
+        json_out '{"status":"ok","message":"Защита остановлена"}'
         log_action "INFO" "Демон защиты остановлен"
         ;;
     restart)
@@ -66,11 +62,11 @@ case "$action" in
         exit_code=$?
         if [ $exit_code -eq 0 ]; then
             log "INFO" "Демон перезапущен: $result"
-            echo '{"status":"ok","message":"Защита перезапущена"}'
+            json_out '{"status":"ok","message":"Защита перезапущена"}'
             log_action "INFO" "Демон защиты перезапущен"
         else
             log "ERROR" "Не удалось перезапустить демон: $result"
-            echo '{"status":"error","message":"'"$result"'"}'
+            json_out '{"status":"error","message":"'"$result"'"}'
         fi
         ;;
     kill)
@@ -78,10 +74,10 @@ case "$action" in
         if [ -n "$pid" ] && pid_is_alive "$pid"; then
             kill -9 "$pid" 2>/dev/null
             log "INFO" "Убит процесс $pid по запросу пользователя"
-            echo '{"status":"ok","message":"Процесс убит"}'
+            json_out '{"status":"ok","message":"Процесс убит"}'
         else
             log "WARN" "Попытка убить несуществующий процесс $pid"
-            echo '{"status":"error","message":"Процесс не найден"}'
+            json_out '{"status":"error","message":"Процесс не найден"}'
         fi
         ;;
     clearlog)
@@ -89,10 +85,10 @@ case "$action" in
         [ -z "$LOG_FILE_PATH" ] && LOG_FILE_PATH="/tmp/entware/logs/monitor.log"
         > "$LOG_FILE_PATH"
         log "INFO" "Лог очищен"
-        echo '{"status":"ok","message":"Лог очищен"}'
+        json_out '{"status":"ok","message":"Лог очищен"}'
         ;;
     *)
         log "ERROR" "Неизвестное действие: $action"
-        echo '{"status":"error","message":"Неизвестное действие"}'
+        json_out '{"status":"error","message":"Неизвестное действие"}'
         ;;
 esac

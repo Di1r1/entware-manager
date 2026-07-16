@@ -68,9 +68,30 @@
 
 ---
 
-## 1.03.16 (2026-07-16)
+## 1.03.17 (2026-07-16)
 
-### Удаление дубликата escapeHTML (XSS)
+### Этап 1: Быстрые победы
+
+- **#3**: Удалён дубликат `get_wifi_status()` в `network_status.cgi` (строки 282–288)
+- **#12**: `printf '%b'` → `url_decode()` из common.sh в 13 местах (tmpfs.cgi, ttyd_control.cgi, monitor_action.cgi, crontab.cgi/update.cgi, logger/*.cgi)
+- **#13**: Ручной POST-парсинг (`cat | sed`) → `post_param()` в 5 CGI (crontab_update.cgi, ttyd_control.cgi, monitor_action.cgi, service_action.cgi, kill_pid.cgi)
+- **#14**: `crontab.cgi` подключён к common.sh (добавлен `. /opt/web_entware/lib/common.sh`, использует `get_param`/`json_out`)
+- **#16**: Ручные `echo "Content-type:..."` заменены на `json_out()` / `html_header()` в 17 CGI
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `cgi-bin/network_status.cgi` | #3: удалён дубликат |
+| 8 файлов | #12: printf '%b' → url_decode |
+| 5 файлов | #13: POST_DATA → post_param |
+| `cgi-bin/crontab.cgi` | #14: подключен common.sh |
+| 17 файлов | #16: ручной Content-Type → json_out/html_header |
+| `version.json` | 1.03.17 |
+
+---
+
+## 1.03.16 (2026-07-16)
 
 - **entware.js**: удалена `escapeHTML()` — не экранировала `'`, создавала XSS-уязвимость. Все вызовы переведены на `escapeHtml()` из `lib/utils.js`
 - **network.js**: `this.escapeHtml()` теперь делегирует глобальной `escapeHtml()` из `lib/utils.js`

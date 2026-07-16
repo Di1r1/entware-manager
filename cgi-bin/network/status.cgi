@@ -46,14 +46,11 @@ get_status() {
         fi
     fi
     
-    echo "Content-type: application/json"
-    echo ""
     echo "{\"running\":$running,\"pid\":\"$pid\",\"uptime\":\"$uptime\",\"last_check\":\"$last_check\"}"
 }
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    get_status
-    exit 0
+    json_out "$(get_status)"
 fi
 
 json_out '{"error":"Method not allowed"}'

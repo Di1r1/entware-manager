@@ -7,24 +7,21 @@
 
 export PATH=/opt/bin:/bin:/usr/bin:/sbin:/usr/sbin:/opt/sbin:/usr/sbin
 
+. /opt/web_entware/lib/common.sh
+
 LOG_FILE="/tmp/entware/logs/service_events.log"
 QUERY_STRING="${QUERY_STRING:-}"
 LIMIT=$(echo "$QUERY_STRING" | sed -n 's/.*limit=\([0-9]*\).*/\1/p')
 [ -z "$LIMIT" ] && LIMIT=20
 
-echo "Content-type: application/json"
-echo ""
-
 if [ ! -f "$LOG_FILE" ]; then
-    echo '{"events":[]}'
-    exit 0
+    json_out '{"events":[]}'
 fi
 
 EVENTS=$(tail -n 1000 "$LOG_FILE" 2>/dev/null | grep '\[SERVICE\]' | tail -n "$LIMIT")
 
 if [ -z "$EVENTS" ]; then
-    echo '{"events":[]}'
-    exit 0
+    json_out '{"events":[]}'
 fi
 
 FIRST=1
@@ -60,4 +57,4 @@ done <<EOF
 $EVENTS
 EOF
 
-echo "{\"events\":[${RESULT}]}"
+json_out "{\"events\":[${RESULT}]}"

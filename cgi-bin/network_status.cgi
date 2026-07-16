@@ -279,14 +279,6 @@ EOF
     echo "[${result%,}]"
 }
 
-get_wifi_status() {
-    local wifi_state="—"
-    if ip link show 2>/dev/null | grep -E "br0|ra|rai" | grep -q "UP"; then
-        wifi_state="подключено"
-    fi
-    echo "$wifi_state"
-}
-
 interfaces_data=$(get_interfaces_with_ips)
 interfaces=$(echo "$interfaces_data" | cut -d'|' -f1)
 lan=$(echo "$interfaces_data" | cut -d'|' -f2)
@@ -296,6 +288,4 @@ wan=$(get_wan_status)
 ports=$(get_physical_ports)
 networks=$(get_networks_status)
 
-echo "Content-type: application/json"
-echo ""
-echo "{\"interfaces\":$interfaces,\"lan\":\"$lan\",\"wifi\":\"$wifi\",\"wifi_info\":$wifi_info,\"wan\":\"$wan\",\"ports\":$ports,\"networks\":$networks}"
+json_out "{\"interfaces\":$interfaces,\"lan\":\"$lan\",\"wifi\":\"$wifi\",\"wifi_info\":$wifi_info,\"wan\":\"$wan\",\"ports\":$ports,\"networks\":$networks}"

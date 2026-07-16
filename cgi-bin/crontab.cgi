@@ -5,14 +5,10 @@
 # Дата: 2026-03-28
 # ==============================================
 
-export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
-export HOME=/tmp
+. /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json"
-echo ""
-
-type=$(echo "$QUERY_STRING" | sed -n 's/.*type=\([^&]*\).*/\1/p')
-type=$(printf '%b' "$(echo "$type" | sed 's/+/ /g; s/%/\\x/g')")
+type=$(get_param "type" "")
+type=$(url_decode "$type")
 
 case "$type" in
     system)
@@ -27,11 +23,10 @@ case "$type" in
         fi
         ;;
     *)
-        echo "{\"error\":\"Invalid type\"}"
-        exit 0
+        json_out '{"error":"Invalid type"}'
         ;;
 esac
 
 # Экранирование для JSON
 content=$(echo "$content" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/$/\\n/' | tr -d '\n')
-echo "{\"crontab\":\"$content\"}"
+json_out "{\"crontab\":\"$content\"}"

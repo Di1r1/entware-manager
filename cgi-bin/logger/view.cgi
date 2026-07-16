@@ -12,8 +12,8 @@ html_header
 QUERY_STRING="${QUERY_STRING:-}"
 date_filter=$(echo "$QUERY_STRING" | sed -n 's/.*date=\([^&]*\).*/\1/p')
 level_filter=$(echo "$QUERY_STRING" | sed -n 's/.*level=\([^&]*\).*/\1/p')
-search=$(echo "$QUERY_STRING" | sed -n 's/.*search=\([^&]*\).*/\1/p' | sed 's/+/ /g; s/%/\\x/g')
-search=$(printf '%b' "$search" 2>/dev/null)
+search=$(echo "$QUERY_STRING" | sed -n 's/.*search=\([^&]*\).*/\1/p')
+search=$(url_decode "$search")
 
 TMP_LOG_DIR="/tmp/entware/logs"
 PERM_LOG_DIR="/opt/var/log/entware"

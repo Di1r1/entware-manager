@@ -13,11 +13,11 @@ QUERY_STRING="${QUERY_STRING:-}"
 source_name=$(echo "$QUERY_STRING" | sed -n 's/.*source=\([^&]*\).*/\1/p')
 file_path=$(echo "$QUERY_STRING" | sed -n 's/.*file=\([^&]*\).*/\1/p')
 level_filter=$(echo "$QUERY_STRING" | sed -n 's/.*level=\([^&]*\).*/\1/p')
-search=$(echo "$QUERY_STRING" | sed -n 's/.*search=\([^&]*\).*/\1/p' | sed 's/+/ /g; s/%/\\x/g')
-search=$(printf '%b' "$search" 2>/dev/null)
+search=$(echo "$QUERY_STRING" | sed -n 's/.*search=\([^&]*\).*/\1/p')
+search=$(url_decode "$search")
 
-source_name=$(printf '%b' "$(echo "$source_name" | sed 's/+/ /g; s/%/\\x/g')" 2>/dev/null)
-file_path=$(printf '%b' "$(echo "$file_path" | sed 's/+/ /g; s/%/\\x/g')" 2>/dev/null)
+source_name=$(url_decode "$source_name")
+file_path=$(url_decode "$file_path")
 
 if [ -n "$file_path" ] && [ -f "$file_path" ]; then
     LOG_FILE="$file_path"

@@ -6,9 +6,6 @@
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json"
-echo ""
-
 SERVICES_DIR="/opt/etc/init.d"
 
 # ========== ОДНОКРАТНЫЙ СБОР ДАННЫХ О ПРОЦЕССАХ ==========
@@ -106,39 +103,42 @@ find_all_pids_for_service() {
 }
 
 # ========== ОСНОВНОЙ ЦИКЛ ПО СЛУЖБАМ ==========
-first=1
-echo "["
-for script in "$SERVICES_DIR"/S* "$SERVICES_DIR"/K*; do
-    [ -f "$script" ] || continue
-    fullname=$(basename "$script")
-    case "$fullname" in
-        S*) name="${fullname#S}" ;;
-        K*) name="${fullname#K}" ;;
-        *)  continue ;;
-    esac
+output=$(
+    first=1
+    echo "["
+    for script in "$SERVICES_DIR"/S* "$SERVICES_DIR"/K*; do
+        [ -f "$script" ] || continue
+        fullname=$(basename "$script")
+        case "$fullname" in
+            S*) name="${fullname#S}" ;;
+            K*) name="${fullname#K}" ;;
+            *)  continue ;;
+        esac
 
-    base_name=$(echo "$name" | sed 's/^[0-9]*//')
-    pids_raw=$(find_all_pids_for_service "$script" "$fullname" "$base_name")
+        base_name=$(echo "$name" | sed 's/^[0-9]*//')
+        pids_raw=$(find_all_pids_for_service "$script" "$fullname" "$base_name")
 
-    if [ -n "$pids_raw" ]; then
-        status="running"
-        pids_json=$(build_pids_json "$pids_raw")
-        pid="${pids_json#*|}"
-        pids_arr="${pids_json%|*}"
-    else
-        status="stopped"
-        pid=""
-        pids_arr="[]"
-    fi
+        if [ -n "$pids_raw" ]; then
+            status="running"
+            pids_json=$(build_pids_json "$pids_raw")
+            pid="${pids_json#*|}"
+            pids_arr="${pids_json%|*}"
+        else
+            status="stopped"
+            pid=""
+            pids_arr="[]"
+        fi
 
-    if [ "${fullname#S}" != "$fullname" ]; then
-        enabled="true"
-    else
-        enabled="false"
-    fi
+        if [ "${fullname#S}" != "$fullname" ]; then
+            enabled="true"
+        else
+            enabled="false"
+        fi
 
-    [ $first -eq 0 ] && echo ","
-    first=0
-    printf '{"name":"%s","status":"%s","enabled":%s,"pid":"%s","pids":%s}' "$name" "$status" "$enabled" "$pid" "$pids_arr"
-done
-echo "]"
+        [ $first -eq 0 ] && echo ","
+        first=0
+        printf '{"name":"%s","status":"%s","enabled":%s,"pid":"%s","pids":%s}' "$name" "$status" "$enabled" "$pid" "$pids_arr"
+    done
+    echo "]"
+)
+json_out "$output"

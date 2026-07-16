@@ -7,9 +7,6 @@
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json; charset=utf-8"
-echo ""
-
 BASE_DIR="/opt/web_entware"
 TOTAL_ERRORS=0
 first=true
@@ -41,31 +38,33 @@ for f in "$BASE_DIR"/lib/*.sh; do
     [ -f "$f" ] && FILES_LIST="$FILES_LIST $f"
 done
 
-# Вывод JSON
-printf '{"results":['
+# Сбор JSON
+content=$( 
+    printf '{"results":['
+    for f in $FILES_LIST; do
+        [ ! -f "$f" ] && continue
+        
+        rel_path=$(echo "$f" | sed "s|$BASE_DIR/||")
+        result=$(check_file "$f")
+        
+        if [ "$first" = "true" ]; then
+            first=false
+        else
+            printf ','
+        fi
+        
+        status="ok"
+        msg=""
+        if echo "$result" | grep -q "^error:"; then
+            status="error"
+            msg=$(echo "$result" | sed 's/^error: //' | sed 's/"/\\"/g')
+            TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+        fi
+        
+        printf '{"file":"%s","status":"%s","message":"%s"}' "$rel_path" "$status" "$msg"
+    done
+    
+    printf '],"total_errors":%d,"timestamp":"%s"}\n' "$TOTAL_ERRORS" "$(date '+%Y-%m-%d %H:%M:%S')"
+)
 
-for f in $FILES_LIST; do
-    [ ! -f "$f" ] && continue
-    
-    rel_path=$(echo "$f" | sed "s|$BASE_DIR/||")
-    result=$(check_file "$f")
-    
-    if [ "$first" = "true" ]; then
-        first=false
-    else
-        printf ','
-    fi
-    
-    status="ok"
-    msg=""
-    if echo "$result" | grep -q "^error:"; then
-        status="error"
-        # Извлекаем сообщение об ошибке, экранируем кавычки
-        msg=$(echo "$result" | sed 's/^error: //' | sed 's/"/\\"/g')
-        TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
-    fi
-    
-    printf '{"file":"%s","status":"%s","message":"%s"}' "$rel_path" "$status" "$msg"
-done
-
-printf '],"total_errors":%d,"timestamp":"%s"}\n' "$TOTAL_ERRORS" "$(date '+%Y-%m-%d %H:%M:%S')"
+json_out "$content"

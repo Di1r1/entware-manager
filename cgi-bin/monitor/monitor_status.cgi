@@ -3,9 +3,6 @@ export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json; charset=utf-8"
-echo ""
-
 DEMON_PID_FILE="/tmp/entware/pid/watchdog.pid"
 
 if [ -f "$DEMON_PID_FILE" ]; then
@@ -38,10 +35,11 @@ BEGIN { count=0; print "[" }
 END { print "\n]" }')
 [ -z "$top5" ] && top5="[]"
 
-cat <<JSON
+json_out "$(cat <<JSON
 {
     "demon_status": "$demon_status",
     "demon_pid": "$demon_pid",
     "processes": $top5
 }
 JSON
+)"

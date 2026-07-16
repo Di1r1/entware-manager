@@ -7,8 +7,4 @@
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json; charset=utf-8"
-echo ""
-
-# Вызов функции проверки из библиотеки
-check_deps_logic
+json_out "$(check_deps_logic)"

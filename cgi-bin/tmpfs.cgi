@@ -11,7 +11,7 @@ html_header
 
 QUERY_STRING="${QUERY_STRING:-}"
 path=$(echo "$QUERY_STRING" | sed -n 's/.*path=\([^&]*\).*/\1/p' | tr -d '\r')
-path=$(printf '%b' "$(echo "$path" | sed 's/+/ /g; s/%/\\x/g')")
+path=$(url_decode "$path")
 [ -z "$path" ] && path="/tmp"
 
 case "$path" in

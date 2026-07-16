@@ -15,16 +15,13 @@ LOG_FILE="/tmp/entware/logs/service_events.log"
 DEFAULT_WATCH_LIST="\"lighttpd\",\"cron\",\"ttyd\",\"AdGuardHome\",\"koolproxy\",\"xray\""
 DEFAULT_EXCLUDE="\"dropbear\",\"kvas-ws\",\"service_watchdog\""
 
-echo "Content-type: application/json"
-echo ""
-
 method="$REQUEST_METHOD"
 
 if [ "$method" = "GET" ] || [ -z "$method" ]; then
     if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
-        cat "$CONFIG"
+        json_out "$(cat "$CONFIG")"
     else
-        echo "{\"enabled\":true,\"interval\":10,\"mode\":\"initd\",\"watch_list\":[$DEFAULT_WATCH_LIST],\"auto_restart\":false,\"exclude_list\":[$DEFAULT_EXCLUDE],\"log_to_monitor\":true,\"pid_history_days\":7}"
+        json_out "{\"enabled\":true,\"interval\":10,\"mode\":\"initd\",\"watch_list\":[$DEFAULT_WATCH_LIST],\"auto_restart\":false,\"exclude_list\":[$DEFAULT_EXCLUDE],\"log_to_monitor\":true,\"pid_history_days\":7}"
     fi
 elif [ "$method" = "POST" ]; then
     POST_DATA=$(cat)
@@ -78,8 +75,7 @@ EOF
         log_action "INFO" "Настройки watchdog: mode=$mode, auto_restart=$auto_restart, interval=${interval}s, exclude=[$exclude_list]"
     else
         rm -f "$TEMP_CONFIG"
-        echo "{\"status\":\"error\",\"message\":\"Invalid JSON configuration\"}"
-        exit 1
+        json_out '{"status":"error","message":"Invalid JSON configuration"}'
     fi
     
     if [ -f "$PIDFILE" ]; then
@@ -87,13 +83,13 @@ EOF
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
             kill -HUP "$pid" 2>/dev/null
             sleep 1
-            echo "{\"status\":\"ok\",\"message\":\"Конфигурация сохранена, демон перезагружен\"}"
+            json_out '{"status":"ok","message":"Конфигурация сохранена, демон перезагружен"}'
         else
-            echo "{\"status\":\"ok\",\"message\":\"Конфигурация сохранена (демон не запущен)\"}"
+            json_out '{"status":"ok","message":"Конфигурация сохранена (демон не запущен)"}'
         fi
     else
-        echo "{\"status\":\"ok\",\"message\":\"Конфигурация сохранена (демон не запущен)\"}"
+        json_out '{"status":"ok","message":"Конфигурация сохранена (демон не запущен)"}'
     fi
 else
-    echo "{\"status\":\"error\",\"message\":\"Метод не поддерживается\"}"
+    json_out '{"status":"error","message":"Метод не поддерживается"}'
 fi

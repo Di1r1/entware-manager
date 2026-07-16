@@ -7,9 +7,8 @@
 . /opt/web_entware/lib/common.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
-    POST_DATA=$(cat)
-    pid=$(echo "$POST_DATA" | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | tr -d '\r')
-else
+    pid=$(post_param "pid" "0")
+    pid=$(echo "$pid" | grep -o '^[0-9]*$')
     pid=$(get_param "pid" "")
     pid=$(echo "$pid" | grep -o '^[0-9]*$')
 fi

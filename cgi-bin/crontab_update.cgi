@@ -10,23 +10,16 @@ export HOME=/tmp
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json"
-echo ""
-
 if [ "$REQUEST_METHOD" != "POST" ]; then
-    echo '{"error":"POST required"}'
-    exit 0
+    json_out '{"error":"POST required"}'
 fi
 
-POST_DATA=$(cat)
-
-# Извлечение параметров
-type=$(echo "$POST_DATA" | sed -n 's/.*type=\([^&]*\).*/\1/p' | tr -d '\r')
-crontab_raw=$(echo "$POST_DATA" | sed -n 's/.*crontab=\([^&]*\).*/\1/p' | tr -d '\r')
+type=$(post_param "type" "")
+crontab_raw=$(post_param "crontab" "")
 
 # Декодирование URL
-type=$(printf '%b' "$(echo "$type" | sed 's/+/ /g; s/%/\\x/g')")
-crontab=$(printf '%b' "$(echo "$crontab_raw" | sed 's/+/ /g; s/%/\\x/g')")
+type=$(url_decode "$type")
+crontab=$(url_decode "$crontab_raw")
 
 case "$type" in
     system)
@@ -35,10 +28,10 @@ case "$type" in
         if crontab "$tmpfile" 2>/dev/null; then
             rm -f "$tmpfile"
             log_action "INFO" "Сохранён crontab (system)"
-            echo '{"status":"ok"}'
+            json_out '{"status":"ok"}'
         else
             rm -f "$tmpfile"
-            echo '{"status":"error","message":"Invalid crontab"}'
+            json_out '{"status":"error","message":"Invalid crontab"}'
         fi
         ;;
     opt|"")
@@ -49,13 +42,12 @@ case "$type" in
             pid=$(pgrep -f "cron" | grep -v grep | head -1)
             [ -n "$pid" ] && kill -HUP "$pid" 2>/dev/null
             log_action "INFO" "Сохранён crontab (opt)"
-            echo '{"status":"ok"}'
+            json_out '{"status":"ok"}'
         else
-            echo '{"status":"error","message":"Failed to write file"}'
+            json_out '{"status":"error","message":"Failed to write file"}'
         fi
         ;;
     *)
-        echo '{"status":"error","message":"Invalid type"}'
-        exit 0
+        json_out '{"status":"error","message":"Invalid type"}'
         ;;
 esac

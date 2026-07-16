@@ -11,11 +11,8 @@ SERVICES_DIR="/opt/etc/init.d"
 
 # Парсинг параметров
 if [ "$REQUEST_METHOD" = "POST" ]; then
-    POST_DATA=$(cat)
-    name=$(echo "$POST_DATA" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -d '\r')
-    action=$(echo "$POST_DATA" | sed -n 's/.*action=\([^&]*\).*/\1/p' | tr -d '\r')
-    name=$(url_decode "$name")
-    action=$(url_decode "$action")
+    name=$(post_param "name" "")
+    action=$(post_param "action" "")
 else
     name=$(get_param "name" "")
     action=$(get_param "action" "")

@@ -11,9 +11,6 @@ PIDFILE="/tmp/entware/pid/service_watchdog.pid"
 CONFIG="/opt/web_entware/service_config.json"
 PID_STATE="/tmp/entware/pid/service_watchdog_pids.json"
 
-echo "Content-type: application/json"
-echo ""
-
 find_pid() {
     if [ -f "$PIDFILE" ]; then
         pid=$(cat "$PIDFILE" 2>/dev/null)
@@ -44,8 +41,8 @@ pid=$(find_pid)
 if [ -n "$pid" ]; then
     config=$(get_config)
     pids=$(get_pids)
-    echo "{\"running\":true,\"pid\":$pid,\"config\":$config,\"pids\":$pids}"
+    json_out "{\"running\":true,\"pid\":$pid,\"config\":$config,\"pids\":$pids}"
 else
     config=$(get_config)
-    echo "{\"running\":false,\"pid\":null,\"config\":$config,\"pids\":{}}"
+    json_out "{\"running\":false,\"pid\":null,\"config\":$config,\"pids\":{}}"
 fi

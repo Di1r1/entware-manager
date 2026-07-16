@@ -11,9 +11,6 @@ DEMON="/opt/web_entware/service_watchdog.sh"
 PIDFILE="/tmp/entware/pid/service_watchdog.pid"
 LOG_FILE="/tmp/entware/logs/service_events.log"
 
-echo "Content-type: application/json"
-echo ""
-
 action=$(get_param "action" "")
 
 case "$action" in
@@ -22,8 +19,7 @@ case "$action" in
             if [ -f "$PIDFILE" ]; then
                 pid=$(cat "$PIDFILE" 2>/dev/null)
                 if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-                    echo "{\"status\":\"error\",\"message\":\"Демон уже запущен (PID: $pid)\"}"
-                    exit 0
+                    json_out "{\"status\":\"error\",\"message\":\"Демон уже запущен (PID: $pid)\"}"
                 fi
                 rm -f "$PIDFILE"
             fi
@@ -34,19 +30,19 @@ case "$action" in
             if [ -f "$PIDFILE" ]; then
                 new_pid=$(cat "$PIDFILE")
                 log_action "INFO" "Демон watchdog запущен вручную (PID: $new_pid)"
-                echo "{\"status\":\"ok\",\"message\":\"Демон запущен (PID: $new_pid)\"}"
+                json_out "{\"status\":\"ok\",\"message\":\"Демон запущен (PID: $new_pid)\"}"
             else
                 log_action "ERROR" "Не удалось запустить демон watchdog"
-                echo "{\"status\":\"error\",\"message\":\"Не удалось запустить демон\"}"
+                json_out "{\"status\":\"error\",\"message\":\"Не удалось запустить демон\"}"
             fi
         else
-            echo "{\"status\":\"error\",\"message\":\"Демон не найден: $DEMON\"}"
+            json_out "{\"status\":\"error\",\"message\":\"Демон не найден: $DEMON\"}"
         fi
         ;;
     stop)
         $DEMON stop >> "$LOG_FILE" 2>&1
         log_action "INFO" "Демон watchdog остановлен вручную"
-        echo "{\"status\":\"ok\",\"message\":\"Демон остановлен\"}"
+        json_out "{\"status\":\"ok\",\"message\":\"Демон остановлен\"}"
         ;;
     restart)
         $DEMON restart >> "$LOG_FILE" 2>&1
@@ -55,13 +51,13 @@ case "$action" in
         if [ -f "$PIDFILE" ]; then
             new_pid=$(cat "$PIDFILE")
             log_action "INFO" "Демон watchdog перезапущен вручную (PID: $new_pid)"
-            echo "{\"status\":\"ok\",\"message\":\"Демон перезапущен (PID: $new_pid)\"}"
+            json_out "{\"status\":\"ok\",\"message\":\"Демон перезапущен (PID: $new_pid)\"}"
         else
             log_action "ERROR" "Не удалось перезапустить демон watchdog"
-            echo "{\"status\":\"error\",\"message\":\"Не удалось перезапустить демон\"}"
+            json_out "{\"status\":\"error\",\"message\":\"Не удалось перезапустить демон\"}"
         fi
         ;;
     *)
-        echo "{\"status\":\"error\",\"message\":\"Неизвестное действие: $action\"}"
+        json_out "{\"status\":\"error\",\"message\":\"Неизвестное действие: $action\"}"
         ;;
 esac

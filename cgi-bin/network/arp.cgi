@@ -8,9 +8,6 @@
 . /opt/web_entware/lib/common.sh
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    echo "Content-type: application/json"
-    echo ""
-    
     ip neigh show 2>/dev/null | grep -v "^fe80" | grep -v "^::" > /tmp/.net_arp
     
     result=""
@@ -40,8 +37,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     
     rm -f /tmp/.net_arp
     
-    echo "{\"entries\":[$result]}"
-    exit 0
+    json_out "{\"entries\":[$result]}"
 fi
 
 json_out '{"error":"Method not allowed"}'

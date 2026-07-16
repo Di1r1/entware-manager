@@ -7,9 +7,6 @@
 
 . /opt/web_entware/lib/common.sh
 
-echo "Content-type: application/json"
-echo ""
-
 json=$(opkg list-upgradable 2>/dev/null | awk 'BEGIN { first=1 } {
     pkg=$1
     cur=$3
@@ -21,7 +18,9 @@ json=$(opkg list-upgradable 2>/dev/null | awk 'BEGIN { first=1 } {
 } END { if(first) print "[]" }')
 
 if [ -z "$json" ]; then
-    printf "[]"
+    content="[]"
 else
-    printf "[%s]" "$json"
+    content="[${json}]"
 fi
+
+json_out "$content"

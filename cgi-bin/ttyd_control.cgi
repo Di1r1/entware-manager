@@ -100,18 +100,15 @@ restart_ttyd() {
 if [ "$REQUEST_METHOD" = "GET" ]; then
     json_out "$(get_status)"
 elif [ "$REQUEST_METHOD" = "POST" ]; then
-    # Читаем POST-данные
-    POST_DATA=$(cat)
-
     # Извлекаем параметры
-    action=$(echo "$POST_DATA" | sed -n 's/.*action=\([^&]*\).*/\1/p' | tr -d '\r')
-    port=$(echo "$POST_DATA" | sed -n 's/.*port=\([^&]*\).*/\1/p' | tr -d '\r')
-    pass=$(echo "$POST_DATA" | sed -n 's/.*pass=\([^&]*\).*/\1/p' | tr -d '\r')
+    action=$(post_param "action" "")
+    port=$(post_param "port" "")
+    pass=$(post_param "pass" "")
 
     # Декодируем URL
-    action=$(printf '%b' "$(echo "$action" | sed 's/+/ /g; s/%/\\x/g')")
-    port=$(printf '%b' "$(echo "$port" | sed 's/+/ /g; s/%/\\x/g')")
-    pass=$(printf '%b' "$(echo "$pass" | sed 's/+/ /g; s/%/\\x/g')")
+    action=$(url_decode "$action")
+    port=$(url_decode "$port")
+    pass=$(url_decode "$pass")
 
     # Проверка порта
     if ! echo "$port" | grep -q '^[0-9]\+$'; then

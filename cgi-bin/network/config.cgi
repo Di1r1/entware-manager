@@ -34,10 +34,7 @@ save_config() {
 }
 
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    echo "Content-type: application/json"
-    echo ""
-    get_config
-    exit 0
+    json_out "$(get_config)"
 fi
 
 if [ "$REQUEST_METHOD" = "POST" ]; then

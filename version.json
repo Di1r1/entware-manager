@@ -1,8 +1,7 @@
 {
-  "version": "1.03.16",
+  "version": "1.03.17",
   "date": "2026-07-16",
   "changes": [
-    "entware.js: удалена escapeHTML() (XSS, не экранировала '), заменена на escapeHtml() из utils.js",
-    "network.js: this.escapeHtml() делегирует глобальной escapeHtml() из utils.js"
+    "Этап 1: #3 (дубликат get_wifi_status), #12 (printf %b → url_decode), #13 (POST-data → post_param), #14 (crontab.cgi → common.sh), #16 (ручной Content-Type → json_out/html_header)"
   ]
 }

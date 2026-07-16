@@ -5,10 +5,11 @@
 # Дата: 2026-04-01
 # ==============================================
 
+. /opt/web_entware/lib/common.sh
+
 SYSTEM_LOG="/opt/var/log/entware/system.log"
 
-echo "Content-type: text/html"
-echo ""
+html_header
 
 cat <<'HTMLHEAD'
 <!DOCTYPE html>
