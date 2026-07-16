@@ -68,9 +68,32 @@
 
 ---
 
-## 1.03.17 (2026-07-16)
+## 1.03.18 (2026-07-16)
 
-### Этап 1: Быстрые победы
+### BUGFIX: post_param() терял POST-данные в subshell
+
+- **Критический баг**: `post_param()` кэшировал POST-данные через `_POST_CACHED`, но при вызове через `$(post_param ...)` каждый вызов создаёт новый subshell, где кэш теряется. После первого `post_param` stdin пустел, все последующие возвращали пустоту.
+- **Исправление**: `post_param()` переведён на внешнюю переменную `$_POST_BODY`. CGIs с POST должны читать stdin один раз: `_POST_BODY=$(cat); export _POST_BODY`
+- **Затронуты**: `ttyd_control.cgi` (починена работа ttyd), `crontab_update.cgi`, `monitor_action.cgi`, `service_action.cgi`, `kill_pid.cgi`
+- **`ttyd_control.cgi`**: убран двойной `url_decode` (post_param уже декодирует)
+- **`kill_pid.cgi`**: исправлен мёртвый код (GET-парсинг внутри POST-блока)
+- **grep**: `\+` → `*` (BusyBox-совместимость)
+
+### Обновлённые файлы
+
+| Файл | Описание |
+|------|----------|
+| `lib/common.sh` | post_param() → $_POST_BODY |
+| `cgi-bin/ttyd_control.cgi` | _POST_BODY, убран url_decode, grep \+ → * |
+| `cgi-bin/crontab_update.cgi` | _POST_BODY, убран url_decode |
+| `cgi-bin/monitor/monitor_action.cgi` | _POST_BODY, убран url_decode |
+| `cgi-bin/service_action.cgi` | _POST_BODY |
+| `cgi-bin/kill_pid.cgi` | _POST_BODY + исправлен GET/POST |
+| `version.json` | 1.03.18 |
+
+---
+
+## 1.03.17 (2026-07-16)
 
 - **#3**: Удалён дубликат `get_wifi_status()` в `network_status.cgi` (строки 282–288)
 - **#12**: `printf '%b'` → `url_decode()` из common.sh в 13 местах (tmpfs.cgi, ttyd_control.cgi, monitor_action.cgi, crontab.cgi/update.cgi, logger/*.cgi)

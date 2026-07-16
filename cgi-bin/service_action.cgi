@@ -11,6 +11,7 @@ SERVICES_DIR="/opt/etc/init.d"
 
 # Парсинг параметров
 if [ "$REQUEST_METHOD" = "POST" ]; then
+    _POST_BODY=$(cat); export _POST_BODY
     name=$(post_param "name" "")
     action=$(post_param "action" "")
 else

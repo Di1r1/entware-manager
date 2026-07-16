@@ -20,12 +20,12 @@ method="$REQUEST_METHOD"
 action=""
 
 if [ "$method" = "POST" ]; then
+    _POST_BODY=$(cat); export _POST_BODY
     action=$(post_param "action" "")
 elif [ "$method" = "GET" ]; then
     action=$(get_param "action" "")
 fi
 
-action=$(url_decode "$action")
 action=$(echo "$action" | tr -d '\n\r')
 
 case "$action" in

@@ -1,7 +1,7 @@
 {
-  "version": "1.03.17",
+  "version": "1.03.18",
   "date": "2026-07-16",
   "changes": [
-    "Этап 1: #3 (дубликат get_wifi_status), #12 (printf %b → url_decode), #13 (POST-data → post_param), #14 (crontab.cgi → common.sh), #16 (ручной Content-Type → json_out/html_header)"
+    "BUGFIX: post_param() терял POST-данные между вызовами в subshell (brokettyd_control.cgi, crontab_update.cgi и др.). post_param() переведён на $_POST_BODY. Добавлен _POST_BODY=$(cat) в CGI."
   ]
 }

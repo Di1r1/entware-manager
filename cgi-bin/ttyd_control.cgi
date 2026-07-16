@@ -100,18 +100,14 @@ restart_ttyd() {
 if [ "$REQUEST_METHOD" = "GET" ]; then
     json_out "$(get_status)"
 elif [ "$REQUEST_METHOD" = "POST" ]; then
-    # Извлекаем параметры
+    _POST_BODY=$(cat); export _POST_BODY
+
     action=$(post_param "action" "")
     port=$(post_param "port" "")
     pass=$(post_param "pass" "")
 
-    # Декодируем URL
-    action=$(url_decode "$action")
-    port=$(url_decode "$port")
-    pass=$(url_decode "$pass")
-
     # Проверка порта
-    if ! echo "$port" | grep -q '^[0-9]\+$'; then
+    if ! echo "$port" | grep -q '^[0-9][0-9]*$'; then
         json_out '{"status":"error","message":"Некорректный порт"}'
         exit 0
     fi

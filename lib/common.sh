@@ -75,16 +75,11 @@ get_param() {
     fi
 }
 
-# --- Чтение POST-данных и извлечение параметра ---
+# --- Извлечение параметра из POST-данных ($_POST_BODY) ---
 post_param() {
     key="$1"
     default="$2"
-    _local_data=""
-    if [ -z "$_POST_CACHED" ]; then
-        _POST_CACHED=$(cat)
-        export _POST_CACHED
-    fi
-    value=$(echo "$_POST_CACHED" | sed -n "s/.*${key}=\([^&]*\).*/\1/p" | tr -d '\r')
+    value=$(echo "$_POST_BODY" | sed -n "s/.*${key}=\([^&]*\).*/\1/p" | tr -d '\r')
     if [ -z "$value" ]; then
         echo "$default"
     else

@@ -14,12 +14,10 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
     json_out '{"error":"POST required"}'
 fi
 
-type=$(post_param "type" "")
-crontab_raw=$(post_param "crontab" "")
+_POST_BODY=$(cat); export _POST_BODY
 
-# Декодирование URL
-type=$(url_decode "$type")
-crontab=$(url_decode "$crontab_raw")
+type=$(post_param "type" "")
+crontab=$(post_param "crontab" "")
 
 case "$type" in
     system)

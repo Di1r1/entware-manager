@@ -7,8 +7,10 @@
 . /opt/web_entware/lib/common.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
-    pid=$(post_param "pid" "0")
+    _POST_BODY=$(cat); export _POST_BODY
+    pid=$(post_param "pid" "")
     pid=$(echo "$pid" | grep -o '^[0-9]*$')
+elif [ "$REQUEST_METHOD" = "GET" ]; then
     pid=$(get_param "pid" "")
     pid=$(echo "$pid" | grep -o '^[0-9]*$')
 fi
