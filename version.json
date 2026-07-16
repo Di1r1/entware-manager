@@ -1,7 +1,8 @@
 {
-  "version": "1.03.25",
+  "version": "1.03.26",
   "date": "2026-07-16",
   "changes": [
+    "#17: apiFetch/apiGet/apiPost/apiPostJSON — единый fetch-враппер в utils.js. Все ~45 fetch(API_BASE+...) заменены",
     "#19-23: JS-рефакторинг — API_BASE/UI_BASE/ICONS в utils.js, demon→daemon, initTableSearch, escapeHtml wrapper удалён",
     "#15: parse_log_events() в common.sh — унифицированный парсинг событий из лога. events.cgi упрощены до 3 строк",
     "#9 fix: log() undefined в watchdog.sh (ротация), log-viewer CGIs переведены на дневной лог",

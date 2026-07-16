@@ -127,71 +127,24 @@ daemon_loop() {
     done
 }
 
-mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
-
 case "$1" in
     start)
-        if [ -f "$PIDFILE" ]; then
-            pid=$(cat "$PIDFILE" 2>/dev/null)
-            if [ -n "$pid" ] && pid_is_alive "$pid" && grep -q "watchdog.sh" "/proc/$pid/cmdline" 2>/dev/null; then
-                echo "Already running with PID $pid"
-                exit 1
-            fi
-            rm -f "$PIDFILE"
-        fi
-        existing=$(find_pids "watchdog\.sh daemon" | head -1)
-        if [ -n "$existing" ]; then
-            echo "Already running with PID $existing"
-            exit 1
-        fi
         read_config
-        if [ "$ENABLED" != "true" ]; then
-            echo "Disabled in config"
-            exit 1
-        fi
-        sh "$0" daemon >> "$LOG_FILE" 2>&1 &
-        echo $! > "$PIDFILE"
-        log_message "INFO" "[monitor] Демон защиты запущен (PID: $(cat $PIDFILE))"
-        echo "Started with PID $(cat $PIDFILE)"
+        [ "$ENABLED" = "true" ] || { echo "Disabled in config"; exit 1; }
+        daemon_start "monitor" "$PIDFILE" "$LOG_FILE" "watchdog\.sh daemon"
         ;;
     stop)
-        for p in $(find_pids "watchdog\.sh daemon" 2>/dev/null); do
-            kill -9 "$p" 2>/dev/null
-        done
-        rm -f "$PIDFILE"
-        rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/* 2>/dev/null
+        daemon_stop "$PIDFILE" "watchdog\.sh daemon" 'rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*'
         log_message "INFO" "[monitor] Демон защиты остановлен"
         echo "Stopped"
         ;;
     restart)
         "$0" stop
-        sleep 2
-        for p in $(find_pids "watchdog\.sh daemon" 2>/dev/null); do
-            kill -9 "$p" 2>/dev/null
-        done
-        rm -f "$PIDFILE"
         sleep 1
-        sh "$0" daemon >> "$LOG_FILE" 2>&1 &
-        echo $! > "$PIDFILE"
-        log_message "INFO" "[monitor] Демон защиты перезапущен (PID: $(cat $PIDFILE))"
-        echo "Restarted with PID $(cat $PIDFILE)"
+        "$0" start
         ;;
     status)
-        pid=""
-        if [ -f "$PIDFILE" ]; then
-            pid=$(cat "$PIDFILE" 2>/dev/null)
-            if pid_is_alive "$pid"; then
-                echo "Running with PID $pid"
-                exit 0
-            fi
-        fi
-        pid=$(find_pids "watchdog\.sh daemon" | head -1)
-        if [ -n "$pid" ] && pid_is_alive "$pid"; then
-            echo "Running with PID $pid"
-            exit 0
-        fi
-        echo "Not running"
-        exit 1
+        daemon_status "$PIDFILE" "watchdog\.sh daemon"
         ;;
     daemon)
         daemon_loop

@@ -99,8 +99,7 @@ const NETWORK = {
         if (!statusSpan) return;
         
         try {
-            const res = await fetch(API_BASE + '/network/status.cgi?_=' + Date.now());
-            const data = await res.json();
+            const data = await apiGet('/network/status.cgi');
             
             if (data.running) {
                 statusSpan.textContent = `Работает (PID: ${data.pid || '?'})`;
@@ -122,8 +121,7 @@ const NETWORK = {
         const hideUnknown = document.getElementById('hide-unknown-ifaces')?.checked;
         
         try {
-            const res = await fetch(API_BASE + '/network/interfaces.cgi?_=' + Date.now());
-            const data = await res.json();
+            const data = await apiGet('/network/interfaces.cgi');
             
             if (data.interfaces && data.interfaces.length > 0) {
                 let ifaces = data.interfaces;
@@ -157,8 +155,7 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch(API_BASE + '/network/routes.cgi?_=' + Date.now());
-            const data = await res.json();
+            const data = await apiGet('/network/routes.cgi');
             
             if (data.routes && data.routes.length > 0) {
                 tbody.innerHTML = data.routes.map(route => `
@@ -182,8 +179,7 @@ const NETWORK = {
         if (!tbody) return;
         
         try {
-            const res = await fetch(API_BASE + '/network/arp.cgi?_=' + Date.now());
-            const data = await res.json();
+            const data = await apiGet('/network/arp.cgi');
             
             if (data.entries && data.entries.length > 0) {
                 tbody.innerHTML = data.entries.map(entry => `
@@ -208,8 +204,7 @@ const NETWORK = {
         if (!container) return;
         
         try {
-            const res = await fetch(API_BASE + '/network/events.cgi?limit=20&_=' + Date.now());
-            const data = await res.json();
+            const data = await apiGet('/network/events.cgi?limit=20');
             
             if (data.events && data.events.length > 0) {
                 container.innerHTML = data.events.map(event => `
@@ -259,9 +254,7 @@ const NETWORK = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await fetch(API_BASE + '/network/action.cgi?action=' + action + '&_=' + Date.now(), {
-                method: 'POST'
-            });
+            const res = await apiFetch('/network/action.cgi?action=' + action, {method: 'POST'});
             
             console.log('Response status:', res.status);
             const data = await res.json();
@@ -281,8 +274,6 @@ const NETWORK = {
         
         if (btn) btn.disabled = false;
     },
-
-    }
 };
 
 function initNetworkTab() {

@@ -115,73 +115,21 @@ daemon_loop() {
     done
 }
 
-mkdir -p "$(dirname "$PID_FILE")" 2>/dev/null
-
 case "$1" in
     start)
-        if [ -f "$PID_FILE" ]; then
-            pid=$(cat "$PID_FILE" 2>/dev/null)
-            if [ -n "$pid" ] && pid_is_alive "$pid"; then
-                echo "Already running with PID $pid"
-                exit 1
-            fi
-            rm -f "$PID_FILE"
-        fi
-        
-        existing=$(find_pids "network_watchdog\.sh daemon" | head -1)
-        if [ -n "$existing" ]; then
-            echo "Already running with PID $existing"
-            exit 1
-        fi
-        
-        load_config
-        mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
-        
-        sh "$0" daemon >> "$LOG_FILE" 2>&1 &
-        echo $! > "$PID_FILE"
-        log_message "INFO" "[network] Демон мониторинга сети запущен (PID: $(cat $PID_FILE))"
+        daemon_start "network" "$PID_FILE" "$LOG_FILE" "network_watchdog\.sh daemon"
         ;;
     stop)
-        for p in $(find_pids "network_watchdog\.sh daemon" 2>/dev/null); do
-            kill -9 "$p" 2>/dev/null
-        done
-        rm -f "$PID_FILE"
-        rm -f "$STATE_FILE"
+        daemon_stop "$PID_FILE" "network_watchdog\.sh daemon" 'rm -f "$STATE_FILE"'
         log_message "INFO" "[network] Демон мониторинга сети остановлен"
         ;;
     restart)
         "$0" stop
-        sleep 2
-        for p in $(find_pids "network_watchdog\.sh daemon" 2>/dev/null); do
-            kill -9 "$p" 2>/dev/null
-        done
-        rm -f "$PID_FILE"
-        rm -f "$STATE_FILE"
         sleep 1
-        
-        load_config
-        mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
-        
-        sh "$0" daemon >> "$LOG_FILE" 2>&1 &
-        echo $! > "$PID_FILE"
-        log_message "INFO" "[network] Демон мониторинга сети перезапущен (PID: $(cat $PID_FILE))"
+        "$0" start
         ;;
     status)
-        pid=""
-        if [ -f "$PID_FILE" ]; then
-            pid=$(cat "$PID_FILE")
-            if pid_is_alive "$pid"; then
-                echo "Running with PID $pid"
-                exit 0
-            fi
-        fi
-        pid=$(find_pids "network_watchdog\.sh daemon" | head -1)
-        if [ -n "$pid" ] && pid_is_alive "$pid"; then
-            echo "Running with PID $pid"
-            exit 0
-        fi
-        echo "Not running"
-        exit 1
+        daemon_status "$PID_FILE" "network_watchdog\.sh daemon"
         ;;
     daemon)
         daemon_loop

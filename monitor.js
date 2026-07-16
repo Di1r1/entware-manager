@@ -111,8 +111,7 @@ const MONITOR = {
         if (!statusSpan || !tbody) return;
 
         try {
-            const resp = await fetch(API_BASE + '/monitor/monitor_status.cgi?_=' + Date.now());
-            const data = await resp.json();
+            const data = await apiGet('/monitor/monitor_status.cgi');
             if (data.daemon_status === 'running') {
                 statusSpan.textContent = 'активен (PID ' + data.daemon_pid + ')';
                 statusSpan.className = 'stat-value-normal';
@@ -145,8 +144,7 @@ const MONITOR = {
 
     async loadConfig() {
         try {
-            const resp = await fetch(API_BASE + '/monitor/monitor_config.cgi');
-            const cfg = await resp.json();
+            const cfg = await apiGet('/monitor/monitor_config.cgi');
             document.getElementById('settings-enabled').checked = cfg.enabled;
             document.getElementById('settings-interval').value = cfg.interval;
             document.getElementById('settings-individual-enabled').checked = cfg.individual.enabled;
@@ -176,19 +174,10 @@ const MONITOR = {
             max_processes: maxProcesses
         };
         try {
-            const resp = await fetch(API_BASE + '/monitor/monitor_config.cgi', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(config)
-            });
-            const result = await resp.json();
+            var result = await apiPostJSON('/monitor/monitor_config.cgi', config);
             if (result.status === 'ok') {
                 Toast.show('Настройки сохранены');
-                await fetch(API_BASE + '/monitor/monitor_action.cgi', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'action=restart'
-                });
+                await apiPost('/monitor/monitor_action.cgi', 'action=restart');
             } else {
                 Toast.show('Ошибка: ' + result.message, true);
             }
@@ -198,11 +187,8 @@ const MONITOR = {
     },
 
     async sendAction(action) {
-        const form = new URLSearchParams();
-        form.append('action', action);
         try {
-            const resp = await fetch(API_BASE + '/monitor/monitor_action.cgi', { method: 'POST', body: form });
-            const res = await resp.json();
+            var res = await apiPost('/monitor/monitor_action.cgi', 'action=' + action);
             Toast.show(res.message);
             this.updateStatus();
         } catch (err) {
@@ -212,12 +198,8 @@ const MONITOR = {
 
     async killProcess(pid) {
         if (confirm('Убить процесс ' + pid + '?')) {
-            const form = new URLSearchParams();
-            form.append('action', 'kill');
-            form.append('pid', pid);
             try {
-                const resp = await fetch(API_BASE + '/monitor/monitor_action.cgi', { method: 'POST', body: form });
-                const res = await resp.json();
+                var res = await apiPost('/monitor/monitor_action.cgi', 'action=kill&pid=' + pid);
                 Toast.show(res.message);
                 this.updateStatus();
             } catch (err) {
@@ -231,7 +213,7 @@ const MONITOR = {
         if (!logPre) return;
 
         try {
-            const resp = await fetch(API_BASE + '/monitor/monitor_log.cgi?_=' + Date.now());
+            const resp = await apiFetch('/monitor/monitor_log.cgi');
             const text = await resp.text();
             logPre.innerText = text;
         } catch(e) {

@@ -194,8 +194,7 @@ async function loadTab(tabName) {
 
     contentDiv.innerHTML = '<p>Загрузка...</p>';
     try {
-        const response = await fetch(API_BASE + '/' + tabName + '.cgi');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const response = await apiFetch('/' + tabName + '.cgi');
         const html = await response.text();
         contentDiv.innerHTML = html;
         if (tabName === 'packages') initPackagesSearch();
@@ -230,8 +229,7 @@ function initStatsTabs() {
 async function showPackageInfo(pkg) {
     Modal.loading(`Загрузка информации о ${pkg}...`);
     try {
-        const response = await fetch(API_BASE + '/api.cgi?action=info&package=' + encodeURIComponent(pkg));
-        const data = await response.json();
+        const data = await apiGet('/api.cgi?action=info&package=' + encodeURIComponent(pkg));
         if (data.error) Modal.error(data.error);
         else Modal.info(`<pre>${data.info}</pre>`, `Пакет: ${pkg}`);
     } catch (err) {
@@ -302,9 +300,7 @@ async function loadAvailableTab(forceRefresh = false) {
     } else {
         contentDiv.innerHTML = '<p>Загрузка...</p>';
         try {
-            const response = await fetch(API_BASE + '/available.cgi');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const packages = await response.json();
+            const packages = await apiGet('/available.cgi');
             localStorage.setItem(CACHE_KEY, JSON.stringify(packages));
             localStorage.setItem(CACHE_TIME_KEY, now.toString());
             renderAvailableTable(packages);
@@ -316,9 +312,7 @@ async function loadAvailableTab(forceRefresh = false) {
 
 async function fetchUpgradable() {
     try {
-        const response = await fetch(API_BASE + '/upgradable.cgi');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        let data = await response.json();
+        let data = await apiGet('/upgradable.cgi');
         data = data.filter(pkg => pkg.package && pkg.current && pkg.new && pkg.package !== 'undefined');
         upgradableData = data;
         renderUpdatesTabContent(upgradableData);
@@ -335,7 +329,7 @@ async function runUpdate() {
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
-        const response = await fetch(API_BASE + '/update.cgi?run=1');
+        const response = await apiFetch('/update.cgi?run=1');
         const text = await response.text();
         resultDiv.innerHTML = `<pre>${text}</pre>`;
         await fetchUpgradable();
@@ -360,7 +354,7 @@ async function upgradeAll() {
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        const response = await fetch(API_BASE + '/upgrade.cgi', {
+        const response = await apiFetch('/upgrade.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'upgrade_all=1'
@@ -535,8 +529,7 @@ function loadLogsTab() {
             const query = prompt('Введите текст для поиска в имени файла (в /tmp):');
             if (!query || !query.trim()) return;
             try {
-                const resp = await fetch(API_BASE + '/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
-                const files = await resp.json();
+                const result = await apiGet('/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
                 if (files.length === 0) { Toast.show('Файлы не найдены.', true); return; }
                 let added = 0;
                 for (const f of files) {
@@ -618,33 +611,25 @@ function loadLogsTab() {
 
     document.getElementById('clearOldLogsBtn').addEventListener('click', async () => {
         if (!confirm('Удалить все логи старше 30 дней?')) return;
-        const resp = await fetch(API_BASE + '/logger/clear.cgi', { method: 'POST' });
-        const data = await resp.json();
+        const data = await apiPost('/logger/clear.cgi', '');
         Toast.show(data.message);
         logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now();
     });
 
     document.getElementById('rotateNowBtn').addEventListener('click', async () => {
         if (!confirm('Запустить ротацию логов сейчас?')) return;
-        const resp = await fetch(API_BASE + '/logger/rotate.cgi', { method: 'POST' });
-        const data = await resp.json();
+        const data = await apiPost('/logger/rotate.cgi', '');
         Toast.show(data.message);
         setTimeout(() => logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now(), 1000);
     });
 
     document.getElementById('toggleLoggingBtn').addEventListener('click', async () => {
-        const resp = await fetch(API_BASE + '/logger/config.cgi');
-        const cfg = await resp.json();
+        const cfg = await apiGet('/logger/config.cgi');
         const enabled = cfg.enabled;
         const newState = confirm(`Логирование сейчас ${enabled ? 'включено' : 'отключено'}. Хотите изменить?`);
         if (newState) {
             const newCfg = { ...cfg, enabled: !enabled };
-            const saveResp = await fetch(API_BASE + '/logger/config.cgi', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newCfg)
-            });
-            const result = await saveResp.json();
+            const result = await apiPostJSON('/logger/config.cgi', newCfg);
             if (result.status === 'ok') { Toast.show('Настройки сохранены. Страница будет перезагружена.'); location.reload(); }
             else Toast.show('Ошибка сохранения', true);
         }
@@ -652,8 +637,7 @@ function loadLogsTab() {
 
     async function updateLoggingStatus() {
         try {
-            const resp = await fetch(API_BASE + '/logger/config.cgi?_=' + Date.now());
-            const cfg = await resp.json();
+            const cfg = await apiGet('/logger/config.cgi');
             const indicator = document.getElementById('loggingStatusIndicator');
             if (indicator) {
                 indicator.style.backgroundColor = cfg.enabled ? '#2ecc71' : '#e74c3c';
@@ -683,7 +667,7 @@ function loadLogsTab() {
         
         // Fetch and display system log
         try {
-            const resp = await fetch(API_BASE + '/logger/system_log.cgi?_=' + Date.now());
+            const resp = await apiFetch('/logger/system_log.cgi');
             const html = await resp.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
@@ -697,9 +681,7 @@ function loadLogsTab() {
 
 async function fetchTtydStatus() {
     try {
-        const response = await fetch(API_BASE + '/ttyd_control.cgi');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const data = await apiGet('/ttyd_control.cgi');
         updateTtydStatus(data);
     } catch (err) {
         document.getElementById('ttyd-status').innerHTML = `<p class="error">Ошибка: ${err.message}</p>`;
@@ -737,12 +719,7 @@ window.controlTtyd = async function(action, port, pass) {
     formData.append('port', port);
     if (pass) formData.append('pass', pass);
     try {
-        const response = await fetch(API_BASE + '/ttyd_control.cgi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
-        });
-        const data = await response.json();
+        const data = await apiPost('/ttyd_control.cgi', formData.toString());
         Toast.show(data.message);
         fetchTtydStatus();
     } catch (err) {
@@ -765,9 +742,7 @@ function getDefaultLinks() {
 
 async function loadLinks() {
     try {
-        const response = await fetch(API_BASE + '/links_load.cgi');
-        if (!response.ok) throw new Error('Network error');
-        const links = await response.json();
+        const links = await apiGet('/links_load.cgi');
         return links.map(link => {
             if (link.icon && link.icon.startsWith('icon-')) link.icon = link.icon.replace('icon-', '');
             else if (link.icon && (link.icon.length === 1 || link.icon.match(/[\u{1F300}-\u{1F6FF}]/u))) {
@@ -794,12 +769,7 @@ async function loadLinks() {
 
 async function saveLinks(links) {
     try {
-        const response = await fetch(API_BASE + '/links_save.cgi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(links)
-        });
-        const result = await response.json();
+        const result = await apiPostJSON('/links_save.cgi', links);
         if (result.status !== 'ok') Toast.show('Ошибка сохранения ссылок: ' + result.message, true);
     } catch (err) {
         Toast.show('Ошибка соединения с сервером', true);
@@ -821,8 +791,7 @@ async function loadNetworkStatus() {
     if (!table) return;
     
     try {
-        const res = await fetch(API_BASE + '/network_status.cgi');
-        const data = await res.json();
+        const data = await apiGet('/network_status.cgi');
         
         let html = '<div class="stat-table">';
         
@@ -1053,14 +1022,14 @@ async function opkgAction(event, action, pkg) {
     event.preventDefault();
     Modal.loading('Выполнение...');
     let url;
-    if (action === 'install') url = API_BASE + '/install.cgi';
-    else if (action === 'remove') url = API_BASE + '/remove.cgi';
-    else if (action === 'upgrade') url = API_BASE + '/upgrade.cgi';
+    if (action === 'install') url = '/install.cgi';
+    else if (action === 'remove') url = '/remove.cgi';
+    else if (action === 'upgrade') url = '/upgrade.cgi';
     else return;
     const formData = new URLSearchParams();
     formData.append('package', pkg);
     try {
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData.toString()
@@ -1167,8 +1136,7 @@ async function fetchServices() {
     if (!container) return;
     
     try {
-        const response = await fetch(API_BASE + '/services.cgi');
-        const services = await response.json();
+        const services = await apiGet('/services.cgi');
         renderServices(services);
     } catch (err) {
         container.innerHTML = `<p class="error">Ошибка загрузки служб: ${err.message}</p>`;
@@ -1212,8 +1180,7 @@ function renderServices(services) {
 
 window.showProcessList = function(serviceName) {
     // Найти службу по имени в уже загруженных данных
-    fetch(API_BASE + '/services.cgi')
-        .then(r => r.json())
+    apiGet('/services.cgi')
         .then(services => {
             const svc = services.find(s => s.name === serviceName);
             if (!svc || !svc.pids || svc.pids.length === 0) {
@@ -1242,12 +1209,7 @@ window.killProcess = async function(pid, serviceName) {
     const formData = new URLSearchParams();
     formData.append('pid', pid);
     try {
-        const response = await fetch(API_BASE + '/kill_pid.cgi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
-        });
-        const result = await response.json();
+        const result = await apiPost('/kill_pid.cgi', formData.toString());
         if (result.status === 'ok') {
             Toast.show(`Процесс ${pid} завершён`, false, 3000);
             Modal.hide();
@@ -1265,12 +1227,7 @@ window.serviceAction = async function(name, action) {
     formData.append('name', name);
     formData.append('action', action);
     try {
-        const response = await fetch(API_BASE + '/service_action.cgi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
-        });
-        const result = await response.json();
+        const result = await apiPost('/service_action.cgi', formData.toString());
         if (result.status === 'ok') {
             Toast.show(`Служба ${name}: ${action} выполнено`);
             fetchServices();
@@ -1284,8 +1241,7 @@ window.serviceAction = async function(name, action) {
 
 async function fetchCrontabType(type, textareaId) {
     try {
-        const response = await fetch(API_BASE + '/crontab.cgi?type=' + type);
-        const data = await response.json();
+        const data = await apiGet('/crontab.cgi?type=' + type);
         document.getElementById(textareaId).value = data.crontab || '';
     } catch (err) {
         document.getElementById(textareaId).value = 'Ошибка загрузки crontab';
@@ -1299,12 +1255,7 @@ async function saveCrontabType(type, textareaId, messageId) {
     formData.append('type', type);
     formData.append('crontab', content);
     try {
-        const response = await fetch(API_BASE + '/crontab_update.cgi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData
-        });
-        const result = await response.json();
+        const result = await apiPost('/crontab_update.cgi', formData.toString());
         if (result.status === 'ok') {
             const msgSpan = document.getElementById(messageId);
             if (msgSpan) msgSpan.innerHTML = '<span style="color:green;">✓ Сохранено</span>';
@@ -1452,8 +1403,7 @@ const SERVICE_WATCHDOG = {
         if (!statusSpan) return;
         
         try {
-            const res = await fetch(API_BASE + '/service_watchdog/status.cgi');
-            const data = await res.json();
+            const data = await apiGet('/service_watchdog/status.cgi');
             
             if (data.running) {
                 statusSpan.textContent = `активен (PID: ${data.pid})`;
@@ -1502,8 +1452,7 @@ const SERVICE_WATCHDOG = {
         if (!container) return;
         
         try {
-            const res = await fetch(API_BASE + '/service_watchdog/events.cgi?limit=15');
-            const data = await res.json();
+            const data = await apiGet('/service_watchdog/events.cgi?limit=15');
             
             if (data.events && data.events.length > 0) {
                 container.innerHTML = data.events.map(e => {
@@ -1574,12 +1523,7 @@ const SERVICE_WATCHDOG = {
         }
         
         try {
-            const res = await fetch(API_BASE + '/service_watchdog/config.cgi', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ mode: mode, watch_list: watchList, auto_restart: auto_restart, exclude_list: exclude_list })
-            });
-            const result = await res.json();
+            const result = await apiPostJSON('/service_watchdog/config.cgi', { mode: mode, watch_list: watchList, auto_restart: auto_restart, exclude_list: exclude_list });
             if (result.status === 'ok') {
                 Toast.show(result.message || 'Конфигурация сохранена');
                 await this.loadStatus();
@@ -1597,7 +1541,7 @@ const SERVICE_WATCHDOG = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await fetch(API_BASE + '/service_watchdog/action.cgi?action=' + action, { method: 'POST' });
+            const res = await apiFetch('/service_watchdog/action.cgi?action=' + action, {method: 'POST'});
             const data = await res.json();
             
             if (data.status === 'ok') {
@@ -1636,9 +1580,7 @@ function initServiceWatchdog() {
 async function checkSystemDeps() {
     Modal.loading('Проверка системных зависимостей...');
     try {
-        const res = await fetch(API_BASE + '/check_deps.cgi?_=' + Date.now());
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await apiGet('/check_deps.cgi');
 
         let html = '<div style="font-family: monospace; font-size: 13px;">';
 
