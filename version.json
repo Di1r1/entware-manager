@@ -1,7 +1,8 @@
 {
-  "version": "1.04.01",
+  "version": "1.04.02",
   "date": "2026-07-17",
   "changes": [
+    "1.04.02: цветовая кодировка атрибутов SMART — три уровня: OK (зелёный), Предупреждение (жёлтый), Критично (красный) + легенда",
     "1.04.01: modal scrollbar унифицирован с .content (thin, 8px, themed), track transparent для border-radius",
     "1.04.01: modal padding унифицирован (24px), убран workaround #modalBody padding-right",
     "1.04.01: .close убран float (flex родителя), кастомный scrollbar 6px удалён",
