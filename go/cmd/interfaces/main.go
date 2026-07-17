@@ -15,12 +15,12 @@ type iface struct {
 }
 
 func main() {
+	fmt.Println("Content-type: application/json; charset=utf-8\n")
+
 	if os.Getenv("REQUEST_METHOD") != "GET" {
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"error": "Method not allowed"})
 		return
 	}
-
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
 
 	data, err := exec.Command("ip", "-o", "link", "show").Output()
 	if err != nil {
