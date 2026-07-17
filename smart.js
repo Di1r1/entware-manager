@@ -64,7 +64,7 @@ const SMART = {
         `;
 
         document.getElementById('refreshSmart').addEventListener('click', () => this.loadDisks());
-        initTableSearch('searchSmart', 'smartTable', 0);
+        initTableSearch('searchSmart', 'smartTable', -1);
     },
 
     async loadDisks() {
