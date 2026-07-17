@@ -640,6 +640,10 @@ tr:hover td {
     background-color: var(--table-row-hover) !important;
     transition: background-color 0.2s ease;
 }
+.modal-content th {
+    position: static;
+    backdrop-filter: none;
+}
 
 .packages-table-wrapper {
     border-radius: 16px;
