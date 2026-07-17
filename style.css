@@ -1633,8 +1633,7 @@ th.sort-desc::after {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 0 10px 0;
-    margin-bottom: 15px;
+    padding: 0 0 25px 0;
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
