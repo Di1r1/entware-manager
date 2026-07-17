@@ -133,10 +133,14 @@ function init() {
         menuToggle.addEventListener('click', () => sidebar.classList.toggle('menu-open'));
     }
 
-    Menu.init('#dynamic-menu').then(() => Menu.setActiveTab('stats'));
+    Menu.init('#dynamic-menu').then(() => {
+        const savedTab = localStorage.getItem('entware_active_tab');
+        Menu.setActiveTab(savedTab || 'stats');
+    });
     handleResponsive();
     window.addEventListener('resize', debounce(handleResponsive, 200));
-    loadTab('stats');
+    const savedTab = localStorage.getItem('entware_active_tab');
+    loadTab(savedTab || 'stats');
 }
 
 function initTheme() {
@@ -181,6 +185,7 @@ async function loadTab(tabName) {
     if (servicesInterval) clearInterval(servicesInterval);
     servicesInterval = null;
     if (typeof MONITOR !== 'undefined' && MONITOR.stopUpdates) MONITOR.stopUpdates();
+    if (typeof SMART !== 'undefined' && SMART.stopUpdates) SMART.stopUpdates();
 
     if (tabName === 'available') { loadAvailableTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'updates') { renderUpdatesTab(); Menu.setActiveTab(tabName); return; }
@@ -196,7 +201,7 @@ async function loadTab(tabName) {
             await loadScript('/entware-manager/smart.js?v=1');
             window.SMART_LOADED = true;
         }
-        loadSmartTab(); Menu.setActiveTab(tabName); return;
+        SMART.init(); Menu.setActiveTab(tabName); return;
     }
 
     contentDiv.innerHTML = '<p>Загрузка...</p>';

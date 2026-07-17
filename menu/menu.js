@@ -62,6 +62,7 @@ const Menu = (() => {
                 const tabName = li.dataset.tab;
                 if (typeof loadTab === 'function') {
                     loadTab(tabName);
+                    localStorage.setItem('entware_active_tab', tabName);
                 } else {
                     console.error('loadTab function not found');
                 }
