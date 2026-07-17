@@ -250,3 +250,22 @@ smart_test_status() {
         printf '{"status":"No tests logged","progress":100}'
     fi
 }
+
+# Информация о разделах диска (через df)
+smart_disk_usage() {
+    local dev="$1"
+    command -v df >/dev/null 2>&1 || { echo '{"partitions":[]}'; return; }
+    local first=1
+    echo -n '{"partitions":['
+    df -h 2>/dev/null | while IFS= read -r line; do
+        case "$line" in
+            "/dev/${dev}"[0-9]*)
+                set -- $line
+                local pct=$(echo "$5" | sed 's/%//')
+                [ "$first" -eq 1 ] && first=0 || echo -n ','
+                echo -n "{\"part\":\"$(basename $1)\",\"size\":\"$2\",\"used\":\"$3\",\"avail\":\"$4\",\"pct\":$pct,\"mnt\":\"$6\"}"
+                ;;
+        esac
+    done
+    echo ']}'
+}

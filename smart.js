@@ -139,7 +139,7 @@ const SMART = {
                     <td class="clickable-device">${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
-                    <td>${formatSize(disk.size)}</td>
+                    <td class="clickable-usage">${formatSize(disk.size)}</td>
                     <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
                     <td class="clickable-health"><span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(disk.health)}</span></td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
@@ -164,6 +164,8 @@ const SMART = {
                 this.showTestDialog(device);
             } else if (e.target.closest('.clickable-device')) {
                 this.showInfo(device);
+            } else if (e.target.closest('.clickable-usage')) {
+                this.showUsage(device);
             } else {
                 this.showAttributes(device);
             }
@@ -182,6 +184,42 @@ ${escapeHtml(data.info || 'Нет данных')}
                 </div>
             `;
             Modal.show(html, false, `SMART информация — ${escapeHtml(device)}`);
+        } catch (err) {
+            Modal.error('Ошибка: ' + err.message);
+        }
+    },
+
+    async showUsage(device) {
+        Modal.loading('Загрузка разделов...');
+        try {
+            const data = await apiGet(`/smart.cgi?action=usage&device=${encodeURIComponent(device)}`);
+            if (data.error) { Modal.error(data.error); return; }
+            const parts = data.partitions || [];
+            if (parts.length === 0) {
+                Modal.info('Разделы не найдены или df недоступен.', 'Разделы — ' + device);
+                return;
+            }
+            let html = `
+                <h3 style="margin-bottom: 12px;">Разделы: ${escapeHtml(device)}</h3>
+                <div style="overflow-x: auto;">
+                    <table class="packages-table" style="width: 100%;">
+                        <thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead>
+                        <tbody>
+            `;
+            parts.forEach(p => {
+                const pct = parseInt(p.pct) || 0;
+                const color = pct >= 90 ? '#e53e3e' : (pct >= 80 ? '#d69e2e' : '#38a169');
+                html += `<tr>
+                    <td>${escapeHtml(p.part)}</td>
+                    <td>${escapeHtml(p.mnt)}</td>
+                    <td>${escapeHtml(p.size)}</td>
+                    <td>${escapeHtml(p.used)}</td>
+                    <td>${escapeHtml(p.avail)}</td>
+                    <td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:var(--input-bg);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div></div><span style="font-weight:600;color:${color};">${pct}%</span></div></td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            Modal.show(html, false, `Разделы — ${escapeHtml(device)}`);
         } catch (err) {
             Modal.error('Ошибка: ' + err.message);
         }

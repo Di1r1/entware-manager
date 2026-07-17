@@ -34,6 +34,10 @@ case "$action" in
         [ -z "$device" ] && json_out '{"status":"error","message":"device required"}'
         json_out "$(smart_health_json "$device")"
         ;;
+    usage)
+        [ -z "$device" ] && json_out '{"status":"error","message":"device required"}'
+        json_out "$(smart_disk_usage "$device")"
+        ;;
     selftest)
         [ -z "$device" ] && json_out '{"status":"error","message":"device required"}'
         if [ "$REQUEST_METHOD" = "POST" ]; then
