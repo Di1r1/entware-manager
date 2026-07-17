@@ -196,6 +196,20 @@ async function loadTab(tabName) {
     if (tabName === 'monitor') { loadMonitorTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'logs') { loadLogsTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'network') { loadNetworkTab(); Menu.setActiveTab(tabName); return; }
+    if (tabName === 'help') {
+        contentDiv.innerHTML = '<p>Загрузка...</p>';
+        try {
+            const response = await apiFetch('/help.cgi');
+            const html = await response.text();
+            contentDiv.innerHTML = html;
+            initHelpSearch();
+            Menu.setActiveTab(tabName);
+        } catch (err) {
+            contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${err.message}</p>`;
+            Menu.setActiveTab(tabName);
+        }
+        return;
+    }
     if (tabName === 'smart') {
         if (!window.SMART_LOADED) {
             await loadScript('/entware-manager/smart.js?v=1');
@@ -220,6 +234,28 @@ async function loadTab(tabName) {
         contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${err.message}</p>`;
         Menu.setActiveTab(tabName);
     }
+}
+
+function initHelpSearch() {
+    const input = document.getElementById('helpSearch');
+    if (!input) return;
+    const content = document.getElementById('helpContent');
+    if (!content) return;
+    const sections = content.querySelectorAll('h3');
+
+    input.addEventListener('input', () => {
+        const q = input.value.toLowerCase().trim();
+        sections.forEach(h3 => {
+            let match = !q || h3.textContent.toLowerCase().includes(q);
+            let el = h3.nextElementSibling;
+            const items = [h3];
+            while (el && el.tagName !== 'H3') { items.push(el); el = el.nextElementSibling; }
+            items.forEach(el2 => {
+                if (!match && q && el2.textContent.toLowerCase().includes(q)) match = true;
+            });
+            items.forEach(el2 => el2.style.display = !q || match ? '' : 'none');
+        });
+    });
 }
 
 function initStatsTabs() {

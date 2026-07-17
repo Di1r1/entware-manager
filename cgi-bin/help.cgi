@@ -807,35 +807,13 @@ cat /tmp/entware/logs/service_events.log<br>
         traceroute ya.ru                          # трассировка маршрута
     </div>
 
+    </div> <!-- /helpContent -->
+
     <div class="note">
         <strong>⚠️ Важно:</strong> Команды, требующие прав root, выполняются от имени root. Будьте осторожны при удалении и обновлении пакетов. Для терминала рекомендуется использовать пароль.
-    </div> <!-- /helpContent -->
+    </div>
 
     <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
 </div>
-<script>
-(function() {
-    const input = document.getElementById('helpSearch');
-    if (!input) return;
-    const content = document.getElementById('helpContent');
-    const sections = content.querySelectorAll('h3');
-
-    function filterHelp(val) {
-        const q = val.toLowerCase().trim();
-        sections.forEach(h3 => {
-            let match = !q || h3.textContent.toLowerCase().includes(q);
-            let el = h3.nextElementSibling;
-            const items = [h3];
-            while (el && el.tagName !== 'H3') { items.push(el); el = el.nextElementSibling; }
-            items.forEach(el2 => {
-                if (!match && q && el2.textContent.toLowerCase().includes(q)) match = true;
-            });
-            items.forEach(el2 => el2.style.display = !q || match ? '' : 'none');
-        });
-    }
-
-    input.addEventListener('input', () => filterHelp(input.value));
-})();
-</script>
 </body>
 HELP
