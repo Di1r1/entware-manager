@@ -33,6 +33,12 @@ cat <<HELP
     <p>Версия интерфейса: <strong>${VERSION}</strong> (дата: $(date -r /opt/web_entware/version.json +%Y-%m-%d 2>/dev/null || echo "?"), версия загружается из <code>/opt/web_entware/version.json</code>)</p>
     <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
 
+    <div class="search-container" style="display: flex; gap: 8px; align-items: center; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; margin-bottom: 24px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
+        <svg class="icon" width="18" height="18" style="color: var(--text-muted); flex-shrink: 0;"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg>
+        <input type="text" id="helpSearch" placeholder="Поиск по справке..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
+    </div>
+
+    <div id="helpContent">
     <!-- Статистика -->
     <h3>
         <span class="stat-icon">
@@ -803,10 +809,33 @@ cat /tmp/entware/logs/service_events.log<br>
 
     <div class="note">
         <strong>⚠️ Важно:</strong> Команды, требующие прав root, выполняются от имени root. Будьте осторожны при удалении и обновлении пакетов. Для терминала рекомендуется использовать пароль.
-    </div>
+    </div> <!-- /helpContent -->
 
     <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('helpSearch');
+    if (!input) return;
+    const content = document.getElementById('helpContent');
+    const sections = content.querySelectorAll('h3');
+
+    function filterHelp(val) {
+        const q = val.toLowerCase().trim();
+        sections.forEach(h3 => {
+            let match = !q || h3.textContent.toLowerCase().includes(q);
+            let el = h3.nextElementSibling;
+            const items = [h3];
+            while (el && el.tagName !== 'H3') { items.push(el); el = el.nextElementSibling; }
+            items.forEach(el2 => {
+                if (!match && q && el2.textContent.toLowerCase().includes(q)) match = true;
+            });
+            items.forEach(el2 => el2.style.display = !q || match ? '' : 'none');
+        });
+    }
+
+    input.addEventListener('input', () => filterHelp(input.value));
+});
+</script>
 </body>
-</html>
 HELP
