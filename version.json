@@ -1,7 +1,9 @@
 {
-  "version": "1.04.02",
+  "version": "1.04.03",
   "date": "2026-07-17",
   "changes": [
+    "1.04.03: заголовок модального окна фиксирован (position: sticky; top: 0) — не скроллится",
+    "1.04.03: меню на десктопе получило overflow-y: auto + тонкий скроллбар — нижние пункты доступны",
     "1.04.02: цветовая кодировка атрибутов SMART — три уровня: OK (зелёный), Предупреждение (жёлтый), Критично (красный) + легенда",
     "1.04.01: modal scrollbar унифицирован с .content (thin, 8px, themed), track transparent для border-radius",
     "1.04.01: modal padding унифицирован (24px), убран workaround #modalBody padding-right",
