@@ -24,7 +24,6 @@ smart_detect_type() {
     local device="$1"
     case "$device" in
         nvme*) echo "nvme" ;;
-        sd*)   echo "sat" ;;
         *)     echo "sat" ;;
     esac
 }
@@ -78,13 +77,25 @@ smart_disk_json() {
     disk_size=$(smart_disk_size "$device")
     output=$(smartctl_run "$devpath" "-a -d $disk_type")
 
+    # Определяем тип для отображения
+    local removable="/sys/block/$device/removable"
+    local display_type="$disk_type"
+    [ -f "$removable" ] && [ "$(cat "$removable")" = "1" ] && display_type="usb"
+
+    # Для USB без SMART — пробуем -d scsi
+    if [ "$display_type" = "usb" ] && ( [ -z "$output" ] || echo "$output" | grep -qi "Unknown USB bridge\|unsupported scsi opcode\|device lacks SMART" ); then
+        output=$(smartctl_run "$devpath" "-a -d scsi")
+    fi
+
     model=$(echo "$output" | grep "Device Model" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
     [ -z "$model" ] && model=$(echo "$output" | grep "Model Number" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
     [ -z "$model" ] && model=$(echo "$output" | grep "Product" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
+    [ -z "$model" ] && model=$(cat /sys/block/$device/device/model 2>/dev/null | sed 's/^ *//;s/ *$//')
     [ -z "$model" ] && model="Unknown"
 
     serial=$(echo "$output" | grep "Serial" | grep -v "Number" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
-    [ -z "$serial" ] && serial=$(echo "$output" | grep "Serial Number" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
+    [ -z "$serial" ] && serial=$(echo "$output" | grep -i "Serial Number" | head -1 | cut -d: -f2- | sed 's/^ *//;s/ *$//')
+    [ -z "$serial" ] && serial=$(cat /sys/block/$device/device/serial 2>/dev/null | sed 's/^ *//;s/ *$//')
     [ -z "$serial" ] && serial="\u2014"
 
     # Health
@@ -116,7 +127,7 @@ smart_disk_json() {
     serial=$(smart_escape "$serial")
 
     printf '{"device":"/dev/%s","model":"%s","serial":"%s","size":"%s","type":"%s","health":"%s","temperature":%s,"power_on_hours":%s}' \
-        "$device" "$model" "$serial" "$disk_size" "$disk_type" "$health" "$temperature" "$power_on"
+        "$device" "$model" "$serial" "$disk_size" "$display_type" "$health" "$temperature" "$power_on"
 }
 
 # Парсинг атрибутов SMART (-A) в JSON-массив

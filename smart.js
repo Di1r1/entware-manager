@@ -121,7 +121,7 @@ const SMART = {
             return;
         }
 
-        const TYPE_CLASSES = { hdd: 'drive-hdd', ssd: 'drive-ssd', nvme: 'drive-nvme', sat: 'drive-hdd' };
+        const TYPE_CLASSES = { hdd: 'drive-hdd', ssd: 'drive-ssd', nvme: 'drive-nvme', sat: 'drive-hdd', usb: 'drive-usb' };
 
         tbody.innerHTML = disks.map(disk => {
             const healthClass = disk.health === 'PASSED' ? 'status-running' : 'status-stopped';

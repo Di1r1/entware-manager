@@ -1129,6 +1129,7 @@ input[type="submit"]:disabled,
 .drive-hdd { color: #3182ce; font-weight: 600; }
 .drive-ssd { color: #38a169; font-weight: 600; }
 .drive-nvme { color: #9f7aea; font-weight: 600; }
+.drive-usb { color: #ed8936; font-weight: 600; }
 
 /* Кликабельные зоны в таблице SMART */
 #smartTable tbody tr { cursor: pointer; }
