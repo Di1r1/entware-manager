@@ -404,9 +404,15 @@ check_deps_logic() {
     # Logger: нужен jq
     log_status="ok"; [ "$jq_ok" = "false" ] && log_status="missing"
 
+    # SMART: нужен smartctl
+    smart_status="ok"
+    if ! command -v /opt/sbin/smartctl >/dev/null 2>&1 && ! command -v smartctl >/dev/null 2>&1; then
+        smart_status="missing"
+    fi
+
     # Итоговый статус
     overall="ok"
-    if [ "$srv_status" = "missing" ] || [ "$net_status" = "missing" ] || [ "$log_status" = "missing" ]; then
+    if [ "$srv_status" = "missing" ] || [ "$net_status" = "missing" ] || [ "$log_status" = "missing" ] || [ "$smart_status" = "missing" ]; then
         overall="partial"
     fi
     if [ "$opkg_ok" = "false" ] || [ "$lighttpd_running" = "false" ]; then
@@ -416,9 +422,9 @@ check_deps_logic() {
     timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')
 
     # Вывод JSON (ip - утилита, ip_pkg - пакет Entware)
-    printf '{"base":{"opkg":%s,"lighttpd_running":%s,"sed":%s,"awk":%s,"grep":%s,"ps":%s},"deps":{"cron_installed":%s,"cron_running":%s,"jq":%s,"ip":%s,"ip_path":"%s","ip_pkg_installed":%s},"sections":{"packages":"%s","services":"%s","monitoring":"%s","network":"%s","logger":"%s"},"overall_status":"%s","timestamp":"%s"}' \
+    printf '{"base":{"opkg":%s,"lighttpd_running":%s,"sed":%s,"awk":%s,"grep":%s,"ps":%s},"deps":{"cron_installed":%s,"cron_running":%s,"jq":%s,"ip":%s,"ip_path":"%s","ip_pkg_installed":%s},"sections":{"packages":"%s","services":"%s","monitoring":"%s","network":"%s","logger":"%s","smart":"%s"},"overall_status":"%s","timestamp":"%s"}' \
         "$opkg_ok" "$lighttpd_running" "$sed_ok" "$awk_ok" "$grep_ok" "$ps_ok" \
         "$cron_installed" "$cron_running" "$jq_ok" "$ip_ok" "$ip_path" "$ip_pkg_installed" \
-        "$pkg_status" "$srv_status" "$mon_status" "$net_status" "$log_status" \
+        "$pkg_status" "$srv_status" "$mon_status" "$net_status" "$log_status" "$smart_status" \
         "$overall" "$timestamp"
 }
