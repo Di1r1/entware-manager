@@ -266,6 +266,70 @@ ip route<br>
 ip neigh
     </div>
 
+    <!-- SMART мониторинг -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-hdd"/>
+            </svg>
+        </span>
+        SMART мониторинг дисков
+    </h3>
+    <p>Модуль мониторинга состояния дисков через S.M.A.R.T. (Self-Monitoring, Analysis and Reporting Technology).</p>
+
+    <h4>Обзор дисков</h4>
+    <p>Таблица показывает все обнаруженные диски (HDD, SSD, NVMe, USB-флешки) с информацией: модель, серийный номер, размер, тип, температура, состояние здоровья (PASSED/FAILED), время работы (Power-On Hours). Тип диска окрашен цветом: HDD — синий, SSD — зелёный, NVMe — фиолетовый. Строка диска подсвечена слева: зелёная полоса — здоров, красная — ошибки.</p>
+
+    <h4>Интерактивные зоны (клик)</h4>
+    <ul>
+        <li><strong>Устройство</strong> (sda/sdb/nvme0n1) — информация о диске (smartctl -i).</li>
+        <li><strong>Размер</strong> — таблица разделов диска с заполнением (df -h) и цветными прогресс-барами.</li>
+        <li><strong>Health</strong> (зелёный/красный бейдж) — детальный отчёт самодиагностики.</li>
+        <li><strong>Температура</strong> — диалог запуска самотеста (короткий ~2 мин, полный ~60-120 мин, conveyance ~5 мин).</li>
+        <li><strong>Строка целиком</strong> — таблица всех SMART-атрибутов с цветовой кодировкой важности.</li>
+    </ul>
+
+    <h4>Атрибуты SMART</h4>
+    <p>В модальном окне атрибутов отображаются: ID, имя, Value, Worst, Threshold, Raw, Статус. Имена критических атрибутов (Reallocated Sectors, Pending Sectors и др.) выделены красным, важные — жёлтым. Клик на имя атрибута показывает всплывающую подсказку с описанием (19 предопределённых атрибутов).</p>
+
+    <h4>Самотесты</h4>
+    <p>После запуска теста интерфейс опрашивает статус каждые 5 секунд до 20 минут. Результат отображается в модальном окне.</p>
+
+    <h4>Зависимости</h4>
+    <div class="command-block">
+# Установка (уже должна быть выполнена install.sh):<br>
+opkg install smartmontools smartmontools-drivedb coreutils-timeout sudo<br>
+<br>
+# Создание sudoers для nobody:<br>
+mkdir -p /opt/etc/sudoers.d<br>
+echo 'nobody ALL=(ALL) NOPASSWD: /opt/sbin/smartctl' > /opt/etc/sudoers.d/entware-smartctl<br>
+chmod 440 /opt/etc/sudoers.d/entware-smartctl<br>
+<br>
+# Проверка:<br>
+smartctl -a /dev/sda | head -5<br>
+sudo -u nobody /opt/sbin/smartctl -a /dev/sda 2>&1 | head -5
+    </div>
+
+    <h4>CGI-эндпоинты</h4>
+    <div class="command-block">
+/opt/web_entware/cgi-bin/smart.cgi?action=list          # список всех дисков<br>
+/opt/web_entware/cgi-bin/smart.cgi?action=attributes&amp;device=sda   # атрибуты<br>
+/opt/web_entware/cgi-bin/smart.cgi?action=health&amp;device=sda      # здоровье<br>
+/opt/web_entware/cgi-bin/smart.cgi?action=info&amp;device=sda       # информация<br>
+/opt/web_entware/cgi-bin/smart.cgi?action=usage&amp;device=sda      # разделы (df)<br>
+/opt/web_entware/cgi-bin/smart.cgi?action=selftest&amp;device=sda   # статус теста (GET)<br>
+<br>
+# Запуск теста (POST):<br>
+curl -X POST 'http://localhost:8087/entware-cgi/smart.cgi' -d 'action=selftest&amp;device=sda&amp;type=short'
+    </div>
+
+    <h4>Примеры curl</h4>
+    <div class="command-block">
+curl -s http://localhost:8087/entware-cgi/smart.cgi?action=list | jq .<br>
+curl -s http://localhost:8087/entware-cgi/smart.cgi?action=attributes&amp;device=sda | jq .<br>
+curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda' | jq .
+    </div>
+
     <!-- Службы и Cron -->
     <h3>
         <span class="stat-icon">
