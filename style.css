@@ -1069,7 +1069,7 @@ input[type="submit"]:disabled,
 .modal-content {
     background: var(--modal-bg);
     margin: 5% auto;
-    padding: 24px;
+    padding: 0 24px 24px 24px;
     width: 90%;
     max-width: 1000px;
     max-height: 85vh;
@@ -1338,11 +1338,11 @@ input[type="submit"]:disabled,
     .modal-content {
         width: 95%;
         margin: 10% auto;
-        padding: 16px;
+        padding: 0 16px 16px 16px;
         max-height: 75vh;
     }
     .modal-header {
-        padding: 0 0 8px 0;
+        padding: 16px 0 8px 0;
     }
 }
 
@@ -1633,7 +1633,7 @@ th.sort-desc::after {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 0 25px 0;
+    padding: 24px 0 25px 0;
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
