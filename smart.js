@@ -1,5 +1,5 @@
 // Entware Manager - SMART мониторинг дисков
-// Версия: 1.0 (унифицированный стиль)
+// Версия: 1.1 (кликабельные зоны, цветные типы, подсветка здоровья)
 // Дата: 2026-07-17
 
 const SMART = {
@@ -7,10 +7,33 @@ const SMART = {
     currentTestDevice: null,
     testPollInterval: null,
 
-    async init() {
+    // Описания атрибутов для всплывающих подсказок
+    ATTR_DESC: {
+        1:   'Read Error Rate — частота ошибок чтения с головок.',
+        3:   'Spin-Up Time — время выхода шпинделя на рабочую скорость.',
+        4:   'Start/Stop Count — количество циклов запуска/останова.',
+        5:   'Reallocated Sectors Count — переназначенные сектора. Критический атрибут!',
+        7:   'Seek Error Rate — частота ошибок позиционирования головок.',
+        9:   'Power-On Hours — общее время работы в часах.',
+        10:  'Spin Retry Count — попытки повторного раскрута шпинделя.',
+        12:  'Power Cycle Count — количество циклов подачи питания.',
+        184: 'End-to-End Error — ошибки на шине передачи данных.',
+        187: 'Reported Uncorrectable Errors — неисправимые ошибки.',
+        188: 'Command Timeout — число таймаутов выполнения команд.',
+        189: 'High Fly Writes — количество записей на неоптимальной высоте.',
+        190: 'Airflow Temperature — температура воздуха внутри корпуса.',
+        193: 'Load Cycle Count — количество циклов парковки головок.',
+        194: 'Temperature — температура диска.',
+        196: 'Reallocation Event Count — количество операций переназначения.',
+        197: 'Current Pending Sector Count — количество нестабильных секторов, ожидающих переназначения.',
+        198: 'Uncorrectable Sector Count — количество неисправимых секторов.',
+        199: 'UDMA CRC Error Count — количество ошибок CRC на интерфейсе.',
+    },
+
+    init() {
         this.stopUpdates();
         this.renderHTML();
-        await this.loadDisks();
+        this.loadDisks();
     },
 
     stopUpdates() {
@@ -53,11 +76,10 @@ const SMART = {
                             <th>Health</th>
                             <th>Temp</th>
                             <th>Power-On</th>
-                            <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody id="smartTableBody">
-                        <tr><td colspan="9">Загрузка...</td></tr>
+                        <tr><td colspan="8">Загрузка...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -70,13 +92,13 @@ const SMART = {
     async loadDisks() {
         const tbody = document.getElementById('smartTableBody');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="9">Загрузка...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8">Загрузка...</td></tr>';
 
         try {
             const data = await apiGet('/smart.cgi?action=list');
             this.renderTable(data.disks || []);
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="9" class="error">Ошибка: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="error">Ошибка: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -85,9 +107,11 @@ const SMART = {
         if (!tbody) return;
 
         if (disks.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9">Диски не найдены или smartmontools не установлен.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">Диски не найдены или smartmontools не установлен.</td></tr>';
             return;
         }
+
+        const TYPE_CLASSES = { hdd: 'drive-hdd', ssd: 'drive-ssd', nvme: 'drive-nvme', sat: 'drive-hdd' };
 
         tbody.innerHTML = disks.map(disk => {
             const healthClass = disk.health === 'PASSED' ? 'status-running' : 'status-stopped';
@@ -96,51 +120,41 @@ const SMART = {
             const tempClass = temp === null ? '' : (temp > 55 ? 'text-red' : (temp > 45 ? 'text-yellow' : ''));
             const tempText = temp !== null ? `${temp}°C` : '—';
             const powerOn = disk.power_on_hours ? `${disk.power_on_hours} ч` : '—';
+            const typeLower = (disk.type || '').toLowerCase();
+            const typeClass = TYPE_CLASSES[typeLower] || '';
+            const healthBorderClass = disk.health === 'PASSED' ? 'smart-health-ok' : 'smart-health-critical';
 
             return `
-                <tr data-device="${escapeHtml(disk.device)}">
+                <tr data-device="${escapeHtml(disk.device)}" class="${healthBorderClass}">
                     <td>${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
                     <td>${escapeHtml(disk.size || '—')}</td>
-                    <td>${escapeHtml(disk.type || '—')}</td>
-                    <td><span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(disk.health)}</span></td>
-                    <td class="${tempClass}">${tempText}</td>
+                    <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
+                    <td class="clickable-health"><span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(disk.health)}</span></td>
+                    <td class="clickable-temp ${tempClass}">${tempText}</td>
                     <td>${powerOn}</td>
-                    <td>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="packages-delete-btn smart-attr-btn" data-device="${escapeHtml(disk.device)}" style="padding: 4px 8px; font-size: 12px; background: #3182ce;">Атрибуты</button>
-                            <button class="packages-delete-btn smart-health-btn" data-device="${escapeHtml(disk.device)}" style="padding: 4px 8px; font-size: 12px; background: #2c7a7b;">Health</button>
-                            <button class="packages-delete-btn smart-test-btn" data-device="${escapeHtml(disk.device)}" style="padding: 4px 8px; font-size: 12px; background: #c05621;">Тест</button>
-                        </div>
-                    </td>
                 </tr>
             `;
         }).join('');
 
-        this.bindButtons();
+        this.bindClickZones();
     },
 
-    bindButtons() {
-        document.querySelectorAll('.smart-attr-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showAttributes(btn.dataset.device);
-            });
-        });
-
-        document.querySelectorAll('.smart-health-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showHealth(btn.dataset.device);
-            });
-        });
-
-        document.querySelectorAll('.smart-test-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showTestDialog(btn.dataset.device);
-            });
+    bindClickZones() {
+        const tbody = document.getElementById('smartTableBody');
+        if (!tbody) return;
+        tbody.addEventListener('click', (e) => {
+            const row = e.target.closest('tr');
+            if (!row || !row.dataset.device) return;
+            const device = row.dataset.device;
+            if (e.target.closest('.clickable-health')) {
+                this.showHealth(device);
+            } else if (e.target.closest('.clickable-temp')) {
+                this.showTestDialog(device);
+            } else {
+                this.showAttributes(device);
+            }
         });
     },
 
@@ -152,6 +166,7 @@ const SMART = {
 
             let html = `
                 <h3 style="margin-bottom: 12px;">Атрибуты SMART: ${escapeHtml(device)}</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Кликните на имя атрибута для справки</p>
                 <div style="overflow-x: auto;">
                     <table class="packages-table" style="width: 100%;">
                         <thead>
@@ -191,10 +206,12 @@ const SMART = {
                     }
                 }
 
+                const desc = this.ATTR_DESC[id] || null;
+
                 html += `
                     <tr class="smart-row-ok">
                         <td>${id}</td>
-                        <td><span class="${impClass}">${escapeHtml(attr.name)}</span></td>
+                        <td><span class="${impClass}${desc ? ' attr-name-clickable' : ''}"${desc ? ` data-desc="${escapeHtml(desc)}" title="${escapeHtml(desc)}"` : ''}>${escapeHtml(attr.name)}</span></td>
                         <td>${value}</td>
                         <td>${parseInt(attr.worst) || 0}</td>
                         <td>${threshold}</td>
@@ -232,6 +249,12 @@ const SMART = {
                 </div>
             `;
             Modal.show(html, false, `SMART атрибуты — ${escapeHtml(device)}`);
+            document.querySelectorAll('#modalBody .attr-name-clickable').forEach(el => {
+                el.addEventListener('click', () => {
+                    const d = el.dataset.desc;
+                    if (d) Toast.show(d, false, 4000);
+                });
+            });
         } catch (err) {
             Modal.error('Ошибка: ' + err.message);
         }

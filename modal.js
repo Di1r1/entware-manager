@@ -20,6 +20,9 @@ const Modal = {
         window.onclick = (event) => {
             if (event.target === this.element) this.hide();
         };
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this.hide();
+        });
     },
 
     show(content, isError = false, title = '') {
