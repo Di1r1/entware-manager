@@ -1619,6 +1619,10 @@ th.sort-desc::after {
     padding: 0 0 10px 0;
     margin-bottom: 15px;
     border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--modal-bg);
 }
 .modal-title {
     font-size: 1.2rem;
