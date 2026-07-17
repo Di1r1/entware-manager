@@ -47,7 +47,7 @@ echo "📂 Копирование /opt/web_entware ..."
 cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
 
 # Проверяем наличие ключевых файлов
-for file in modal.js entware.js style.css index.html icons.svg lib/common.sh lib/utils.js monitor_config.json; do
+for file in modal.js entware.js style.css index.html icons.svg lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json smart.js cgi-bin/smart.cgi cgi-bin/help.cgi cgi-bin/check_deps.cgi monitor_config.json; do
     if [ -f "$BACKUP_DIR/web_entware/$file" ]; then
         echo "✅ $file скопирован."
     else
@@ -114,7 +114,9 @@ cat > "$BACKUP_DIR/CHANGELOG_$APP_VERSION.md" << 'CHANGELOG'
 
 ## Зависимости
 - lighttpd (mod_cgi, mod_alias)
-- ttyd, htop, jq, coreutils-base, procps-ng
+- ttyd, htop, jq, coreutils-base, coreutils-timeout, procps-ng
+- smartmontools, smartmontools-drivedb
+- sudo, bridge-utils, ip-full
 CHANGELOG
 
 # 5. Создаём файл с инструкцией по восстановлению
@@ -134,7 +136,7 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 Перед восстановлением убедитесь, что установлены все необходимые пакеты:
 
    opkg update
-   opkg install lighttpd ttyd htop jq coreutils-base procps-ng
+   opkg install lighttpd ttyd htop jq coreutils-base coreutils-timeout procps-ng smartmontools smartmontools-drivedb sudo bridge-utils ip-full
 
 Если каких-то пакетов нет в репозитории, установите их вручную.
 
@@ -166,7 +168,13 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
    chmod 755 /opt/web_entware/cgi-bin/*.cgi
    [ -d /opt/web_entware/cgi-bin/monitor ] && chmod 755 /opt/web_entware/cgi-bin/monitor/*.cgi
    [ -d /opt/web_entware/cgi-bin/logger ] && chmod 755 /opt/web_entware/cgi-bin/logger/*.cgi
+   [ -d /opt/web_entware/cgi-bin/network ] && chmod 755 /opt/web_entware/cgi-bin/network/*.cgi
+   [ -d /opt/web_entware/cgi-bin/service_watchdog ] && chmod 755 /opt/web_entware/cgi-bin/service_watchdog/*.cgi
+   chmod 755 /opt/web_entware/lib/*.sh
    chmod 755 /opt/web_entware/watchdog.sh
+   chmod 755 /opt/web_entware/network_watchdog.sh
+   chmod 755 /opt/web_entware/service_watchdog.sh
+   chmod 755 /opt/web_entware/backup.sh
 
 === ШАГ 7. Перезапуск lighttpd ===
    /opt/etc/init.d/S80lighttpd restart
