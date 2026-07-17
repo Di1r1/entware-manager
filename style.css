@@ -505,10 +505,23 @@ body {
 .menu-container {
     flex: 1;
     padding: 10px 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 .menu {
     list-style: none;
     margin: 0;
+}
+.menu-container::-webkit-scrollbar {
+    width: 8px;
+}
+.menu-container::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+.menu-container::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
 }
 
 .sidebar-footer {
