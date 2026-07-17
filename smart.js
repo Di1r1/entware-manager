@@ -2,6 +2,16 @@
 // Версия: 1.1 (кликабельные зоны, цветные типы, подсветка здоровья)
 // Дата: 2026-07-17
 
+function formatSize(bytes) {
+    const n = parseInt(bytes);
+    if (!n || isNaN(n)) return '—';
+    const GB = 1024 * 1024 * 1024;
+    const TB = GB * 1024;
+    if (n >= TB) return (n / TB).toFixed(1) + ' TB';
+    if (n >= GB) return Math.round(n / GB) + ' GB';
+    return Math.round(n / (1024 * 1024)) + ' MB';
+}
+
 const SMART = {
     intervalId: null,
     currentTestDevice: null,
@@ -129,7 +139,7 @@ const SMART = {
                     <td>${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
-                    <td>${escapeHtml(disk.size || '—')}</td>
+                    <td>${formatSize(disk.size)}</td>
                     <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
                     <td class="clickable-health"><span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(disk.health)}</span></td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
