@@ -814,7 +814,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
     const input = document.getElementById('helpSearch');
     if (!input) return;
     const content = document.getElementById('helpContent');
@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     input.addEventListener('input', () => filterHelp(input.value));
-});
+})();
 </script>
 </body>
 HELP
