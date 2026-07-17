@@ -1133,9 +1133,12 @@ input[type="submit"]:disabled,
 /* Кликабельные зоны в таблице SMART */
 #smartTable tbody tr { cursor: pointer; }
 .clickable-health,
-.clickable-temp { cursor: pointer; transition: opacity 0.2s; }
+.clickable-temp,
+.clickable-device { cursor: pointer; transition: opacity 0.2s; }
 .clickable-health:hover,
-.clickable-temp:hover { opacity: 0.7; }
+.clickable-temp:hover,
+.clickable-device:hover { opacity: 0.7; }
+.clickable-device { font-weight: 600; text-decoration: underline dotted; text-underline-offset: 2px; }
 
 /* Кликабельное имя атрибута в модалке */
 .attr-name-clickable {

@@ -136,7 +136,7 @@ const SMART = {
 
             return `
                 <tr data-device="${escapeHtml(disk.device)}" class="${healthBorderClass}">
-                    <td>${escapeHtml(disk.device)}</td>
+                    <td class="clickable-device">${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
                     <td>${formatSize(disk.size)}</td>
@@ -162,10 +162,29 @@ const SMART = {
                 this.showHealth(device);
             } else if (e.target.closest('.clickable-temp')) {
                 this.showTestDialog(device);
+            } else if (e.target.closest('.clickable-device')) {
+                this.showInfo(device);
             } else {
                 this.showAttributes(device);
             }
         });
+    },
+
+    async showInfo(device) {
+        Modal.loading('Загрузка информации...');
+        try {
+            const data = await apiGet(`/smart.cgi?action=info&device=${encodeURIComponent(device)}`);
+            if (data.error) { Modal.error(data.error); return; }
+            let html = `
+                <h3 style="margin-bottom: 12px;">Информация: ${escapeHtml(device)}</h3>
+                <div style="font-family: monospace; white-space: pre-wrap; background: var(--input-bg); padding: 12px; border-radius: 6px; font-size: 13px;">
+${escapeHtml(data.info || 'Нет данных')}
+                </div>
+            `;
+            Modal.show(html, false, `SMART информация — ${escapeHtml(device)}`);
+        } catch (err) {
+            Modal.error('Ошибка: ' + err.message);
+        }
     },
 
     async showAttributes(device) {
