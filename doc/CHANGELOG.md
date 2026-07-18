@@ -2,6 +2,32 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.05 (2026-07-18)
+
+### Go migration — все пакетные CGIs → entware-pkg
+
+- **7 CGIs** заменены на единый Go-бинарник `entware-pkg` (765KB UPX), dispatch по `ENDPOINT=имя_файла.cgi`:
+  - `available.cgi` — `opkg list` → JSON (2.7× быстрее: 500ms → 184ms)
+  - `packages.cgi` — `opkg list-installed` → HTML (12.5× быстрее: 600ms → 48ms)
+  - `install.cgi`, `remove.cgi`, `upgrade.cgi` — POST → HTML
+  - `update.cgi` — `opkg update` → HTML
+  - `upgradable.cgi` — `opkg list-upgradable` → JSON (уже был)
+- **Новый пакет** `go/internal/packages/` — shared.go + 7 handler'ов
+- **Удалён** старый `go/internal/upgradable/` (код перенесён в packages)
+- **Оригиналы** сохранены в `tmp/` проекта и в SMB `web_entware/tmp/`
+
+### Пакетный лог — перенос в постоянное хранилище
+
+- **PKG_LOG** перенесён из `/tmp/entware/logs/` (tmpfs) в `/opt/var/log/package_changes.log`
+- **stats.cgi** сам создаёт `mkdir -p + touch` при загрузке — секция «Последние изменения» всегда видна
+- **upgrade_all** теперь логируется в `package_changes.log` (раньше нет)
+
+### Инфраструктура
+
+- **build-deploy.sh**: chmod +x для `cgi-bin/go/*`
+- **backup.sh**: `cgi-bin/go/entware-*` в проверке ключевых файлов и chmod в restore
+- **README.md**, **go/SPEC.md**: SMB-учётка → плейсхолдер `USER%PASS`
+
 ## 1.04.04 (2026-07-17)
 
 ### SMART — кликабельные зоны вместо кнопок

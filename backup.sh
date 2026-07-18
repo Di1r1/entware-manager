@@ -47,7 +47,7 @@ echo "📂 Копирование /opt/web_entware ..."
 cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
 
 # Проверяем наличие ключевых файлов
-for file in modal.js entware.js style.css index.html icons.svg lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json smart.js cgi-bin/smart.cgi cgi-bin/help.cgi cgi-bin/check_deps.cgi monitor_config.json; do
+for file in modal.js entware.js style.css index.html icons.svg lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json smart.js cgi-bin/smart.cgi cgi-bin/help.cgi cgi-bin/check_deps.cgi cgi-bin/go/entware-net cgi-bin/go/entware-pkg monitor_config.json; do
     if [ -f "$BACKUP_DIR/web_entware/$file" ]; then
         echo "✅ $file скопирован."
     else
@@ -165,10 +165,11 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 === ШАГ 6. Права доступа ===
 Убедитесь, что все CGI-скрипты исполняемые:
 
-   chmod 755 /opt/web_entware/cgi-bin/*.cgi
-   [ -d /opt/web_entware/cgi-bin/monitor ] && chmod 755 /opt/web_entware/cgi-bin/monitor/*.cgi
-   [ -d /opt/web_entware/cgi-bin/logger ] && chmod 755 /opt/web_entware/cgi-bin/logger/*.cgi
-   [ -d /opt/web_entware/cgi-bin/network ] && chmod 755 /opt/web_entware/cgi-bin/network/*.cgi
+    chmod 755 /opt/web_entware/cgi-bin/*.cgi
+    [ -d /opt/web_entware/cgi-bin/go ] && chmod 755 /opt/web_entware/cgi-bin/go/*
+    [ -d /opt/web_entware/cgi-bin/monitor ] && chmod 755 /opt/web_entware/cgi-bin/monitor/*.cgi
+    [ -d /opt/web_entware/cgi-bin/logger ] && chmod 755 /opt/web_entware/cgi-bin/logger/*.cgi
+    [ -d /opt/web_entware/cgi-bin/network ] && chmod 755 /opt/web_entware/cgi-bin/network/*.cgi
    [ -d /opt/web_entware/cgi-bin/service_watchdog ] && chmod 755 /opt/web_entware/cgi-bin/service_watchdog/*.cgi
    chmod 755 /opt/web_entware/lib/*.sh
    chmod 755 /opt/web_entware/watchdog.sh

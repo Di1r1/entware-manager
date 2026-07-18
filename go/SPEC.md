@@ -699,6 +699,6 @@ temperature:
 	GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(GOFLAGS) -o bin/temperature.cgi ./cgi/temperature
 
 deploy:
-	smbclient //192.168.3.1/Entware_USB -U 'ULAN%Q123456' \
+	smbclient //192.168.3.1/Entware_USB -U 'USER%PASS' \
 	  -c 'cd web_entware/go; put bin/temperature.cgi; ...'
 ```

@@ -39,6 +39,7 @@ find "$DEPLOY_DIR" -name '*.bak' -delete 2>/dev/null
 
 # Выставляем права
 chmod 755 "$DEPLOY_DIR"/cgi-bin/*.cgi 2>/dev/null || true
+[ -d "$DEPLOY_DIR/cgi-bin/go" ] && chmod 755 "$DEPLOY_DIR"/cgi-bin/go/* 2>/dev/null || true
 [ -d "$DEPLOY_DIR/cgi-bin/monitor" ] && chmod 755 "$DEPLOY_DIR"/cgi-bin/monitor/*.cgi
 [ -d "$DEPLOY_DIR/cgi-bin/logger" ] && chmod 755 "$DEPLOY_DIR"/cgi-bin/logger/*.cgi
 [ -d "$DEPLOY_DIR/cgi-bin/network" ] && chmod 755 "$DEPLOY_DIR"/cgi-bin/network/*.cgi

@@ -1,7 +1,14 @@
 {
-  "version": "1.04.04",
-  "date": "2026-07-17",
+  "version": "1.04.05",
+  "date": "2026-07-18",
   "changes": [
+    "1.04.05: Go migration — все пакетные CGIs (7 шт) в entware-pkg: available, packages, install, remove, upgrade, update, upgradable",
+    "1.04.05: go/internal/packages/ — shared + 7 handlers, dispatch по ENDPOINT=имя.cgi",
+    "1.04.05: packages.cgi: 600ms → 48ms (12.5x), available.cgi: 500ms → 184ms (2.7x)",
+    "1.04.05: PKG_LOG перенесён в /opt/var/log/, stats.cgi сам создаёт файл",
+    "1.04.05: upgrade_all теперь логируется в package_changes.log",
+    "1.04.05: build-deploy.sh: добавлена обработка cgi-bin/go/*",
+    "1.04.05: backup.sh: добавлены cgi-bin/go/entware-* в проверку",
     "1.04.04: SMART: кнопки убраны — клик на строку → Атрибуты, Health → Health modal, Temp → Тест-диалог",
     "1.04.04: SMART: цветные бейджи типа диска (HDD — синий, SSD — зелёный, NVMe — фиолетовый)",
     "1.04.04: SMART: подсветка строки по health (border-left: зелёный/красный)",

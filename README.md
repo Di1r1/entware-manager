@@ -68,7 +68,7 @@ index.html (SPA)  ──fetch──▶  cgi-bin/*.cgi  ──. lib/common.sh─�
 ### Деплой на роутер (SMB)
 
 ```sh
-smbclient //192.168.3.1/Entware_USB -U USER%PASS <<'EOF'
+smbclient //192.168.3.1/Entware_USB -U 'USER%PASS' <<'EOF'
 put deploy/lib/common.sh web_entware/lib/common.sh
 put deploy/cgi-bin/*.cgi web_entware/cgi-bin/
 # ... остальные файлы

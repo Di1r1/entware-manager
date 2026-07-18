@@ -97,9 +97,11 @@ else
 fi
 
 # Последние изменения пакетов
-PKG_LOG="/tmp/entware/logs/package_changes.log"
+PKG_LOG="/opt/var/log/package_changes.log"
 PKG_CHANGES=""
-if [ -f "$PKG_LOG" ]; then
+mkdir -p /opt/var/log 2>/dev/null
+touch "$PKG_LOG" 2>/dev/null
+if [ -s "$PKG_LOG" ]; then
     PKG_CHANGES=$(tail -n 6 "$PKG_LOG" | awk -F' \\| ' '{
         ts=$1; act=$2; pkg=$3; st=$4
         if (st == "success") { icon="✓"; cls="pkg-change-ok" }
