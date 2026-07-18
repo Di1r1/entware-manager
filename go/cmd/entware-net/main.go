@@ -22,6 +22,8 @@ func main() {
 		network.HandleARP()
 	case "network_status":
 		network.HandleStatus()
+	case "network_stats":
+		network.HandleNetworkStats()
 	default:
 		network.WriteError("unknown endpoint: " + ep)
 	}

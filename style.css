@@ -1193,14 +1193,35 @@ input[type="submit"]:disabled,
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Увеличенный текст в модалках графиков температуры */
-.modal-content b {
-    font-size: 1.15rem;
-    font-weight: 700;
+/* Статы температуры в модалках — крупно, ярко, с hover */
+.temp-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 15px;
 }
-.modal-content small {
-    font-size: 0.9rem;
-    opacity: 0.85;
+.temp-stat {
+    text-align: center;
+    cursor: default;
+    transition: transform .2s, text-shadow .2s;
+}
+.temp-stat:hover {
+    transform: scale(1.15);
+    text-shadow: 0 0 15px rgba(46, 204, 113, .4);
+}
+.temp-stat .label {
+    font-size: .85rem;
+    color: var(--text-muted);
+    opacity: .8;
+}
+.temp-stat .value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent, #2ecc71);
+    transition: color .2s;
+}
+.temp-stat .value:hover {
+    color: #fff;
 }
 .close {
     color: var(--text-muted);

@@ -137,11 +137,11 @@
                     let html = '<div style="text-align:center; margin-bottom:15px;">';
                     html += '<canvas id="tempChart" width="500" height="200" style="max-width:100%;"></canvas>';
                     html += '</div>';
-                    html += '<div style="display:flex; justify-content:center; gap:30px;">';
-                    html += '<div><small>Мин</small><br><b>' + Math.min(...temps) + '°C</b></div>';
-                    html += '<div><small>Средняя</small><br><b>' + avg + '°C</b></div>';
-                    html += '<div><small>Макс</small><br><b>' + Math.max(...temps) + '°C</b></div>';
-                    html += '<div><small>Сейчас</small><br><b>' + now + '°C</b></div>';
+                    html += '<div class="temp-stats">';
+                    html += '<div class="temp-stat"><div class="label">Мин</div><div class="value">' + Math.min(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Средняя</div><div class="value">' + avg + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Макс</div><div class="value">' + Math.max(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Сейчас</div><div class="value">' + now + '°C</div></div>';
                     html += '</div>';
                     Modal.show(html, false, 'Температура CPU (7 дней, ' + data.length + ' точек)');
                     setTimeout(() => drawSingleChart('tempChart', temps, times, minTemp, maxTemp, '#2ecc71'), 100);
@@ -171,9 +171,17 @@
                     let html = '<div style="text-align:center; margin-bottom:10px;">';
                     html += '<canvas id="wifiChart" width="500" height="220" style="max-width:100%;"></canvas>';
                     html += '</div>';
-                    html += '<div style="display:flex; justify-content:center; gap:20px; font-size:12px;">';
-                    html += '<div style="color:#3498db;"><span style="display:inline-block;width:12px;height:3px;background:#3498db;vertical-align:middle;margin-right:5px;"></span>WiFi0</div>';
-                    html += '<div style="color:#e74c3c;"><span style="display:inline-block;width:12px;height:3px;background:#e74c3c;vertical-align:middle;margin-right:5px;"></span>WiFi1</div>';
+                    var now0 = data[data.length-1].temp0;
+                    var now1 = data[data.length-1].temp1;
+                    html += '<div class="temp-stats">';
+                    html += '<div class="temp-stat">';
+                    html +=   '<div class="label" style="color:#3498db">WiFi0</div>';
+                    html +=   '<div class="value" style="color:#3498db">' + (now0 !== null ? now0 + '°C' : '—') + '</div>';
+                    html += '</div>';
+                    html += '<div class="temp-stat">';
+                    html +=   '<div class="label" style="color:#e74c3c">WiFi1</div>';
+                    html +=   '<div class="value" style="color:#e74c3c">' + (now1 !== null ? now1 + '°C' : '—') + '</div>';
+                    html += '</div>';
                     html += '</div>';
                     Modal.show(html, false, 'Температура WiFi (7 дней, ' + data.length + ' точек)');
                     setTimeout(() => drawDualChart('wifiChart', temps0, temps1, times, minTemp, maxTemp), 100);
@@ -188,51 +196,90 @@
             const w = canvas.width, h = canvas.height;
             const padding = 40;
             const chartW = w - padding * 2, chartH = h - padding * 2;
-            ctx.clearRect(0, 0, w, h);
-            ctx.strokeStyle = '#4a5568';
-            ctx.lineWidth = 1;
-            ctx.fillStyle = '#4a5568';
-            ctx.font = '10px Inter, sans-serif';
-            const steps = 4, tempRange = maxTemp - minTemp;
-            for (let i = 0; i <= steps; i++) {
-                const y = padding + (chartH / steps) * i;
-                const temp = maxTemp - (tempRange / steps) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding - 5, y);
-                ctx.lineTo(padding, y);
-                ctx.stroke();
-                ctx.fillText(Math.round(temp) + '°', 5, y + 3);
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(w - padding, y);
-                ctx.stroke();
-            }
-            if (temps.length > 1) {
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                temps.forEach((t, i) => {
-                    const x = padding + (chartW / (temps.length - 1)) * i;
-                    const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                });
-                ctx.stroke();
-                ctx.fillStyle = color;
-                temps.forEach((t, i) => {
-                    if (i % Math.ceil(temps.length / 10) !== 0 && i !== temps.length - 1) return;
-                    const x = padding + (chartW / (temps.length - 1)) * i;
-                    const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+            const axisColor = '#a0aec0';
+
+            function render(tooltipIdx) {
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = axisColor;
+                ctx.lineWidth = 1;
+                ctx.fillStyle = axisColor;
+                ctx.font = '10px Inter, sans-serif';
+                const steps = 4, tempRange = maxTemp - minTemp;
+                for (let i = 0; i <= steps; i++) {
+                    const y = padding + (chartH / steps) * i;
+                    const temp = maxTemp - (tempRange / steps) * i;
                     ctx.beginPath();
-                    ctx.arc(x, y, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    if (times[i]) {
-                        ctx.fillStyle = '#4a5568';
-                        ctx.font = '8px Inter, sans-serif';
-                        ctx.fillText(times[i], x - 12, h - 10);
+                    ctx.moveTo(padding - 5, y);
+                    ctx.lineTo(padding, y);
+                    ctx.stroke();
+                    ctx.fillText(Math.round(temp) + '°', 5, y + 3);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, y);
+                    ctx.lineTo(w - padding, y);
+                    ctx.stroke();
+                }
+                if (temps.length > 1) {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    temps.forEach((t, i) => {
+                        const x = padding + (chartW / (temps.length - 1)) * i;
+                        const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                    ctx.fillStyle = color;
+                    temps.forEach((t, i) => {
+                        if (i % Math.ceil(temps.length / 10) !== 0 && i !== temps.length - 1) return;
+                        const x = padding + (chartW / (temps.length - 1)) * i;
+                        const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (times[i]) {
+                            ctx.fillStyle = axisColor;
+                            ctx.font = '8px Inter, sans-serif';
+                            ctx.fillText(times[i], x - 12, h - 10);
+                        }
+                    });
+                    if (tooltipIdx >= 0) {
+                        const t = temps[tooltipIdx];
+                        const tx = padding + (chartW / (temps.length - 1)) * tooltipIdx;
+                        const ty = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(tx, padding);
+                        ctx.lineTo(tx, h - padding);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                        const label = times[tooltipIdx] + '  ' + t + '°C';
+                        ctx.font = '12px Inter, sans-serif';
+                        const tw = ctx.measureText(label).width;
+                        let bx = tx - tw / 2 - 8;
+                        if (bx < 0) bx = 0;
+                        if (bx + tw + 16 > w) bx = w - tw - 16;
+                        const by = padding + 4;
+                        ctx.fillRect(bx, by, tw + 16, 22);
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(label, bx + 8, by + 15);
                     }
-                });
+                }
             }
+
+            render(-1);
+            canvas.onmousemove = function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const idx = Math.round((mx - padding) / chartW * (temps.length - 1));
+                if (idx < 0 || idx >= temps.length) { render(-1); return; }
+                render(idx);
+            };
+            canvas.onmouseleave = function() { render(-1); };
         }
 
         function drawDualChart(canvasId, temps0, temps1, times, minTemp, maxTemp) {
@@ -242,42 +289,99 @@
             const w = canvas.width, h = canvas.height;
             const padding = 40;
             const chartW = w - padding * 2, chartH = h - padding * 2;
-            ctx.clearRect(0, 0, w, h);
-            ctx.strokeStyle = '#4a5568';
-            ctx.lineWidth = 1;
-            ctx.font = '10px Inter, sans-serif';
-            const steps = 4, tempRange = maxTemp - minTemp;
-            for (let i = 0; i <= steps; i++) {
-                const y = padding + (chartH / steps) * i;
-                const temp = maxTemp - (tempRange / steps) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding - 5, y);
-                ctx.lineTo(padding, y);
-                ctx.stroke();
-                ctx.fillStyle = '#4a5568';
-                ctx.fillText(Math.round(temp) + '°', 5, y + 3);
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(w - padding, y);
-                ctx.stroke();
+            const axisColor = '#a0aec0';
+
+            function render(tooltipIdx) {
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = axisColor;
+                ctx.lineWidth = 1;
+                ctx.font = '10px Inter, sans-serif';
+                const steps = 4, tempRange = maxTemp - minTemp;
+                for (let i = 0; i <= steps; i++) {
+                    const y = padding + (chartH / steps) * i;
+                    const temp = maxTemp - (tempRange / steps) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(padding - 5, y);
+                    ctx.lineTo(padding, y);
+                    ctx.stroke();
+                    ctx.fillStyle = axisColor;
+                    ctx.fillText(Math.round(temp) + '°', 5, y + 3);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, y);
+                    ctx.lineTo(w - padding, y);
+                    ctx.stroke();
+                }
+                const n = Math.max(temps0.length, temps1.length);
+                if (n > 1) {
+                    ctx.fillStyle = axisColor;
+                    ctx.font = '8px Inter, sans-serif';
+                    for (let i = 0; i < n; i++) {
+                        if (i % Math.ceil(n / 10) !== 0 && i !== n - 1) continue;
+                        if (times[i]) {
+                            const x = padding + (chartW / (n - 1)) * i;
+                            ctx.fillText(times[i], x - 12, h - 10);
+                        }
+                    }
+                }
+
+                const drawLine = (temps, color) => {
+                    if (temps.length < 2) return;
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    let started = false;
+                    temps.forEach((t, i) => {
+                        if (t === null) return;
+                        const x = padding + (chartW / (temps.length - 1)) * i;
+                        const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+                        if (!started) { ctx.moveTo(x, y); started = true; }
+                        else ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                };
+                drawLine(temps0, '#3498db');
+                drawLine(temps1, '#e74c3c');
+
+                if (tooltipIdx >= 0 && tooltipIdx < n) {
+                    const tx = padding + (chartW / (n - 1)) * tooltipIdx;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(tx, padding);
+                    ctx.lineTo(tx, h - padding);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    const v0 = temps0[tooltipIdx];
+                    const v1 = temps1[tooltipIdx];
+                    let label = times[tooltipIdx] || '';
+                    if (v0 !== null && v0 !== undefined) label += '  WiFi0: ' + v0 + '°C';
+                    if (v1 !== null && v1 !== undefined) label += '  WiFi1: ' + v1 + '°C';
+
+                    ctx.font = '12px Inter, sans-serif';
+                    const tw = ctx.measureText(label).width;
+                    let bx = tx - tw / 2 - 8;
+                    if (bx < 0) bx = 0;
+                    if (bx + tw + 16 > w) bx = w - tw - 16;
+                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                    ctx.fillRect(bx, padding + 4, tw + 16, 22);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(label, bx + 8, padding + 19);
+                }
             }
-            const drawLine = (temps, color) => {
-                if (temps.length < 2) return;
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                let started = false;
-                temps.forEach((t, i) => {
-                    if (t === null) return;
-                    const x = padding + (chartW / (temps.length - 1)) * i;
-                    const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
-                    if (!started) { ctx.moveTo(x, y); started = true; }
-                    else ctx.lineTo(x, y);
-                });
-                ctx.stroke();
+
+            render(-1);
+            canvas.onmousemove = function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const n = Math.max(temps0.length, temps1.length);
+                const idx = Math.round((mx - padding) / chartW * (n - 1));
+                if (idx < 0 || idx >= n) { render(-1); return; }
+                render(idx);
             };
-            drawLine(temps0, '#3498db');
-            drawLine(temps1, '#e74c3c');
+            canvas.onmouseleave = function() { render(-1); };
         }
 
         document.getElementById('tempWidget').addEventListener('click', showTempChart);

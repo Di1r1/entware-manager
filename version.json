@@ -1,7 +1,11 @@
 {
-  "version": "1.04.06",
+  "version": "1.04.07",
   "date": "2026-07-18",
   "changes": [
+    "1.04.07: network_status.cgi (291 строк shell) → Go: ENDPOINT=network_stats в entware-net",
+    "1.04.07: go/internal/network/network_stats.go — чтение /proc/net/dev, /sys/, brctl, ip",
+    "1.04.07: Модалки температуры: текст 1.6rem (вместо 1.15), hover scale(1.15)+glow",
+    "1.04.07: WiFi-модалка: добавлены текущие значения WiFi0°C / WiFi1°C",
     "1.04.06: Go migration — stats.cgi → entware-stats (630KB UPX), 3x быстрее (400ms→132ms)",
     "1.04.06: Go migration — network/status.cgi → entware-net (прямое чтение /proc, без jq)",
     "1.04.06: Все 12 эндпоинтов на Go проверены и работают",

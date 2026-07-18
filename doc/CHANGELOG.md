@@ -2,6 +2,26 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.07 (2026-07-18)
+
+### Go migration — network_status.cgi → entware-net
+
+- **network_status.cgi** (291 строк shell) — карточка статистики сети для sidebar — переписан на Go
+- **go/internal/network/network_stats.go** — новый хендлер `HandleNetworkStats()`
+- **ENDPOINT** `network_stats` — добавлен в dispatch `entware-net`
+- **Прямое чтение**: `/proc/net/dev` (трафик), `/sys/class/net/*/carrier` + `speed` (порты)
+- **exec**: `ip -4 addr show`, `brctl show`, `ip link show`, `ip route show default`
+- **Fork/exec**: 10+ → 5 вызовов
+- **Оригинал**: `tmp/network_status.cgi.original` + SMB `web_entware/tmp/`
+- **Бинарь**: UPX 2.1MB → 739KB (36%)
+- **Итого entware-net**: 5 эндпоинтов (interfaces, routes, arp, status, stats)
+
+### Улучшение модалок температуры
+
+- **Текст крупнее и ярче**: новый CSS-класс `.temp-stat .value` → `1.6rem` (было `1.15rem`), цвет `var(--accent)`
+- **Hover-эффект**: `scale(1.15)` + `text-shadow(glow)` + смена на белый
+- **WiFi-модалка**: добавлены текущие значения температуры WiFi0°C / WiFi1°C (последние точки из истории)
+
 ## 1.04.06 (2026-07-18)
 
 ### Go migration — stats.cgi → entware-stats
