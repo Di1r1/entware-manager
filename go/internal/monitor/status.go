@@ -16,8 +16,8 @@ type Process struct {
 }
 
 type StatusResponse struct {
-	DaemonStatus string    `json:"demon_status"`
-	DaemonPID    string    `json:"demon_pid"`
+	DaemonStatus string    `json:"daemon_status"`
+	DaemonPID    string    `json:"daemon_pid"`
 	Processes    []Process `json:"processes"`
 }
 

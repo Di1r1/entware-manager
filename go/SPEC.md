@@ -688,7 +688,7 @@ ENDPOINT=endpoint_name exec /opt/web_entware/cgi-bin/go/entware-binary
 
 | CGI | Поле | Почему |
 |-----|------|--------|
-| monitor_status.cgi | `demon_status` | с ошибкой, но JS ждёт именно так |
+| monitor_status.cgi | `daemon_status` | `demon_status` — сохранено как в shell-оригинале |
 | services.cgi | `pid` | строка, не int |
 | services.cgi | `enabled` | bool |
 | temperature.cgi | `temperature` | int или null |
