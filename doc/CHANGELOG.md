@@ -2,6 +2,34 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.06 (2026-07-18)
+
+### Go migration — stats.cgi → entware-stats
+
+- **stats.cgi** (273 строк shell) переписан на Go: `entware-stats` (630KB UPX)
+- **go/internal/stats/stats.go** — сбор данных из /proc (meminfo, uptime, model, /proc/*/status) + вызовы df/opkg
+- **Время**: 400ms → **132ms** (3× быстрее)
+- **Fork/exec**: 10+ вызовов → 3 (только opkg×2 + df×1)
+- **Секции**: Система, Память (RAM) + топ-процессы, Пакеты Entware + изменения, Диск (/opt), tmpfs, Блочные устройства, Сеть (lazy JS)
+- **Оригинал**: `tmp/stats.cgi.original` + SMB `web_entware/tmp/`
+
+### Go migration — network/status.cgi → entware-net
+
+- **network/status.cgi** (56 строк shell) переписан на Go: добавлена `HandleStatus()` в `go/internal/network/status.go`
+- **ENDPOINT** `network_status` — dispatch в существующий `entware-net`
+- **Зависимости**: удалены jq, cut, awk — JSON и `/proc/[pid]/stat` парсятся напрямую
+- **Оригинал**: `tmp/status.cgi.original` + SMB `web_entware/tmp/`
+
+### Итог по Go-миграции
+
+| Бинарь | ENDPOINTы | Размер (UPX) |
+|--------|-----------|-------------|
+| `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status` | 721KB |
+| `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable` | 765KB |
+| `entware-stats` | `stats` | 630KB |
+
+Все 12 эндпоинтов проверены и работают.
+
 ## 1.04.05 (2026-07-18)
 
 ### Go migration — все пакетные CGIs → entware-pkg

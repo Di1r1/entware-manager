@@ -1,7 +1,10 @@
 {
-  "version": "1.04.05",
+  "version": "1.04.06",
   "date": "2026-07-18",
   "changes": [
+    "1.04.06: Go migration — stats.cgi → entware-stats (630KB UPX), 3x быстрее (400ms→132ms)",
+    "1.04.06: Go migration — network/status.cgi → entware-net (прямое чтение /proc, без jq)",
+    "1.04.06: Все 12 эндпоинтов на Go проверены и работают",
     "1.04.05: Go migration — все пакетные CGIs (7 шт) в entware-pkg: available, packages, install, remove, upgrade, update, upgradable",
     "1.04.05: go/internal/packages/ — shared + 7 handlers, dispatch по ENDPOINT=имя.cgi",
     "1.04.05: packages.cgi: 600ms → 48ms (12.5x), available.cgi: 500ms → 184ms (2.7x)",
