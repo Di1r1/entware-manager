@@ -1,0 +1,28 @@
+package main
+
+import (
+	"os"
+
+	"entware-manager/internal/monitor"
+)
+
+func main() {
+	ep := os.Getenv("ENDPOINT")
+	if ep == "" {
+		monitor.WriteError("ENDPOINT not set")
+		return
+	}
+
+	switch ep {
+	case "monitor_status":
+		monitor.HandleStatus()
+	case "monitor_action":
+		monitor.HandleAction()
+	case "monitor_config":
+		monitor.HandleConfig()
+	case "monitor_log":
+		monitor.HandleLog()
+	default:
+		monitor.WriteError("unknown endpoint: " + ep)
+	}
+}

@@ -1,8 +1,9 @@
 {
-  "version": "1.04.09",
+  "version": "1.04.10",
   "date": "2026-07-19",
   "changes": [
-    "1.04.09: services.cgi + service_action.cgi (256 строк) → Go: entware-services (704KB UPX)",
+    "1.04.10: monitor/*.cgi (4 шт, 215 строк) → Go: entware-monitor (735KB UPX)",
+    "1.04.10: go/internal/monitor/ — top CPU через /proc/[pid]/stat, без top/grep/awk",
     "1.04.09: go/internal/services/ — чтение /proc для PID вместо ps+grep+awk",
     "1.04.09: 6 шагов поиска PID (PIDFILE, pid-файлы, PROCS, base name, full name, SCRIPT)",
     "1.04.08: go/cmd/entware-logger/ + go/internal/logger/ — 7 handler'ов, dispatch по ENDPOINT",

@@ -2,6 +2,18 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.10 (2026-07-19)
+
+### Go migration — monitor/*.cgi → entware-monitor
+
+- **4 CGI** (215 строк) модуля защиты переписаны на Go: `entware-monitor` (735KB UPX)
+- **go/cmd/entware-monitor/** + **go/internal/monitor/**
+- **monitor\_status**: PID файл + топ-5 процессов через прямое чтение `/proc/[pid]/stat` (вместо `top -bn1 | sed | head | awk` — 4 fork → 0)
+- **monitor\_action**: start/stop/restart (`watchdog.sh`), kill (`SIGKILL`), clearlog
+- **monitor\_config**: GET/POST JSON, авто-миграция `max_processes`, SIGHUP демону
+- **monitor\_log**: grep `[monitor]` из дневного лога + tail 200 → text/plain
+- **Оригиналы**: `tmp/monitor_*.cgi.original` + SMB
+
 ## 1.04.09 (2026-07-19)
 
 ### Go migration — services.cgi + service_action.cgi → entware-services
