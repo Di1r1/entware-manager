@@ -96,10 +96,10 @@
 ### Итог по Go-миграции
 
 | Бинарь | ENDPOINTы | Размер (UPX) |
-|--------|-----------|-------------|
-| `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status` | 721KB |
+|--------|-----------|:------------:|
 | `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable` | 765KB |
 | `entware-stats` | `stats` | 630KB |
+| `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status`, `network_stats` | 739KB |
 
 Все 12 эндпоинтов проверены и работают.
 

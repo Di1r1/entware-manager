@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -72,7 +73,7 @@ func unhex(c byte) int {
 }
 
 func readPOSTBody() string {
-	data, err := os.ReadFile("/dev/stdin")
+	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return ""
 	}

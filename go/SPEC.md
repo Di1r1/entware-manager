@@ -627,47 +627,58 @@ eth0:  123456  789012  ...  0  0  0  0  0  0  0  0  234567  890123  ...
 
 ---
 
-## 9. Именование Go-пакетов и бинарников
+## 9. Архитектура Go-бинарников
 
-### 9.1. Пакеты
+### 9.1. Принцип
+
+Каждый бинарник — группа логически связанных эндпоинтов. Диспетчеризация через `ENDPOINT` (env var):
 
 ```
-shared/          — общая библиотека (config, logger, response, proc, system, security)
-cgi/temperature  — temperature.cgi
-cgi/wifi_temp    — wifi_temp.cgi
-cgi/version      — version.cgi
-cgi/services     — services.cgi
-cgi/network_status — network_status.cgi
-cgi/monitor_status — monitor/monitor_status.cgi
-cgi/stats        — stats.cgi
-cgi/tmpfs        — tmpfs.cgi
-cgi/temp_history — temp_history.cgi
-cgi/kill_pid     — kill_pid.cgi
-daemon/watchdog  — watchdog.sh replacement
+cgi-bin/services.cgi → ENDPOINT=services      exec cgi-bin/go/entware-services
+cgi-bin/monitor/monitor_status.cgi → ENDPOINT=monitor_status exec cgi-bin/go/entware-monitor
 ```
 
 ### 9.2. Бинарники
 
-Каждый `cgi/*` компилируется в бинарник с именем `*.cgi` (например, `temperature.cgi`).
-Размещение: `/opt/web_entware/go/bin/temperature.cgi`.
+| Бинарь | ENDPOINTы | Размер (UPX) |
+|--------|-----------|:------------:|
+| `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable` | 765KB |
+| `entware-stats` | `stats` | 630KB |
+| `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status`, `network_stats` | 739KB |
+| `entware-logger` | `logger_config`, `logger_view`, `logger_system_logs`, `logger_system_log`, `logger_find_by_name`, `logger_rotate`, `logger_clear` | 737KB |
+| `entware-services` | `services`, `service_action`, `ttyd_control` | 708KB |
+| `entware-monitor` | `monitor_status`, `monitor_action`, `monitor_config`, `monitor_log` | 735KB |
 
-Lighttpd alias: `/entware-cgi/` → `/opt/web_entware/go/bin/`.
+### 9.3. Структура пакетов
 
-Либо все CGI в один бинарник-роутер, который диспетчеризует по `SCRIPT_NAME`:
-
-```go
-func main() {
-    script := os.Getenv("SCRIPT_NAME")
-    switch script {
-    case "/entware-cgi/temperature.cgi": temperature.Handle()
-    case "/entware-cgi/services.cgi":    services.Handle()
-    // ...
-    }
-}
+```
+go/
+├── cmd/
+│   ├── entware-pkg/main.go
+│   ├── entware-stats/main.go
+│   ├── entware-net/main.go
+│   ├── entware-logger/main.go
+│   ├── entware-services/main.go
+│   └── entware-monitor/main.go
+├── internal/
+│   ├── packages/     — shared + handlers для entware-pkg
+│   ├── stats/        — handler для entware-stats
+│   ├── network/      — shared + handlers для entware-net
+│   ├── logger/       — shared + handlers для entware-logger
+│   ├── services/     — shared + handlers для entware-services
+│   └── monitor/      — shared + handlers для entware-monitor
+└── go.mod
 ```
 
-Плюс единого бинарника: 1 рантайм, 1 загрузка, 1 размер (~3 MB вместо ~20 MB).
-Минус: при падении — падают все CGI.
+### 9.4. Wrapper CGI (shell)
+
+Каждый CGI-файл — трёхстрочный shell-скрипт:
+
+```sh
+#!/bin/sh
+export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ENDPOINT=endpoint_name exec /opt/web_entware/cgi-bin/go/entware-binary
+```
 
 ---
 
@@ -688,17 +699,16 @@ func main() {
 
 ## 11. Сборка и деплой
 
-```makefile
-GOOS=linux
-GOARCH=mipsle   # Keenetic MIPS
-GOFLAGS=-ldflags="-s -w"
+```sh
+# Сборка
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/entware-xxx ./cmd/entware-xxx/
 
-all: temperature version services network_status monitor_status stats
+# Сжатие
+upx -9 /tmp/entware-xxx -o /tmp/entware-xxx.upx
 
-temperature:
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(GOFLAGS) -o bin/temperature.cgi ./cgi/temperature
+# Деплой
+smbclient //192.168.3.1/Entware_USB -U 'USER%PASS' \\
+  -c 'put /tmp/entware-xxx.upx web_entware/cgi-bin/go/entware-xxx'
 
-deploy:
-	smbclient //192.168.3.1/Entware_USB -U 'USER%PASS' \
-	  -c 'cd web_entware/go; put bin/temperature.cgi; ...'
+# Оригиналы shell сохраняются в tmp/ + SMB web_entware/tmp/
 ```

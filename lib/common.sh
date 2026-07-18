@@ -317,8 +317,8 @@ check_filemgr_auth() {
     elif command -v openssl >/dev/null 2>&1; then
         user_hash=$(echo -n "$user_pass" | openssl dgst -sha256 2>/dev/null | cut -d' ' -f2)
     else
-        # Fallback — отключаем проверку если нет sha256sum
-        return 0
+        # Fallback — нет sha256sum, проверка невозможна → запрещаем
+        return 1
     fi
     [ "$user_hash" = "$stored_hash" ] && return 0
     return 1
