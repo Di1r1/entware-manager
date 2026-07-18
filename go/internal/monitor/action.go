@@ -44,12 +44,18 @@ func handleDaemonAction(action string) {
 	err := cmd.Run()
 
 	if action == "start" || action == "restart" {
+		if err != nil {
+			logMonitor("ERROR", "Не удалось "+action+" демон: "+err.Error())
+			WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action + " демон"})
+			return
+		}
 		time.Sleep(1 * time.Second)
 		pid, err2 := readPIDFile()
 		if err2 == nil && pidAlive(pid) {
-			logMonitor("INFO", fmt.Sprintf("Демон %s (PID: %d)", map[string]string{"start":"запущен","restart":"перезапущен"}[action], pid))
-			logAction("INFO", fmt.Sprintf("Демон защиты %s (PID: %d)", map[string]string{"start":"запущен","restart":"перезапущен"}[action], pid))
-			WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", map[string]string{"start":"запущен","restart":"перезапущен"}[action]), "pid": pid})
+			verb := map[string]string{"start": "запущен", "restart": "перезапущен"}[action]
+			logMonitor("INFO", fmt.Sprintf("Демон %s (PID: %d)", verb, pid))
+			logAction("INFO", fmt.Sprintf("Демон защиты %s (PID: %d)", verb, pid))
+			WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", verb), "pid": pid})
 		} else {
 			logMonitor("ERROR", "Демон не запустился")
 			WriteJSON(map[string]string{"status": "error", "message": "Демон не запустился"})

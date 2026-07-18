@@ -14,6 +14,10 @@
 - **monitor\_log**: grep `[monitor]` из дневного лога + tail 200 → text/plain
 - **Оригиналы**: `tmp/monitor_*.cgi.original` + SMB
 
+### Исправления
+
+- **monitor_action**: добавлена проверка `err` от `cmd.Run()` при start/restart — если `watchdog.sh` завершился с ошибкой, возвращается `"Не удалось start демон"` вместо `"Демон не запустился"`
+
 ## 1.04.09 (2026-07-19)
 
 ### Go migration — services.cgi + service_action.cgi → entware-services
