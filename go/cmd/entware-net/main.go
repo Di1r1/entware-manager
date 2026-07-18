@@ -20,6 +20,8 @@ func main() {
 		network.HandleRoutes()
 	case "network_arp":
 		network.HandleARP()
+	case "network_status":
+		network.HandleStatus()
 	default:
 		network.WriteError("unknown endpoint: " + ep)
 	}
