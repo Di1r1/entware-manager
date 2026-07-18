@@ -2,9 +2,23 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
-## 1.04.08 (2026-07-18)
+## 1.04.09 (2026-07-19)
 
-### Go migration — logger/*.cgi → entware-logger
+### Go migration — services.cgi + service_action.cgi → entware-services
+
+- **services.cgi** (144 строк) + **service_action.cgi** (112 строк) + **ttyd_control.cgi** (134 строк) переписаны на Go: `entware-services` (708KB UPX)
+- **go/cmd/entware-services/** + **go/internal/services/** — dispatch по ENDPOINT
+- **services** (`ENDPOINT=services`): чтение `/opt/etc/init.d/S*`/`K*`, поиск PID:
+  1. PIDFILE из скрипта
+  2. Стандартные pid-файлы (`/tmp/name.pid`, `/var/run/name.pid`, `/opt/var/run/name.pid`)
+  3. PROCS/NAME/DAEMON из скрипта → поиск в `/proc/[pid]/cmdline`
+  4. По базовому имени (без цифр)
+  5. По полному имени (S99name)
+  6. По .py файлу из SCRIPT
+- **Вместо `ps | grep`**: однократное сканирование `/proc` (все PID, cmdline, status)
+- **service_action** (`ENDPOINT=service_action`): start/stop/restart через `exec.Command`, enable/disable через `os.Rename`
+- **ttyd_control**: GET → статус ttyd (8089/9089) через `/proc`, POST → start/stop/restart через `exec.Command` + background
+- **Оригиналы**: `tmp/services.cgi.original` + `tmp/service_action.cgi.original` + `tmp/ttyd_control.cgi.original` + SMB
 
 - **7 CGI** (385 строк) модуля логирования переписаны на Go: `entware-logger` (737KB UPX)
 - **Бинарь**: `go/cmd/entware-logger/`, пакет `go/internal/logger/`
