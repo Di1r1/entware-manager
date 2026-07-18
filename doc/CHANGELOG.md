@@ -2,6 +2,15 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.11 (2026-07-19)
+
+### Исправления
+
+- **Auth fail-open** (`lib/common.sh`): `check_filemgr_auth()` — `return 0` → `return 1` при отсутствии sha256sum/openssl
+- **monitor_action** (`go/internal/monitor/action.go`): добавлена проверка `err` от `cmd.Run()` при start/restart — если `watchdog.sh` завершился с ошибкой, возвращается `"Не удалось start демон"` вместо `"Демон не запустился"`
+- **SPEC.md** (go/SPEC.md): обновлены секции 9-11 (текущая архитектура, 6 бинарников, сборка)
+- **CHANGELOG.md**: обновлена таблица итогов в 1.04.06
+
 ## 1.04.10 (2026-07-19)
 
 ### Go migration — monitor/*.cgi → entware-monitor
