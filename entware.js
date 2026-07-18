@@ -577,7 +577,7 @@ function loadLogsTab() {
             const query = prompt('Введите текст для поиска в имени файла (в /tmp):');
             if (!query || !query.trim()) return;
             try {
-                const result = await apiGet('/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
+                const files = await apiGet('/logger/find_by_name.cgi?q=' + encodeURIComponent(query));
                 if (files.length === 0) { Toast.show('Файлы не найдены.', true); return; }
                 let added = 0;
                 for (const f of files) {
