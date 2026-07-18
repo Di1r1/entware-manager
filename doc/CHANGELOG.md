@@ -2,6 +2,33 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.08 (2026-07-18)
+
+### Go migration — logger/*.cgi → entware-logger
+
+- **7 CGI** (385 строк) модуля логирования переписаны на Go: `entware-logger` (737KB UPX)
+- **Бинарь**: `go/cmd/entware-logger/`, пакет `go/internal/logger/`
+- **ENDPOINTы**: `logger_config`, `logger_view`, `logger_system_logs`, `logger_system_log`, `logger_find_by_name`, `logger_rotate`, `logger_clear`
+- **JSON**: `config.cgi` (GET/POST), `find_by_name.cgi`, `rotate.cgi` (POST), `clear.cgi` (POST)
+- **HTML**: `view.cgi` (фильтр awk → bufio.Scanner), `system_logs.cgi`, `system_log.cgi`, `config.cgi?pretty`
+- **Зависимости**: удалены jq, sed, awk — JSON парсится напрямую, файлы читаются через os.ReadFile/bufio
+- **Оригиналы**: `tmp/*.cgi.original` + SMB `web_entware/tmp/`
+- **Оставлены в shell**: `debug.cgi`, `debug_path.cgi` (отладочные)
+
+### Итог по Go-миграции
+
+| Бинарь | ENDPOINTы | Размер (UPX) |
+|--------|-----------|-------------|
+| `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status`, `network_stats` | 739KB |
+| `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable` | 765KB |
+| `entware-stats` | `stats` | 630KB |
+| `entware-logger` | `logger_config`, `logger_view`, `logger_system_logs`, `logger_system_log`, `logger_find_by_name`, `logger_rotate`, `logger_clear` | 737KB |
+
+### Улучшение модалок температуры
+
+- **Графики**: hover tooltip с точным значением + время, оси `#a0aec0` (вместо невидимого `#4a5568`)
+- **WiFi-график**: добавлены подписи времени по оси X
+
 ## 1.04.07 (2026-07-18)
 
 ### Go migration — network_status.cgi → entware-net
