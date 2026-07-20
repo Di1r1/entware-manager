@@ -255,12 +255,13 @@ func parseTempHistory(lines []string) []map[string]interface{} {
 			continue
 		}
 		t, val := parts[0], parts[1]
-		if !isValidNum(val) {
+		n, err := strconv.Atoi(val)
+		if err != nil {
 			continue
 		}
 		result = append(result, map[string]interface{}{
 			"time": t,
-			"temp": val,
+			"temp": n,
 		})
 	}
 	if result == nil {
@@ -277,13 +278,13 @@ func parseWifiTempHistory(lines []string) []map[string]interface{} {
 			continue
 		}
 		t, t0, t1 := parts[0], parts[1], parts[2]
-		t0Val := "null"
-		t1Val := "null"
-		if isValidNum(t0) {
-			t0Val = t0
+		var t0Val interface{}
+		var t1Val interface{}
+		if n, err := strconv.Atoi(t0); err == nil {
+			t0Val = n
 		}
-		if isValidNum(t1) {
-			t1Val = t1
+		if n, err := strconv.Atoi(t1); err == nil {
+			t1Val = n
 		}
 		result = append(result, map[string]interface{}{
 			"time":  t,
