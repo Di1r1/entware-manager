@@ -2,6 +2,25 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.12 (2026-07-21)
+
+### Новые Go-эндпоинты
+
+- **entware-stats** (main.go): добавлены `version`, `help`, `links_load`
+  - `version.cgi` — читает `/opt/web_entware/version.json` напрямую
+  - `help.cgi` — HTML-страница справки через `//go:embed help.html`
+  - `links_load.cgi` — читает `links.json`, fallback на дефолтные ссылки, определение IP через `net.InterfaceAddrs()`
+- **entware-monitor** (main.go): добавлены `temperature`, `wifi_temp`, `temp_history`, `wifi_temp_history`
+  - `temperature.cgi` — читает `/sys/class/thermal/` напрямую, без `cat`/`sed`
+  - `wifi_temp.cgi` — HTTP-запрос к Keenetic API через `net/http` вместо `wget`+`jq`
+  - `temp_history.cgi` / `wifi_temp_history.cgi` — чтение/запись истории через Go (glob, os.ReadFile, json.Marshal)
+- `shared.go`: добавлен `GetParam(key)` — читает `QUERY_STRING` + POST body
+
+### Снятые shell-зависимости
+
+- Удалены вызовы: `cat`, `sed`, `wget`, `jq`, `grep`, `cut`, `tr`, `head`, `hostname`, `awk`, `date`, `find`, `ls`, `rm`, `mkdir` из этих 7 CGI
+- Общее сокращение: ~7 shell-подпроцессов на каждый вызов температуры (×5760 раз/день = ~40 000 подпроцессов/день)
+
 ## 1.04.11 (2026-07-19)
 
 ### Исправления

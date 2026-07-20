@@ -34,6 +34,22 @@ func IsPOST() bool {
 	return os.Getenv("REQUEST_METHOD") == "POST"
 }
 
+func GetParam(key string) string {
+	qs := os.Getenv("QUERY_STRING")
+	params := parseFormBody(qs)
+	if v, ok := params[key]; ok {
+		return v
+	}
+	if IsPOST() {
+		body := readPOSTBody()
+		params = parseFormBody(body)
+		if v, ok := params[key]; ok {
+			return v
+		}
+	}
+	return ""
+}
+
 func readPOSTBody() string {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {

@@ -22,6 +22,14 @@ func main() {
 		monitor.HandleConfig()
 	case "monitor_log":
 		monitor.HandleLog()
+	case "temperature":
+		monitor.HandleTemperature()
+	case "wifi_temp":
+		monitor.HandleWifiTemp()
+	case "temp_history":
+		monitor.HandleTempHistory()
+	case "wifi_temp_history":
+		monitor.HandleWifiTempHistory()
 	default:
 		monitor.WriteError("unknown endpoint: " + ep)
 	}

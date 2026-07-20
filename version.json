@@ -1,9 +1,10 @@
 {
-  "version": "1.04.11",
-  "date": "2026-07-19",
+  "version": "1.04.12",
+  "date": "2026-07-21",
   "changes": [
-    "1.04.11: fix auth fail-open (common.sh check_filemgr_auth: return 0→1), docs update",
-    "1.04.11: fix monitor_status: json tag demon_status→daemon_status (не совпадало с JS)",
+    "1.04.12: fix auth fail-open (common.sh check_filemgr_auth: return 0→1), docs update",
+    "1.04.12: fix monitor_status: json tag demon_status→daemon_status (не совпадало с JS)",
+    "1.04.12: migrate version.cgi, help.cgi, links_load.cgi → entware-stats; temperature.cgi, wifi_temp.cgi, temp_history.cgi, wifi_temp_history.cgi → entware-monitor",
     "1.04.10: monitor/*.cgi (4 шт, 215 строк) → Go: entware-monitor (735KB UPX)",
     "1.04.10: go/internal/monitor/ — top CPU через /proc/[pid]/stat, без top/grep/awk",
     "1.04.10: fix monitor_action: проверка err при start/restart (был пропущен exit code watchdog.sh)",
