@@ -29,6 +29,10 @@ func main() {
 		stats.HandleViewFile()
 	case "delete_file":
 		stats.HandleDeleteFile()
+	case "links_save":
+		stats.HandleLinksSave()
+	case "auth_config":
+		stats.HandleAuthConfig()
 	default:
 		fmt.Println("Content-type: text/html; charset=utf-8\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)
