@@ -33,6 +33,10 @@ func main() {
 		stats.HandleLinksSave()
 	case "auth_config":
 		stats.HandleAuthConfig()
+	case "crontab":
+		stats.HandleCrontab()
+	case "crontab_update":
+		stats.HandleCrontabUpdate()
 	default:
 		fmt.Println("Content-type: text/html; charset=utf-8\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)
