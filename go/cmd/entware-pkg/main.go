@@ -28,6 +28,8 @@ func main() {
 		packages.Update()
 	case "upgradable":
 		packages.Upgradable()
+	case "api":
+		packages.HandleAPI()
 	default:
 		packages.WriteError("unknown endpoint: " + ep)
 	}
