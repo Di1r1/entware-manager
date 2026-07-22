@@ -127,13 +127,14 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 		}
 
 		escName := html.EscapeString(name)
+		escPath := html.EscapeString(fullPath)
 		qPath := url.QueryEscape(fullPath)
 
 		isDir := entry.IsDir()
 		dtype := "file"
 		icon := "file"
 		iconClass := "file"
-		link := fmt.Sprintf(`<a href="#" class="file-link" data-path="%s">%s</a>`, qPath, escName)
+		link := fmt.Sprintf(`<a href="#" class="file-link" data-path="%s">%s</a>`, escPath, escName)
 
 		if isDir {
 			icon = "folder"
@@ -142,14 +143,9 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 			dtype = "dir"
 		}
 
-		dataPath := strings.ReplaceAll(fullPath, "&", "&amp;")
-		dataPath = strings.ReplaceAll(dataPath, "\"", "&quot;")
-		dataName := strings.ReplaceAll(name, "&", "&amp;")
-		dataName = strings.ReplaceAll(dataName, "\"", "&quot;")
-
 		action := fmt.Sprintf(
 			`<button class="delete-file-btn" data-path="%s" data-name="%s" data-type="%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-trash"/></svg></button>`,
-			dataPath, dataName, dtype,
+			escPath, escName, dtype,
 		)
 
 		hsize := humanSize(info.Size())
