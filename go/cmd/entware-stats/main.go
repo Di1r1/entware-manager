@@ -23,6 +23,8 @@ func main() {
 		stats.HandleHelp()
 	case "links_load":
 		stats.HandleLinksLoad()
+	case "tmpfs":
+		stats.HandleTmpfs()
 	default:
 		fmt.Println("Content-type: text/html; charset=utf-8\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)

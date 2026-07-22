@@ -2,6 +2,16 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.04.13 (2026-07-22)
+
+### Новые Go-эндпоинты
+
+- **entware-stats**: добавлен `tmpfs` — файловый менеджер tmpfs (`os.ReadDir` + `os.Stat` вместо `ls -lA | awk`/`ls -1A` + per-file `ls -ld`)
+  - Все shell-зависимости удалены: `ls`, `awk`, `sed`, `jq`, `dirname`, `tr`, `while read`
+  - Владелец: группа: числовые UID/GID из `syscall.Stat_t`
+  - Ширина вывода: 210 строк HTML (против 355 shell)
+  - Защита от directory traversal через `filepath.Clean`
+
 ## 1.04.12 (2026-07-21)
 
 ### Новые Go-эндпоинты

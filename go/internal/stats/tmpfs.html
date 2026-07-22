@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>tmpfs: {TITLE_PATH}</title>
+    <link rel="stylesheet" href="/entware-manager/style.css">
+    <script src="/entware-manager/modal.js?v=1"></script>
+</head>
+<body class="packages-body">
+<div class="packages-container">
+    <div class="file-manager">
+        <h2 style="display: flex; align-items: center; gap: 8px;">
+            <span class="stat-icon" style="width: 28px; height: 28px;">
+                <svg class="icon" width="28" height="28">
+                    <use href="/entware-manager/icons.svg?v=2#icon-folder"/>
+                </svg>
+            </span>
+            tmpfs: {TITLE_PATH}
+        </h2>
+        <div class="path-nav">
+            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-folder"/></svg>
+            <a href="?path=/">root</a>
+            {BREADCRUMB}
+        </div>
+        <table class="file-table">
+            <thead>
+                <th>Имя</th><th>Размер</th><th>Изменён</th><th>Права</th><th>Владелец</th><th>Действие</th>
+            </thead>
+            <tbody>
+                {UP_LINK}
+                {FILE_ROWS}
+            </tbody>
+         </table>
+        <p style="margin-top:1rem;"><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
+    </div>
+</div>
+
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle"></h2>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+var AUTH_ENABLED = {AUTH_ENABLED};
+var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pass') || ''; } catch(e) { return ''; } })();
+
+    function parseSize(str) {
+        if (!str) return 0;
+        str = str.trim();
+        var units = { 'B': 1, 'K': 1024, 'M': 1048576, 'G': 1073741824 };
+        var match = str.match(/^([\d.,]+)\s*([KMGT]?B?)$/i);
+        if (!match) return 0;
+        var val = parseFloat(match[1].replace(',', '.'));
+        var unit = match[2].toUpperCase();
+        if (unit === 'B') unit = 'B';
+        if (!units[unit]) return val;
+        return val * units[unit];
+    }
+
+    function sortTable(table, colIndex, dataType) {
+        var tbody = table.tBodies[0];
+        var rows = Array.from(tbody.rows);
+        var sortOrder = table.dataset.sortOrder === 'asc' ? 'desc' : 'asc';
+        table.dataset.sortOrder = sortOrder;
+
+        rows.sort(function(a, b) {
+            var aVal = a.cells[colIndex] ? a.cells[colIndex].innerText.trim() : '';
+            var bVal = b.cells[colIndex] ? b.cells[colIndex].innerText.trim() : '';
+
+            if (dataType === 'size') {
+                aVal = parseSize(aVal);
+                bVal = parseSize(bVal);
+            } else if (dataType === 'percent') {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+            }
+
+            if (sortOrder === 'asc') {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            } else {
+                return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+            }
+        });
+
+        rows.forEach(function(row) { tbody.appendChild(row); });
+        updateSortIndicators(table, colIndex, sortOrder);
+    }
+
+    function updateSortIndicators(table, activeCol, sortOrder) {
+        var headers = table.querySelectorAll('thead th');
+        headers.forEach(function(th, idx) {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (idx === activeCol) {
+                th.classList.add(sortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    }
+
+    function enableSorting() {
+        var tables = document.querySelectorAll('.file-table');
+        tables.forEach(function(table) {
+            if (table.dataset.sortable) return;
+            table.dataset.sortable = 'true';
+            var headers = table.querySelectorAll('thead th');
+            headers.forEach(function(th, idx) {
+                th.style.cursor = 'pointer';
+                th.addEventListener('click', function() {
+                    var dataType = 'string';
+                    var colText = th.innerText.toLowerCase();
+                    if (colText === 'размер') {
+                        dataType = 'size';
+                    }
+                    sortTable(table, idx, dataType);
+                });
+            });
+        });
+    }
+
+    function deleteFile(path, type, name) {
+        if (!confirm('Удалить ' + (type === 'dir' ? 'папку' : 'файл') + ' "' + name + '"?')) return;
+
+        var body = 'path=' + encodeURIComponent(path);
+
+        if (AUTH_ENABLED) {
+            if (!FILEMGR_PASS) {
+                FILEMGR_PASS = prompt('Введите пароль для доступа к файловому менеджеру:');
+                if (!FILEMGR_PASS) return;
+                sessionStorage.setItem('filemgr_pass', FILEMGR_PASS);
+            }
+            body += '&password=' + encodeURIComponent(FILEMGR_PASS);
+        }
+
+        fetch('/entware-cgi/delete_file.cgi', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: body
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                Toast.show('Удаление выполнено', false);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else if (data.status === 'error' && data.message === 'Неверный пароль') {
+                FILEMGR_PASS = '';
+                sessionStorage.removeItem('filemgr_pass');
+                Toast.show('Неверный пароль', true);
+            } else {
+                Toast.show('Ошибка: ' + data.message, true);
+            }
+        })
+        .catch(function(err) {
+            Toast.show('Ошибка запроса: ' + err.message, true);
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"]/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m];
+        });
+    }
+
+    function viewFile(path) {
+        fetch('/entware-cgi/view_file.cgi?path=' + encodeURIComponent(path), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    var html = '<pre style="max-height:70vh;overflow:auto;background:#1a1a2e;padding:16px;border-radius:8px;font-size:13px;line-height:1.4;color:#e0e0e0;white-space:pre-wrap;word-wrap:break-word;">' + escapeHtml(data.content) + '</pre>';
+                    Modal.info(html, 'Файл: ' + data.name);
+                } else {
+                    Toast.show('Ошибка: ' + data.message, true);
+                }
+            })
+            .catch(function(err) {
+                Toast.show('Ошибка запроса: ' + err.message, true);
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        enableSorting();
+        document.querySelectorAll('.delete-file-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                deleteFile(this.dataset.path, this.dataset.type, this.dataset.name);
+            });
+        });
+        document.querySelectorAll('.file-link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                viewFile(this.dataset.path);
+            });
+        });
+    });
+})();
+</script>
+</body>
+</html>
