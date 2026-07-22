@@ -30,6 +30,8 @@ func main() {
 		monitor.HandleTempHistory()
 	case "wifi_temp_history":
 		monitor.HandleWifiTempHistory()
+	case "kill_pid":
+		monitor.HandleKillPID()
 	default:
 		monitor.WriteError("unknown endpoint: " + ep)
 	}
