@@ -7,10 +7,14 @@
 ### Новые Go-эндпоинты
 
 - **entware-stats**: добавлен `tmpfs` — файловый менеджер tmpfs (`os.ReadDir` + `os.Stat` вместо `ls -lA | awk`/`ls -1A` + per-file `ls -ld`)
-  - Все shell-зависимости удалены: `ls`, `awk`, `sed`, `jq`, `dirname`, `tr`, `while read`
+  - Все shell-зависимости удалены: `ls`, `awk`, `sed`, `jq`, `dirname`, `tr`, `while read`, `mkdir`, `date`
   - Владелец: группа: числовые UID/GID из `syscall.Stat_t`
   - Ширина вывода: 210 строк HTML (против 355 shell)
   - Защита от directory traversal через `filepath.Clean`
+- **entware-stats**: добавлен `view_file` — просмотр файлов (JSON для XHR, HTML для браузера)
+  - `os.ReadFile` + проверка на null-байты (вместо `od | tr | grep`)
+  - Ограничение 1 MB, последние 1000 строк
+  - Путь только `/tmp/*` и `/dev/shm/*`
 
 ## 1.04.12 (2026-07-21)
 
