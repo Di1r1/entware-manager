@@ -15,6 +15,16 @@
   - `os.ReadFile` + проверка на null-байты (вместо `od | tr | grep`)
   - Ограничение 1 MB, последние 1000 строк
   - Путь только `/tmp/*` и `/dev/shm/*`
+- **entware-stats**: добавлен `delete_file` — POST-удаление файлов/папок (`os.Remove` вместо `rm / rmdir`)
+  - Проверка пароля через `crypto/sha256` (вместо `sha256sum`/`openssl`)
+  - Логирование в `/tmp/entware/logs/`
+- **entware-stats**: добавлен `links_save` — POST-сохранение ссылок (`json.Valid` вместо `jq empty`)
+- **entware-stats**: добавлен `auth_config` — GET/POST управление паролем файлового менеджера
+- **entware-stats**: добавлены `crontab` + `crontab_update` — чтение/сохранение crontab (system/opt)
+  - `exec.Command("crontab")` с stdin вместо temp-файла
+  - `syscall.SIGHUP` для перезагрузки cron
+- **entware-pkg**: добавлен `api` — информация о пакете через `opkg info`
+- **entware-monitor**: добавлен `kill_pid` — принудительное завершение процесса (`os.FindProcess` + `os.Kill`)
 
 ## 1.04.12 (2026-07-21)
 

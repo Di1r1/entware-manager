@@ -642,12 +642,12 @@ cgi-bin/monitor/monitor_status.cgi → ENDPOINT=monitor_status exec cgi-bin/go/e
 
 | Бинарь | ENDPOINTы | Размер (UPX) |
 |--------|-----------|:------------:|
-| `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable` | 765KB |
-| `entware-stats` | `stats` | 630KB |
+| `entware-pkg` | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable`, `api` | 765KB |
+| `entware-stats` | `stats`, `version`, `help`, `links_load`, `links_save`, `tmpfs`, `view_file`, `delete_file`, `auth_config`, `crontab`, `crontab_update` | 791KB |
 | `entware-net` | `network_interfaces`, `network_routes`, `network_arp`, `network_status`, `network_stats` | 739KB |
 | `entware-logger` | `logger_config`, `logger_view`, `logger_system_logs`, `logger_system_log`, `logger_find_by_name`, `logger_rotate`, `logger_clear` | 737KB |
 | `entware-services` | `services`, `service_action`, `ttyd_control` | 708KB |
-| `entware-monitor` | `monitor_status`, `monitor_action`, `monitor_config`, `monitor_log` | 735KB |
+| `entware-monitor` | `monitor_status`, `monitor_action`, `monitor_config`, `monitor_log`, `temperature`, `wifi_temp`, `temp_history`, `wifi_temp_history`, `kill_pid` | 1.8MB |
 
 ### 9.3. Структура пакетов
 
