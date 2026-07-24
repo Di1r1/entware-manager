@@ -127,7 +127,12 @@ const SMART = {
             const attrHealth = disk.attr_health || 'ok';
             let healthClass = 'status-running';
             let healthIcon = 'icon-check';
-            if (attrHealth === 'warning') {
+            let healthText = disk.health;
+            if (attrHealth === 'inactive') {
+                healthClass = '';
+                healthIcon = '';
+                healthText = '—';
+            } else if (attrHealth === 'warning') {
                 healthClass = 'status-warning';
                 healthIcon = 'icon-alert';
             } else if (attrHealth === 'critical' || disk.health !== 'PASSED') {
@@ -149,7 +154,7 @@ const SMART = {
                     <td>${escapeHtml(disk.serial || '—')}</td>
                     <td class="clickable-usage">${formatSize(disk.size)}</td>
                     <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
-                    <td class="clickable-health"><span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(disk.health)}</span></td>
+                    <td class="clickable-health">${healthClass ? `<span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(healthText)}</span>` : `<span style="color: var(--text-muted);">${escapeHtml(healthText)}</span>`}</td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
                     <td>${powerOn}</td>
                 </tr>

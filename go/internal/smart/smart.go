@@ -234,15 +234,6 @@ func isRemovable(name string) bool {
 	return strings.TrimSpace(string(data)) == "1"
 }
 
-func escapeJSON(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	s = strings.ReplaceAll(s, "\r", "\\r")
-	s = strings.ReplaceAll(s, "\t", "\\t")
-	return s
-}
-
 func extractField(output, pattern string, field int) string {
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
@@ -460,6 +451,11 @@ func diskInfo(name string) DiskInfo {
 		health = parts[len(parts)-1]
 	}
 
+	// USB flash drives don't have SMART — suppress UNKNOWN
+	if health == "UNKNOWN" && displayType == "usb" {
+		health = "\u2014"
+	}
+
 	temperature := extractField(output, "Temperature_Celsius", 9)
 	if temperature == "" {
 		temperature = extractField(output, "Current Temperature", 9)
@@ -478,7 +474,9 @@ func diskInfo(name string) DiskInfo {
 	powerOn = strings.TrimLeft(powerOn, "+")
 
 	attrHealth := "ok"
-	if health != "PASSED" {
+	if health == "\u2014" {
+		attrHealth = "inactive"
+	} else if health != "PASSED" {
 		attrHealth = "critical"
 	} else {
 		attrHealth = checkAttrHealth(output)
