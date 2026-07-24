@@ -251,7 +251,8 @@
                         const t = temps[tooltipIdx];
                         const tx = padding + (chartW / (temps.length - 1)) * tooltipIdx;
                         const ty = padding + chartH - ((t - minTemp) / tempRange) * chartH;
-                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                         ctx.lineWidth = 1;
                         ctx.setLineDash([4, 4]);
                         ctx.beginPath();
@@ -259,18 +260,27 @@
                         ctx.lineTo(tx, h - padding);
                         ctx.stroke();
                         ctx.setLineDash([]);
-                        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
                         const label = times[tooltipIdx] + '  ' + t + '°C';
-                        ctx.font = '12px Inter, sans-serif';
+                        ctx.font = '13px Inter, sans-serif';
                         const tw = ctx.measureText(label).width;
-                        let bx = tx - tw / 2 - 8;
-                        if (bx < 0) bx = 0;
-                        if (bx + tw + 16 > w) bx = w - tw - 16;
+                        let bx = tx - tw / 2 - 10;
+                        if (bx < 5) bx = 5;
+                        if (bx + tw + 20 > w) bx = w - tw - 20;
                         const by = padding + 4;
-                        ctx.fillRect(bx, by, tw + 16, 22);
+                        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                        const r = 6;
+                        ctx.beginPath();
+                        ctx.roundRect(bx, by, tw + 20, 26, r);
+                        ctx.fill();
                         ctx.fillStyle = '#fff';
-                        ctx.shadowBlur = 0;
-                        ctx.fillText(label, bx + 8, by + 15);
+                        ctx.fillText(label, bx + 10, by + 18);
                     }
                 }
             }
@@ -355,7 +365,8 @@
 
                 if (tooltipIdx >= 0 && tooltipIdx < n) {
                     const tx = padding + (chartW / (n - 1)) * tooltipIdx;
-                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([4, 4]);
                     ctx.beginPath();
@@ -366,20 +377,38 @@
 
                     const v0 = temps0[tooltipIdx];
                     const v1 = temps1[tooltipIdx];
+
+                    const drawTooltipDot = (val, color, yOffset) => {
+                        if (val === null || val === undefined) return;
+                        const yy = padding + chartH - ((val - minTemp) / tempRange) * chartH;
+                        ctx.beginPath();
+                        ctx.arc(tx, yy, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    };
+                    drawTooltipDot(v0, '#3498db', 0);
+                    drawTooltipDot(v1, '#e74c3c', 0);
+
                     let label = times[tooltipIdx] || '';
                     if (v0 !== null && v0 !== undefined) label += '  WiFi0: ' + v0 + '°C';
                     if (v1 !== null && v1 !== undefined) label += '  WiFi1: ' + v1 + '°C';
 
-                    ctx.font = '12px Inter, sans-serif';
+                    ctx.font = '13px Inter, sans-serif';
                     const tw = ctx.measureText(label).width;
-                    let bx = tx - tw / 2 - 8;
-                    if (bx < 0) bx = 0;
-                    if (bx + tw + 16 > w) bx = w - tw - 16;
-                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-                    ctx.fillRect(bx, padding + 4, tw + 16, 22);
+                    let bx = tx - tw / 2 - 10;
+                    if (bx < 5) bx = 5;
+                    if (bx + tw + 20 > w) bx = w - tw - 20;
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                    const r = 6;
+                    ctx.beginPath();
+                    ctx.roundRect(bx, padding + 4, tw + 20, 26, r);
+                    ctx.fill();
                     ctx.fillStyle = '#fff';
+                    ctx.fillText(label, bx + 10, padding + 22);
                     ctx.shadowBlur = 0;
-                    ctx.fillText(label, bx + 8, padding + 19);
                 }
             }
 
