@@ -200,7 +200,9 @@
                 ctx.strokeStyle = axisColor;
                 ctx.lineWidth = 1;
                 ctx.fillStyle = axisColor;
-                ctx.font = '10px Inter, sans-serif';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 3;
                 const steps = 4, tempRange = maxTemp - minTemp;
                 for (let i = 0; i <= steps; i++) {
                     const y = padding + (chartH / steps) * i;
@@ -209,12 +211,15 @@
                     ctx.moveTo(padding - 5, y);
                     ctx.lineTo(padding, y);
                     ctx.stroke();
+                    ctx.shadowBlur = 3;
                     ctx.fillText(Math.round(temp) + '°', 5, y + 3);
+                    ctx.shadowBlur = 0;
                     ctx.beginPath();
                     ctx.moveTo(padding, y);
                     ctx.lineTo(w - padding, y);
                     ctx.stroke();
                 }
+                ctx.shadowBlur = 0;
                 if (temps.length > 1) {
                     ctx.strokeStyle = color;
                     ctx.lineWidth = 2;
@@ -236,8 +241,10 @@
                         ctx.fill();
                         if (times[i]) {
                             ctx.fillStyle = axisColor;
-                            ctx.font = '8px Inter, sans-serif';
+                            ctx.font = '9px Inter, sans-serif';
+                            ctx.shadowBlur = 3;
                             ctx.fillText(times[i], x - 12, h - 10);
+                            ctx.shadowBlur = 0;
                         }
                     });
                     if (tooltipIdx >= 0) {
@@ -262,6 +269,7 @@
                         const by = padding + 4;
                         ctx.fillRect(bx, by, tw + 16, 22);
                         ctx.fillStyle = '#fff';
+                        ctx.shadowBlur = 0;
                         ctx.fillText(label, bx + 8, by + 15);
                     }
                 }
@@ -292,7 +300,9 @@
                 ctx.clearRect(0, 0, w, h);
                 ctx.strokeStyle = axisColor;
                 ctx.lineWidth = 1;
-                ctx.font = '10px Inter, sans-serif';
+                ctx.fillStyle = axisColor;
+                ctx.font = '11px Inter, sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
                 const steps = 4, tempRange = maxTemp - minTemp;
                 for (let i = 0; i <= steps; i++) {
                     const y = padding + (chartH / steps) * i;
@@ -301,22 +311,26 @@
                     ctx.moveTo(padding - 5, y);
                     ctx.lineTo(padding, y);
                     ctx.stroke();
-                    ctx.fillStyle = axisColor;
+                    ctx.shadowBlur = 3;
                     ctx.fillText(Math.round(temp) + '°', 5, y + 3);
+                    ctx.shadowBlur = 0;
                     ctx.beginPath();
                     ctx.moveTo(padding, y);
                     ctx.lineTo(w - padding, y);
                     ctx.stroke();
                 }
+                ctx.shadowBlur = 0;
                 const n = Math.max(temps0.length, temps1.length);
                 if (n > 1) {
                     ctx.fillStyle = axisColor;
-                    ctx.font = '8px Inter, sans-serif';
+                    ctx.font = '9px Inter, sans-serif';
                     for (let i = 0; i < n; i++) {
                         if (i % Math.ceil(n / 10) !== 0 && i !== n - 1) continue;
                         if (times[i]) {
                             const x = padding + (chartW / (n - 1)) * i;
+                            ctx.shadowBlur = 3;
                             ctx.fillText(times[i], x - 12, h - 10);
+                            ctx.shadowBlur = 0;
                         }
                     }
                 }
@@ -364,6 +378,7 @@
                     ctx.fillStyle = 'rgba(0,0,0,0.85)';
                     ctx.fillRect(bx, padding + 4, tw + 16, 22);
                     ctx.fillStyle = '#fff';
+                    ctx.shadowBlur = 0;
                     ctx.fillText(label, bx + 8, padding + 19);
                 }
             }
@@ -399,15 +414,15 @@
                     const avg = Math.round(temps.reduce((a,b) => a+b, 0) / temps.length);
                     const now = temps[temps.length - 1];
 
-                    html += '<h4 style="margin:0 0 8px 0;">CPU</h4>';
+                    html += '<h4 style="margin:0 0 8px 0; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">CPU</h4>';
                     html += '<div style="text-align:center;">';
-                    html += '<canvas id="cpuChart" width="500" height="150" style="max-width:100%;"></canvas>';
+                    html += '<canvas id="cpuChart" width="600" height="220" style="max-width:100%;"></canvas>';
                     html += '</div>';
                     html += '<div class="temp-stats" style="margin-bottom:16px;">';
-                    html += '<div class="temp-stat"><div class="label">Мин</div><div class="value">' + Math.min(...temps) + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label">Средняя</div><div class="value">' + avg + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label">Макс</div><div class="value">' + Math.max(...temps) + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label">Сейчас</div><div class="value">' + now + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Мин</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + Math.min(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Средняя</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + avg + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Макс</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + Math.max(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Сейчас</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + now + '°C</div></div>';
                     html += '</div>';
 
                     setTimeout(() => drawSingleChart('cpuChart', temps, times, minTemp, maxTemp, '#2ecc71'), 100);
@@ -425,13 +440,13 @@
                         var now0 = wifiData[wifiData.length-1].temp0;
                         var now1 = wifiData[wifiData.length-1].temp1;
 
-                        html += '<h4 style="margin:0 0 8px 0;">WiFi</h4>';
+                        html += '<h4 style="margin:0 0 8px 0; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">WiFi</h4>';
                         html += '<div style="text-align:center;">';
-                        html += '<canvas id="wifiChart2" width="500" height="150" style="max-width:100%;"></canvas>';
+                        html += '<canvas id="wifiChart2" width="600" height="220" style="max-width:100%;"></canvas>';
                         html += '</div>';
                         html += '<div class="temp-stats">';
-                        html += '<div class="temp-stat"><div class="label" style="color:#3498db">WiFi0</div><div class="value" style="color:#3498db">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
-                        html += '<div class="temp-stat"><div class="label" style="color:#e74c3c">WiFi1</div><div class="value" style="color:#e74c3c">' + (now1 !== null ? now1 + '°C' : '—') + '</div></div>';
+                        html += '<div class="temp-stat"><div class="label" style="color:#3498db; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi0</div><div class="value" style="color:#3498db; text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
+                        html += '<div class="temp-stat"><div class="label" style="color:#e74c3c; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi1</div><div class="value" style="color:#e74c3c; text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + (now1 !== null ? now1 + '°C' : '—') + '</div></div>';
                         html += '</div>';
 
                         setTimeout(() => drawDualChart('wifiChart2', temps0, temps1, times, minTemp, maxTemp), 200);
