@@ -204,7 +204,7 @@ func cleanupOldTemp(prefix, marker string) {
 func saveTempPoint(prefix, temp string) {
 	today := time.Now().Format("2006-01-02")
 	now := time.Now().Format("15:04:05")
-	line := now + "|" + temp + "\n"
+	line := today + " " + now + "|" + temp + "\n"
 	f, _ := os.OpenFile(tempBaseDir+"/"+prefix+"."+today, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if f != nil {
 		f.WriteString(line)
@@ -215,7 +215,7 @@ func saveTempPoint(prefix, temp string) {
 func saveWifiTempPoint(temp0, temp1 string) {
 	today := time.Now().Format("2006-01-02")
 	now := time.Now().Format("15:04:05")
-	line := now + "|" + temp0 + "|" + temp1 + "\n"
+	line := today + " " + now + "|" + temp0 + "|" + temp1 + "\n"
 	f, _ := os.OpenFile(tempBaseDir+"/wifi."+today, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if f != nil {
 		f.WriteString(line)
