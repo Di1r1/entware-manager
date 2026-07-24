@@ -19,6 +19,11 @@
     <p>Версия интерфейса: <strong>{VERSION}</strong> (дата: {DATE}, версия загружается из <code>/opt/web_entware/version.json</code>)</p>
     <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
 
+    <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 12px; margin: 16px 0; border-radius: 4px;">
+        <strong>🧬 Архитектура:</strong> Все 62 CGI-эндпоинта — Go-бинарники (7 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart).<br>
+        Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (55 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
+    </div>
+
     <div class="search-container" style="display: flex; gap: 8px; align-items: center; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; margin-bottom: 24px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
         <svg class="icon" width="18" height="18" style="color: var(--text-muted); flex-shrink: 0;"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg>
         <input type="text" id="helpSearch" placeholder="Поиск по справке..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
@@ -55,14 +60,15 @@
         </span>
         История температур
     </h3>
-    <p>В сайдбаре отображаются температуры CPU и WiFi. Клик на любой из них открывает график истории:</p>
+    <p>В сайдбаре отображаются температуры CPU и WiFi на одной строке. Клик открывает модальное окно с двумя графиками (CPU сверху, WiFi снизу):</p>
     <ul>
-        <li><strong>CPU</strong> – кликабельный виджет показывает график температуры процессора за 7 дней.</li>
-        <li><strong>WiFi</strong> – кликабельный виджет показывает график температуры адаптеров WiFi0 и WiFi1 (две линии разных цветов).</li>
+        <li><strong>CPU</strong> – график температуры процессора за 7 дней (зелёная линия).</li>
+        <li><strong>WiFi</strong> – график температуры адаптеров WiFi0 (синяя) и WiFi1 (красная) за 7 дней.</li>
+        <li><strong>Клик по статам</strong> – значения Мин/Средняя/Макс/Сейчас подсвечивают точку на графике с тултипом.</li>
+        <li><strong>Тултип</strong> – при наведении на график отображается дата и точное значение (вплоть до секунды).</li>
         <li>Данные сохраняются в <code>/tmp/temp_history/</code> каждые 30 секунд.</li>
-        <li>Графики отображают мин/макс/среднюю/текущую температуру.</li>
+        <li>Хранение данных: 7 дней в файлах <code>cpu.YYYY-MM-DD</code> и <code>wifi.YYYY-MM-DD</code>.</li>
     </ul>
-    <p>Хранение данных: 7 дней в файлах <code>cpu.YYYY-MM-DD</code> и <code>wifi.YYYY-MM-DD</code>.</p>
 
     <!-- Установленные пакеты -->
     <h3>
@@ -270,13 +276,22 @@ ip neigh
     <p>Модуль мониторинга состояния дисков через S.M.A.R.T. (Self-Monitoring, Analysis and Reporting Technology).</p>
 
     <h4>Обзор дисков</h4>
-    <p>Таблица показывает все обнаруженные диски (HDD, SSD, NVMe, USB-флешки) с информацией: модель, серийный номер, размер, тип, температура, состояние здоровья (PASSED/FAILED), время работы (Power-On Hours). Тип диска окрашен цветом: HDD — синий, SSD — зелёный, NVMe — фиолетовый. Строка диска подсвечена слева: зелёная полоса — здоров, красная — ошибки.</p>
+    <p>Таблица показывает все обнаруженные диски (HDD, SSD, NVMe, USB-флешки) с информацией: модель, серийный номер, размер, тип, температура, состояние здоровья, время работы (Power-On Hours).</p>
+    <p><strong>Колонка Health</strong> — цветовая индикация по трём уровням:</p>
+    <ul>
+        <li><span style="color:#38a169;">🟢 Зелёный</span> — все атрибуты в норме (attr_health=ok).</li>
+        <li><span style="color:#d69e2e;">🟠 Оранжевый</span> — критический атрибут близок к порогу (attr_health=warning).</li>
+        <li><span style="color:#e53e3e;">🔴 Красный</span> — порог превышен или health ≠ PASSED (attr_health=critical).</li>
+        <li><span style="color:#718096;">⚪ Серый</span> — USB-флешка без SMART (attr_health=inactive).</li>
+    </ul>
+    <p>Критические атрибуты: ID 5 (Reallocated Sectors), 10 (Spin Retry), 187 (Uncorrectable Errors), 196 (Reallocation Events), 197 (Pending Sectors), 198 (Uncorrectable Sectors).</p>
+    <p>Тип диска окрашен цветом: HDD — синий, SSD — зелёный, NVMe — фиолетовый, USB — серый. Строка диска подсвечена слева: зелёная полоса — здоров, красная — ошибки.</p>
 
     <h4>Интерактивные зоны (клик)</h4>
     <ul>
         <li><strong>Устройство</strong> (sda/sdb/nvme0n1) — информация о диске (smartctl -i).</li>
         <li><strong>Размер</strong> — таблица разделов диска с заполнением (df -h) и цветными прогресс-барами.</li>
-        <li><strong>Health</strong> (зелёный/красный бейдж) — детальный отчёт самодиагностики.</li>
+        <li><strong>Health</strong> (цветной бейдж) — детальный отчёт самодиагностики.</li>
         <li><strong>Температура</strong> — диалог запуска самотеста (короткий ~2 мин, полный ~60-120 мин, conveyance ~5 мин).</li>
         <li><strong>Строка целиком</strong> — таблица всех SMART-атрибутов с цветовой кодировкой важности.</li>
     </ul>
@@ -471,20 +486,6 @@ curl -X POST -H 'Content-Type: application/json' -d '{"exclude_list":["dropbear"
 <br>
 # Очистить список исключений (отправить null):<br>
 curl -X POST -H 'Content-Type: application/json' -d '{"exclude_list":null}' http://localhost:8087/entware-cgi/service_watchdog/config.cgi
-    </div>
-    
-    <h5>Управление демоном</h5>
-    <div class="command-block">
-/opt/web_entware/service_watchdog.sh start      # запустить демон<br>
-/opt/web_entware/service_watchdog.sh stop       # остановить демон<br>
-/opt/web_entware/service_watchdog.sh restart    # перезапустить демон<br>
-/opt/web_entware/service_watchdog.sh status     # проверить статус
-    </div>
-    
-    <h5>Конфигурация</h5>
-    <p>Файл: <code>/opt/web_entware/service_config.json</code></p>
-    <div class="command-block">
-{&quot;enabled&quot;:true,&quot;interval&quot;:10,&quot;mode&quot;:&quot;initd&quot;,&quot;watch_list&quot;:[&quot;lighttpd&quot;,&quot;cron&quot;,&quot;ttyd&quot;],&quot;log_to_monitor&quot;:true,&quot;pid_history_days&quot;:7}
     </div>
     
     <h5>Файлы демона</h5>
