@@ -175,6 +175,11 @@ echo ""
 echo ">>> Шаг 4: копирование файлов..."
 
 mkdir -p "$TARGET_DIR"
+
+# Удаляем старые cgi-симлинки (если обновление)
+rm -f "$TARGET_DIR"/cgi-bin/*.cgi
+rm -f "$TARGET_DIR"/cgi-bin/*/*.cgi
+
 cp -a "$SELF_DIR"/* "$TARGET_DIR/"
 
 echo "  ✓ файлы скопированы в $TARGET_DIR"
@@ -193,11 +198,9 @@ fi
 echo ""
 echo ">>> Шаг 5: установка прав..."
 
-chmod 755 "$TARGET_DIR"/cgi-bin/*.cgi 2>/dev/null
-[ -d "$TARGET_DIR/cgi-bin/monitor" ] && chmod 755 "$TARGET_DIR"/cgi-bin/monitor/*.cgi
-[ -d "$TARGET_DIR/cgi-bin/logger" ] && chmod 755 "$TARGET_DIR"/cgi-bin/logger/*.cgi
-[ -d "$TARGET_DIR/cgi-bin/network" ] && chmod 755 "$TARGET_DIR"/cgi-bin/network/*.cgi
-[ -d "$TARGET_DIR/cgi-bin/service_watchdog" ] && chmod 755 "$TARGET_DIR"/cgi-bin/service_watchdog/*.cgi
+find "$TARGET_DIR/cgi-bin" -type l -exec chmod 755 {} \;
+chmod 755 "$TARGET_DIR/cgi-bin/go.cgi" 2>/dev/null
+[ -d "$TARGET_DIR/cgi-bin/go" ] && chmod 755 "$TARGET_DIR"/cgi-bin/go/* 2>/dev/null
 chmod 755 "$TARGET_DIR"/watchdog.sh 2>/dev/null
 chmod 755 "$TARGET_DIR"/network_watchdog.sh 2>/dev/null
 chmod 755 "$TARGET_DIR"/service_watchdog.sh 2>/dev/null
