@@ -233,19 +233,11 @@
                     ctx.stroke();
                     ctx.fillStyle = color;
                     temps.forEach((t, i) => {
-                        if (i % Math.ceil(temps.length / 10) !== 0 && i !== temps.length - 1) return;
                         const x = padding + (chartW / (temps.length - 1)) * i;
                         const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
                         ctx.beginPath();
-                        ctx.arc(x, y, 3, 0, Math.PI * 2);
+                        ctx.arc(x, y, 2, 0, Math.PI * 2);
                         ctx.fill();
-                        if (times[i]) {
-                            ctx.fillStyle = axisColor;
-                            ctx.font = '9px Inter, sans-serif';
-                            ctx.shadowBlur = 3;
-                            ctx.fillText(times[i], x - 12, h - 10);
-                            ctx.shadowBlur = 0;
-                        }
                     });
                     if (tooltipIdx >= 0) {
                         const t = temps[tooltipIdx];
@@ -360,8 +352,21 @@
                     });
                     ctx.stroke();
                 };
+                const drawDots = (temps, color) => {
+                    ctx.fillStyle = color;
+                    temps.forEach((t, i) => {
+                        if (t === null) return;
+                        const x = padding + (chartW / (temps.length - 1)) * i;
+                        const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                };
                 drawLine(temps0, '#3498db');
                 drawLine(temps1, '#e74c3c');
+                drawDots(temps0, '#3498db');
+                drawDots(temps1, '#e74c3c');
 
                 if (tooltipIdx >= 0 && tooltipIdx < n) {
                     const tx = padding + (chartW / (n - 1)) * tooltipIdx;
