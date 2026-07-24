@@ -28,6 +28,10 @@ func main() {
 		services.HandleWatchdogConfig()
 	case "service_watchdog_events":
 		services.HandleWatchdogEvents()
+	case "check_syntax":
+		services.HandleCheckSyntax()
+	case "check_deps":
+		services.HandleCheckDeps()
 	default:
 		services.WriteError("unknown endpoint: " + ep)
 	}

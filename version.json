@@ -2,6 +2,7 @@
   "version": "1.04.14",
   "date": "2026-07-24",
   "changes": [
+    "1.04.14: migrate check_syntax, check_deps → entware-services (2 shell CGI, 170 строк Go + 8 тестов)",
     "1.04.14: migrate service_watchdog/{status,action,config,events} → entware-services (4 shell CGI, 180 строк Go + 16 тестов)",
     "1.04.14: migrate network_events, network_config, network_action → entware-net (3 shell CGI, 220 строк Go + 17 тестов)",
     "1.04.13: fix network/action.cgi — убрана проверка IsGET (фронтенд шлёт POST с action в query string)",

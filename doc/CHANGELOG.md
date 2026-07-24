@@ -48,6 +48,24 @@
 - Новые CGI-врапперы загружены: `service_watchdog/{status,action,config,events}.cgi`
 - Оригиналы shell CGI сохранены: `web_entware/tmp/service_watchdog/` (SMB)
 
+### Новые Go-эндпоинты (шаг 3 — check_syntax + check_deps)
+
+- **entware-services**: добавлены `check_syntax`, `check_deps`
+  - `check_syntax.cgi` — проверка синтаксиса sh всех .cgi/.sh файлов через `sh -n` (exec.Command)
+  - `check_deps.cgi` — проверка системных зависимостей: sed/awk/grep/ps (LookPath), opkg (--version), lighttpd/cron PID, jq, ip, smartctl
+  - Формат JSON `check_deps` полностью совместим с shell-версией (ожидается `entware.js`)
+  - Код: ~170 строк Go + 8 тестов (все PASS)
+  - Типы: `DepsResult`, `DepsBase`, `DepsDeps`, `DepsSections`, `SyntaxResult`, `SyntaxFile`
+
+### Исправления
+
+- **cgi-bin/check_deps.cgi**, **cgi-bin/check_syntax.cgi**: переписаны как 3-строчные Go-врапперы
+
+### Сборка и деплой
+
+- `entware-services`: пересобран, UPX -9 (2.0M → 739K), задеплоен на роутер
+- Оригиналы shell CGI сохранены: `tmp/check_deps.cgi`, `tmp/check_syntax.cgi` + `web_entware/tmp/` (SMB)
+
 ### Новые Go-эндпоинты (шаг 1 — network)
 
 - **entware-net**: добавлены `network_events`, `network_config`, `network_action`

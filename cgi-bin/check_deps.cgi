@@ -1,10 +1,3 @@
 #!/bin/sh
-# ==============================================
-# Entware Manager - проверка системных зависимостей
-# Версия: 1.0 (модульный, использует common.sh)
-# Дата: 2026-05-02
-# ==============================================
-
-. /opt/web_entware/lib/common.sh
-
-json_out "$(check_deps_logic)"
+export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ENDPOINT=check_deps exec /opt/web_entware/cgi-bin/go/entware-services
