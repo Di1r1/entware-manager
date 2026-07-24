@@ -389,11 +389,6 @@ body {
     margin-bottom: 0 !important;
     line-height: 1.3;
 }
-#wifiTempWidget {
-    padding-left: 16px;
-    padding-right: 16px;
-}
-
 /* Свёрнутое состояние */
 .sidebar.collapsed .sidebar-header {
     display: flex !important;
