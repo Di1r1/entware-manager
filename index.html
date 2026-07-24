@@ -277,6 +277,7 @@
                 }
             }
 
+            canvas.renderFn = render;
             render(-1);
             canvas.onmousemove = function(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -417,6 +418,7 @@
                 }
             }
 
+            canvas.renderFn = render;
             render(-1);
             canvas.onmousemove = function(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -452,14 +454,29 @@
                     html += '<div style="text-align:center;">';
                     html += '<canvas id="cpuChart" width="600" height="220" style="max-width:100%;"></canvas>';
                     html += '</div>';
-                    html += '<div class="temp-stats" style="margin-bottom:16px;">';
-                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Мин</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + Math.min(...temps) + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Средняя</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + avg + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Макс</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + Math.max(...temps) + '°C</div></div>';
-                    html += '<div class="temp-stat"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Сейчас</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + now + '°C</div></div>';
+                    const minVal = Math.min(...temps);
+                    const maxVal = Math.max(...temps);
+                    const minIdx = temps.indexOf(minVal);
+                    const maxIdx = temps.indexOf(maxVal);
+                    const nowIdx = temps.length - 1;
+                    const avgIdx = temps.reduce((best, t, i) => Math.abs(t - avg) < Math.abs(temps[best] - avg) ? i : best, 0);
+
+                    html += '<div class="temp-stats" style="margin-bottom:16px;" id="cpuStats">';
+                    html += '<div class="temp-stat" data-idx="' + minIdx + '"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Мин</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + minVal + '°C</div></div>';
+                    html += '<div class="temp-stat" data-idx="' + avgIdx + '"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Средняя</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + avg + '°C</div></div>';
+                    html += '<div class="temp-stat" data-idx="' + maxIdx + '"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Макс</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + maxVal + '°C</div></div>';
+                    html += '<div class="temp-stat" data-idx="' + nowIdx + '"><div class="label" style="text-shadow:0 1px 2px rgba(0,0,0,0.2);">Сейчас</div><div class="value" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + now + '°C</div></div>';
                     html += '</div>';
 
-                    setTimeout(() => drawSingleChart('cpuChart', temps, times, minTemp, maxTemp, '#2ecc71'), 100);
+                    setTimeout(() => {
+                        drawSingleChart('cpuChart', temps, times, minTemp, maxTemp, '#2ecc71');
+                        const canvas = document.getElementById('cpuChart');
+                        document.querySelectorAll('#cpuStats .temp-stat').forEach(el => {
+                            el.addEventListener('click', () => {
+                                if (canvas && canvas.renderFn) canvas.renderFn(parseInt(el.dataset.idx));
+                            });
+                        });
+                    }, 100);
                 }
 
                 if (wifiData && wifiData.length > 0) {
@@ -478,12 +495,20 @@
                         html += '<div style="text-align:center;">';
                         html += '<canvas id="wifiChart2" width="600" height="220" style="max-width:100%;"></canvas>';
                         html += '</div>';
-                        html += '<div class="temp-stats">';
-                        html += '<div class="temp-stat"><div class="label" style="color:#3498db; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi0</div><div class="value" style="color:#3498db; text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
-                        html += '<div class="temp-stat"><div class="label" style="color:#e74c3c; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi1</div><div class="value" style="color:#e74c3c; text-shadow:0 1px 3px rgba(0,0,0,0.3);">' + (now1 !== null ? now1 + '°C' : '—') + '</div></div>';
+                        html += '<div class="temp-stats" id="wifiStats">';
+                        html += '<div class="temp-stat"><div class="label" style="color:#3498db; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi0</div><div class="value" data-wifi="0" style="color:#3498db; text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
+                        html += '<div class="temp-stat"><div class="label" style="color:#e74c3c; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi1</div><div class="value" data-wifi="1" style="color:#e74c3c; text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + (now1 !== null ? now1 + '°C' : '—') + '</div></div>';
                         html += '</div>';
 
-                        setTimeout(() => drawDualChart('wifiChart2', temps0, temps1, times, minTemp, maxTemp), 200);
+                        setTimeout(() => {
+                            drawDualChart('wifiChart2', temps0, temps1, times, minTemp, maxTemp);
+                            const canvas2 = document.getElementById('wifiChart2');
+                            document.querySelectorAll('#wifiStats .value[data-wifi]').forEach(el => {
+                                el.addEventListener('click', () => {
+                                    if (canvas2 && canvas2.renderFn) canvas2.renderFn(times.length - 1);
+                                });
+                            });
+                        }, 200);
                     }
                 }
 
