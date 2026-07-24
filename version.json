@@ -3,6 +3,9 @@
   "date": "2026-07-24",
   "changes": [
     "1.04.13: migrate network_events, network_config, network_action → entware-net (3 shell CGI, 220 строк Go + 17 тестов)",
+    "1.04.13: fix network/action.cgi — убрана проверка IsGET (фронтенд шлёт POST с action в query string)",
+    "1.04.13: fix network.js — apiFetch с POST без тела (lighttpd 411), заменён на GET",
+    "1.04.13: все 6 Go-бинарников сжаты UPX -9, задеплоены на роутер",
     "1.04.13: fix auth fail-open (common.sh check_filemgr_auth: return 0→1), docs update",
     "1.04.13: fix monitor_status: json tag demon_status→daemon_status (не совпадало с JS)",
     "1.04.13: migrate version.cgi, help.cgi, links_load.cgi → entware-stats; temperature.cgi, wifi_temp.cgi, temp_history.cgi, wifi_temp_history.cgi → entware-monitor",

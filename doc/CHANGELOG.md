@@ -35,6 +35,24 @@
   - Шелл-зависимости удалены: `tail`, `grep`, `sed`, `cut`, `tr`, `awk`, `jq`, `cat`, `date`
   - Код: ~220 строк Go + 3 тестовых файла (17 тестов)
   - Пути вынесены в `var` (пакетные переменные) для тестируемости
+  - `shared.go`: +`IsPOST()`, +`GetParam(key)`, +`parseFormBody` + `urlDecode`
+
+### Исправления
+
+- **network/action.cgi**: убрана проверка метода (`!IsGET()`) — фронтенд шлёт POST с `action` в query string; `GetParam()` читает QUERY_STRING корректно
+- **network.js**: `apiFetch` с `method: 'POST'` без тела не работал — lighttpd 1.4.82 требует `Content-Length` для POST. Изменён вызов на GET (action уже в URL)
+- **service_watchdog/action.cgi** (shell): аналогичная проблема — `apiFetch` с POST без тела — будет исправлен при миграции
+
+### Сборка и деплой
+
+- Все 6 Go-бинарников пересобраны и сжаты UPX -9:
+  - `entware-pkg`: 754K
+  - `entware-stats`: 808K
+  - `entware-net`: 747K (был 2.1M без UPX)
+  - `entware-logger`: 736K
+  - `entware-services`: 692K
+  - `entware-monitor`: 1.7M
+- Оригиналы shell CGI сохранены: `tmp/network/` (локально), `web_entware/tmp/network/` (SMB), `/tmp/entware_backup_cgi/network/` (роутер)
 
 ## 1.04.12 (2026-07-21)
 
