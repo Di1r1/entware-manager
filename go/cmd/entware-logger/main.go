@@ -28,6 +28,10 @@ func main() {
 		logger.HandleRotate()
 	case "logger_clear":
 		logger.HandleClear()
+	case "logger_debug":
+		logger.HandleLoggerDebug()
+	case "logger_debug_path":
+		logger.HandleLoggerDebugPath()
 	default:
 		logger.WriteError("unknown endpoint: " + ep)
 	}

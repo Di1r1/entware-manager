@@ -1,8 +1,3 @@
 #!/bin/sh
-echo "Content-type: text/plain"
-echo ""
-echo "PATH=$PATH"
-echo "---"
-which cat 2>&1 || echo "cat not found"
-which sed 2>&1 || echo "sed not found"
-cat /opt/var/log/entware/system.log 2>&1 || echo "cat failed"
+export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ENDPOINT=logger_debug_path exec /opt/web_entware/cgi-bin/go/entware-logger
