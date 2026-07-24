@@ -1,0 +1,58 @@
+package network
+
+import (
+	"encoding/json"
+	"io"
+	"os"
+)
+
+const defaultConfig = `{
+  "enabled": true,
+  "interval": 30,
+  "watch_interfaces": ["eth0"],
+  "watch_internet": true,
+  "ping_host": "8.8.8.8",
+  "ping_timeout": 5,
+  "notify_on": ["interface_down", "no_internet", "ip_changed"]
+}`
+
+func HandleConfig() {
+	switch os.Getenv("REQUEST_METHOD") {
+	case "GET":
+		handleConfigGet()
+	case "POST":
+		handleConfigPost()
+	default:
+		NotAllowed()
+	}
+}
+
+func handleConfigGet() {
+	data, err := os.ReadFile(ConfigFile)
+	if err != nil || !json.Valid(data) {
+		data = []byte(defaultConfig)
+	}
+	os.Stdout.WriteString("Content-type: application/json; charset=utf-8\n\n")
+	os.Stdout.Write(data)
+}
+
+func handleConfigPost() {
+	body, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		WriteJSON(map[string]string{"status": "error", "message": "Failed to read request"})
+		return
+	}
+
+	data := string(body)
+	if !json.Valid([]byte(data)) {
+		WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
+		return
+	}
+
+	if err := os.WriteFile(ConfigFile, []byte(data), 0644); err != nil {
+		WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
+		return
+	}
+
+	WriteJSON(map[string]string{"status": "ok"})
+}

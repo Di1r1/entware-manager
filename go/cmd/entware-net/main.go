@@ -24,6 +24,12 @@ func main() {
 		network.HandleStatus()
 	case "network_stats":
 		network.HandleNetworkStats()
+	case "network_events":
+		network.HandleEvents()
+	case "network_config":
+		network.HandleConfig()
+	case "network_action":
+		network.HandleAction()
 	default:
 		network.WriteError("unknown endpoint: " + ep)
 	}

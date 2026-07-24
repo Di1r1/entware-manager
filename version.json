@@ -1,10 +1,11 @@
 {
   "version": "1.04.13",
-  "date": "2026-07-22",
+  "date": "2026-07-24",
   "changes": [
-    "1.04.12: fix auth fail-open (common.sh check_filemgr_auth: return 0→1), docs update",
-    "1.04.12: fix monitor_status: json tag demon_status→daemon_status (не совпадало с JS)",
-    "1.04.12: migrate version.cgi, help.cgi, links_load.cgi → entware-stats; temperature.cgi, wifi_temp.cgi, temp_history.cgi, wifi_temp_history.cgi → entware-monitor",
+    "1.04.13: migrate network_events, network_config, network_action → entware-net (3 shell CGI, 220 строк Go + 17 тестов)",
+    "1.04.13: fix auth fail-open (common.sh check_filemgr_auth: return 0→1), docs update",
+    "1.04.13: fix monitor_status: json tag demon_status→daemon_status (не совпадало с JS)",
+    "1.04.13: migrate version.cgi, help.cgi, links_load.cgi → entware-stats; temperature.cgi, wifi_temp.cgi, temp_history.cgi, wifi_temp_history.cgi → entware-monitor",
     "1.04.13: migrate tmpfs.cgi, view_file.cgi, delete_file.cgi, links_save.cgi, auth_config.cgi, crontab.cgi, crontab_update.cgi → entware-stats; api.cgi → entware-pkg; kill_pid.cgi → entware-monitor",
     "1.04.10: monitor/*.cgi (4 шт, 215 строк) → Go: entware-monitor (735KB UPX)",
     "1.04.10: go/internal/monitor/ — top CPU через /proc/[pid]/stat, без top/grep/awk",

@@ -2,7 +2,7 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
-## 1.04.13 (2026-07-22)
+## 1.04.13 (2026-07-24)
 
 ### Новые Go-эндпоинты
 
@@ -25,6 +25,16 @@
   - `syscall.SIGHUP` для перезагрузки cron
 - **entware-pkg**: добавлен `api` — информация о пакете через `opkg info`
 - **entware-monitor**: добавлен `kill_pid` — принудительное завершение процесса (`os.FindProcess` + `os.Kill`)
+
+### Новые Go-эндпоинты (шаг 1 — network)
+
+- **entware-net**: добавлены `network_events`, `network_config`, `network_action`
+  - `events.cgi` — парсинг лога `/tmp/entware/logs/YYYY-MM-DD.log`, фильтр по `[network]`
+  - `config.cgi` — GET (чтение/дефолт `network_config.json`) + POST (валидация JSON, запись)
+  - `action.cgi` — start/stop/restart через `network_watchdog.sh` (exec.Command)
+  - Шелл-зависимости удалены: `tail`, `grep`, `sed`, `cut`, `tr`, `awk`, `jq`, `cat`, `date`
+  - Код: ~220 строк Go + 3 тестовых файла (17 тестов)
+  - Пути вынесены в `var` (пакетные переменные) для тестируемости
 
 ## 1.04.12 (2026-07-21)
 
