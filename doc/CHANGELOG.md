@@ -66,6 +66,25 @@
 - `entware-services`: пересобран, UPX -9 (2.0M → 739K), задеплоен на роутер
 - Оригиналы shell CGI сохранены: `tmp/check_deps.cgi`, `tmp/check_syntax.cgi` + `web_entware/tmp/` (SMB)
 
+### Новые Go-эндпоинты (шаг 4 — SMART)
+
+- **entware-smart**: новый Go-бинарник (6 эндпоинтов, 14 тестов)
+  - `list` — обнаружение дисков через `/proc/partitions`, SMART-данные через smartctl
+  - `info` — `smartctl -i`, вывод информации о диске
+  - `attributes` — `smartctl -A`, парсинг таблицы атрибутов (22 аттрибута)
+  - `health` — `smartctl -H`, статус здоровья
+  - `usage` — `df -h`, разбивка по разделам
+  - `selftest` (GET) — статус самотеста; (POST) — запуск теста (short/long/conveyance)
+  - Типы: `DiskInfo`, `AttrInfo`, `PartitionInfo`
+  - Утилиты: `smartctlRun` (sudo fallback), `discoverDisks`, `detectType`, `parseIntOrNull`
+  - Пути вынесены в `var` для тестируемости
+
+### Сборка и деплой
+
+- **entware-smart**: новый бинарник, UPX -9 (1.9M → 695K), задеплоен на роутер
+- `cgi-bin/smart.cgi`: переписан как 2-строчный Go-враппер
+- Оригинал сохранён: `tmp/smart.cgi`
+
 ### Новые Go-эндпоинты (шаг 1 — network)
 
 - **entware-net**: добавлены `network_events`, `network_config`, `network_action`
