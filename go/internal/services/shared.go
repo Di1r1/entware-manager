@@ -9,7 +9,7 @@ import (
 )
 
 func WriteJSON(v any) {
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(v)
 }
 

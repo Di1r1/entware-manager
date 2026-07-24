@@ -26,6 +26,28 @@
 - **entware-pkg**: добавлен `api` — информация о пакете через `opkg info`
 - **entware-monitor**: добавлен `kill_pid` — принудительное завершение процесса (`os.FindProcess` + `os.Kill`)
 
+### Новые Go-эндпоинты (шаг 2 — service_watchdog)
+
+- **entware-services**: добавлены `watchdog_status`, `watchdog_action`, `watchdog_config`, `watchdog_events`
+  - `status.cgi` — статус watchdog: running/PID, конфиг, PIDS-карта из `/proc`
+  - `action.cgi` — start/stop/restart/update через `service_watchdog.sh` (exec.Command)
+  - `config.cgi` — GET/POST конфиг; POST валидация JSON, ключи `enabled`, `interval`, `mode`, `watch_list`, `auto_restart`, `exclude_list`, `log_to_monitor`, `pid_history_days`
+  - `events.cgi` — парсинг лога через `parseWatchdogLog` (аналог `tail -r | sed | awk | jq`)
+  - Код: ~180 строк Go + 16 тестов (все PASS)
+  - Пути вынесены в `var` для тестируемости
+  - Вспомогательные: `cmdPrivate()` для exec.Command, `apiFetch.GET` для совместимости
+
+### Исправления
+
+- **entware.js** (service_watchdog action): `apiFetch` с POST без тела (lighttpd 411) → заменён на GET (как network.js)
+- Врапперы CGI обновлены под новый код (4 файла, ~150 байт каждый)
+
+### Сборка и деплой
+
+- `entware-services`: пересобран, UPX -9 (1.9M → 702K), задеплоен на роутер
+- Новые CGI-врапперы загружены: `service_watchdog/{status,action,config,events}.cgi`
+- Оригиналы shell CGI сохранены: `web_entware/tmp/service_watchdog/` (SMB)
+
 ### Новые Go-эндпоинты (шаг 1 — network)
 
 - **entware-net**: добавлены `network_events`, `network_config`, `network_action`

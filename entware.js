@@ -1656,7 +1656,7 @@ const SERVICE_WATCHDOG = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await apiFetch('/service_watchdog/action.cgi?action=' + action, {method: 'POST'});
+            const res = await apiFetch('/service_watchdog/action.cgi?action=' + action);
             const data = await res.json();
             
             if (data.status === 'ok') {
