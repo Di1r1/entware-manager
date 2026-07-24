@@ -1,7 +1,8 @@
 {
-  "version": "1.05.0",
+  "version": "1.05.1",
   "date": "2026-07-24",
   "changes": [
+    "1.05.1: UI графиков температуры: переработка (дата по X, 900px, padding 20, тултип, клик по статам)",
     "1.05.0: полная миграция shell CGI → Go — 7 бинарников, 62 эндпоинта, 0 shell",
     "1.04.14: migrate debug.cgi (3 шт) → entware-logger + entware-services (text/plain)",
     "1.04.14: migrate smart.cgi → entware-smart (новый бинарник, 6 эндпоинтов, 14 тестов)",
