@@ -381,10 +381,13 @@
             canvas.onmouseleave = function() { render(-1); };
         }
 
-        document.getElementById('tempWidget').addEventListener('click', () => {
-            showTempChart();
-            showWifiChart();
-        });
+        (function() {
+            let showWifi = false;
+            document.getElementById('tempWidget').addEventListener('click', () => {
+                showWifi = !showWifi;
+                if (showWifi) showWifiChart(); else showTempChart();
+            });
+        })();
 
         updateTemp();
         setInterval(updateTemp, 30000);
