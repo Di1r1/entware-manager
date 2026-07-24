@@ -162,22 +162,26 @@
                     });
                     ctx.stroke();
                     ctx.fillStyle = color;
-                    const labelStep = Math.max(1, Math.ceil(temps.length / 15));
                     temps.forEach((t, i) => {
                         const x = padding + (chartW / (temps.length - 1)) * i;
                         const y = padding + chartH - ((t - minTemp) / tempRange) * chartH;
                         ctx.beginPath();
                         ctx.arc(x, y, 3, 0, Math.PI * 2);
                         ctx.fill();
-                        if (i % labelStep === 0 || i === temps.length - 1) {
-                            ctx.fillStyle = color;
-                            ctx.font = '10px Inter, sans-serif';
-                            ctx.shadowBlur = 3;
-                            ctx.textAlign = 'center';
-                            ctx.fillText(Math.round(t) + '°', x, y - 8);
-                            ctx.shadowBlur = 0;
-                        }
                     });
+                    const dateStep = Math.max(1, Math.ceil(temps.length / 10));
+                    ctx.fillStyle = axisColor;
+                    ctx.font = '9px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    temps.forEach((_, i) => {
+                        if (i % dateStep !== 0 && i !== temps.length - 1) return;
+                        const x = padding + (chartW / (temps.length - 1)) * i;
+                        const date = times[i] ? times[i].split(' ')[0] : '';
+                        ctx.shadowBlur = 2;
+                        ctx.fillText(date, x, h - 8);
+                        ctx.shadowBlur = 0;
+                    });
+                    ctx.textAlign = 'start';
                     if (tooltipIdx >= 0) {
                         const t = temps[tooltipIdx];
                         const tx = padding + (chartW / (temps.length - 1)) * tooltipIdx;
@@ -263,33 +267,19 @@
                 }
                 ctx.shadowBlur = 0;
                 const n = Math.max(temps0.length, temps1.length);
-                const labelStep = Math.max(1, Math.ceil(n / 15));
-                if (n > 1) {
-                    ctx.textAlign = 'center';
-                    for (let i = 0; i < n; i++) {
-                        if (i % labelStep !== 0 && i !== n - 1) continue;
-                        const x = padding + (chartW / (n - 1)) * i;
-                        const v0 = temps0[i];
-                        const v1 = temps1[i];
-                        if (v0 !== null && v0 !== undefined) {
-                            ctx.fillStyle = '#3498db';
-                            ctx.font = '9px Inter, sans-serif';
-                            ctx.shadowBlur = 2;
-                            const y0 = padding + chartH - ((v0 - minTemp) / tempRange) * chartH;
-                            ctx.fillText(Math.round(v0) + '°', x, y0 - 6);
-                            ctx.shadowBlur = 0;
-                        }
-                        if (v1 !== null && v1 !== undefined) {
-                            ctx.fillStyle = '#e74c3c';
-                            ctx.font = '9px Inter, sans-serif';
-                            ctx.shadowBlur = 2;
-                            const y1 = padding + chartH - ((v1 - minTemp) / tempRange) * chartH;
-                            ctx.fillText(Math.round(v1) + '°', x, y1 - 6);
-                            ctx.shadowBlur = 0;
-                        }
-                    }
-                    ctx.textAlign = 'start';
+                const dateStep = Math.max(1, Math.ceil(n / 10));
+                ctx.fillStyle = axisColor;
+                ctx.font = '9px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                for (let i = 0; i < n; i++) {
+                    if (i % dateStep !== 0 && i !== n - 1) continue;
+                    const x = padding + (chartW / (n - 1)) * i;
+                    const date = times[i] ? times[i].split(' ')[0] : '';
+                    ctx.shadowBlur = 2;
+                    ctx.fillText(date, x, h - 8);
+                    ctx.shadowBlur = 0;
                 }
+                ctx.textAlign = 'start';
 
                 const drawLine = (temps, color) => {
                     if (temps.length < 2) return;
