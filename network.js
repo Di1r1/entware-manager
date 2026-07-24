@@ -254,7 +254,7 @@ const NETWORK = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await apiFetch('/network/action.cgi?action=' + action, {method: 'POST'});
+            const res = await apiFetch('/network/action.cgi?action=' + action);
             
             console.log('Response status:', res.status);
             const data = await res.json();

@@ -9,11 +9,6 @@ import (
 )
 
 func HandleAction() {
-	if !IsGET() {
-		NotAllowed()
-		return
-	}
-
 	action := GetParam("action")
 	switch action {
 	case "start":

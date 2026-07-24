@@ -134,9 +134,22 @@ func TestHandleAction_UnknownAction(t *testing.T) {
 	}
 }
 
-func TestHandleAction_NotGET(t *testing.T) {
+func TestHandleAction_AcceptsPOST(t *testing.T) {
 	os.Setenv("REQUEST_METHOD", "POST")
-	defer os.Unsetenv("REQUEST_METHOD")
+	os.Setenv("QUERY_STRING", "action=stop")
+	defer func() {
+		os.Unsetenv("REQUEST_METHOD")
+		os.Unsetenv("QUERY_STRING")
+	}()
+
+	tmp := t.TempDir()
+	oldScript := WatchdogScript
+	WatchdogScript = filepath.Join(tmp, "watchdog.sh")
+	defer func() { WatchdogScript = oldScript }()
+
+	writeWatchdogScript(t, WatchdogScript, `#!/bin/sh
+exit 0
+`)
 
 	body := captureStdout(t, HandleAction)
 
@@ -144,7 +157,7 @@ func TestHandleAction_NotGET(t *testing.T) {
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("invalid JSON: %v\noutput: %s", err, string(body))
 	}
-	if result["error"] != "Method not allowed" {
-		t.Errorf("expected 'Method not allowed', got '%s'", result["error"])
+	if result["status"] != "ok" {
+		t.Errorf("expected status 'ok', got '%s'", result["status"])
 	}
 }
