@@ -2,6 +2,39 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.05.0 (2026-07-24)
+
+### Полная миграция shell → Go
+
+Все shell CGI скрипты Entware Manager переписаны на Go. Проект больше не использует shell-зависимые CGI.
+
+| Бинарь | Эндпоинты |
+|---|---|
+| `entware-pkg` | 8 — available, packages, install, remove, upgrade, update, upgradable, api |
+| `entware-stats` | 11 — stats, version, help, links_load, links_save, tmpfs, view_file, delete_file, auth_config, crontab, crontab_update |
+| `entware-net` | 8 — interfaces, routes, arp, status, stats, events, config, action |
+| `entware-logger` | 9 — config, view, system_logs, system_log, find_by_name, rotate, clear, debug, debug_path |
+| `entware-services` | 11 — services, service_action, ttyd_control, watchdog_status, watchdog_action, watchdog_config, watchdog_events, check_syntax, check_deps, debug |
+| `entware-monitor` | 9 — status, action, config, log, temperature, wifi_temp, temp_history, wifi_temp_history, kill_pid |
+| **`entware-smart`** | 6 — list, info, attributes, health, usage, selftest |
+
+**Итого: 62 эндпоинта, 7 Go-бинарников, 0 shell CGI.**
+
+### Улучшения
+
+- **SMART**: `attr_health` — анализ критических атрибутов (5,10,187,196,197,198) с подсветкой колонки Health (зелёный/оранжевый/красный/серый)
+- **SMART**: USB-флешки без SMART показывают `—` вместо `UNKNOWN`
+- **SMART**: исправлено двойное экранирование `\n` в info, потеря вывода smartctl при exit code != 0
+- **check_deps**: мигрирован на Go с полной совместимостью JSON-формата
+- **check_syntax**: мигрирован на Go — обход .cgi/.sh файлов, `sh -n` через exec.Command
+- **smartctl**: timeout увеличен до 30s, добавлен CombinedOutput (stderr), sudo fallback
+
+### Сборка и деплой
+
+- Все 7 бинарников собраны `GOARCH=arm64 CGO_ENABLED=0 -ldflags="-s -w"` и сжаты UPX -9
+- Все shell-оригиналы сохранены: `web_entware/tmp/` на роутере, `tmp/` локально
+- `common.sh`, `smart.sh` — shell-библиотеки не удалены (используются build-deploy.sh, backup.sh)
+
 ## 1.04.14 (2026-07-24)
 
 ### Новые Go-эндпоинты
