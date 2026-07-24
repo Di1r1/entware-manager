@@ -79,6 +79,20 @@
   - Утилиты: `smartctlRun` (sudo fallback), `discoverDisks`, `detectType`, `parseIntOrNull`
   - Пути вынесены в `var` для тестируемости
 
+### Исправления SMART
+
+- **info**: убрано двойное экранирование `\n` (escapeJSON → json.Marshal) — переводы строк корректны
+- **list**: `smartctl -a` с exit code != 0 не отбрасывал вывод — модель/серийный/health извлекаются из info-секции
+
+### Улучшения SMART
+
+- **attr_health**: новый флаг в JSON диска — парсинг критических атрибутов (ID 5, 10, 187, 196, 197, 198)
+  - `ok` — всё хорошо
+  - `warning` — значение близко к порогу (разница < 10)
+  - `critical` — порог превышен или health != PASSED
+- **UI**: колонка Health теперь зелёная (ok), оранжевая (warning) или красная (critical)
+  - Иконка `icon-alert` добавлена в `icons.svg`
+
 ### Сборка и деплой
 
 - **entware-smart**: новый бинарник, UPX -9 (1.9M → 695K), задеплоен на роутер

@@ -3,6 +3,7 @@
   "date": "2026-07-24",
   "changes": [
     "1.04.14: migrate smart.cgi → entware-smart (новый бинарник, 6 эндпоинтов, 14 тестов)",
+    "1.04.14: smart: fix info \\n, fix smartctl exit code loss, add attr_health (ок/предупреждение/критично)",
     "1.04.14: migrate check_syntax, check_deps → entware-services (2 shell CGI, 170 строк Go + 8 тестов)",
     "1.04.14: migrate service_watchdog/{status,action,config,events} → entware-services (4 shell CGI, 180 строк Go + 16 тестов)",
     "1.04.14: migrate network_events, network_config, network_action → entware-net (3 shell CGI, 220 строк Go + 17 тестов)",
