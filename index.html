@@ -381,11 +381,71 @@
             canvas.onmouseleave = function() { render(-1); };
         }
 
-        document.getElementById('tempWidget').addEventListener('click', (e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            if (x > rect.width / 2) showWifiChart(); else showTempChart();
-        });
+        document.getElementById('tempWidget').addEventListener('click', showAllCharts);
+
+        function showAllCharts() {
+            Modal.loading('Загрузка графиков...');
+            Promise.all([
+                fetch('/entware-cgi/temp_history.cgi?action=history').then(r => r.json()),
+                fetch('/entware-cgi/wifi_temp_history.cgi?action=history').then(r => r.json())
+            ]).then(([cpuData, wifiData]) => {
+                let html = '';
+
+                if (cpuData && cpuData.length > 0) {
+                    const temps = cpuData.map(d => d.temp);
+                    const times = cpuData.map(d => d.time);
+                    const minTemp = Math.min(...temps) - 5;
+                    const maxTemp = Math.max(...temps) + 5;
+                    const avg = Math.round(temps.reduce((a,b) => a+b, 0) / temps.length);
+                    const now = temps[temps.length - 1];
+
+                    html += '<h4 style="margin:0 0 8px 0;">CPU</h4>';
+                    html += '<div style="text-align:center;">';
+                    html += '<canvas id="cpuChart" width="500" height="150" style="max-width:100%;"></canvas>';
+                    html += '</div>';
+                    html += '<div class="temp-stats" style="margin-bottom:16px;">';
+                    html += '<div class="temp-stat"><div class="label">Мин</div><div class="value">' + Math.min(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Средняя</div><div class="value">' + avg + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Макс</div><div class="value">' + Math.max(...temps) + '°C</div></div>';
+                    html += '<div class="temp-stat"><div class="label">Сейчас</div><div class="value">' + now + '°C</div></div>';
+                    html += '</div>';
+
+                    setTimeout(() => drawSingleChart('cpuChart', temps, times, minTemp, maxTemp, '#2ecc71'), 100);
+                }
+
+                if (wifiData && wifiData.length > 0) {
+                    const temps0 = wifiData.map(d => d.temp0);
+                    const temps1 = wifiData.map(d => d.temp1);
+                    const times = wifiData.map(d => d.time);
+                    const allTemps = [...temps0.filter(t => t !== null), ...temps1.filter(t => t !== null)];
+
+                    if (allTemps.length > 0) {
+                        const minTemp = Math.min(...allTemps) - 5;
+                        const maxTemp = Math.max(...allTemps) + 5;
+                        var now0 = wifiData[wifiData.length-1].temp0;
+                        var now1 = wifiData[wifiData.length-1].temp1;
+
+                        html += '<h4 style="margin:0 0 8px 0;">WiFi</h4>';
+                        html += '<div style="text-align:center;">';
+                        html += '<canvas id="wifiChart2" width="500" height="150" style="max-width:100%;"></canvas>';
+                        html += '</div>';
+                        html += '<div class="temp-stats">';
+                        html += '<div class="temp-stat"><div class="label" style="color:#3498db">WiFi0</div><div class="value" style="color:#3498db">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
+                        html += '<div class="temp-stat"><div class="label" style="color:#e74c3c">WiFi1</div><div class="value" style="color:#e74c3c">' + (now1 !== null ? now1 + '°C' : '—') + '</div></div>';
+                        html += '</div>';
+
+                        setTimeout(() => drawDualChart('wifiChart2', temps0, temps1, times, minTemp, maxTemp), 200);
+                    }
+                }
+
+                if (!html) {
+                    Modal.info('Нет данных. Графики появятся через несколько минут.', 'Температура');
+                    return;
+                }
+
+                Modal.show(html, false, 'Температура');
+            }).catch(() => Modal.error('Ошибка загрузки данных'));
+        }
 
         updateTemp();
         setInterval(updateTemp, 30000);
