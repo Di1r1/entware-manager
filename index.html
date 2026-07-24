@@ -381,8 +381,10 @@
             canvas.onmouseleave = function() { render(-1); };
         }
 
-        document.getElementById('tempWidget').addEventListener('click', showTempChart);
-        document.getElementById('wifiTempWidget').addEventListener('click', showWifiChart);
+        document.getElementById('tempWidget').addEventListener('click', () => {
+            showTempChart();
+            showWifiChart();
+        });
 
         updateTemp();
         setInterval(updateTemp, 30000);
