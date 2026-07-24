@@ -64,11 +64,11 @@ func HandleWifiTemp() {
 
 	combined := "null"
 	if temp0 == "null" && temp1 != "null" {
-		combined = "WiFi1: " + temp1 + "C"
+		combined = "WiFi1: " + temp1 + "°C"
 	} else if temp1 == "null" && temp0 != "null" {
-		combined = "WiFi0: " + temp0 + "C"
+		combined = "WiFi0: " + temp0 + "°C"
 	} else if temp0 != "null" && temp1 != "null" {
-		combined = "WiFi0: " + temp0 + "C / WiFi1: " + temp1 + "C"
+		combined = "WiFi0: " + temp0 + "°C / WiFi1: " + temp1 + "°C"
 	}
 
 	WriteJSON(map[string]string{
