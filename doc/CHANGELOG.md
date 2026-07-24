@@ -100,6 +100,15 @@
 - `cgi-bin/smart.cgi`: переписан как 2-строчный Go-враппер
 - Оригинал сохранён: `tmp/smart.cgi`
 
+### Debug CGI (3 файла, text/plain)
+
+- **entware-logger**: `logger_debug`, `logger_debug_path`
+  - `debug.cgi` — проверка `/opt/var/log/entware/system.log` (существует/размер/ls)
+  - `debug_path.cgi` — PATH, LookPath(cat/sed), последние 50 строк лога
+- **entware-services**: `debug`
+  - `debug.cgi` — REQUEST_METHOD/CONTENT_LENGTH, POST body, sanitize_alnum
+  - Оригиналы сохранены: `tmp/{debug,logger_debug,logger_debug_path}.cgi`
+
 ### Новые Go-эндпоинты (шаг 1 — network)
 
 - **entware-net**: добавлены `network_events`, `network_config`, `network_action`
