@@ -21,7 +21,6 @@ var (
 	sysBlockDir    = "/sys/block"
 	dfBin          = "df"
 	sudoBin        = "sudo"
-	timeoutBin     = "timeout"
 )
 
 type DiskInfo struct {
