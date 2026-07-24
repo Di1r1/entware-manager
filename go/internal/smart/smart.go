@@ -33,7 +33,10 @@ type DiskInfo struct {
 	Health        string `json:"health"`
 	Temperature   any    `json:"temperature"`
 	PowerOnHours  any    `json:"power_on_hours"`
+	AttrHealth    string `json:"attr_health"`
 }
+
+var criticalAttrIDs = map[int]bool{5: true, 10: true, 187: true, 196: true, 197: true, 198: true}
 
 type AttrInfo struct {
 	ID        int    `json:"id"`
@@ -140,27 +143,32 @@ func parseFormBody(body string) map[string]string {
 }
 
 func smartctlRun(device string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	allArgs := append([]string{}, args...)
 	allArgs = append(allArgs, device)
 
 	cmd := exec.CommandContext(ctx, smartctlBin, allArgs...)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	outStr := string(out)
+
+	// smartctl returns partial output even on error (exit code 4 = no SMART attrs)
+	// Never discard output — the info section is usually complete
 	if err == nil {
-		return string(out), nil
+		return outStr, nil
 	}
 
 	// Try with sudo
 	sudoArgs := append([]string{smartctlBin}, allArgs...)
 	cmd2 := exec.CommandContext(ctx, sudoBin, sudoArgs...)
-	out2, err2 := cmd2.Output()
+	out2, err2 := cmd2.CombinedOutput()
 	if err2 == nil {
 		return string(out2), nil
 	}
 
-	return "", fmt.Errorf("smartctl failed: %w (sudo: %v)", err, err2)
+	// Return partial output + error
+	return outStr, fmt.Errorf("smartctl failed: %w (sudo: %v)", err, err2)
 }
 
 func detectType(device string) string {
@@ -344,6 +352,38 @@ func HandleSmart() {
 	}
 }
 
+func checkAttrHealth(output string) string {
+	// Default: PASSED → ok
+	if output == "" {
+		return "unknown"
+	}
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	worst := "ok"
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || !isAttrLine(line) {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 7 {
+			continue
+		}
+		id, _ := strconv.Atoi(fields[0])
+		if !criticalAttrIDs[id] {
+			continue
+		}
+		val := atoiWithDefault(fields[3])
+		thresh := atoiWithDefault(fields[5])
+		if thresh > 0 && val <= thresh {
+			return "critical"
+		}
+		if thresh > 0 && val-thresh < 10 {
+			worst = "warning"
+		}
+	}
+	return worst
+}
+
 func handleList() {
 	disks := discoverDisks()
 	var result []DiskInfo
@@ -360,10 +400,7 @@ func handleList() {
 func diskInfo(name string) DiskInfo {
 	devpath := "/dev/" + name
 	diskType := detectType(name)
-	output, err := smartctlRun(devpath, "-a", "-d", diskType)
-	if err != nil {
-		output = ""
-	}
+	output, _ := smartctlRun(devpath, "-a", "-d", diskType)
 
 	displayType := diskType
 	if isRemovable(name) {
@@ -440,15 +477,23 @@ func diskInfo(name string) DiskInfo {
 	}
 	powerOn = strings.TrimLeft(powerOn, "+")
 
+	attrHealth := "ok"
+	if health != "PASSED" {
+		attrHealth = "critical"
+	} else {
+		attrHealth = checkAttrHealth(output)
+	}
+
 	return DiskInfo{
 		Device:       devpath,
-		Model:        escapeJSON(model),
-		Serial:       escapeJSON(serial),
+		Model:        model,
+		Serial:       serial,
 		Size:         diskSize(name),
 		Type:         displayType,
 		Health:       health,
 		Temperature:  parseIntOrNull(temperature),
 		PowerOnHours: parseIntOrNull(powerOn),
+		AttrHealth:   attrHealth,
 	}
 }
 
@@ -459,12 +504,8 @@ func handleInfo(device string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, err := smartctlRun(devpath, "-i", "-d", diskType)
-	if err != nil {
-		writeError(fmt.Sprintf("smartctl failed: %v", err))
-		return
-	}
-	writeJSON(map[string]string{"info": escapeJSON(output)})
+	output, _ := smartctlRun(devpath, "-i", "-d", diskType)
+	writeJSON(map[string]string{"info": output})
 }
 
 func handleAttributes(device string) {
@@ -474,11 +515,7 @@ func handleAttributes(device string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, err := smartctlRun(devpath, "-A", "-d", diskType)
-	if err != nil {
-		writeError(fmt.Sprintf("smartctl failed: %v", err))
-		return
-	}
+	output, _ := smartctlRun(devpath, "-A", "-d", diskType)
 
 	var attrs []AttrInfo
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -552,11 +589,7 @@ func handleHealth(device string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, err := smartctlRun(devpath, "-H", "-d", diskType)
-	if err != nil {
-		writeError(fmt.Sprintf("smartctl failed: %v", err))
-		return
-	}
+	output, _ := smartctlRun(devpath, "-H", "-d", diskType)
 
 	healthLine := extractField(output, "SMART overall-health", -1)
 	if healthLine == "" {
@@ -571,7 +604,7 @@ func handleHealth(device string) {
 
 	writeJSON(map[string]string{
 		"health":  result,
-		"message": escapeJSON(healthLine),
+		"message": healthLine,
 	})
 }
 
@@ -632,11 +665,7 @@ func handleSelftestStart(device string, testType string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, err := smartctlRun(devpath, "-t", testType, "-d", diskType)
-	if err != nil {
-		writeError(fmt.Sprintf("smartctl failed: %v", err))
-		return
-	}
+	output, _ := smartctlRun(devpath, "-t", testType, "-d", diskType)
 
 	status := "error"
 	msg := ""
@@ -663,11 +692,7 @@ func handleSelftestStatus(device string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, err := smartctlRun(devpath, "-l", "selftest", "-d", diskType)
-	if err != nil {
-		writeError(fmt.Sprintf("smartctl failed: %v", err))
-		return
-	}
+	output, _ := smartctlRun(devpath, "-l", "selftest", "-d", diskType)
 
 	status := "No tests logged"
 	progress := 100

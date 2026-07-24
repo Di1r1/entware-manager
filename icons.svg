@@ -236,4 +236,9 @@
 <symbol id="icon-stop" viewBox="0 0 16 16">
   <rect x="4" y="4" width="8" height="8" fill="none" stroke="currentColor"/>
 </symbol>
+<symbol id="icon-alert" viewBox="0 0 16 16">
+  <path d="M8 2L2 14h12L8 2z" fill="none" stroke="currentColor"/>
+  <line x1="8" y1="6" x2="8" y2="10" stroke="currentColor"/>
+  <circle cx="8" cy="12" r="0.5" fill="currentColor"/>
+</symbol>
 </svg>

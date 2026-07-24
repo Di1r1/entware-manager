@@ -124,8 +124,16 @@ const SMART = {
         const TYPE_CLASSES = { hdd: 'drive-hdd', ssd: 'drive-ssd', nvme: 'drive-nvme', sat: 'drive-hdd', usb: 'drive-usb' };
 
         tbody.innerHTML = disks.map(disk => {
-            const healthClass = disk.health === 'PASSED' ? 'status-running' : 'status-stopped';
-            const healthIcon = disk.health === 'PASSED' ? 'icon-check' : 'icon-cross';
+            const attrHealth = disk.attr_health || 'ok';
+            let healthClass = 'status-running';
+            let healthIcon = 'icon-check';
+            if (attrHealth === 'warning') {
+                healthClass = 'status-warning';
+                healthIcon = 'icon-alert';
+            } else if (attrHealth === 'critical' || disk.health !== 'PASSED') {
+                healthClass = 'status-stopped';
+                healthIcon = 'icon-cross';
+            }
             const temp = disk.temperature != null ? disk.temperature : null;
             const tempClass = temp === null ? '' : (temp > 55 ? 'text-red' : (temp > 45 ? 'text-yellow' : ''));
             const tempText = temp !== null ? `${temp}°C` : '—';
