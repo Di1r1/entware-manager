@@ -72,7 +72,7 @@ delete_file help install kill_pid links_load links_save network_action network_a
 network_config network_events network_interfaces network_routes network_stats
 network_status packages remove service_action services smart stats temp_history
 temperature tmpfs ttyd_control update upgradable upgrade version view_file
-wifi_temp wifi_temp_history monitor_action monitor_config monitor_log monitor_status
+wifi_temp wifi_temp_history
 LIST
 
 # Поддиректории

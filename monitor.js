@@ -111,7 +111,7 @@ const MONITOR = {
         if (!statusSpan || !tbody) return;
 
         try {
-            const data = await apiGet('/monitor/monitor_status.cgi');
+            const data = await apiGet('/monitor/status.cgi');
             if (data.daemon_status === 'running') {
                 statusSpan.textContent = 'активен (PID ' + data.daemon_pid + ')';
                 statusSpan.className = 'stat-value-normal';
@@ -144,7 +144,7 @@ const MONITOR = {
 
     async loadConfig() {
         try {
-            const cfg = await apiGet('/monitor/monitor_config.cgi');
+            const cfg = await apiGet('/monitor/config.cgi');
             document.getElementById('settings-enabled').checked = cfg.enabled;
             document.getElementById('settings-interval').value = cfg.interval;
             document.getElementById('settings-individual-enabled').checked = cfg.individual.enabled;
@@ -174,10 +174,10 @@ const MONITOR = {
             max_processes: maxProcesses
         };
         try {
-            var result = await apiPostJSON('/monitor/monitor_config.cgi', config);
+            var result = await apiPostJSON('/monitor/config.cgi', config);
             if (result.status === 'ok') {
                 Toast.show('Настройки сохранены');
-                await apiPost('/monitor/monitor_action.cgi', 'action=restart');
+                await apiPost('/monitor/action.cgi', 'action=restart');
             } else {
                 Toast.show('Ошибка: ' + result.message, true);
             }
@@ -188,7 +188,7 @@ const MONITOR = {
 
     async sendAction(action) {
         try {
-            var res = await apiPost('/monitor/monitor_action.cgi', 'action=' + action);
+            var res = await apiPost('/monitor/action.cgi', 'action=' + action);
             Toast.show(res.message);
             this.updateStatus();
         } catch (err) {
@@ -199,7 +199,7 @@ const MONITOR = {
     async killProcess(pid) {
         if (confirm('Убить процесс ' + pid + '?')) {
             try {
-                var res = await apiPost('/monitor/monitor_action.cgi', 'action=kill&pid=' + pid);
+                var res = await apiPost('/monitor/action.cgi', 'action=kill&pid=' + pid);
                 Toast.show(res.message);
                 this.updateStatus();
             } catch (err) {
@@ -213,7 +213,7 @@ const MONITOR = {
         if (!logPre) return;
 
         try {
-            const resp = await apiFetch('/monitor/monitor_log.cgi');
+            const resp = await apiFetch('/monitor/log.cgi');
             const text = await resp.text();
             logPre.innerText = text;
         } catch(e) {
