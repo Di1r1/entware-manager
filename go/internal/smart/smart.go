@@ -284,30 +284,25 @@ func HandleSmart() {
 		return
 	}
 
-	action := getQueryParam("action")
-	if action == "" {
-		// Try POST body for action
-		if isPOST() {
-			body := readPOSTBody()
-			params := parseFormBody(body)
-			if a, ok := params["action"]; ok {
-				action = a
-			}
-		}
+	var postParams map[string]string
+	if isPOST() {
+		postParams = parseFormBody(readPOSTBody())
 	}
+
+	getParam := func(key string) string {
+		v := getQueryParam(key)
+		if v == "" && postParams != nil {
+			v = postParams[key]
+		}
+		return v
+	}
+
+	action := getParam("action")
 	if action == "" {
 		action = "list"
 	}
 
-	device := getQueryParam("device")
-	if device == "" && isPOST() {
-		body := readPOSTBody()
-		params := parseFormBody(body)
-		if d, ok := params["device"]; ok {
-			device = d
-		}
-	}
-	device = strings.TrimPrefix(device, "/dev/")
+	device := strings.TrimPrefix(getParam("device"), "/dev/")
 
 	switch action {
 	case "list":
@@ -322,14 +317,7 @@ func HandleSmart() {
 		handleUsage(device)
 	case "selftest":
 		if isPOST() {
-			testType := getQueryParam("type")
-			if testType == "" {
-				body := readPOSTBody()
-				params := parseFormBody(body)
-				if t, ok := params["type"]; ok {
-					testType = t
-				}
-			}
+			testType := getParam("type")
 			if testType == "" {
 				testType = "short"
 			}
