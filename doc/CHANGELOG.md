@@ -2,6 +2,14 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.05.2 (2026-07-25)
+
+### Исправления
+
+- **monitor endpoints**: JS вызывал `/monitor/monitor_status.cgi`, но symlink — `monitor/status.cgi` — все 4 эндпоинта (status, config, action, log) возвращали 404; исправлено на `/monitor/status.cgi` и т.д.
+- **build-deploy.sh**: удалены корневые симлинки `monitor_*` (дублировали поддиректорию `monitor/`)
+- **help page**: добавлены разделы про архитектуру (go.cgi + 7 Go-бинарников), attr_health (цветовая индикация Health), объединённые графики температуры
+
 ## 1.05.1 (2026-07-24)
 
 ### Улучшения графиков температуры
