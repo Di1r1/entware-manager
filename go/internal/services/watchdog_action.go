@@ -12,6 +12,10 @@ var (
 )
 
 func HandleWatchdogAction() {
+	if !IsGET() && !IsPOST() {
+		NotAllowed()
+		return
+	}
 	action := getQueryParam("action")
 	if action == "" {
 		body := readPOSTBody()
