@@ -71,10 +71,39 @@ func parsePostParam(body, key string) string {
 	for _, part := range strings.Split(body, "&") {
 		kv := strings.SplitN(part, "=", 2)
 		if len(kv) == 2 && kv[0] == key {
-			return kv[1]
+			return urlDecode(strings.ReplaceAll(kv[1], "+", " "))
 		}
 	}
 	return ""
+}
+
+func urlDecode(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '%' && i+2 < len(s) {
+			high := unhex(s[i+1])
+			low := unhex(s[i+2])
+			if high >= 0 && low >= 0 {
+				b.WriteByte(byte(high<<4 | low))
+				i += 2
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+func unhex(c byte) int {
+	switch {
+	case '0' <= c && c <= '9':
+		return int(c - '0')
+	case 'a' <= c && c <= 'f':
+		return int(c - 'a' + 10)
+	case 'A' <= c && c <= 'F':
+		return int(c - 'A' + 10)
+	}
+	return -1
 }
 
 func runOpkg(args ...string) (string, int) {
