@@ -50,9 +50,14 @@ func HandleCrontabUpdate() {
 	typ := params["type"]
 	crontab := params["crontab"]
 
+	// crontab requires trailing newline
+	if !strings.HasSuffix(crontab, "\n") {
+		crontab += "\n"
+	}
+
 	switch typ {
 	case "system":
-		cmd := exec.Command("crontab")
+		cmd := exec.Command("crontab", "-")
 		cmd.Stdin = strings.NewReader(crontab)
 		if err := cmd.Run(); err != nil {
 			fmt.Println("Content-type: application/json; charset=utf-8\n")
