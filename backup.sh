@@ -47,7 +47,13 @@ echo "📂 Копирование /opt/web_entware ..."
 cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
 
 # Проверяем наличие ключевых файлов
-for file in modal.js entware.js style.css index.html icons.svg lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json smart.js cgi-bin/smart.cgi cgi-bin/help.cgi cgi-bin/check_deps.cgi cgi-bin/go/entware-net cgi-bin/go/entware-pkg monitor_config.json; do
+for file in modal.js entware.js monitor.js smart.js style.css index.html icons.svg \
+  lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json \
+  cgi-bin/go.cgi \
+  cgi-bin/go/entware-pkg cgi-bin/go/entware-stats cgi-bin/go/entware-net \
+  cgi-bin/go/entware-logger cgi-bin/go/entware-services \
+  cgi-bin/go/entware-monitor cgi-bin/go/entware-smart \
+  monitor_config.json; do
     if [ -f "$BACKUP_DIR/web_entware/$file" ]; then
         echo "✅ $file скопирован."
     else

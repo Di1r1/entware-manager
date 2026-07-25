@@ -67,9 +67,9 @@ echo "=== Симлинки cgi → go.cgi ==="
 # Корневые эндпоинты
 cd "$DEPLOY_DIR/cgi-bin"
 cat <<'LIST' | while read ep; do ln -sf go.cgi "$ep.cgi"; echo "  $ep.cgi -> go.cgi"; done
-api auth_config available check_deps check_syntax crontab crontab_update debug
+api auth_config available check_deps crontab crontab_update
 delete_file help install kill_pid links_load links_save network_action network_arp
-network_config network_events network_interfaces network_routes network_stats
+network_events network_interfaces network_routes
 network_status packages remove service_action services smart stats temp_history
 temperature tmpfs ttyd_control update upgradable upgrade version view_file
 wifi_temp wifi_temp_history
