@@ -1,7 +1,7 @@
 # Entware Manager
 
-[![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-2.6-blue)](version.json)
+[![ShellCheck](https://github.com/smun7di-cmd/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/smun7di-cmd/entware-manager/actions/workflows/shellcheck.yml)
+[![Version](https://img.shields.io/badge/version-1.06.0-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Веб-панель управления Entware на роутерах Keenetic. Управление пакетами, сервисами, логами, файлами, мониторинг WiFi/температуры, веб-терминал — всё в браузере.
@@ -11,7 +11,7 @@
 ```sh
 # На роутере (Entware уже установлен):
 opkg update && opkg install git-http
-git clone https://github.com/Di1r1/entware-manager.git /opt/tmp/entware-manager
+git clone https://github.com/smun7di-cmd/entware-manager.git /opt/tmp/entware-manager
 cd /opt/tmp/entware-manager/Install
 chmod +x install.sh
 ./install.sh
