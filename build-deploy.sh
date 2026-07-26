@@ -1,28 +1,41 @@
 #!/bin/bash
 # ==============================================
 # Сборка deploy-папки для Entware Manager
-# Версия: 2.0 — Go compilation + symlinks
-# Использование: ./build-deploy.sh [--tar]
-#   --tar  — дополнительно создать tar.gz архив
+# Версия: 3.0 — multi-arch Go compilation
+# Использование: ./build-deploy.sh [--arch ARCH] [--tar]
+#   --arch ARCH  — собрать только для одной архи (arm64/arm/mips/mipsel/amd64/386)
+#                  По умолчанию: все архитектуры
+#   --tar        — дополнительно создать tar.gz архив
 # ==============================================
 
 set -e
 
-PROJECT_DIR="$(dirname "$0")"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$PROJECT_DIR/deploy"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 
-# Очищаем deploy
+ARCH_NAMES=(arm64 arm mips mipsel amd64 386)
+ARCH_GOARCH=(arm64 arm mips mipsle amd64 386)
+ARCH_FLAGS=("" "GOARM=5" "GOMIPS=softfloat" "GOMIPS=softfloat" "" "")
+
+BUILD_ARCHS=""
+BUILD_TAR=false
+for arg in "$@"; do
+    case "$arg" in
+        --tar) BUILD_TAR=true ;;
+        --arch=*) BUILD_ARCHS="${arg#--arch=}" ;;
+    esac
+done
+
 rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR"
 
 echo "=== Сборка deploy ==="
 
-# Копируем корневые файлы (исключая dev-файлы)
 for f in "$PROJECT_DIR"/*; do
     name=$(basename "$f")
     case "$name" in
-        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|*.tar.gz)
+        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|RULES.md|links.json|*_config.json|*.tar.gz)
             continue ;;
     esac
     if [ -d "$f" ]; then
@@ -34,48 +47,63 @@ for f in "$PROJECT_DIR"/*; do
     fi
 done
 
-# Компиляция Go бинарников
+# Удаляем dev-артефакты и пользовательские конфиги из deploy
+rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" 2>/dev/null
+
 echo ""
 echo "=== Компиляция Go ==="
 mkdir -p "$DEPLOY_DIR/cgi-bin/go"
 cd "$PROJECT_DIR/go"
-for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart; do
-    echo -n "  $cmd... "
-    GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$DEPLOY_DIR/cgi-bin/go/$cmd" "./cmd/$cmd/" 2>&1
-    echo "OK ($(du -h "$DEPLOY_DIR/cgi-bin/go/$cmd" | cut -f1))"
+
+for i in "${!ARCH_NAMES[@]}"; do
+    arch_name="${ARCH_NAMES[$i]}"
+    goarch="${ARCH_GOARCH[$i]}"
+    goflags="${ARCH_FLAGS[$i]}"
+    dir_name="$arch_name"
+
+    if [ -n "$BUILD_ARCHS" ] && [ "$arch_name" != "$BUILD_ARCHS" ]; then
+        continue
+    fi
+
+    mkdir -p "$DEPLOY_DIR/cgi-bin/go/$dir_name"
+    echo ""
+    echo "  [$arch_name] (GOARCH=$goarch${goflags:+ $goflags})"
+
+    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart; do
+        echo -n "    $cmd... "
+        out="$DEPLOY_DIR/cgi-bin/go/$dir_name/$cmd"
+        env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" "./cmd/$cmd/" 2>&1
+        echo "OK ($(du -h "$out" | cut -f1))"
+    done
 done
 
-# ZIP-упаковка бинарников (опционально, если upx доступен)
 if command -v upx &>/dev/null || [ -x /tmp/upx-4.2.4-amd64_linux/upx ]; then
     UPX=$(command -v upx || echo "/tmp/upx-4.2.4-amd64_linux/upx")
     echo ""
     echo "=== UPX сжатие ==="
-    for f in "$DEPLOY_DIR"/cgi-bin/go/entware-*; do
-        echo -n "  $(basename $f)... "
-        tmpf=$(mktemp)
-        "$UPX" -9 "$f" -o "$tmpf" 2>/dev/null && mv "$tmpf" "$f" && echo "OK ($(du -h "$f" | cut -f1))" || { rm -f "$tmpf"; echo "SKIP"; }
+    for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
+        [ -d "$arch_dir" ] || continue
+        echo "  [$(basename "$arch_dir")]"
+        for f in "$arch_dir"entware-*; do
+            [ -f "$f" ] || continue
+            echo -n "    $(basename $f)... "
+            tmpf=$(mktemp -u)
+            "$UPX" -9 "$f" -o "$tmpf" 2>/dev/null && mv "$tmpf" "$f" && echo "OK ($(du -h "$f" | cut -f1))" || { rm -f "$tmpf"; echo "SKIP"; }
+        done
     done
 fi
 
-# Создаём go.cgi диспетчер
 cp "$PROJECT_DIR/cgi-bin/go.cgi" "$DEPLOY_DIR/cgi-bin/go.cgi"
 
-# Создаём симлинки для всех эндпоинтов
 echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 
-# Корневые эндпоинты
 cd "$DEPLOY_DIR/cgi-bin"
-cat <<'LIST' | while read ep; do ln -sf go.cgi "$ep.cgi"; echo "  $ep.cgi -> go.cgi"; done
-api auth_config available check_deps crontab crontab_update
-delete_file help install kill_pid links_load links_save network_action network_arp
-network_events network_interfaces network_routes
-network_status packages remove service_action services smart stats temp_history
-temperature tmpfs ttyd_control update upgradable upgrade version view_file
-wifi_temp wifi_temp_history
-LIST
+for ep in api auth_config available check_deps crontab crontab_update delete_file help install kill_pid links_load links_save network_action network_arp network_events network_interfaces network_routes network_status packages remove service_action services smart stats temp_history temperature tmpfs ttyd_control update upgradable upgrade version view_file wifi_temp wifi_temp_history; do
+    ln -sf go.cgi "$ep.cgi"
+    echo "  $ep.cgi -> go.cgi"
+done
 
-# Поддиректории
 for d in network logger monitor service_watchdog; do
     mkdir -p "$d"
 done
@@ -106,15 +134,13 @@ echo "  service_watchdog/*.cgi -> ../go.cgi"
 
 cd "$DEPLOY_DIR"
 
-# Выставляем права
 find "$DEPLOY_DIR/cgi-bin" -type l -exec chmod 755 {} \;
 chmod 755 "$DEPLOY_DIR/cgi-bin/go.cgi"
-chmod 755 "$DEPLOY_DIR/cgi-bin/go/"*
+find "$DEPLOY_DIR/cgi-bin/go" -type f -exec chmod 755 {} \;
 find "$DEPLOY_DIR" -type d -exec chmod 755 {} \;
 find "$DEPLOY_DIR" -type f -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" | xargs chmod 644 2>/dev/null || true
 find "$DEPLOY_DIR" -type f -name "*.sh" -exec chmod 755 {} \;
 
-# Удаляем мусор
 find "$DEPLOY_DIR" -name '*.bak' -delete 2>/dev/null
 
 echo ""
@@ -122,15 +148,24 @@ echo "=== Deploy собран: $DEPLOY_DIR ==="
 echo "Размер: $(du -sh "$DEPLOY_DIR" | cut -f1)"
 echo "Файлов: $(find "$DEPLOY_DIR" -type f | wc -l)"
 
-# Опционально: tar.gz
-if [ "$1" = "--tar" ]; then
+echo ""
+echo "Архитектуры в сборке:"
+for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
+    [ -d "$arch_dir" ] || continue
+    count=$(find "$arch_dir" -type f | wc -l)
+    total=$(du -sh "$arch_dir" | cut -f1)
+    echo "  $arch_dir → $count файлов, $total"
+done
+
+if $BUILD_TAR; then
     ARCHIVE="$PROJECT_DIR/entware-manager_$TIMESTAMP.tar.gz"
     tar -czf "$ARCHIVE" -C "$PROJECT_DIR" deploy/
+    echo ""
     echo "Архив: $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
 fi
 
 echo ""
 echo "Для установки на роутер:"
 echo "  1. Скопируйте deploy/ в /opt/tmp/ на роутере"
-echo "  2. chmod +x /opt/tmp/deploy/Install/install.sh"
-echo "  3. /opt/tmp/deploy/Install/install.sh"
+echo "  2. cd /opt/tmp/deploy && sh Install/install.sh"
+echo "  (install.sh сам определит архитектуру и возьмёт нужные бинарники)"
