@@ -213,6 +213,15 @@ func saveTempPoint(prefix, temp string) {
 }
 
 func saveWifiTempPoint(temp0, temp1 string) {
+	if temp0 == "" || temp0 == "null" || temp0 == "-" {
+		temp0 = "-"
+	}
+	if temp1 == "" || temp1 == "null" || temp1 == "-" {
+		temp1 = "-"
+	}
+	if temp0 == "-" && temp1 == "-" {
+		return
+	}
 	today := time.Now().Format("2006-01-02")
 	now := time.Now().Format("15:04:05")
 	line := today + " " + now + "|" + temp0 + "|" + temp1 + "\n"
@@ -278,6 +287,15 @@ func parseWifiTempHistory(lines []string) []map[string]interface{} {
 			continue
 		}
 		t, t0, t1 := parts[0], parts[1], parts[2]
+		if t0 == "-" || t0 == "null" {
+			t0 = ""
+		}
+		if t1 == "-" || t1 == "null" {
+			t1 = ""
+		}
+		if t0 == "" && t1 == "" {
+			continue
+		}
 		var t0Val interface{}
 		var t1Val interface{}
 		if n, err := strconv.Atoi(t0); err == nil {

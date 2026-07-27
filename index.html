@@ -109,7 +109,8 @@
                     const combined = data.combined;
                     const span = document.getElementById('wifiTempValue');
                     span.textContent = combined || 'н/д';
-                    if (data.temp0 !== null || data.temp1 !== null) {
+                    if (data.temp0 !== null && data.temp0 !== 'null' && data.temp0 !== '-' && data.temp0 !== undefined ||
+                        data.temp1 !== null && data.temp1 !== 'null' && data.temp1 !== '-' && data.temp1 !== undefined) {
                         fetch('/entware-cgi/wifi_temp_history.cgi?action=save&temp0=' + encodeURIComponent(data.temp0 || '-') + '&temp1=' + encodeURIComponent(data.temp1 || '-'), {method:'POST'}).catch(()=>{});
                     }
                 })
