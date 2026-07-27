@@ -86,16 +86,6 @@ index.html (SPA)  ──fetch──▶  cgi-bin/*.cgi  ──. lib/common.sh─�
 # → создаёт ./deploy/ (или deploy.tar.gz)
 ```
 
-### Деплой на роутер (SMB)
-
-```sh
-smbclient //192.168.3.1/Entware_USB -U 'USER%PASS' <<'EOF'
-put deploy/lib/common.sh web_entware/lib/common.sh
-put deploy/cgi-bin/*.cgi web_entware/cgi-bin/
-# ... остальные файлы
-EOF
-```
-
 ### Конвенции кода
 
 - **POSIX sh** — никаких bashism (`local` только в функциях, никаких `$'...'`, `[[ ]]`, `==`)
