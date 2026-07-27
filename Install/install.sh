@@ -3,11 +3,11 @@
 # Полная установка Entware Manager на роутер
 # ==============================================
 
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-BOLD='\033[1m'
-NC='\033[0m'
+RED=$(printf '\033[1;31m')
+GREEN=$(printf '\033[1;32m')
+YELLOW=$(printf '\033[1;33m')
+BOLD=$(printf '\033[1m')
+NC=$(printf '\033[0m')
 
 STEP=0
 ERRORS=""
@@ -17,8 +17,9 @@ LOG_DIR="/tmp/entware/install-logs"
 LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
 mkdir -p "$LOG_DIR"
 
+ESC=$(printf '\033')
 log() {
-	echo "$1" | sed 's/\x1b\[[0-9;]*m//g' >> "$LOG_FILE"
+	echo "$1" | sed "s/${ESC}\[[0-9;]*m//g" >> "$LOG_FILE"
 }
 log "=== Установка Entware Manager ==="
 log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
@@ -26,7 +27,7 @@ log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
 step() {
 	STEP=$((STEP + 1))
 	echo ""
-	echo "${BOLD}[${STEP}/9] $1${NC}"
+	echo "${BOLD}[${STEP}] $1${NC}"
 	echo "────────────────────────────────────────"
 	log "--- ШАГ $STEP: $1 ---"
 }
