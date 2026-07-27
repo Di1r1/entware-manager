@@ -32,26 +32,47 @@
 
 ### Установка с GitHub Releases
 
+На роутере по SSH:
+
 ```sh
-# На роутере (определите архитектуру):
+# Определи архитектуру:
 uname -m
-# → aarch64 → arm64
-# → armv7l/armv6l/armv5tejl/armv5tel → arm
-# → mips    → mips
-# → mipsel  → mipsel
-# → x86_64  → amd64
-# → i686    → 386
 
 # Если нет curl: opkg update && opkg install curl
+```
 
-# Скачайте и установите (пример для arm64):
-cd /opt/tmp
+Качай архив под свою архитектуру:
+
+```sh
+# arm64 (aarch64)
 curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
-tar -xzf entware-manager-v1.06.1-arm64.tar.gz
+
+# arm (armv7l / armv5tel)
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm.tar.gz
+
+# mips
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mips.tar.gz
+
+# mipsel
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
+
+# amd64 (x86_64)
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-amd64.tar.gz
+
+# 386 (i686)
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-386.tar.gz
+```
+
+Распаковывай и ставь:
+
+```sh
+tar -xzf entware-manager-v1.06.1-*.tar.gz
 cd deploy && sh Install/install.sh
 ```
 
 После установки открой: `http://<ip-роутера>:8087/entware-manager/`
+
+Все архивы: https://github.com/Di1r1/entware-manager/releases
 
 ### Обновление
 
@@ -61,6 +82,8 @@ curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entw
 tar -xzf entware-manager-v1.06.1-arm64.tar.gz
 cd deploy && sh Install/install.sh
 ```
+
+Все архивы: https://github.com/Di1r1/entware-manager/releases
 
 ### Удаление
 
