@@ -82,6 +82,14 @@ install.sh пишет лог в `/tmp/entware/install-logs/install-YYYYMMDD-HHMM
 - веб-файлы (index.html, style.css, …)
 - lighttpd (PID + HTTP 200)
 
+### Бэкап конфигов
+
+Перед изменением `install.sh` сохраняет копии:
+- `/opt/etc/lighttpd/lighttpd.conf` → `/opt/web_entware/backup/etc/lighttpd/lighttpd.conf`
+- `/opt/etc/lighttpd/conf.d/30-cgi.conf` → `/opt/web_entware/backup/etc/lighttpd/conf.d/30-cgi.conf`
+
+При удалении `uninstall.sh` восстанавливает конфиги из бэкапа. Если бэкапа нет — просто удаляет строки Entware Manager из `lighttpd.conf`.
+
 ### Установка через git
 
 ```sh
