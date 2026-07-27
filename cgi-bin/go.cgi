@@ -5,7 +5,10 @@ detect_arch() {
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
 		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
-		mips)     echo "mips" ;;
+		mips)
+			byte=$(dd if=/proc/self/exe bs=1 count=1 skip=5 2>/dev/null | od -An -tu1 | tr -d ' ')
+			[ "$byte" = "1" ] && echo "mipsel" || echo "mips"
+			;;
 		mipsel)   echo "mipsel" ;;
 		x86_64|amd64) echo "amd64" ;;
 		i[3-6]86) echo "386" ;;

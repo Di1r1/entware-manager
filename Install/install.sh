@@ -262,7 +262,10 @@ detect_arch() {
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
 		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
-		mips)     echo "mips" ;;
+		mips)
+			byte=$(dd if=/bin/sh bs=1 count=1 skip=5 2>/dev/null | od -An -tu1 | tr -d ' ')
+			[ "$byte" = "1" ] && echo "mipsel" || echo "mips"
+			;;
 		mipsel)   echo "mipsel" ;;
 		x86_64|amd64) echo "amd64" ;;
 		i[3-6]86) echo "386" ;;
@@ -501,7 +504,8 @@ echo "${GREEN}  ✓ CGI:${NC}      http://$(hostname):8087/entware-cgi/"
 echo ""
 echo "  Версия: $(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo 'неизвестна')"
 echo ""
-echo "  Открой в браузере: http://$(hostname -I | awk '{print $1}'):8087/entware-manager/"
+IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $NF}' | head -1)
+echo "  Открой в браузере: http://${IP:-<IP-роутера>}:8087/entware-manager/"
 echo ""
 echo "  Лог установки: $LOG_FILE"
 echo ""
