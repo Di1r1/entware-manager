@@ -77,55 +77,6 @@ index.html (SPA)  ──fetch──▶  cgi-bin/*.cgi  ──. lib/common.sh─�
 | `/opt/web_entware/auth_config.json` | Пароль веб-панели: `{"enabled":true,"password_hash":"<sha256>"}` |
 | `/opt/web_entware/version.json` | Версия проекта: `{"version":"2.6","date":"2026-07-16"}` |
 
-## Разработка
-
-### Сборка deploy-папки
-
-```sh
-./build-deploy.sh [--tar]
-# → создаёт ./deploy/ (или deploy.tar.gz)
-```
-
-### Конвенции кода
-
-- **POSIX sh** — никаких bashism (`local` только в функциях, никаких `$'...'`, `[[ ]]`, `==`)
-- **Общие функции** — только через `. /opt/web_entware/lib/common.sh`
-- **JSON ответ** — `json_out '{"status":"ok"}'` (вызывает `exit 0`)
-- **HTML экранирование** — всегда `html_escape "$var"` перед выводом в HTML
-- **Auth** — `check_filemgr_auth "password"` в начале CGI, требующих пароль
-- **Параметры** — `get_param "key" "default"` (GET), `post_param "key" "default"` (POST)
-
-### Добавить новый CGI
-
-1. Создать `cgi-bin/new_feature.cgi` с shebang `#!/bin/sh`
-2. Подключить `lib/common.sh`
-3. Использовать `get_param`/`post_param`, `json_out`/`html_header`
-4. Добавить в `build-deploy.sh` (автоматически подхватится по маске `cgi-bin/*.cgi`)
-5. Пересобрать и задеплоить
-
-## Тестирование
-
-### Smoke-тесты (на роутере)
-
-```sh
-# Запуск всех базовых проверок
-sh /opt/web_entware/test/smoke.sh
-
-# Или вручную:
-curl -s http://localhost:8087/entware-cgi/version.cgi | jq .
-curl -s http://localhost:8087/entware-cgi/packages.cgi?action=list | jq .
-```
-
-Тесты проверяют: HTTP 200, валидный JSON, работа auth, основные эндпоинты.
-
-### Линтинг (CI)
-
-```sh
-shellcheck -x lib/common.sh Install/install.sh cgi-bin/*.cgi *.sh logger/**/*.sh
-```
-
-GitHub Actions: `.github/workflows/shellcheck.yml` — запускается на каждый push/PR.
-
 ## Troubleshooting
 
 | Проблема | Решение |
