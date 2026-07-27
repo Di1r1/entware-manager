@@ -29,6 +29,7 @@ log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
 PIPE="/tmp/entware-install-pipe.$$"
 mkfifo "$PIPE"
 tee -a "$LOG_FILE" < "$PIPE" &
+exec 3>&1
 exec 1>"$PIPE" 2>&1
 
 # Удаляем pipe после завершения скрипта
@@ -119,7 +120,7 @@ smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 MISSING_PKGS=$(echo "$PACKAGES" | while IFS='|' read -r pkg check_path; do
 	[ -z "$pkg" ] && continue
 	if [ -f "$check_path" ] || [ -x "$check_path" ]; then
-		ok "  $pkg — $(basename "$check_path")"
+		ok "  $pkg — $(basename "$check_path")" >&3
 	else
 		printf "%s " "$pkg"
 	fi
