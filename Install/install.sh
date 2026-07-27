@@ -32,7 +32,7 @@ exec 1> >(tee -a "$LOG_FILE") 2>&1
 step() {
 	STEP=$((STEP + 1))
 	echo ""
-	echo "${BOLD}[${STEP}/8] $1${NC}"
+	echo "${BOLD}[${STEP}/9] $1${NC}"
 	echo "────────────────────────────────────────"
 	log "--- ШАГ $STEP: $1 ---"
 }
@@ -53,9 +53,23 @@ warn() {
 	log "  ⚠ $1"
 }
 
+backup_file() {
+	local src="$1"
+	local label="$2"
+	[ ! -f "$src" ] && return
+	local rel="${src#/}"
+	local dst="$BACKUP_DIR/$rel"
+	mkdir -p "$(dirname "$dst")" 2>/dev/null
+	cp -a "$src" "$dst"
+	ok "  бэкап $label → $dst"
+}
+
 SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET_DIR="/opt/web_entware"
+BACKUP_DIR="$TARGET_DIR/backup"
+BACKUP_DIR="$TARGET_DIR/backup"
 LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
+CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 
 echo "${BOLD}========================================"
 echo " Установка Entware Manager"
@@ -137,7 +151,23 @@ else
 	done
 fi
 
-# ========== 3. НАСТРОЙКА LIGHTTPD ==========
+# ========== 3. БЭКАП СУЩЕСТВУЮЩИХ ФАЙЛОВ ==========
+step "Бэкап существующих файлов"
+
+if [ -f "$LIGHTTPD_CONF" ]; then
+	backup_file "$LIGHTTPD_CONF" "lighttpd.conf"
+fi
+if [ -f "$CGI_CONF" ]; then
+	backup_file "$CGI_CONF" "30-cgi.conf"
+fi
+
+if [ -d "$BACKUP_DIR/etc" ]; then
+	ok "Бэкапы сохранены в $BACKUP_DIR"
+else
+	warn "Нечего бэкапить — чистая установка"
+fi
+
+# ========== 4. НАСТРОЙКА LIGHTTPD ==========
 step "Настройка lighttpd"
 
 LIGHTTPD_ERR=""
@@ -213,7 +243,7 @@ if [ -n "$LIGHTTPD_ERR" ]; then
 	fail "Проблемы с lighttpd:$LIGHTTPD_ERR"
 fi
 
-# ========== 4. КОПИРОВАНИЕ ФАЙЛОВ ==========
+# ========== 5. КОПИРОВАНИЕ ФАЙЛОВ ==========
 step "Копирование файлов"
 
 mkdir -p "$TARGET_DIR" || {
@@ -231,7 +261,7 @@ else
 	fail "Копирование файлов не удалось — $TARGET_DIR пуст"
 fi
 
-# ========== 5. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
+# ========== 6. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
 step "Настройка архитектуры"
 
 detect_arch() {
@@ -273,7 +303,7 @@ else
 	warn "Не удалось определить архитектуру роутера ($(uname -m))"
 fi
 
-# ========== 6. SUDOERS + ПРАВА ==========
+# ========== 7. SUDOERS + ПРАВА ==========
 step "Настройка sudoers и прав доступа"
 
 if [ -x /opt/bin/sudo ]; then
@@ -298,7 +328,7 @@ find "$TARGET_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o
 find "$TARGET_DIR/cgi-bin" -type d -exec chmod 755 {} \; 2>/dev/null
 ok "Права доступа установлены"
 
-# ========== 7. ЗАПУСК LIGHTTPD ==========
+# ========== 8. ЗАПУСК LIGHTTPD ==========
 step "Запуск lighttpd"
 
 if /opt/etc/init.d/S80lighttpd status 2>/dev/null | grep -q running; then
@@ -319,7 +349,7 @@ else
 	echo "    Для диагностики: lighttpd -D -f $LIGHTTPD_CONF"
 fi
 
-# ========== 8. ПРОВЕРКА УСТАНОВКИ ==========
+# ========== 9. ПРОВЕРКА УСТАНОВКИ ==========
 step "Проверка установки"
 
 CHECK_ERRS=""

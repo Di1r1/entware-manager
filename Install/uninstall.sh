@@ -10,6 +10,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 TARGET_DIR="/opt/web_entware"
+BACKUP_DIR="$TARGET_DIR/backup"
 LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 LOG_DIR="/tmp/entware"
@@ -75,29 +76,42 @@ else
 	warn "$TARGET_DIR уже удалён"
 fi
 
-# ========== 4. ОЧИСТКА КОНФИГА LIGHTTPD ==========
+# ========== 4. ВОССТАНОВЛЕНИЕ КОНФИГОВ ИЗ БЭКАПА ==========
 echo ""
-echo "${BOLD}[4/7] Очистка конфига lighttpd${NC}"
+echo "${BOLD}[4/8] Восстановление конфигов из бэкапа${NC}"
 echo "────────────────────────────────────────"
 
-[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
-[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+if [ -d "$BACKUP_DIR" ]; then
+	# Восстанавливаем lighttpd.conf
+	if [ -f "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" ]; then
+		cp -a "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" "$LIGHTTPD_CONF"
+		ok "lighttpd.conf восстановлен из бэкапа"
+	else
+		# Если бэкапа нет — чистим вручную
+		[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+		[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+		ok "Строки entware удалены из lighttpd.conf (бэкап не найден)"
+	fi
 
-# Если после удаления alias.url остался пустым — убираем
-[ -f "$LIGHTTPD_CONF" ] && sed -i '/^alias\.url += (\n)/d' "$LIGHTTPD_CONF" 2>/dev/null || true
-
-ok "alias.url — строки /entware-manager/ и /entware-cgi/ удалены"
-
-if [ -f "$CGI_CONF" ]; then
-	rm -f "$CGI_CONF"
-	ok "30-cgi.conf удалён"
+	# Восстанавливаем 30-cgi.conf
+	if [ -f "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" ]; then
+		cp -a "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" "$CGI_CONF"
+		ok "30-cgi.conf восстановлен из бэкапа"
+	else
+		rm -f "$CGI_CONF" 2>/dev/null
+		ok "30-cgi.conf удалён (бэкап не найден)"
+	fi
 else
-	warn "30-cgi.conf уже удалён"
+	# Нет бэкапа — чистим вручную
+	[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+	[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+	rm -f "$CGI_CONF" 2>/dev/null
+	ok "Строки entware удалены из lighttpd.conf, 30-cgi.conf удалён"
 fi
 
 # ========== 5. УДАЛЕНИЕ SUDOERS ==========
 echo ""
-echo "${BOLD}[5/7] Удаление sudoers${NC}"
+echo "${BOLD}[5/8] Удаление sudoers${NC}"
 echo "────────────────────────────────────────"
 
 if [ -f "$SUDOERS_FILE" ]; then
@@ -109,7 +123,7 @@ fi
 
 # ========== 6. УДАЛЕНИЕ ЛОГОВ ==========
 echo ""
-echo "${BOLD}[6/7] Удаление логов и временных файлов${NC}"
+echo "${BOLD}[6/8] Удаление логов и временных файлов${NC}"
 echo "────────────────────────────────────────"
 
 if [ -d "$LOG_DIR" ]; then
@@ -121,7 +135,7 @@ fi
 
 # ========== 7. ЗАПУСК LIGHTTPD ==========
 echo ""
-echo "${BOLD}[7/7] Запуск lighttpd${NC}"
+echo "${BOLD}[7/8] Запуск lighttpd${NC}"
 echo "────────────────────────────────────────"
 
 if [ -f /opt/etc/init.d/S80lighttpd ]; then
@@ -139,11 +153,8 @@ else
 	warn "Скрипт запуска lighttpd не найден"
 fi
 
-# ========== ИТОГ ==========
 echo ""
-echo "${BOLD}========================================"
-echo " РЕЗУЛЬТАТ УДАЛЕНИЯ"
-echo "========================================${NC}"
+echo "${BOLD}[8/8] Итог${NC}"
 echo ""
 echo "${GREEN}  ✓ Выполнено: $OK${NC}"
 if [ $WARN -gt 0 ]; then
@@ -154,4 +165,9 @@ echo "  Пакеты Entware (lighttpd, jq, curl и др.) не удалены �
 echo "  они могут использоваться другими программами."
 echo "  Если хочешь удалить вручную:"
 echo "    opkg remove lighttpd lighttpd-mod-cgi jq curl sudo smartmontools ..."
+echo ""
+if [ -d "$BACKUP_DIR" ]; then
+	echo "  Бэкап конфигов: $BACKUP_DIR/ (не удалён)"
+	echo "  При переустановке install.sh восстановит их."
+fi
 echo ""
