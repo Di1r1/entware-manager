@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/badge/version-1.06.1-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Entware Manager** — веб-панель управления Entware на роутерах Keenetic с NDMS.
+**Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
 Всё в браузере, без SSH и консоли.
 
 ### Возможности
