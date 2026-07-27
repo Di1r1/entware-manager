@@ -3,34 +3,54 @@
 # Полная установка Entware Manager на роутер
 # ==============================================
 
-# Цвета (ANSI, совместимо с BusyBox)
+set -o pipefail 2>/dev/null || true
+
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 STEP=0
 ERRORS=""
 
+# --- Лог ---
+LOG_DIR="/tmp/entware/install-logs"
+LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
+mkdir -p "$LOG_DIR" 2>/dev/null
+
+log() {
+	echo "$1" | sed 's/\x1b\[[0-9;]*m//g' >> "$LOG_FILE"
+}
+log "=== Установка Entware Manager ==="
+log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
+
+# Перенаправляем весь вывод ещё и в лог
+exec 3>&1 4>&2
+exec 1> >(tee -a "$LOG_FILE") 2>&1
+
 step() {
 	STEP=$((STEP + 1))
 	echo ""
-	echo "${BOLD}[${STEP}/7] $1${NC}"
+	echo "${BOLD}[${STEP}/8] $1${NC}"
 	echo "────────────────────────────────────────"
+	log "--- ШАГ $STEP: $1 ---"
 }
 
 fail() {
 	echo "${RED}  ✗ $1${NC}"
 	ERRORS="$ERRORS\n  [$STEP] $1"
+	log "  ✗ $1"
 }
 
 ok() {
 	echo "${GREEN}  ✓ $1${NC}"
+	log "  ✓ $1"
 }
 
 warn() {
 	echo "${YELLOW}  ⚠ $1${NC}"
+	log "  ⚠ $1"
 }
 
 SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -40,6 +60,9 @@ LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 echo "${BOLD}========================================"
 echo " Установка Entware Manager"
 echo "========================================${NC}"
+echo ""
+echo "  Лог: $LOG_FILE"
+echo ""
 
 # ========== 1. ПРОВЕРКА ИСТОЧНИКА ==========
 step "Проверка исходных файлов"
@@ -47,10 +70,14 @@ step "Проверка исходных файлов"
 if [ ! -d "$SELF_DIR/lib" ]; then
 	fail "Исходный каталог $SELF_DIR не найден"
 	echo "  Скопируй папку deploy на роутер и запусти install.sh из неё."
-	echo ""
 	exit 1
 fi
 ok "Исходный каталог: $SELF_DIR"
+
+# Проверка архива: есть ли все основные папки
+for d in cgi-bin lib Install doc; do
+	[ -d "$SELF_DIR/$d" ] && ok "  папка $d/" || fail "  папка $d/ отсутствует"
+done
 
 # ========== 2. ПРОВЕРКА ПАКЕТОВ ==========
 step "Проверка установленных пакетов"
@@ -72,15 +99,19 @@ smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 
 MISSING_PKGS=$(echo "$PACKAGES" | while IFS='|' read -r pkg check_path; do
 	[ -z "$pkg" ] && continue
-	[ -f "$check_path" ] || [ -x "$check_path" ] || printf "%s " "$pkg"
+	if [ -f "$check_path" ] || [ -x "$check_path" ]; then
+		ok "  $pkg — $(basename "$check_path")"
+	else
+		printf "%s " "$pkg"
+	fi
 done)
 MISSING_PKGS=$(echo "$MISSING_PKGS" | sed 's/ $//')
 
 if [ -z "$MISSING_PKGS" ]; then
+	echo ""
 	ok "Все пакеты уже установлены"
 else
 	warn "Отсутствуют:$MISSING_PKGS"
-
 	step "Установка отсутствующих пакетов"
 
 	if opkg update; then
@@ -98,7 +129,6 @@ else
 		fi
 	done
 
-	# Проверка после установки
 	for pkg in $MISSING_PKGS; do
 		check_path=$(echo "$PACKAGES" | grep "^${pkg}|" | cut -d'|' -f2)
 		if [ -n "$check_path" ] && [ ! -f "$check_path" ] && [ ! -x "$check_path" ]; then
@@ -110,9 +140,11 @@ fi
 # ========== 3. НАСТРОЙКА LIGHTTPD ==========
 step "Настройка lighttpd"
 
+LIGHTTPD_ERR=""
+
 if [ ! -f "/opt/lib/lighttpd/mod_cgi.so" ]; then
 	echo "  → mod_cgi.so нет, устанавливаю lighttpd-mod-cgi..."
-	opkg install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || warn "lighttpd-mod-cgi не установился"
+	opkg install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
 fi
 
 # alias.url
@@ -134,25 +166,22 @@ EOF
 if grep -q '/entware-manager/' "$LIGHTTPD_CONF"; then
 	ok "alias.url: /entware-manager/ + /entware-cgi/"
 else
+	LIGHTTPD_ERR="$LIGHTTPD_ERR alias.url"
 	fail "alias.url не добавился в $LIGHTTPD_CONF"
 fi
 
-# server.port
 grep -q 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null || {
 	echo 'server.port = 8087' >> "$LIGHTTPD_CONF"
 	ok "server.port = 8087"
 }
 
-# server.modules
 grep -q 'mod_alias' "$LIGHTTPD_CONF" 2>/dev/null || \
 	echo 'server.modules += ( "mod_alias" )' >> "$LIGHTTPD_CONF"
 grep -q 'mod_cgi' "$LIGHTTPD_CONF" 2>/dev/null || \
 	echo 'server.modules += ( "mod_cgi" )' >> "$LIGHTTPD_CONF"
 
-# Удаляем cgi.execute-x-only из main.conf
 sed -i '/cgi\.execute-x-only/d' "$LIGHTTPD_CONF" 2>/dev/null
 
-# 30-cgi.conf
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 mkdir -p "$(dirname "$CGI_CONF")" 2>/dev/null
 cat > "$CGI_CONF" <<'CGIEOF'
@@ -162,22 +191,26 @@ CGIEOF
 if [ -f "$CGI_CONF" ]; then
 	ok "30-cgi.conf: .cgi → /bin/sh, execute-x-only"
 else
+	LIGHTTPD_ERR="$LIGHTTPD_ERR 30-cgi.conf"
 	fail "30-cgi.conf не создался"
 fi
 
-# static-file.exclude-extensions
 if grep -q 'static-file\.exclude-extensions' "$LIGHTTPD_CONF" 2>/dev/null; then
 	if ! grep -q 'static-file\.exclude-extensions.*\.cgi' "$LIGHTTPD_CONF" 2>/dev/null; then
 		sed -i '/static-file\.exclude-extensions = (/s/)$/, ".cgi")/' "$LIGHTTPD_CONF"
 	fi
 fi
 
-# Валидация
 if lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
 	ok "Конфигурация lighttpd валидна"
 else
+	LIGHTTPD_ERR="$LIGHTTPD_ERR invalid-conf"
 	fail "Конфигурация lighttpd содержит ошибки"
 	echo "    lighttpd -t -f $LIGHTTPD_CONF"
+fi
+
+if [ -n "$LIGHTTPD_ERR" ]; then
+	fail "Проблемы с lighttpd:$LIGHTTPD_ERR"
 fi
 
 # ========== 4. КОПИРОВАНИЕ ФАЙЛОВ ==========
@@ -185,7 +218,6 @@ step "Копирование файлов"
 
 mkdir -p "$TARGET_DIR" || {
 	fail "Не удалось создать $TARGET_DIR"
-	echo "  Проверь права доступа и место на диске"
 }
 
 rm -f "$TARGET_DIR"/cgi-bin/*.cgi 2>/dev/null
@@ -193,7 +225,8 @@ rm -f "$TARGET_DIR"/cgi-bin/*/*.cgi 2>/dev/null
 
 cp -a "$SELF_DIR"/* "$TARGET_DIR/"
 if [ -f "$TARGET_DIR/version.json" ]; then
-	ok "Файлы скопированы в $TARGET_DIR ($(du -sh "$TARGET_DIR" | cut -f1))"
+	VERSION=$(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo '?')
+	ok "Файлы скопированы в $TARGET_DIR (версия $VERSION, $(du -sh "$TARGET_DIR" | cut -f1))"
 else
 	fail "Копирование файлов не удалось — $TARGET_DIR пуст"
 fi
@@ -218,9 +251,7 @@ GO_DIR="$TARGET_DIR/cgi-bin/go"
 
 if [ -n "$ROUTER_ARCH" ]; then
 	ok "Обнаружена архитектура: ${BOLD}$ROUTER_ARCH${NC}"
-
 	if [ -d "$GO_DIR" ]; then
-		# Удаляем чужие архитектуры
 		for dir in "$GO_DIR"/*/; do
 			[ -d "$dir" ] || continue
 			arch_name=$(basename "$dir")
@@ -229,8 +260,6 @@ if [ -n "$ROUTER_ARCH" ]; then
 				rm -rf "$dir"
 			fi
 		done
-
-		# Перемещаем нужные бинарники на уровень выше
 		if [ -d "$GO_DIR/$ROUTER_ARCH" ]; then
 			rm -f "$GO_DIR"/entware-*
 			mv "$GO_DIR/$ROUTER_ARCH"/* "$GO_DIR/" 2>/dev/null
@@ -242,7 +271,6 @@ if [ -n "$ROUTER_ARCH" ]; then
 	fi
 else
 	warn "Не удалось определить архитектуру роутера ($(uname -m))"
-	echo "  → оставляю все бинарники, go.cgi выберет подходящий"
 fi
 
 # ========== 6. SUDOERS + ПРАВА ==========
@@ -263,7 +291,7 @@ fi
 
 find "$TARGET_DIR/cgi-bin" -type l -exec chmod 755 {} \; 2>/dev/null
 chmod 755 "$TARGET_DIR/cgi-bin/go.cgi" 2>/dev/null
-[ -d "$TARGET_DIR/cgi-bin/go" ] && chmod 755 "$TARGET_DIR"/cgi-bin/go/* 2>/dev/null
+[ -d "$TARGET_DIR/cgi-bin/go" ] && chmod -R 755 "$TARGET_DIR"/cgi-bin/go/* 2>/dev/null
 chmod 755 "$TARGET_DIR"/watchdog.sh "$TARGET_DIR"/network_watchdog.sh "$TARGET_DIR"/service_watchdog.sh "$TARGET_DIR"/backup.sh 2>/dev/null
 find "$TARGET_DIR" -type f -name "*.sh" -exec chmod 755 {} \; 2>/dev/null
 find "$TARGET_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" \) -exec chmod 644 {} \; 2>/dev/null
@@ -291,6 +319,130 @@ else
 	echo "    Для диагностики: lighttpd -D -f $LIGHTTPD_CONF"
 fi
 
+# ========== 8. ПРОВЕРКА УСТАНОВКИ ==========
+step "Проверка установки"
+
+CHECK_ERRS=""
+
+# Проверка пакетов
+echo "  ${BOLD}Пакеты:${NC}"
+for pkg in $PACKAGES; do
+	check_path=$(echo "$pkg" | cut -d'|' -f2)
+	pkg_name=$(echo "$pkg" | cut -d'|' -f1)
+	if [ -f "$check_path" ] || [ -x "$check_path" ]; then
+		ok "  $pkg_name ($(basename "$check_path"))"
+	else
+		CHECK_ERRS="$CHECK_ERRS\n    ✗ $pkg_name — не найден $check_path"
+		echo "  ${RED}✗ $pkg_name${NC}"
+		log "  ✗ $pkg_name — не найден $check_path"
+	fi
+done
+
+# Проверка go.cgi
+echo "  ${BOLD}Диспетчер:${NC}"
+if [ -x "$TARGET_DIR/cgi-bin/go.cgi" ]; then
+	ok "  go.cgi ($(wc -l < "$TARGET_DIR/cgi-bin/go.cgi") строк)"
+else
+	CHECK_ERRS="$CHECK_ERRS\n    ✗ go.cgi — не найден или не исполняемый"
+	fail "  go.cgi не найден"
+fi
+
+# Проверка симлинков .cgi
+echo "  ${BOLD}Симлинки .cgi:${NC}"
+CGI_COUNT=$(find "$TARGET_DIR/cgi-bin" -maxdepth 1 -name "*.cgi" ! -name "go.cgi" | wc -l)
+SYMLINK_OK=0
+SYMLINK_BAD=0
+for f in "$TARGET_DIR"/cgi-bin/*.cgi; do
+	[ "$f" = "$TARGET_DIR/cgi-bin/go.cgi" ] && continue
+	[ -f "$f" ] || continue
+	if [ -L "$f" ]; then
+		target=$(readlink "$f")
+		echo "    $f → $target"
+		SYMLINK_OK=$((SYMLINK_OK + 1))
+	else
+		CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не симлинк"
+		fail "  $f — не симлинк"
+		SYMLINK_BAD=$((SYMLINK_BAD + 1))
+	fi
+done
+for d in monitor network logger service_watchdog; do
+	dir="$TARGET_DIR/cgi-bin/$d"
+	[ -d "$dir" ] || continue
+	for f in "$dir"/*.cgi; do
+		[ -f "$f" ] || continue
+		if [ -L "$f" ]; then
+			target=$(readlink "$f")
+			SYMLINK_OK=$((SYMLINK_OK + 1))
+		else
+			CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не симлинк"
+			fail "  $f — не симлинк"
+			SYMLINK_BAD=$((SYMLINK_BAD + 1))
+		fi
+	done
+done
+if [ $SYMLINK_BAD -eq 0 ]; then
+	ok "  $SYMLINK_OK симлинков, все целые"
+else
+	fail "  $SYMLINK_BAD симлинков биты"
+fi
+
+# Проверка Go-бинарников
+echo "  ${BOLD}Go-бинарники:${NC}"
+GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-services entware-smart entware-stats"
+GO_OK=0
+for bin in $GO_BINS; do
+	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
+		echo "    $bin ($(du -h "$TARGET_DIR/cgi-bin/go/$bin" | cut -f1))"
+		GO_OK=$((GO_OK + 1))
+	else
+		CHECK_ERRS="$CHECK_ERRS\n    ✗ $bin — не найден"
+		fail "  $bin не найден в cgi-bin/go/"
+	fi
+done
+if [ $GO_OK -eq 7 ]; then
+	ok "  Все 7 бинарников ($GO_OK)"
+else
+	fail "  Найдено $GO_OK из 7 бинарников"
+fi
+
+# Проверка веб-файлов
+echo "  ${BOLD}Веб-файлы:${NC}"
+for f in index.html style.css entware.js icons.svg version.json; do
+	if [ -f "$TARGET_DIR/$f" ]; then
+		ok "  $f"
+	else
+		CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не найден"
+		fail "  $f не найден"
+	fi
+done
+
+# Проверка lighttpd
+echo "  ${BOLD}Lighttpd:${NC}"
+if pgrep -f lighttpd >/dev/null; then
+	PID=$(pgrep -f lighttpd | head -1)
+	ok "  lighttpd (PID $PID)"
+else
+	CHECK_ERRS="$CHECK_ERRS\n    ✗ lighttpd не запущен"
+	fail "  lighttpd не запущен"
+fi
+
+# Проверка HTTP-ответа
+LIGHTTPD_PORT=$(grep 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null | grep -o '[0-9]*' | head -1)
+LIGHTTPD_PORT=${LIGHTTPD_PORT:-8087}
+echo "  ${BOLD}HTTP-ответ:${NC}"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi" 2>/dev/null || echo "000")
+if [ "$HTTP_CODE" = "200" ]; then
+	ok "  HTTP 200 (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
+else
+	CHECK_ERRS="$CHECK_ERRS\n    ✗ HTTP $HTTP_CODE"
+	fail "  HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
+fi
+
+if [ -n "$CHECK_ERRS" ]; then
+	echo ""
+	fail "Проверка установки выявила ошибки:${CHECK_ERRS}"
+fi
+
 # ========== ИТОГ ==========
 echo ""
 echo "${BOLD}========================================"
@@ -299,10 +451,25 @@ echo "========================================${NC}"
 
 if [ -n "$ERRORS" ]; then
 	echo ""
-	echo "${RED}${BOLD}  ОШИБКИ:${NC}$ERRORS"
-	echo ""
+	echo "${RED}${BOLD}  ОШИБКИ В ХОДЕ УСТАНОВКИ:${NC}"
+	echo "$ERRORS" | while IFS= read -r line; do
+		[ -n "$line" ] && echo "  $line"
+	done
 fi
 
+if [ -n "$CHECK_ERRS" ]; then
+	echo ""
+	echo "${RED}${BOLD}  ОШИБКИ ПРОВЕРКИ:${NC}"
+	echo "$CHECK_ERRS" | while IFS= read -r line; do
+		[ -n "$line" ] && echo "$line"
+	done
+fi
+
+echo ""
+if [ -z "$ERRORS" ] && [ -z "$CHECK_ERRS" ]; then
+	echo "${GREEN}${BOLD}  УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО${NC}"
+fi
+echo ""
 echo "${GREEN}  ✓ Архитектура:${NC} $ROUTER_ARCH"
 echo "${GREEN}  ✓ Файлы:${NC}    $TARGET_DIR"
 echo "${GREEN}  ✓ Статика:${NC}  http://$(hostname):8087/entware-manager/"
@@ -312,13 +479,10 @@ echo "  Версия: $(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null ||
 echo ""
 echo "  Открой в браузере: http://$(hostname -I | awk '{print $1}'):8087/entware-manager/"
 echo ""
-
-if [ -n "$ERRORS" ]; then
-	echo "${YELLOW}  Часть шагов завершилась с ошибками (см. выше).${NC}"
-	echo "${YELLOW}  Проверь логи:${NC}"
-else
-	echo "  Если что-то пошло не так:"
-fi
-echo "    /opt/var/log/lighttpd/error.log"
-echo "    /tmp/entware/logs/"
+echo "  Лог установки: $LOG_FILE"
 echo ""
+
+if [ -n "$ERRORS" ] || [ -n "$CHECK_ERRS" ]; then
+	echo "${YELLOW}  Были ошибки (см. выше). Исправь и запусти заново.${NC}"
+	echo "${YELLOW}  Лог: $LOG_FILE${NC}"
+fi
