@@ -38,6 +38,7 @@ procps-ng|/opt/bin/ps
 bridge-utils|/opt/sbin/brctl
 ip-full|/opt/sbin/ip
 sudo|/opt/bin/sudo
+wget|/opt/bin/wget
 smartmontools|/opt/sbin/smartctl
 smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 
@@ -136,24 +137,13 @@ grep -q 'mod_cgi' "$LIGHTTPD_CONF" 2>/dev/null || \
 # Удаляем cgi.execute-x-only из main.conf (чтобы не было дубля с 30-cgi.conf)
 sed -i '/cgi\.execute-x-only/d' "$LIGHTTPD_CONF" 2>/dev/null
 
-# === 30-cgi.conf: правим маппинг .cgi на /bin/sh и включаем execute-x-only ===
+# === 30-cgi.conf: .cgi ➔ /bin/sh + execute-x-only ===
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
-if [ -f "$CGI_CONF" ]; then
-    if grep -q '\.cgi.*=>.*/opt/bin/perl' "$CGI_CONF" 2>/dev/null; then
-        sed -i 's|".cgi" => "/opt/bin/perl"|".cgi" => "/bin/sh"|' "$CGI_CONF"
-        echo "  → 30-cgi.conf: .cgi ➔ /bin/sh"
-    elif ! grep -q '\.cgi.*=>.*/bin/sh' "$CGI_CONF" 2>/dev/null; then
-        sed -i '/^cgi\.assign/,/)/{ /)/i\                               ".cgi" => "/bin/sh",' "$CGI_CONF"
-        echo "  → 30-cgi.conf: добавлен .cgi ➔ /bin/sh"
-    fi
-    if grep -q '^#cgi\.execute-x-only = "enable"' "$CGI_CONF" 2>/dev/null; then
-        sed -i 's|^#cgi.execute-x-only = "enable"|cgi.execute-x-only = "enable"|' "$CGI_CONF"
-        echo "  → 30-cgi.conf: включён cgi.execute-x-only"
-    elif ! grep -q '^cgi\.execute-x-only' "$CGI_CONF" 2>/dev/null; then
-        echo 'cgi.execute-x-only = "enable"' >> "$CGI_CONF"
-        echo "  → 30-cgi.conf: добавлен cgi.execute-x-only"
-    fi
-fi
+cat > "$CGI_CONF" <<'CGIEOF'
+cgi.assign = ( ".cgi" => "/bin/sh" )
+cgi.execute-x-only = "enable"
+CGIEOF
+echo "  → 30-cgi.conf: .cgi ➔ /bin/sh, execute-x-only"
 
 # === static-file.exclude-extensions: .cgi если нет ===
 if grep -q 'static-file\.exclude-extensions' "$LIGHTTPD_CONF" 2>/dev/null; then
@@ -188,7 +178,7 @@ echo "  ✓ файлы скопированы в $TARGET_DIR"
 detect_arch() {
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
-		armv7l|armv6l|armv5tejl) echo "arm" ;;
+		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
 		mips)     echo "mips" ;;
 		mipsel)   echo "mipsel" ;;
 		x86_64|amd64) echo "amd64" ;;

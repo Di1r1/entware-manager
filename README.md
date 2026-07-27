@@ -14,11 +14,13 @@
 # На роутере (определите архитектуру):
 uname -m
 # → aarch64 → arm64
-# → armv5l  → arm
+# → armv7l/armv6l/armv5tejl/armv5tel → arm
 # → mips    → mips
 # → mipsel  → mipsel
 # → x86_64  → amd64
 # → i686    → 386
+
+# Если нет wget: opkg update && opkg install wget
 
 # Скачайте и установите (пример для arm64):
 cd /opt/tmp

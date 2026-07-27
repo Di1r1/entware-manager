@@ -4,7 +4,7 @@ export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 detect_arch() {
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
-		armv7l|armv6l|armv5tejl) echo "arm" ;;
+		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
 		mips)     echo "mips" ;;
 		mipsel)   echo "mipsel" ;;
 		x86_64|amd64) echo "amd64" ;;
