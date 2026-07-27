@@ -31,6 +31,35 @@ cd deploy && sh Install/install.sh
 
 После установки открой: `http://<ip-роутера>:8087/entware-manager/`
 
+### Обновление
+
+```sh
+cd /opt/tmp
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
+tar -xzf entware-manager-v1.06.1-arm64.tar.gz
+cd deploy && sh Install/install.sh
+```
+
+### Удаление
+
+```sh
+sh /opt/web_entware/Install/uninstall.sh
+```
+
+Удаляет файлы, конфиги lighttpd, sudoers и логи. Пакеты Entware не трогает.
+
+### Лог установки
+
+install.sh пишет лог в `/tmp/entware/install-logs/install-YYYYMMDD-HHMMSS.log`.
+При повторной установке создаётся новый файл, старые не затираются.
+
+Финальный шаг проверяет:
+- все пакеты и бинарники
+- симлинки `.cgi → go.cgi`
+- 7 Go-бинарников
+- веб-файлы (index.html, style.css, …)
+- lighttpd (PID + HTTP 200)
+
 ### Установка через git
 
 ```sh
