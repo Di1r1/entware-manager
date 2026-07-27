@@ -25,9 +25,14 @@ log() {
 log "=== Установка Entware Manager ==="
 log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# Перенаправляем весь вывод ещё и в лог
-exec 3>&1 4>&2
-exec 1> >(tee -a "$LOG_FILE") 2>&1
+# Перенаправляем весь вывод ещё и в лог (через named pipe, совместимо с BusyBox ash)
+PIPE="/tmp/entware-install-pipe.$$"
+mkfifo "$PIPE"
+tee -a "$LOG_FILE" < "$PIPE" &
+exec 1>"$PIPE" 2>&1
+
+# Удаляем pipe после завершения скрипта
+trap 'rm -f "$PIPE"' EXIT
 
 step() {
 	STEP=$((STEP + 1))
