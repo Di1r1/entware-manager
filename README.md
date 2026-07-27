@@ -4,7 +4,29 @@
 [![Version](https://img.shields.io/badge/version-1.06.1-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Веб-панель управления Entware на роутерах Keenetic. Управление пакетами, сервисами, логами, файлами, мониторинг WiFi/температуры, веб-терминал — всё в браузере.
+**Entware Manager** — веб-панель управления Entware на роутерах Keenetic с NDMS.
+Всё в браузере, без SSH и консоли.
+
+### Возможности
+
+| Раздел | Что умеет |
+|--------|-----------|
+| **Пакеты** | Установка, удаление, обновление пакетов Entware. Поиск, список установленных, список доступных обновлений |
+| **Мониторинг** | CPU/RAM/диск, температура CPU и WiFi, история температур за 7 дней с графиками. Встроенный watchdog (перезапуск упавших процессов) |
+| **Сеть** | Интерфейсы, маршруты, ARP-таблица. Мониторинг трафика (real-time). Watchdog: пинг шлюза/8.8.8.8, сброс интерфейса при потере связи |
+| **Сервисы** | Управление сервисами (start/stop/restart/enable/disable). Мониторинг процессов, автоперезапуск по PID |
+| **SMART** | S.M.A.R.T. атрибуты дисков (HDD/SSD/NVMe), health-статус, самотесты, температура накопителей |
+| **Логи** | Просмотр системных логов, поиск, ротация, очистка |
+| **Файлы** | Просмотр файлов в `/tmp/`, backup/restore настроек |
+| **Терминал** | Встроенный веб-терминал (ttyd) для прямого доступа к shell |
+| **Безопасность** | Защита паролем (SHA-256), auth_config.json |
+
+### Интерфейс
+
+- Одна страница (SPA) — всё на index.html
+- Тёмная тема, иконки SVG
+- Адаптивный дизайн (десктоп + мобильные)
+- Клик по температуре в сайдбаре → графики за 7 дней
 
 ## Быстрый старт
 
@@ -74,31 +96,33 @@ chmod +x install.sh
 ## Архитектура
 
 ```
-index.html (SPA)  ──fetch──▶  cgi-bin/*.cgi  ──. lib/common.sh──▶  система / Entware
-     │                         │                    │
-  static                    lighttpd              общие функции:
-  файлы                   mod_cgi (.cgi→/bin/sh)  - auth, params, json
-                           port 8087              - html_escape, logging
-                                                - daemon helpers
-                                                - human_size, version
+браузер  ──http──▶  lighttpd (порт 8087)
+                        │
+                    mod_cgi
+                        │
+                   go.cgi (диспетчер)
+                        │
+              ┌─────────┼─────────┐
+              │         │         │
+         entware-*   *.html    *.js
+       (7 Go-бинарн.) статика   логика
+              │
+         система / Entware
 ```
 
-**Технологии:** POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi`, `jq` для JSON, `ttyd` для терминала.
+**Технологии:** Go (7 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi`, `jq`, `ttyd`.
 
 ## Компоненты
 
-| CGI | Назначение | Основные действия |
-|-----|------------|-------------------|
-| `packages.cgi` | Пакеты Entware | `list`, `install`, `remove`, `update`, `upgrade`, `upgradable` |
-| `services.cgi` | Системные сервисы | `list`, `start`, `stop`, `restart`, `enable`, `disable`, `status` |
-| `system_info.cgi` | Инфо о системе | CPU, RAM, диск, uptime, load, версия |
-| `log_viewer.cgi` | Логи | `list`, `read`, `tail`, `clear`, `download` |
-| `file_manager.cgi` | Файловый менеджер | `list`, `read`, `write`, `delete`, `mkdir`, `upload`, `download` |
-| `wifi_temp.cgi` | WiFi + температура | Текущие значения с датчиков |
-| `temp_history.cgi` | История температур | `hours=1..24` — JSON массив точек |
-| `ttyd_control.cgi` | Веб-терминал | `start`, `stop`, `status`, `restart` |
-| `auth_config.cgi` | Настройки пароля | `GET` — статус, `POST` — включить/сменить пароль |
-| `view_file.cgi` | Просмотр файлов | `?path=...` — JSON (XHR) или HTML |
+| Бинарник (Go) | Назначение | Основные эндпоинты |
+|---------------|------------|-------------------|
+| `entware-pkg` | Пакеты Entware | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable`, `api` |
+| `entware-stats` | Инфо, файлы, ссылки | `stats`, `version`, `help`, `links_load/save`, `tmpfs`, `view_file`, `delete_file`, `auth_config`, `crontab` |
+| `entware-net` | Сеть | `network_interfaces`, `routes`, `arp`, `status`, `stats`, `events`, `config`, `action` |
+| `entware-services` | Сервисы, watchdog | `check_syntax/deps`, `services`, `service_action`, `ttyd_control`, `debug`, `service_watchdog/*` |
+| `entware-monitor` | Мониторинг | `temperature`, `wifi_temp`, `temp_history`, `wifi_temp_history`, `kill_pid`, `monitor_*` |
+| `entware-smart` | SMART дисков | `smart` (info, attributes, health, selftest) |
+| `entware-logger` | Логи | `logger_*` (config, view, system_logs, rotate, clear)` |
 
 ## Конфигурация
 
