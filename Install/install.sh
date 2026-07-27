@@ -3,8 +3,6 @@
 # Полная установка Entware Manager на роутер
 # ==============================================
 
-set -o pipefail 2>/dev/null || true
-
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -17,23 +15,13 @@ ERRORS=""
 # --- Лог ---
 LOG_DIR="/tmp/entware/install-logs"
 LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
-mkdir -p "$LOG_DIR" 2>/dev/null
+mkdir -p "$LOG_DIR"
 
 log() {
 	echo "$1" | sed 's/\x1b\[[0-9;]*m//g' >> "$LOG_FILE"
 }
 log "=== Установка Entware Manager ==="
 log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
-
-# Перенаправляем весь вывод ещё и в лог (через named pipe, совместимо с BusyBox ash)
-PIPE="/tmp/entware-install-pipe.$$"
-mkfifo "$PIPE"
-tee -a "$LOG_FILE" < "$PIPE" &
-exec 3>&1
-exec 1>"$PIPE" 2>&1
-
-# Удаляем pipe после завершения скрипта
-trap 'rm -f "$PIPE"' EXIT
 
 step() {
 	STEP=$((STEP + 1))
@@ -120,7 +108,7 @@ smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 MISSING_PKGS=$(echo "$PACKAGES" | while IFS='|' read -r pkg check_path; do
 	[ -z "$pkg" ] && continue
 	if [ -f "$check_path" ] || [ -x "$check_path" ]; then
-		ok "  $pkg — $(basename "$check_path")" >&3
+		ok "  $pkg — $(basename "$check_path")" >&2
 	else
 		printf "%s " "$pkg"
 	fi
