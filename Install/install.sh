@@ -264,8 +264,8 @@ detect_arch() {
 		aarch64)  echo "arm64" ;;
 		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
 		mips)
-			byte=$(dd if=/bin/sh bs=1 count=1 skip=5 2>/dev/null | od -An -tu1 | tr -d ' ')
-			[ "$byte" = "1" ] && echo "mipsel" || echo "mips"
+			byte=$(dd if=/bin/sh bs=1 count=6 2>/dev/null | od -b | head -1 | awk '{print $6}')
+			[ "$byte" = "001" ] && echo "mipsel" || echo "mips"
 			;;
 		mipsel)   echo "mipsel" ;;
 		x86_64|amd64) echo "amd64" ;;
