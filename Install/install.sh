@@ -260,6 +260,10 @@ fi
 step "Настройка архитектуры"
 
 detect_arch() {
+	local arch
+	arch=$(opkg print-architecture 2>/dev/null | awk '/^arch /{print $2}' | grep -v '^all$\|^noarch$' | head -1)
+	[ -n "$arch" ] && echo "$arch" | sed 's/aarch64/arm64/; s/x86_64/amd64/; s/i[3-6]86/386/' && return
+
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
 		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
