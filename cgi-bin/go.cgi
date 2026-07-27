@@ -6,7 +6,9 @@ detect_arch() {
 		aarch64)  echo "arm64" ;;
 		armv7l|armv6l|armv5tejl|armv5tel) echo "arm" ;;
 		mips)
-			byte=$(dd if=/proc/self/exe bs=1 count=6 2>/dev/null | od -b | head -1 | awk '{print $6}')
+			ELF="/opt/bin/opkg"
+			[ ! -f "$ELF" ] && ELF="/proc/self/exe"
+			byte=$(dd if="$ELF" bs=1 count=6 2>/dev/null | od -b | head -1 | awk '{print $7}')
 			[ "$byte" = "001" ] && echo "mipsel" || echo "mips"
 			;;
 		mipsel)   echo "mipsel" ;;
