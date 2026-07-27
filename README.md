@@ -1,23 +1,44 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.06.0-blue)](version.json)
+[![Version](https://img.shields.io/badge/version-1.06.1-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Веб-панель управления Entware на роутерах Keenetic. Управление пакетами, сервисами, логами, файлами, мониторинг WiFi/температуры, веб-терминал — всё в браузере.
 
 ## Быстрый старт
 
+### Установка с GitHub Releases
+
 ```sh
-# На роутере (Entware уже установлен):
+# На роутере (определите архитектуру):
+uname -m
+# → aarch64 → arm64
+# → armv5l  → arm
+# → mips    → mips
+# → mipsel  → mipsel
+# → x86_64  → amd64
+# → i686    → 386
+
+# Скачайте и установите (пример для arm64):
+cd /opt/tmp
+wget https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
+tar -xzf entware-manager-v1.06.1-arm64.tar.gz
+cd deploy && sh Install/install.sh
+```
+
+После установки открой: `http://<ip-роутера>:8087/entware-manager/`
+
+### Установка через git
+
+```sh
+# Если есть git-http:
 opkg update && opkg install git-http
 git clone https://github.com/Di1r1/entware-manager.git /opt/tmp/entware-manager
 cd /opt/tmp/entware-manager/Install
 chmod +x install.sh
 ./install.sh
 ```
-
-После установки открой: `http://<ip-роутера>:8087/entware-manager/`
 
 ## Архитектура
 
