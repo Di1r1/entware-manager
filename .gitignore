@@ -4,3 +4,16 @@ tmp/
 *.bak
 .DS_Store
 cgi-bin/go/
+
+RULES.md
+
+# Dev/workspace artifacts
+TECH_SPEC.md
+Install/Install.txt
+doc/NETWORK_PROMPT.md
+
+# User-specific config files
+links.json
+auth_config.json
+*_config.json
+logger/config.json

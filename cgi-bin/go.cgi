@@ -1,54 +1,74 @@
 #!/bin/sh
 export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+detect_arch() {
+	case "$(uname -m)" in
+		aarch64)  echo "arm64" ;;
+		armv7l|armv6l|armv5tejl) echo "arm" ;;
+		mips)     echo "mips" ;;
+		mipsel)   echo "mipsel" ;;
+		x86_64|amd64) echo "amd64" ;;
+		i[3-6]86) echo "386" ;;
+		*)        return 1 ;;
+	esac
+}
+
+ARCH=$(detect_arch) || {
+	echo "Content-type: text/plain"
+	echo ""
+	echo "Unsupported architecture: $(uname -m)"
+	exit 1
+}
+
+GO_BASE="/opt/web_entware/cgi-bin/go"
+
 self=$0
 name=$(basename "$self" .cgi)
 dir=$(basename "$(dirname "$self")")
+
+go_bin() {
+	local bin="$GO_BASE/$ARCH/entware-$1"
+	if [ -x "$bin" ]; then
+		echo "$bin"
+	else
+		# fallback: flat layout (до версии 1.06)
+		echo "$GO_BASE/entware-$1"
+	fi
+}
 
 case "$dir" in
 cgi-bin)
 	case "$name" in
 	available|packages|install|remove|upgrade|update|upgradable|api)
-		ENDPOINT="$name" exec /opt/web_entware/cgi-bin/go/entware-pkg
-		;;
+		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
 	stats|version|help|links_load|links_save|tmpfs|view_file|delete_file|auth_config|crontab|crontab_update)
-		ENDPOINT="$name" exec /opt/web_entware/cgi-bin/go/entware-stats
-		;;
+		ENDPOINT="$name" exec "$(go_bin stats)" ;;
 	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_config|network_action)
-		ENDPOINT="$name" exec /opt/web_entware/cgi-bin/go/entware-net
-		;;
+		ENDPOINT="$name" exec "$(go_bin net)" ;;
 	check_syntax|check_deps|services|service_action|ttyd_control|debug)
-		ENDPOINT="$name" exec /opt/web_entware/cgi-bin/go/entware-services
-		;;
+		ENDPOINT="$name" exec "$(go_bin services)" ;;
 	temperature|wifi_temp|temp_history|wifi_temp_history|kill_pid|monitor_status|monitor_action|monitor_config|monitor_log)
-		ENDPOINT="$name" exec /opt/web_entware/cgi-bin/go/entware-monitor
-		;;
+		ENDPOINT="$name" exec "$(go_bin monitor)" ;;
 	smart)
-		exec /opt/web_entware/cgi-bin/go/entware-smart
-		;;
+		exec "$(go_bin smart)" ;;
 	*)
 		echo "Content-type: text/plain"
 		echo ""
 		echo "Unknown endpoint: $name"
-		exit 1
-		;;
+		exit 1 ;;
 	esac
 	;;
 network)
-	ENDPOINT="network_$name" exec /opt/web_entware/cgi-bin/go/entware-net
-	;;
+	ENDPOINT="network_$name" exec "$(go_bin net)" ;;
 logger)
-	ENDPOINT="logger_$name" exec /opt/web_entware/cgi-bin/go/entware-logger
-	;;
+	ENDPOINT="logger_$name" exec "$(go_bin logger)" ;;
 monitor)
-	ENDPOINT="monitor_$name" exec /opt/web_entware/cgi-bin/go/entware-monitor
-	;;
+	ENDPOINT="monitor_$name" exec "$(go_bin monitor)" ;;
 service_watchdog)
-	ENDPOINT="service_watchdog_$name" exec /opt/web_entware/cgi-bin/go/entware-services
-	;;
+	ENDPOINT="service_watchdog_$name" exec "$(go_bin services)" ;;
 *)
 	echo "Content-type: text/plain"
 	echo ""
 	echo "Unknown directory: $dir"
-	exit 1
-	;;
+	exit 1 ;;
 esac

@@ -1,7 +1,9 @@
 {
-  "version": "1.05.2",
-  "date": "2026-07-25",
+  "version": "1.06.1",
+  "date": "2026-07-27",
   "changes": [
+    "1.06.1: fix wifi-temp: localhost → 127.0.0.1 (RCI blocked after CVE-2026-42533/NDM-4566)",
+    "1.06.0: multi-arch: build-deploy.sh + go.cgi + install.sh — arm64/arm/mips/mipsel/amd64/386",
     "1.05.2: fix monitor endpoints (monitor_*.cgi → *.cgi), update help page (architecture, attr_health, charts)",
     "1.05.1: UI графиков температуры: переработка (дата по X, 900px, padding 20, тултип, клик по статам)",
     "1.05.0: полная миграция shell CGI → Go — 7 бинарников, 62 эндпоинта, 0 shell",

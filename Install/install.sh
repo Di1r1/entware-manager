@@ -184,10 +184,53 @@ cp -a "$SELF_DIR"/* "$TARGET_DIR/"
 
 echo "  ✓ файлы скопированы в $TARGET_DIR"
 
-# ========== 5.1. SUDOERS для smartctl ==========
+# ========== 5.1. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
+detect_arch() {
+	case "$(uname -m)" in
+		aarch64)  echo "arm64" ;;
+		armv7l|armv6l|armv5tejl) echo "arm" ;;
+		mips)     echo "mips" ;;
+		mipsel)   echo "mipsel" ;;
+		x86_64|amd64) echo "amd64" ;;
+		i[3-6]86) echo "386" ;;
+		*)        echo "" ;;
+	esac
+}
+
+ROUTER_ARCH=$(detect_arch)
+GO_DIR="$TARGET_DIR/cgi-bin/go"
+
+if [ -n "$ROUTER_ARCH" ] && [ -d "$GO_DIR" ]; then
+	echo ""
+	echo ">>> Обнаружена архитектура: $ROUTER_ARCH"
+
+	# Удаляем бинарники для чужих архитектур
+	rm -f "$GO_DIR"/entware-*
+	for dir in "$GO_DIR"/*/; do
+		[ -d "$dir" ] || continue
+		arch_name=$(basename "$dir")
+		if [ "$arch_name" != "$ROUTER_ARCH" ]; then
+			echo "  → удаляю $arch_name (не подходит)"
+			rm -rf "$dir"
+		fi
+	done
+
+	# Перемещаем бинарники нужной архитектуры на уровень выше (для совместимости)
+	if [ -d "$GO_DIR/$ROUTER_ARCH" ]; then
+		mv "$GO_DIR/$ROUTER_ARCH"/* "$GO_DIR/" 2>/dev/null
+		rmdir "$GO_DIR/$ROUTER_ARCH"
+		echo "  ✓ установлены бинарники для $ROUTER_ARCH"
+	fi
+elif [ -z "$ROUTER_ARCH" ]; then
+	echo ""
+	echo "  ⚠ не удалось определить архитектуру роутера ($(uname -m))"
+	echo "  → оставляю все бинарники, go.cgi выберет подходящий"
+fi
+
+# ========== 5.2. SUDOERS для smartctl ==========
 if [ -x /opt/bin/sudo ] && [ ! -f /opt/etc/sudoers.d/entware-smartctl ]; then
     echo ""
-    echo ">>> Шаг 4a: настройка sudoers для smartctl..."
+    echo ">>> Шаг 4b: настройка sudoers для smartctl..."
     mkdir -p /opt/etc/sudoers.d
     echo 'nobody ALL=(ALL) NOPASSWD: /opt/sbin/smartctl' > /opt/etc/sudoers.d/entware-smartctl
     chmod 440 /opt/etc/sudoers.d/entware-smartctl
@@ -256,6 +299,7 @@ if [ -n "$POST_FAIL" ]; then
 fi
 
 echo ""
+echo "  ✓ Архитектура: $ROUTER_ARCH"
 echo "  ✓ Файлы:    /opt/web_entware/"
 echo "  ✓ Статика:  http://$(hostname):8087/entware-manager/"
 echo "  ✓ CGI:      http://$(hostname):8087/entware-cgi/"
