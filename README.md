@@ -20,11 +20,11 @@ uname -m
 # → x86_64  → amd64
 # → i686    → 386
 
-# Если нет wget: opkg update && opkg install wget
+# Если нет curl: opkg update && opkg install curl
 
 # Скачайте и установите (пример для arm64):
 cd /opt/tmp
-wget https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
 tar -xzf entware-manager-v1.06.1-arm64.tar.gz
 cd deploy && sh Install/install.sh
 ```

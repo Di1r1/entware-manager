@@ -38,7 +38,7 @@ procps-ng|/opt/bin/ps
 bridge-utils|/opt/sbin/brctl
 ip-full|/opt/sbin/ip
 sudo|/opt/bin/sudo
-wget|/opt/bin/wget
+curl|/opt/bin/curl
 smartmontools|/opt/sbin/smartctl
 smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 
