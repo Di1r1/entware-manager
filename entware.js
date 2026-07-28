@@ -839,7 +839,7 @@ async function loadNetworkStatus() {
     if (!table) return;
     
     try {
-        const data = await apiGet('/network_status.cgi');
+        const data = await apiGet('/network_stats.cgi');
         
         let html = '<div class="stat-table">';
         
