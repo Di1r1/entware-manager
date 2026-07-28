@@ -195,7 +195,7 @@ else
 	fail "alias.url не добавился в $LIGHTTPD_CONF"
 fi
 
-grep -q 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null || {
+	grep -q '^[^#]*server\.port' "$LIGHTTPD_CONF" 2>/dev/null || {
 	echo 'server.port = 8087' >> "$LIGHTTPD_CONF"
 	ok "server.port = 8087"
 }
@@ -262,7 +262,7 @@ step "Настройка архитектуры"
 detect_arch() {
 	local arch
 	arch=$(opkg print-architecture 2>/dev/null | awk '/^arch /{print $2}' | grep -v '^all$\|^noarch$' | head -1)
-	[ -n "$arch" ] && echo "$arch" | sed 's/aarch64/arm64/; s/x86_64/amd64/; s/i[3-6]86/386/' && return
+	[ -n "$arch" ] && echo "$arch" | sed 's/-[^-]*$//; s/aarch64/arm64/; s/x86_64/amd64/; s/i[3-6]86/386/' && return
 
 	case "$(uname -m)" in
 		aarch64)  echo "arm64" ;;
