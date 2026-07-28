@@ -1,7 +1,7 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.06.1-blue)](version.json)
+[![Version](https://img.shields.io/badge/version-1.06.2-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
@@ -41,23 +41,23 @@ uname -m
 # Если нет curl: opkg update && opkg install curl
 ```
 
-Качай архив под свою архитектуру:
+Качай архив под свою архитектуру (стабильная ссылка — всегда последняя версия):
 
 ```sh
 # arm (armv7l / armv5tel)
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-arm.tar.gz
 
 # mips
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mips.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-mips.tar.gz
 
 # mipsel
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-mipsel.tar.gz
 ```
 
 Распаковывай и ставь:
 
 ```sh
-tar -xzf entware-manager-v1.06.1-*.tar.gz
+tar -xzf entware-manager-*.tar.gz
 cd deploy && sh Install/install.sh
 ```
 
@@ -69,16 +69,16 @@ cd deploy && sh Install/install.sh
 
 ```sh
 # arm (armv7l / armv5tel)
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_arm.ipk
-opkg install entware-manager_1.06.1_arm.ipk
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_arm.ipk
+opkg install entware-manager_arm.ipk
 
 # mips
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mips.ipk
-opkg install entware-manager_1.06.1_mips.ipk
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_mips.ipk
+opkg install entware-manager_mips.ipk
 
 # mipsel
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mipsel.ipk
-opkg install entware-manager_1.06.1_mipsel.ipk
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_mipsel.ipk
+opkg install entware-manager_mipsel.ipk
 ```
 
 Зависимости (lighttpd, jq, curl, ttyd и др.) opkg установит автоматически.
@@ -87,15 +87,15 @@ opkg install entware-manager_1.06.1_mipsel.ipk
 ### Обновление
 
 ```sh
-# Через tar.gz
+# Через tar.gz (стабильная ссылка — всегда последняя версия)
 cd /opt/tmp
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
-tar -xzf entware-manager-v1.06.1-mipsel.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-mipsel.tar.gz
+tar -xzf entware-manager-mipsel.tar.gz
 cd deploy && sh Install/install.sh
 
 # Через ipk
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mipsel.ipk
-opkg install --force-reinstall entware-manager_1.06.1_mipsel.ipk
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_mipsel.ipk
+opkg install --force-reinstall entware-manager_mipsel.ipk
 ```
 
 Все релизы: https://github.com/Di1r1/entware-manager/releases
