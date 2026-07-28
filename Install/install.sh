@@ -16,14 +16,22 @@ ERRORS=""
 # --- Лог ---
 LOG_DIR="/tmp/entware/install-logs"
 LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" 2>&1 || {
+	echo "Ошибка: не удалось создать $LOG_DIR"
+	exit 1
+}
 
 ESC=$(printf '\033')
 log() {
-	echo "$1" | sed "s/${ESC}\[[0-9;]*m//g" >> "$LOG_FILE"
+	echo "$1" | sed "s/${ESC}\[[0-9;]*m//g" >> "$LOG_FILE" 2>/dev/null || true
 }
 log "=== Установка Entware Manager ==="
 log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
+
+if [ ! -f "$LOG_FILE" ]; then
+	echo "Ошибка: лог-файл $LOG_FILE не создался"
+	exit 1
+fi
 
 step() {
 	STEP=$((STEP + 1))
