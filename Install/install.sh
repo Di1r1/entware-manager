@@ -34,7 +34,8 @@ step() {
 
 fail() {
 	echo "${RED}  ✗ $1${NC}"
-	ERRORS="$ERRORS\n  [$STEP] $1"
+	ERRORS="$ERRORS
+  [$STEP] $1"
 	log "  ✗ $1"
 }
 
@@ -367,7 +368,8 @@ for pkg in $PACKAGES; do
 	if [ -f "$check_path" ] || [ -x "$check_path" ]; then
 		ok "  $pkg_name ($(basename "$check_path"))"
 	else
-		CHECK_ERRS="$CHECK_ERRS\n    ✗ $pkg_name — не найден $check_path"
+		CHECK_ERRS="$CHECK_ERRS
+    ✗ $pkg_name — не найден $check_path"
 		echo "  ${RED}✗ $pkg_name${NC}"
 		log "  ✗ $pkg_name — не найден $check_path"
 	fi
@@ -378,7 +380,8 @@ echo "  ${BOLD}Диспетчер:${NC}"
 if [ -x "$TARGET_DIR/cgi-bin/go.cgi" ]; then
 	ok "  go.cgi ($(wc -l < "$TARGET_DIR/cgi-bin/go.cgi") строк)"
 else
-	CHECK_ERRS="$CHECK_ERRS\n    ✗ go.cgi — не найден или не исполняемый"
+	CHECK_ERRS="$CHECK_ERRS
+    ✗ go.cgi — не найден или не исполняемый"
 	fail "  go.cgi не найден"
 fi
 
@@ -395,7 +398,8 @@ for f in "$TARGET_DIR"/cgi-bin/*.cgi; do
 		echo "    $f → $target"
 		SYMLINK_OK=$((SYMLINK_OK + 1))
 	else
-		CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не симлинк"
+		CHECK_ERRS="$CHECK_ERRS
+    ✗ $f — не симлинк"
 		fail "  $f — не симлинк"
 		SYMLINK_BAD=$((SYMLINK_BAD + 1))
 	fi
@@ -409,7 +413,8 @@ for d in monitor network logger service_watchdog; do
 			target=$(readlink "$f")
 			SYMLINK_OK=$((SYMLINK_OK + 1))
 		else
-			CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не симлинк"
+			CHECK_ERRS="$CHECK_ERRS
+    ✗ $f — не симлинк"
 			fail "  $f — не симлинк"
 			SYMLINK_BAD=$((SYMLINK_BAD + 1))
 		fi
@@ -430,7 +435,8 @@ for bin in $GO_BINS; do
 		echo "    $bin ($(du -h "$TARGET_DIR/cgi-bin/go/$bin" | cut -f1))"
 		GO_OK=$((GO_OK + 1))
 	else
-		CHECK_ERRS="$CHECK_ERRS\n    ✗ $bin — не найден"
+		CHECK_ERRS="$CHECK_ERRS
+    ✗ $bin — не найден"
 		fail "  $bin не найден в cgi-bin/go/"
 	fi
 done
@@ -446,7 +452,8 @@ for f in index.html style.css entware.js icons.svg version.json; do
 	if [ -f "$TARGET_DIR/$f" ]; then
 		ok "  $f"
 	else
-		CHECK_ERRS="$CHECK_ERRS\n    ✗ $f — не найден"
+		CHECK_ERRS="$CHECK_ERRS
+    ✗ $f — не найден"
 		fail "  $f не найден"
 	fi
 done
@@ -457,7 +464,8 @@ if pgrep -f lighttpd >/dev/null; then
 	PID=$(pgrep -f lighttpd | head -1)
 	ok "  lighttpd (PID $PID)"
 else
-	CHECK_ERRS="$CHECK_ERRS\n    ✗ lighttpd не запущен"
+	CHECK_ERRS="$CHECK_ERRS
+    ✗ lighttpd не запущен"
 	fail "  lighttpd не запущен"
 fi
 
@@ -469,13 +477,14 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://1
 if [ "$HTTP_CODE" = "200" ]; then
 	ok "  HTTP 200 (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
 else
-	CHECK_ERRS="$CHECK_ERRS\n    ✗ HTTP $HTTP_CODE"
+	CHECK_ERRS="$CHECK_ERRS
+    ✗ HTTP $HTTP_CODE"
 	fail "  HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
 fi
 
 if [ -n "$CHECK_ERRS" ]; then
 	echo ""
-	fail "Проверка установки выявила ошибки:${CHECK_ERRS}"
+	echo "${RED}  ✗ Проверка установки выявила ошибки:${NC}"
 fi
 
 # ========== ИТОГ ==========
