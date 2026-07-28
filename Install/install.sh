@@ -175,40 +175,35 @@ if [ ! -f "/opt/lib/lighttpd/mod_cgi.so" ]; then
 	opkg install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
 fi
 
-# alias.url
+# Удаляем старые строки entware из lighttpd.conf (совместимость с предыдущими версиями)
 sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" 2>/dev/null
 sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" 2>/dev/null
+sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*/d' "$LIGHTTPD_CONF"
+sed -i '/cgi\.execute-x-only/d' "$LIGHTTPD_CONF" 2>/dev/null
+# Удаляем пустые alias.url = ( ) если образовались
+sed -i '/^alias\.url = (\s*)$/d' "$LIGHTTPD_CONF" 2>/dev/null
 
-if grep -q 'alias\.url' "$LIGHTTPD_CONF" 2>/dev/null; then
-	ALIAS_OP="+="
-else
-	ALIAS_OP="="
-fi
+# Отдельный конфиг — не конфликтует с nfqws и другими пакетами
+CONF_FILE="/opt/etc/lighttpd/conf.d/90-entware-manager.conf"
+mkdir -p "$(dirname "$CONF_FILE")" 2>/dev/null
+cat > "$CONF_FILE" <<'EOF'
+server.port = 8087
+server.modules += ( "mod_alias" )
+server.modules += ( "mod_cgi" )
 
-cat >> "$LIGHTTPD_CONF" <<EOF
-alias.url $ALIAS_OP (
+alias.url += (
     "/entware-manager/" => "/opt/web_entware/",
     "/entware-cgi/" => "/opt/web_entware/cgi-bin/"
 )
 EOF
-if grep -q '/entware-manager/' "$LIGHTTPD_CONF"; then
-	ok "alias.url: /entware-manager/ + /entware-cgi/"
+if [ -f "$CONF_FILE" ]; then
+	ok "90-entware-manager.conf: port, modules, alias"
 else
-	LIGHTTPD_ERR="$LIGHTTPD_ERR alias.url"
-	fail "alias.url не добавился в $LIGHTTPD_CONF"
+	LIGHTTPD_ERR="$LIGHTTPD_ERR 90-entware-manager.conf"
+	fail "90-entware-manager.conf не создался"
 fi
 
-	sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*/d' "$LIGHTTPD_CONF"
-	echo 'server.port = 8087' >> "$LIGHTTPD_CONF"
-	ok "server.port = 8087"
-
-grep -q 'mod_alias' "$LIGHTTPD_CONF" 2>/dev/null || \
-	echo 'server.modules += ( "mod_alias" )' >> "$LIGHTTPD_CONF"
-grep -q 'mod_cgi' "$LIGHTTPD_CONF" 2>/dev/null || \
-	echo 'server.modules += ( "mod_cgi" )' >> "$LIGHTTPD_CONF"
-
-sed -i '/cgi\.execute-x-only/d' "$LIGHTTPD_CONF" 2>/dev/null
-
+# 30-cgi.conf — cgi.assign
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 mkdir -p "$(dirname "$CGI_CONF")" 2>/dev/null
 cat > "$CGI_CONF" <<'CGIEOF'
@@ -222,8 +217,10 @@ else
 	fail "30-cgi.conf не создался"
 fi
 
-if grep -q 'static-file\.exclude-extensions' "$LIGHTTPD_CONF" 2>/dev/null; then
-	if ! grep -q 'static-file\.exclude-extensions.*\.cgi' "$LIGHTTPD_CONF" 2>/dev/null; then
+# Добавляем .cgi в static-file.exclude-extensions в светеотдельный конфиг
+# (уже есть в lighttpd.conf, но на всякий случай дублируем в наш файл)
+if ! grep -q 'static-file\.exclude-extensions.*\.cgi' "$LIGHTTPD_CONF" 2>/dev/null; then
+	if grep -q 'static-file\.exclude-extensions' "$LIGHTTPD_CONF" 2>/dev/null; then
 		sed -i '/static-file\.exclude-extensions = (/s/)$/, ".cgi")/' "$LIGHTTPD_CONF"
 	fi
 fi

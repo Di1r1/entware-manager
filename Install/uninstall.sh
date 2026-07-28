@@ -76,38 +76,24 @@ else
 	warn "$TARGET_DIR уже удалён"
 fi
 
-# ========== 4. ВОССТАНОВЛЕНИЕ КОНФИГОВ ИЗ БЭКАПА ==========
+# ========== 4. УДАЛЕНИЕ КОНФИГОВ LIGHTTPD ==========
 echo ""
-echo "${BOLD}[4/8] Восстановление конфигов из бэкапа${NC}"
+echo "${BOLD}[4/8] Удаление конфигов lighttpd${NC}"
 echo "────────────────────────────────────────"
 
-if [ -d "$BACKUP_DIR" ]; then
-	# Восстанавливаем lighttpd.conf
-	if [ -f "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" ]; then
-		cp -a "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" "$LIGHTTPD_CONF"
-		ok "lighttpd.conf восстановлен из бэкапа"
-	else
-		# Если бэкапа нет — чистим вручную
-		[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
-		[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
-		ok "Строки entware удалены из lighttpd.conf (бэкап не найден)"
-	fi
+# Удаляем наш отдельный конфиг
+rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+ok "90-entware-manager.conf удалён"
 
-	# Восстанавливаем 30-cgi.conf
-	if [ -f "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" ]; then
-		cp -a "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" "$CGI_CONF"
-		ok "30-cgi.conf восстановлен из бэкапа"
-	else
-		rm -f "$CGI_CONF" 2>/dev/null
-		ok "30-cgi.conf удалён (бэкап не найден)"
-	fi
-else
-	# Нет бэкапа — чистим вручную
-	[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
-	[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
-	rm -f "$CGI_CONF" 2>/dev/null
-	ok "Строки entware удалены из lighttpd.conf, 30-cgi.conf удалён"
-fi
+# 30-cgi.conf — удаляем (восстанавливать нечего, это наш файл)
+rm -f "$CGI_CONF" 2>/dev/null
+ok "30-cgi.conf удалён"
+
+# Чистим старые строки из lighttpd.conf (на случай обновления с предыдущей версии)
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*8087.*/d' "$LIGHTTPD_CONF" 2>/dev/null
+sed -i '/^alias\.url = (\s*)$/d' "$LIGHTTPD_CONF" 2>/dev/null
 
 # ========== 5. УДАЛЕНИЕ SUDOERS ==========
 echo ""
