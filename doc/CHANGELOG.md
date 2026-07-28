@@ -2,6 +2,13 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.06.2 (2026-07-28)
+
+### Исправления
+
+- **ttyd terminal**: замена `/opt/bin/bash` → `/bin/sh`. На Keenetic Viva 1910/KN-2311 (mipsel) OpenSSL 3.x несовместим со старым glibc — `ttyd -p 9089 /opt/bin/bash` выдавал `Error relocating libssl.so.3: pthread_cond_timedwait: symbol not found`. htop работал, т.к. не использует bash. `/bin/sh` (BusyBox ash) не тянет openssl.
+- **build-deploy.sh**: добавлена фильтрация `*.ipk` — ipk-файлы больше не попадают в deploy/ при сборке.
+
 ## 1.06.1 (2026-07-28)
 
 ### Исправления

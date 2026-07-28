@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "1.06.1")
+VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "1.06.2")
 ARCHS=("arm" "mips" "mipsel")
 BUILD_ARCH=""
 

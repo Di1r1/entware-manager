@@ -92,11 +92,7 @@ func startTTYD(port int, pass string) map[string]string {
 		if pass != "" {
 			args = append(args, "-c", "admin:"+pass)
 		}
-		if _, err := os.Stat("/opt/bin/bash"); err == nil {
-			args = append(args, "/opt/bin/bash")
-		} else {
-			args = append(args, "/bin/sh")
-		}
+		args = append(args, "/bin/sh")
 	} else if port == 8089 {
 		args = append(args, "htop")
 	} else {
