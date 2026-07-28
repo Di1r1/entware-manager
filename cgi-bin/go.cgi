@@ -1,4 +1,5 @@
 #!/bin/sh
+# Di1r1
 export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 detect_arch() {
