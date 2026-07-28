@@ -198,10 +198,9 @@ else
 	fail "alias.url не добавился в $LIGHTTPD_CONF"
 fi
 
-	grep -q '^[^#]*server\.port' "$LIGHTTPD_CONF" 2>/dev/null || {
+	sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*/d' "$LIGHTTPD_CONF"
 	echo 'server.port = 8087' >> "$LIGHTTPD_CONF"
 	ok "server.port = 8087"
-}
 
 grep -q 'mod_alias' "$LIGHTTPD_CONF" 2>/dev/null || \
 	echo 'server.modules += ( "mod_alias" )' >> "$LIGHTTPD_CONF"
