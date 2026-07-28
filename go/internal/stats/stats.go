@@ -1,7 +1,10 @@
 package stats
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -94,6 +97,39 @@ func collectSysInfo() SysInfo {
 		}
 	}
 	if model == "" {
+		if b, err := os.ReadFile("/proc/cpuinfo"); err == nil {
+			for _, line := range strings.Split(string(b), "\n") {
+				if strings.HasPrefix(line, "machine") || strings.HasPrefix(line, "system type") || strings.HasPrefix(line, "model name") {
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						model = strings.TrimSpace(parts[1])
+						break
+					}
+				}
+			}
+		}
+	}
+	if model == "" {
+		if b, err := os.ReadFile("/etc/product"); err == nil {
+			model = strings.TrimSpace(string(b))
+		}
+	}
+	if model == "" {
+		if resp, err := http.Get("http://127.0.0.1:79/rci/show/system/"); err == nil {
+			if b, err := io.ReadAll(resp.Body); err == nil {
+				resp.Body.Close()
+				var parsed map[string]any
+				if json.Unmarshal(b, &parsed) == nil {
+					if m, ok := parsed["model"].(string); ok && m != "" {
+						model = m
+					}
+				}
+			} else {
+				resp.Body.Close()
+			}
+		}
+	}
+	if model == "" {
 		model = "н/д"
 	}
 
@@ -102,7 +138,7 @@ func collectSysInfo() SysInfo {
 		hostname = "н/д"
 	}
 
-	arch := runCmd("uname", "-m")
+	arch := detectArch()
 	if arch == "" {
 		arch = "н/д"
 	}
@@ -114,6 +150,44 @@ func collectSysInfo() SysInfo {
 
 	uptime := parseUptime()
 	return SysInfo{Model: model, Hostname: hostname, Arch: arch, Kernel: kernel, Uptime: uptime}
+}
+
+func detectArch() string {
+	out := runCmd("opkg", "print-architecture")
+	if out != "" {
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 && parts[0] == "arch" {
+				a := parts[1]
+				if a == "all" || a == "noarch" {
+					continue
+				}
+				switch a {
+				case "aarch64":
+					return "arm64"
+				case "x86_64":
+					return "amd64"
+				case "i386", "i486", "i586", "i686":
+					return "386"
+				}
+				return a
+			}
+		}
+	}
+	a := runCmd("uname", "-m")
+	if a == "mips" {
+		elf := "/opt/bin/opkg"
+		if _, err := os.Stat(elf); err != nil {
+			elf = "/bin/sh"
+		}
+		if data, err := os.ReadFile(elf); err == nil && len(data) > 5 {
+			if data[5] == 1 {
+				return "mipsel"
+			}
+		}
+		return "mips"
+	}
+	return a
 }
 
 func collectMemInfo() (MemInfo, []TopProc) {

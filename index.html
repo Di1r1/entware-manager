@@ -23,7 +23,7 @@
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
                             <use href="/entware-manager/icons.svg?v=2#icon-thermometer"/>
                         </svg>
-                        CPU: <span id="tempValue">--</span>°C
+                        CPU: <span id="tempValue">--</span><span id="tempUnit">°C</span>
                         &nbsp;&nbsp;
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
                             <use href="/entware-manager/icons.svg?v=2#icon-wifi"/>
@@ -92,14 +92,17 @@
                 .then(data => {
                     const temp = data.temperature;
                     const span = document.getElementById('tempValue');
+                    const unit = document.getElementById('tempUnit');
                     if (temp !== null && temp !== undefined) {
                         span.textContent = temp;
+                        if (unit) unit.style.display = '';
                         fetch('/entware-cgi/temp_history.cgi?action=save&temp=' + encodeURIComponent(temp), {method:'POST'}).catch(()=>{});
                     } else {
-                        span.textContent = '?';
+                        span.textContent = '—';
+                        if (unit) unit.style.display = 'none';
                     }
                 })
-                .catch(() => { document.getElementById('tempValue').textContent = 'err'; });
+                .catch(() => { document.getElementById('tempValue').textContent = '—'; });
         }
 
         function updateWifiTemp() {
@@ -108,7 +111,7 @@
                 .then(data => {
                     const combined = data.combined;
                     const span = document.getElementById('wifiTempValue');
-                    span.textContent = combined || 'н/д';
+                    span.textContent = combined || '—';
                     if (data.temp0 !== null && data.temp0 !== 'null' && data.temp0 !== '-' && data.temp0 !== undefined ||
                         data.temp1 !== null && data.temp1 !== 'null' && data.temp1 !== '-' && data.temp1 !== undefined) {
                         fetch('/entware-cgi/wifi_temp_history.cgi?action=save&temp0=' + encodeURIComponent(data.temp0 || '-') + '&temp1=' + encodeURIComponent(data.temp1 || '-'), {method:'POST'}).catch(()=>{});
