@@ -35,7 +35,7 @@ echo "=== Сборка deploy ==="
 for f in "$PROJECT_DIR"/*; do
     name=$(basename "$f")
     case "$name" in
-        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|RULES.md|links.json|*_config.json|*.tar.gz)
+        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|RULES.md|links.json|*_config.json|*.tar.gz|*.ipk)
             continue ;;
     esac
     if [ -d "$f" ]; then
