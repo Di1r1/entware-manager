@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+<!-- Entware Manager — разработчик Di1r1 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -479,7 +480,7 @@
                 window.APP_VERSION = data.version;
                 document.title = `Entware Manager v${data.version}`;
                 const footer = document.getElementById('mainFooter');
-                if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок`;
+                if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
                 const sidebarVersion = document.getElementById('sidebarVersion');
                 if (sidebarVersion) sidebarVersion.textContent = `v${data.version}`;
             })
