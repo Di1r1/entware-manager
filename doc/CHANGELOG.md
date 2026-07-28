@@ -7,11 +7,23 @@
 ### Исправления
 
 - **wifi-temp**: замена `localhost` → `127.0.0.1` в запросе RCI API. После обновления прошивки Keenetic (CVE-2026-42533 / NDM-4566) `localhost` перестал резолвиться, WiFi температура всегда показывала `null`.
-- **install.sh**: исправлена проверка бэкапа — `$BACKUP_DIR/etc` → `$BACKUP_DIR/opt/etc`. При повторной установке всегда писало «Нечего бэкапить — чистая установка», хотя файлы сохранялись.
+- **null history guard**: saveWifiTempPoint и температура — проверка на null/-; index.html скрывает °C при отсутствии сенсора.
+- **wget → curl**: install.sh и README.
+- **arch detection**: armv5tel; mipsel endianness через opkg + ELF byte 5; обрезка суффикса `-*` (mipsel-3.4 → mipsel) в install.sh и go.cgi.
+- **server.port**: grep игнорирует закомментированные строки (`#server.port`).
+- **backup check**: `$BACKUP_DIR/etc` → `$BACKUP_DIR/opt/etc` (всегда писало «чистая установка» при повторной установке).
+- **install.sh**: BusyBox-совместимость (ANSI через printf, od -b, hostname -I → ip, process substitution → mkfifo/pipe).
+- **install.sh**: literal `\n` → реальные переносы строк в ERRORS/CHECK_ERRS (читаемый вывод ошибок).
+- **install.sh**: подсказка `tail -f` для просмотра лога установки.
+- **30-cgi.conf**: полная перезапись вместо sed.
+- **entware.js:842**: `network_status.cgi` → `network_stats.cgi` (пустые интерфейсы/порты на dashboard).
+- **build-deploy.sh**: сборка только для arm (GOARM=5), mips, mipsel; arm64/amd64/386 удалены.
+- **footer**: подпись разработчика.
 
 ### Тестирование
 
 - **mipsel (Keenetic Giga)**: установка успешно протестирована 2026-07-28 — все 9 шагов, 60 симлинков, 7 Go-бинарников, HTTP 200.
+- **mipsel (Keenetic KN-2311)**: установка протестирована 2026-07-28 — подтверждена после правок arch suffix + server.port.
 
 ## 1.06.0 (2026-07-26)
 
