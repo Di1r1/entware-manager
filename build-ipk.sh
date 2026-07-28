@@ -64,29 +64,20 @@ INSTEOF
     # prerm
     cat > "$PKG_TMP/control/prerm" <<'RMEEOF'
 #!/bin/sh
-# prerm — backup/restore перед удалением
+# prerm — чистка конфигов перед удалением
 
-TARGET_DIR="/opt/web_entware"
-BACKUP_DIR="/opt/backup/entware-manager"
 LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
 
-# backup конфигов
-mkdir -p "$BACKUP_DIR/etc/lighttpd/conf.d" 2>/dev/null
-[ -f "$LIGHTTPD_CONF" ] && cp -a "$LIGHTTPD_CONF" "$BACKUP_DIR/etc/lighttpd/lighttpd.conf"
-[ -f "$CGI_CONF" ] && cp -a "$CGI_CONF" "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf"
-
-# restore или чистка
-if [ -f "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" ]; then
-    cp -a "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" "$LIGHTTPD_CONF"
-else
-    [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
-    [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
-fi
-
-[ -f "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" ] && cp -a "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" "$CGI_CONF"
+# Удаляем наши конфиги
+rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
 rm -f "$CGI_CONF" 2>/dev/null
+
+# Чистим старые строки из lighttpd.conf
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*8087.*/d' "$LIGHTTPD_CONF" 2>/dev/null
 
 # sudoers
 rm -f "$SUDOERS_FILE" 2>/dev/null
@@ -122,6 +113,7 @@ RMEEOF
 
     # ar-архив ipk
     IPK_FILE="$OUT_DIR/entware-manager_${VERSION}_${arch}.ipk"
+    rm -f "$IPK_FILE"
     ar qc "$IPK_FILE" debian-binary control.tar.gz data.tar.gz 2>/dev/null || {
         # fallback: ipk без ar (просто tar.gz с контрольными суммами)
         tar -czf "$IPK_FILE" debian-binary control.tar.gz data.tar.gz
