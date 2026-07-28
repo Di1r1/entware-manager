@@ -521,8 +521,11 @@ echo "${GREEN}  ✓ CGI:${NC}      http://$(hostname):8087/entware-cgi/"
 echo ""
 echo "  Версия: $(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo 'неизвестна')"
 echo ""
-IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $NF}' | head -1)
+IP=$(ip -o -4 addr show br0 2>/dev/null | awk '{print $4}' | cut -d/ -f1)
+[ -z "$IP" ] && IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $NF}' | head -1)
 echo "  Открой в браузере: http://${IP:-<IP-роутера>}:8087/entware-manager/"
+echo ""
+echo "  Терминал: Настройки → Терминал → Запустить"
 echo ""
 echo "  Лог установки: $LOG_FILE"
 echo ""
