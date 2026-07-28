@@ -465,78 +465,42 @@ function renderUpdatesTab() {
     fetchUpgradable();
 }
 
-function renderTtydTab(title, icon, port) {
-    const label = port === 8089 ? 'htop' : 'bash';
+function renderProcessesTab() {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#${icon}"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-process"/></svg>
             </span>
-            ${title}
+            Процессы (htop)
         </h2>
-        <div id="ttyd-tab-${port}"><div class="loading-spinner"></div></div>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <a href="${BASE_URL}:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+            Если страница не открывается — запустите ttyd в <b>Настройки → Терминал</b>
+        </p>
+        <iframe src="${BASE_URL}:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
     `;
     contentDiv.innerHTML = html;
-    checkTtydAndRender(port, label);
-}
-
-async function checkTtydAndRender(port, label) {
-    const container = document.getElementById('ttyd-tab-' + port);
-    if (!container) return;
-
-    try {
-        const data = await apiGet('/ttyd_control.cgi');
-        const instance = port === 8089 ? data.htop : data.terminal;
-
-        if (instance.state === 'running') {
-            container.innerHTML =
-                '<div style="display: flex; gap: 10px; margin-bottom: 15px;">' +
-                '<a href="' + BASE_URL + ':' + port + '" target="_blank" class="packages-delete-btn" style="background:#4a5568;">' +
-                '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке' +
-                '</a></div>' +
-                '<iframe src="' + BASE_URL + ':' + port + '" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>';
-        } else {
-            container.innerHTML =
-                '<div style="padding: 30px; text-align: center; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">' +
-                '<p style="font-size: 1.1rem; margin-bottom: 10px; color: var(--text-secondary);">' +
-                '<svg class="icon" width="24" height="24" style="vertical-align: middle; margin-right: 8px;"><use href="/entware-manager/icons.svg?v=2#' + icon + '"/></svg>' +
-                'ttyd не запущен' +
-                '</p>' +
-                '<p style="color: var(--text-secondary); margin-bottom: 20px;">' +
-                'Запустите ttyd для ' + label + ' на порту ' + port + ' вручную или через Настройки → Терминал.' +
-                '</p>' +
-                '<button class="packages-delete-btn" style="background:#4a5568; padding: 10px 24px; font-size: 1rem;" onclick="startTtydAndReload(' + port + ", '" + label + "')" + '">' +
-                'Запустить ttyd' +
-                '</button></div>';
-        }
-    } catch (err) {
-        container.innerHTML = '<p class="error" style="padding: 20px; text-align: center;">Ошибка проверки ttyd: ' + err.message + '</p>';
-    }
-}
-
-window.startTtydAndReload = async function(port, label) {
-    const container = document.getElementById('ttyd-tab-' + port);
-    if (container) container.innerHTML = '<div class="loading-spinner"></div><p style="text-align: center;">Запуск ttyd...</p>';
-
-    const formData = new URLSearchParams();
-    formData.append('action', 'start');
-    formData.append('port', port);
-    try {
-        await apiPost('/ttyd_control.cgi', formData.toString());
-        Toast.show('ttyd запущен на порту ' + port);
-        checkTtydAndRender(port, label);
-    } catch (err) {
-        Toast.show('Ошибка запуска ttyd: ' + err.message, true);
-        checkTtydAndRender(port, label);
-    }
-};
-
-function renderProcessesTab() {
-    renderTtydTab('Процессы (htop)', 'icon-process', 8089);
 }
 
 function renderTerminalTab() {
-    renderTtydTab('Терминал (bash)', 'icon-terminal', 9089);
+    const html = `
+        <h2 style="display: flex; align-items: center; gap: 8px;">
+            <span class="stat-icon" style="width: 28px; height: 28px;">
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-terminal"/></svg>
+            </span>
+            Терминал (bash)
+        </h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <a href="${BASE_URL}:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+            Если страница не открывается — запустите ttyd в <b>Настройки → Терминал</b>
+        </p>
+        <iframe src="${BASE_URL}:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+    `;
+    contentDiv.innerHTML = html;
 }
 
 function loadLogsTab() {

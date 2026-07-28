@@ -12,6 +12,11 @@ cd "$SCRIPT_DIR"
 
 VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "1.06.3")
 ARCHS=("arm" "mips" "mipsel")
+
+command -v ar >/dev/null 2>&1 || {
+    echo "Ошибка: ar не найден. Установите binutils (opkg install binutils)."
+    exit 1
+}
 BUILD_ARCH=""
 
 for arg in "$@"; do
@@ -114,10 +119,7 @@ RMEEOF
     # ar-архив ipk
     IPK_FILE="$OUT_DIR/entware-manager_${VERSION}_${arch}.ipk"
     rm -f "$IPK_FILE"
-    ar qc "$IPK_FILE" debian-binary control.tar.gz data.tar.gz 2>/dev/null || {
-        # fallback: ipk без ar (просто tar.gz с контрольными суммами)
-        tar -czf "$IPK_FILE" debian-binary control.tar.gz data.tar.gz
-    }
+    ar qc "$IPK_FILE" debian-binary control.tar.gz data.tar.gz
 
     SIZE=$(du -h "$IPK_FILE" | cut -f1)
     echo "  → $IPK_FILE ($SIZE)"
