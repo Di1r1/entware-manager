@@ -1,7 +1,8 @@
 {
-  "version": "1.06.2",
+  "version": "1.06.3",
   "date": "2026-07-28",
   "changes": [
+    "1.06.3: вкладки Процессы/Терминал: проверка статуса ttyd, подсказка вместо ошибки соединения",
     "1.06.2: ttyd terminal: /opt/bin/bash → /bin/sh (openssl 3.x несовместим со старым glibc на mipsel)",
     "1.06.2: build-deploy.sh: фильтрация *.ipk из deploy",
     "1.06.1: wifi-temp: localhost → 127.0.0.1 (RCI blocked after CVE-2026-42533/NDM-4566)",
