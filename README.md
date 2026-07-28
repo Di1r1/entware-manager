@@ -183,7 +183,22 @@ tail -f /opt/var/log/lighttpd/error.log
 # Entware Manager (сегодня)
 cat /tmp/entware/logs/$(date +%Y-%m-%d).log
 tail -f /tmp/entware/logs/$(date +%Y-%m-%d).log
+
+# Лог установки
+cat /tmp/entware/install-logs/install-*.log
 ```
+
+### Что смотреть при ошибках
+
+| Симптом | Какой лог смотреть | Что искать |
+|---------|-------------------|-----------|
+| Страница 500 / белый экран | `/opt/var/log/lighttpd/error.log` | `(mod_cgi.c.xxx) write failed`, `(mod_cgi.c.xxx) pipe failed`, `(mod_cgi.c.xxx) response not sent` |
+| Go-бинарник не запускается | `/opt/var/log/lighttpd/error.log` | `execve failed: No such file`, signal name (SEGV, ABRT) |
+| Не устанавливаются пакеты | `/tmp/entware/logs/$(date +%Y-%m-%d).log` | `opkg returned` с кодом ошибки |
+| Температура пустая / null | `/tmp/entware/logs/$(date +%Y-%m-%d).log` | `rci request failed`, `parse error`, `localhost` |
+| Сеть не отображается (пусто) | `/tmp/entware/logs/$(date +%Y-%m-%d).log` | `exec: ... failed`, `exit status` |
+| Установка прервалась | `/tmp/entware/install-logs/install-*.log` | `✗`, `fail`, `ошибка` |
+| После перезагрузки не работает | `/opt/var/log/lighttpd/error.log` | `binding failed` (порт занят другим процессом) |
 
 ## Документация
 
