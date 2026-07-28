@@ -65,21 +65,49 @@ cd deploy && sh Install/install.sh
 
 Все архивы: https://github.com/Di1r1/entware-manager/releases
 
+### Установка через ipk
+
+```sh
+# arm (armv7l / armv5tel)
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_arm.ipk
+opkg install entware-manager_1.06.1_arm.ipk
+
+# mips
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mips.ipk
+opkg install entware-manager_1.06.1_mips.ipk
+
+# mipsel
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mipsel.ipk
+opkg install entware-manager_1.06.1_mipsel.ipk
+```
+
+Зависимости (lighttpd, jq, curl, ttyd и др.) opkg установит автоматически.
+При установке запускается install.sh с полным цветным выводом и логом.
+
 ### Обновление
 
 ```sh
+# Через tar.gz
 cd /opt/tmp
 curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
 tar -xzf entware-manager-v1.06.1-mipsel.tar.gz
 cd deploy && sh Install/install.sh
+
+# Через ipk
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager_1.06.1_mipsel.ipk
+opkg install --force-reinstall entware-manager_1.06.1_mipsel.ipk
 ```
 
-Все архивы: https://github.com/Di1r1/entware-manager/releases
+Все релизы: https://github.com/Di1r1/entware-manager/releases
 
 ### Удаление
 
 ```sh
+# Если ставил вручную
 sh /opt/web_entware/Install/uninstall.sh
+
+# Если ставил через ipk
+opkg remove entware-manager
 ```
 
 Удаляет файлы, конфиги lighttpd, sudoers и логи. Пакеты Entware не трогает.
