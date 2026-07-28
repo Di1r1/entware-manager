@@ -175,8 +175,15 @@ chmod +x install.sh
 | lighttpd не стартует | `lighttpd -D -f /opt/etc/lighttpd/lighttpd.conf` — увидишь ошибку конфига |
 
 **Логи:**
-- lighttpd: `/opt/var/log/lighttpd/error.log`
-- Entware Manager: `/tmp/entware/logs/YYYY-MM-DD.log`
+
+```sh
+# lighttpd
+tail -f /opt/var/log/lighttpd/error.log
+
+# Entware Manager (сегодня)
+cat /tmp/entware/logs/$(date +%Y-%m-%d).log
+tail -f /tmp/entware/logs/$(date +%Y-%m-%d).log
+```
 
 ## Документация
 
