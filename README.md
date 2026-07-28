@@ -44,9 +44,6 @@ uname -m
 Качай архив под свою архитектуру:
 
 ```sh
-# arm64 (aarch64)
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
-
 # arm (armv7l / armv5tel)
 curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm.tar.gz
 
@@ -55,12 +52,6 @@ curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entw
 
 # mipsel
 curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
-
-# amd64 (x86_64)
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-amd64.tar.gz
-
-# 386 (i686)
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-386.tar.gz
 ```
 
 Распаковывай и ставь:
@@ -78,8 +69,8 @@ cd deploy && sh Install/install.sh
 
 ```sh
 cd /opt/tmp
-curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-arm64.tar.gz
-tar -xzf entware-manager-v1.06.1-arm64.tar.gz
+curl -LO https://github.com/Di1r1/entware-manager/releases/download/v1.06.1/entware-manager-v1.06.1-mipsel.tar.gz
+tar -xzf entware-manager-v1.06.1-mipsel.tar.gz
 cd deploy && sh Install/install.sh
 ```
 
