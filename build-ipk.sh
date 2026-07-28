@@ -1,0 +1,135 @@
+#!/bin/bash
+# ==============================================
+# Сборка ipk для Entware Manager
+# Использование: ./build-ipk.sh [--arch ARCH]
+#   --arch ARCH  — собрать только для одной архи (arm/mips/mipsel)
+# ==============================================
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "1.06.1")
+ARCHS=("arm" "mips" "mipsel")
+BUILD_ARCH=""
+
+for arg in "$@"; do
+    case "$arg" in
+        --arch=*) BUILD_ARCH="${arg#--arch=}" ;;
+    esac
+done
+
+DEPLOY_DIR="$SCRIPT_DIR/deploy"
+OUT_DIR="$SCRIPT_DIR"
+PKG_TMP="/tmp/entware-ipk-$$"
+
+cleanup() { rm -rf "$PKG_TMP"; }
+trap cleanup EXIT
+
+echo "=== Сборка ipk для Entware Manager v$VERSION ==="
+
+for arch in "${ARCHS[@]}"; do
+    [ -n "$BUILD_ARCH" ] && [ "$arch" != "$BUILD_ARCH" ] && continue
+
+    echo ""
+    echo "--- $arch ---"
+
+    rm -rf "$PKG_TMP"
+    mkdir -p "$PKG_TMP/control" "$PKG_TMP/data"
+
+    # debian-binary
+    echo "2.0" > "$PKG_TMP/debian-binary"
+
+    # control
+    cat > "$PKG_TMP/control/control" <<EOF
+Package: entware-manager
+Version: $VERSION
+Architecture: $arch
+Maintainer: Di1r1
+Priority: optional
+Section: admin
+Description: Web panel for Entware management on Keenetic/Netcraze
+Depends: lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb
+EOF
+
+    # postinst
+    cat > "$PKG_TMP/control/postinst" <<'INSTEOF'
+#!/bin/sh
+# postinst — настройка после установки
+/opt/web_entware/Install/install.sh
+INSTEOF
+    chmod 755 "$PKG_TMP/control/postinst"
+
+    # prerm
+    cat > "$PKG_TMP/control/prerm" <<'RMEEOF'
+#!/bin/sh
+# prerm — backup/restore перед удалением
+
+TARGET_DIR="/opt/web_entware"
+BACKUP_DIR="/opt/backup/entware-manager"
+LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
+CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
+SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
+
+# backup конфигов
+mkdir -p "$BACKUP_DIR/etc/lighttpd/conf.d" 2>/dev/null
+[ -f "$LIGHTTPD_CONF" ] && cp -a "$LIGHTTPD_CONF" "$BACKUP_DIR/etc/lighttpd/lighttpd.conf"
+[ -f "$CGI_CONF" ] && cp -a "$CGI_CONF" "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf"
+
+# restore или чистка
+if [ -f "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" ]; then
+    cp -a "$BACKUP_DIR/etc/lighttpd/lighttpd.conf" "$LIGHTTPD_CONF"
+else
+    [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+    [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+fi
+
+[ -f "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" ] && cp -a "$BACKUP_DIR/etc/lighttpd/conf.d/30-cgi.conf" "$CGI_CONF"
+rm -f "$CGI_CONF" 2>/dev/null
+
+# sudoers
+rm -f "$SUDOERS_FILE" 2>/dev/null
+
+exit 0
+RMEEOF
+    chmod 755 "$PKG_TMP/control/prerm"
+
+    # control.tar.gz
+    cd "$PKG_TMP/control"
+    tar -czf "$PKG_TMP/control.tar.gz" control postinst prerm
+    cd "$PKG_TMP"
+
+    # data.tar.gz — файлы проекта в /opt/web_entware/
+    mkdir -p "$PKG_TMP/data/opt"
+    cp -a "$DEPLOY_DIR" "$PKG_TMP/data/opt/web_entware"
+
+    # чистим симлинки (не нужны в ipk — будут созданы postinst или opkg распознает)
+    find "$PKG_TMP/data/opt/web_entware/cgi-bin" -name "*.cgi" -type l -delete 2>/dev/null
+
+    # чистим лишние архитектуры
+    find "$PKG_TMP/data/opt/web_entware/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$arch" -exec rm -rf {} + 2>/dev/null
+
+    chmod 755 "$PKG_TMP/data/opt/web_entware/cgi-bin/go.cgi" 2>/dev/null
+    find "$PKG_TMP/data/opt/web_entware/cgi-bin/go" -type f -exec chmod 755 {} \; 2>/dev/null
+    find "$PKG_TMP/data/opt/web_entware" -type d -exec chmod 755 {} \; 2>/dev/null
+    find "$PKG_TMP/data/opt/web_entware" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" \) -exec chmod 644 {} \; 2>/dev/null || true
+    find "$PKG_TMP/data/opt/web_entware" -type f -name "*.sh" -exec chmod 755 {} \; 2>/dev/null
+
+    cd "$PKG_TMP/data"
+    tar -czf "$PKG_TMP/data.tar.gz" .
+    cd "$PKG_TMP"
+
+    # ar-архив ipk
+    IPK_FILE="$OUT_DIR/entware-manager_${VERSION}_${arch}.ipk"
+    ar qc "$IPK_FILE" debian-binary control.tar.gz data.tar.gz 2>/dev/null || {
+        # fallback: ipk без ar (просто tar.gz с контрольными суммами)
+        tar -czf "$IPK_FILE" debian-binary control.tar.gz data.tar.gz
+    }
+
+    SIZE=$(du -h "$IPK_FILE" | cut -f1)
+    echo "  → $IPK_FILE ($SIZE)"
+done
+
+echo ""
+echo "Готово."

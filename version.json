@@ -19,6 +19,7 @@
     "1.06.1: footer: подпись разработчика",
     "1.06.1: подсказка tail -f для просмотра лога установки",
     "1.06.1: doc/TESTED.md, doc/CHANGELOG.md;  удалён из git",
+    "1.06.1: build-ipk.sh — сборка ipk для arm/mips/mipsel; установка через opkg",
     "1.06.0: multi-arch: build-deploy.sh + go.cgi + install.sh — arm/mips/mipsel",
     "1.05.2: fix monitor endpoints (monitor_*.cgi → *.cgi), update help page (architecture, attr_health, charts)",
     "1.05.1: UI графиков температуры: переработка (дата по X, 900px, padding 20, тултип, клик по статам)",
