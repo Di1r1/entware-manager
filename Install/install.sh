@@ -156,7 +156,7 @@ if [ -f "$CGI_CONF" ]; then
 	backup_file "$CGI_CONF" "30-cgi.conf"
 fi
 
-if [ -d "$BACKUP_DIR/etc" ]; then
+if [ -d "$BACKUP_DIR/opt/etc" ]; then
 	ok "Бэкапы сохранены в $BACKUP_DIR"
 else
 	warn "Нечего бэкапить — чистая установка"
