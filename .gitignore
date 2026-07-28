@@ -1,6 +1,7 @@
 deploy/
 tmp/
 *.tar.gz
+*.ipk
 *.bak
 .DS_Store
 cgi-bin/go/
