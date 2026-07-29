@@ -998,7 +998,7 @@ async function renderSettingsTab() {
         <p>Скачайте бэкап настроек перед сбросом роутера или для переноса на новое устройство.</p>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога.</p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
-            <a href="backup.cgi" class="packages-delete-btn" style="background:#4a5568;" download>
+            <a href="/entware-cgi/backup.cgi" class="packages-delete-btn" style="background:#4a5568;" download="entware-manager-backup.tar.gz">
                 <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-download"/></svg> Скачать бэкап
             </a>
             <label class="packages-delete-btn" style="background:#4a5568; cursor: pointer;">
@@ -1041,7 +1041,7 @@ window.restoreBackup = async function(input) {
     const statusEl = document.getElementById('backupStatus');
     statusEl.innerHTML = '<span style="color: var(--text-muted);">Восстановление...</span>';
     try {
-        const response = await fetch('backup_restore.cgi', {
+        const response = await fetch('/entware-cgi/backup_restore.cgi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/gzip' },
             body: await file.arrayBuffer()

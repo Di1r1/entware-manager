@@ -1,7 +1,10 @@
 {
-  "version": "1.06.5",
+  "version": "1.06.6",
   "date": "2026-07-29",
   "changes": [
+    "1.06.6: build-ipk.sh: per-arch opkg arch mapping + deps, symlinks сохранены в ipk",
+    "1.06.6: install.sh: skip cp when SELF_DIR==TARGET_DIR (ipk path)",
+    "1.06.6: entware.js: фикс backup.cgi / backup_restore.cgi — абсолютные пути /entware-cgi/",
     "1.06.5: добавлена архитектура arm64 (aarch64) — сборка Go-бинарников, ipk, tar.gz",
     "1.06.4: entware.js: вкладки Процессы/Терминал — прямой iframe + подсказка (убрана проверка ttyd через API)",
     "1.06.4: build-ipk.sh: проверка ar перед сборкой, убран битый fallback tar.gz",
