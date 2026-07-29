@@ -55,6 +55,16 @@ Description: Web panel for Entware management on Keenetic/Netcraze
 Depends: $DEPS
 EOF
 
+    # conffiles — не перезаписывать пользовательские конфиги при upgrade
+    cat > "$PKG_TMP/control/conffiles" <<'CONFEOF'
+/opt/web_entware/links.json
+/opt/web_entware/monitor_config.json
+/opt/web_entware/network_config.json
+/opt/web_entware/service_config.json
+/opt/web_entware/auth_config.json
+/opt/web_entware/logger/config.json
+CONFEOF
+
     # postinst
     cat > "$PKG_TMP/control/postinst" <<'INSTEOF'
 #!/bin/sh
@@ -90,7 +100,7 @@ RMEEOF
 
     # control.tar.gz (с ./ префиксом — как в стандартных ipk)
     cd "$PKG_TMP/control"
-    tar -czf "$PKG_TMP/control.tar.gz" ./control ./postinst ./prerm
+    tar -czf "$PKG_TMP/control.tar.gz" ./control ./postinst ./prerm ./conffiles
     cd "$PKG_TMP"
 
     # data.tar.gz — файлы проекта в /opt/web_entware/
