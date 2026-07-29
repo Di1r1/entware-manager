@@ -41,16 +41,36 @@ for arch in "${ARCHS[@]}"; do
     # debian-binary
     echo "2.0" > "$PKG_TMP/debian-binary"
 
+    # Маппинг наших arch → opkg arch + зависимости
+    case "$arch" in
+        arm64)
+            OPKG_ARCH="aarch64-3.10"
+            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb"
+            ;;
+        arm)
+            OPKG_ARCH="armv7sf-k3.2"
+            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
+            ;;
+        mips)
+            OPKG_ARCH="mipssf-k3.4"
+            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
+            ;;
+        mipsel)
+            OPKG_ARCH="mipselsf-k3.4"
+            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
+            ;;
+    esac
+
     # control
     cat > "$PKG_TMP/control/control" <<EOF
 Package: entware-manager
 Version: $VERSION
-Architecture: $arch
+Architecture: $OPKG_ARCH
 Maintainer: Di1r1
 Priority: optional
 Section: admin
 Description: Web panel for Entware management on Keenetic/Netcraze
-Depends: lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb
+Depends: $DEPS
 EOF
 
     # postinst
@@ -94,9 +114,6 @@ RMEEOF
     # data.tar.gz — файлы проекта в /opt/web_entware/
     mkdir -p "$PKG_TMP/data/opt"
     cp -a "$DEPLOY_DIR" "$PKG_TMP/data/opt/web_entware"
-
-    # чистим симлинки (не нужны в ipk)
-    find "$PKG_TMP/data/opt/web_entware/cgi-bin" -name "*.cgi" -type l -delete 2>/dev/null
 
     # чистим лишние архитектуры
     find "$PKG_TMP/data/opt/web_entware/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$arch" -exec rm -rf {} + 2>/dev/null
