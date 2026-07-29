@@ -41,31 +41,17 @@ for arch in "${ARCHS[@]}"; do
     # debian-binary
     echo "2.0" > "$PKG_TMP/debian-binary"
 
-    # Маппинг наших arch → opkg arch + зависимости
+    # Per-arch зависимости (на aarch64 пакеты называются иначе)
     case "$arch" in
-        arm64)
-            OPKG_ARCH="aarch64-3.10"
-            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb"
-            ;;
-        arm)
-            OPKG_ARCH="armv7sf-k3.2"
-            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
-            ;;
-        mips)
-            OPKG_ARCH="mipssf-k3.4"
-            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
-            ;;
-        mipsel)
-            OPKG_ARCH="mipselsf-k3.4"
-            DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb"
-            ;;
+        arm64)   DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb" ;;
+        *)       DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb" ;;
     esac
 
-    # control
+    # control (Architecture: all — не зависит от версии ядра)
     cat > "$PKG_TMP/control/control" <<EOF
 Package: entware-manager
 Version: $VERSION
-Architecture: $OPKG_ARCH
+Architecture: all
 Maintainer: Di1r1
 Priority: optional
 Section: admin
