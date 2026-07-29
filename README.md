@@ -1,7 +1,7 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.06.2-blue)](version.json)
+[![Version](https://img.shields.io/badge/version-1.06.5-blue)](version.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
@@ -44,6 +44,9 @@ uname -m
 Качай архив под свою архитектуру (стабильная ссылка — всегда последняя версия):
 
 ```sh
+# arm64 (aarch64)
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-arm64.tar.gz
+
 # arm (armv7l / armv5tel)
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-arm.tar.gz
 
@@ -68,6 +71,10 @@ cd deploy && sh Install/install.sh
 ### Установка через ipk
 
 ```sh
+# arm64 (aarch64)
+curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_arm64.ipk
+opkg install entware-manager_arm64.ipk
+
 # arm (armv7l / armv5tel)
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_arm.ipk
 opkg install entware-manager_arm.ipk
