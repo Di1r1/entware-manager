@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"entware-manager/internal/backup"
 	"entware-manager/internal/stats"
 )
 
@@ -38,6 +39,10 @@ func main() {
 		stats.HandleCrontab()
 	case "crontab_update":
 		stats.HandleCrontabUpdate()
+	case "backup":
+		backup.HandleCreate()
+	case "backup_restore":
+		backup.HandleRestore()
 	default:
 		fmt.Println("Content-type: text/html; charset=utf-8\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)

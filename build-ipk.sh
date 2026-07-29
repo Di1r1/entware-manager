@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================
-# Сборка ipk для Entware Manager
+# Сборка ipk для Entware Manager (tar.gz формат)
 # Использование: ./build-ipk.sh [--arch ARCH]
 #   --arch ARCH  — собрать только для одной архи (arm64/arm/mips/mipsel)
 # ==============================================
@@ -12,11 +12,6 @@ cd "$SCRIPT_DIR"
 
 VERSION=$(jq -r '.version' version.json 2>/dev/null || python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' version.json | cut -d'"' -f4 || echo "1.06.4")
 ARCHS=("arm64" "arm" "mips" "mipsel")
-
-command -v ar >/dev/null 2>&1 || {
-    echo "Ошибка: ar не найден. Установите binutils (opkg install binutils)."
-    exit 1
-}
 BUILD_ARCH=""
 
 for arg in "$@"; do
@@ -91,16 +86,16 @@ exit 0
 RMEEOF
     chmod 755 "$PKG_TMP/control/prerm"
 
-    # control.tar.gz
+    # control.tar.gz (с ./ префиксом — как в стандартных ipk)
     cd "$PKG_TMP/control"
-    tar -czf "$PKG_TMP/control.tar.gz" control postinst prerm
+    tar -czf "$PKG_TMP/control.tar.gz" ./control ./postinst ./prerm
     cd "$PKG_TMP"
 
     # data.tar.gz — файлы проекта в /opt/web_entware/
     mkdir -p "$PKG_TMP/data/opt"
     cp -a "$DEPLOY_DIR" "$PKG_TMP/data/opt/web_entware"
 
-    # чистим симлинки (не нужны в ipk — будут созданы postinst или opkg распознает)
+    # чистим симлинки (не нужны в ipk)
     find "$PKG_TMP/data/opt/web_entware/cgi-bin" -name "*.cgi" -type l -delete 2>/dev/null
 
     # чистим лишние архитектуры
@@ -116,10 +111,13 @@ RMEEOF
     tar -czf "$PKG_TMP/data.tar.gz" .
     cd "$PKG_TMP"
 
-    # ar-архив ipk
+    # Сборка ipk в tar.gz-формате (как в Entware)
     IPK_FILE="$OUT_DIR/entware-manager_${VERSION}_${arch}.ipk"
     rm -f "$IPK_FILE"
-    ar qc "$IPK_FILE" debian-binary control.tar.gz data.tar.gz
+    tar -czf "$IPK_FILE" \
+        ./debian-binary \
+        ./control.tar.gz \
+        ./data.tar.gz
 
     SIZE=$(du -h "$IPK_FILE" | cut -f1)
     echo "  → $IPK_FILE ($SIZE)"
