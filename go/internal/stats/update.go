@@ -206,6 +206,18 @@ func getDownloadURL(latestVersion, arch string) string {
 	return fmt.Sprintf("https://github.com/Di1r1/entware-manager/releases/download/v%s/entware-manager-%s.tar.gz", latestVersion, arch)
 }
 
+func getDownloadURLIPK(latestVersion, arch string) string {
+	return fmt.Sprintf("https://github.com/Di1r1/entware-manager/releases/download/v%s/entware-manager_%s.ipk", latestVersion, arch)
+}
+
+func isInstalledViaOpkg() bool {
+	out, err := exec.Command("opkg", "list-installed").Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "entware-manager")
+}
+
 func semverGreater(a, b string) bool {
 	pa := parseSemver(a)
 	pb := parseSemver(b)
@@ -240,16 +252,61 @@ func runUpdate(version, arch string) {
 		}
 	}
 
-	log("[RUNNING] Начало обновления до v" + version)
-
-	url := getDownloadURL(version, arch)
-	log("Загрузка " + url)
-
 	tmpDir := "/tmp/entware/update"
 	os.RemoveAll(tmpDir)
 	os.MkdirAll(tmpDir, 0755)
 
 	client := &http.Client{Timeout: 120 * time.Second}
+
+	if isInstalledViaOpkg() {
+		log("[RUNNING] Обновление через ipk до v" + version)
+		url := getDownloadURLIPK(version, arch)
+		log("Загрузка " + url)
+		resp, err := client.Get(url)
+		if err != nil {
+			log("[ERROR] Ошибка загрузки: " + err.Error())
+			return
+		}
+		if resp.StatusCode != 200 {
+			log(fmt.Sprintf("[ERROR] GitHub ответил %d", resp.StatusCode))
+			resp.Body.Close()
+			return
+		}
+		ipkPath := filepath.Join(tmpDir, "entware-manager.ipk")
+		f, _ := os.Create(ipkPath)
+		if f == nil {
+			log("[ERROR] Не удалось создать временный файл")
+			resp.Body.Close()
+			return
+		}
+		io.Copy(f, resp.Body)
+		resp.Body.Close()
+		f.Close()
+		log("Установка ipk...")
+		var outBuf bytes.Buffer
+		cmd := exec.Command("opkg", "install", "--force-reinstall", ipkPath)
+		cmd.Stdout = &outBuf
+		cmd.Stderr = &outBuf
+		if err := cmd.Run(); err != nil {
+			log("[FAIL] opkg install: " + err.Error())
+			for _, line := range strings.Split(outBuf.String(), "\n") {
+				if line != "" {
+					log("[FAIL] " + line)
+				}
+			}
+		} else {
+			log("[DONE] Обновление до v" + version + " завершено")
+		}
+		os.RemoveAll(tmpDir)
+		log("Временные файлы удалены")
+		return
+	}
+
+	log("[RUNNING] Обновление через tar.gz до v" + version)
+
+	url := getDownloadURL(version, arch)
+	log("Загрузка " + url)
+
 	resp, err := client.Get(url)
 	if err != nil {
 		log("[ERROR] Ошибка загрузки: " + err.Error())
