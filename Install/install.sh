@@ -102,6 +102,13 @@ done
 # ========== 2. ПРОВЕРКА ПАКЕТОВ ==========
 step "Проверка установленных пакетов"
 
+echo "  → обновление списков пакетов..."
+if opkg update >/dev/null 2>&1; then
+	ok "Списки пакетов обновлены"
+else
+	warn "opkg update не удался, пробуем продолжить"
+fi
+
 PACKAGES="\
 lighttpd|/opt/sbin/lighttpd
 ttyd|/opt/bin/ttyd
@@ -133,12 +140,6 @@ if [ -z "$MISSING_PKGS" ]; then
 else
 	warn "Отсутствуют:$MISSING_PKGS"
 	step "Установка отсутствующих пакетов"
-
-	if opkg update; then
-		ok "Списки пакетов обновлены"
-	else
-		warn "opkg update не удался, пробуем продолжить"
-	fi
 
 	for pkg in $MISSING_PKGS; do
 		echo "  → $pkg..."
