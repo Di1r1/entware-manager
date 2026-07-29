@@ -53,18 +53,65 @@ kill_process() {
 
 daemon_loop() {
     read_config
-    mkdir -p "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$(dirname "$PIDFILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
+    CPU_DIR="/tmp/entware/cpu_times"
+    mkdir -p "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR" "$(dirname "$PIDFILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
 
     log_message "INFO" "[monitor] Демон запущен (PID $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
 
-    rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*
+    rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/* "$CPU_DIR"/*
 
-    trap 'log_message "INFO" "[monitor] Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR"; exit 0' TERM
+    trap 'log_message "INFO" "[monitor] Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR"; exit 0' TERM
     trap 'read_config; log_message "INFO" "[monitor] Конфигурация перечитана (CPU=$INDIVIDUAL_CPU TIME=$INDIVIDUAL_TIME IGNORE_PS=$IGNORE_PS MAX_PROCESSES=$MAX_PROCESSES)"' HUP
 
+    # Сохраняем начальные CPU тики (utime+stime из /proc/pid/stat)
+    # Поля после ')' в stat: state ppid pgrp session tty_nr tpgid flags minflt cminflt majflt cmajflt utime stime
+    for pid_dir in /proc/[0-9]*/; do
+        pid="${pid_dir%/}"; pid="${pid##*/}"
+        read -r line 2>/dev/null < "/proc/$pid/stat" || continue
+        after="${line#*)}"
+        set -- $after
+        [ $# -lt 13 ] && continue
+        shift 11
+        echo $(($1 + $2)) > "$CPU_DIR/$pid" 2>/dev/null
+    done
+
     while true; do
-        top -bn1 2>/dev/null | sed -n '/^  PID/,$ p' | sed '1d' | head -$MAX_PROCESSES | while read pid ppid user stat vsz cpuid cpu comm; do
+        total_now=$(awk '/^cpu / {s=0; for(i=2;i<=9;i++) s+=$i; print s}' /proc/stat 2>/dev/null)
+        [ -z "$total_now" ] && total_now=0
+
+        for pid_dir in /proc/[0-9]*/; do
+            pid="${pid_dir%/}"; pid="${pid##*/}"
             [ "$pid" = "$$" ] && continue
+
+            read -r line 2>/dev/null < "/proc/$pid/stat" || continue
+
+            comm="${line#*(}"
+            comm="${comm%)*}"
+
+            after="${line#*)}"
+            set -- $after
+            [ $# -lt 13 ] && continue
+            ppid=$2
+            shift 11
+            utime=$1
+            stime=$2
+
+            current=$((utime + stime))
+            prev=$(cat "$CPU_DIR/$pid" 2>/dev/null || echo "$current")
+            delta=$((current - prev))
+            echo "$current" > "$CPU_DIR/$pid" 2>/dev/null
+
+            if [ "$total_now" -gt 0 ]; then
+                cpu=$((delta * 100 / total_now))
+            else
+                cpu=0
+            fi
+
+            if [ "$cpu" -lt "$INDIVIDUAL_CPU" ]; then
+                rm -f "$COUNTER_DIR/indiv_$pid" "$IGNORE_COUNTER_DIR/indiv_$pid" 2>/dev/null
+                continue
+            fi
+
             if [ "$IGNORE_PS" = "true" ]; then
                 _cmd_base="${comm##*/}"
                 case "$_cmd_base" in
@@ -75,42 +122,36 @@ daemon_loop() {
             is_ignore=0
             echo "$comm" | grep -qE "$IGNORE_LIST" && is_ignore=1
 
-            cpu=$(echo "$cpu" | sed 's/,/./')
-            cpu_int=$(printf "%.0f" "$cpu" 2>/dev/null || echo "$cpu")
-
-            if [ "$cpu_int" -ge "$INDIVIDUAL_CPU" ]; then
-                if [ "$is_ignore" -eq 1 ]; then
-                    dir="$IGNORE_COUNTER_DIR"
-                    type="ИГНОРИРУЕМЫЙ"
-                else
-                    dir="$COUNTER_DIR"
-                    type="ОБЫЧНЫЙ"
-                fi
-                counter_file="$dir/indiv_$pid"
-                if [ -f "$counter_file" ]; then
-                    count=$(cat "$counter_file")
-                    count=$((count + INTERVAL))
-                else
-                    count=$INTERVAL
-                fi
-                echo "$count" > "$counter_file"
-
-                if [ $((count % LOG_INTERVAL)) -eq 0 ] && [ "$count" -lt "$INDIVIDUAL_TIME" ]; then
-                    log_message "WARN" "[monitor] $type процесс $pid ($comm) CPU $cpu% держится уже $count сек"
-                fi
-
-                if [ "$count" -ge "$INDIVIDUAL_TIME" ]; then
-                    if [ "$is_ignore" -eq 1 ]; then
-                        log_message "WARN" "[monitor] ИГНОРИРУЕМЫЙ процесс $pid ($comm) CPU $cpu% держится уже $INDIVIDUAL_TIME сек (не убит)"
-                        rm -f "$counter_file"
-                    else
-                        log_message "ERROR" "[monitor] Превышен порог: процесс $pid ($comm) CPU $cpu% в течение $INDIVIDUAL_TIME сек"
-                        kill_process "$pid"
-                        rm -f "$counter_file"
-                    fi
-                fi
+            if [ "$is_ignore" -eq 1 ]; then
+                dir="$IGNORE_COUNTER_DIR"
+                type="ИГНОРИРУЕМЫЙ"
             else
-                rm -f "$COUNTER_DIR/indiv_$pid" "$IGNORE_COUNTER_DIR/indiv_$pid" 2>/dev/null
+                dir="$COUNTER_DIR"
+                type="ОБЫЧНЫЙ"
+            fi
+
+            counter_file="$dir/indiv_$pid"
+            if [ -f "$counter_file" ]; then
+                count=$(cat "$counter_file")
+                count=$((count + INTERVAL))
+            else
+                count=$INTERVAL
+            fi
+            echo "$count" > "$counter_file"
+
+            if [ $((count % LOG_INTERVAL)) -eq 0 ] && [ "$count" -lt "$INDIVIDUAL_TIME" ]; then
+                log_message "WARN" "[monitor] $type процесс $pid ($comm) CPU $cpu% держится уже $count сек"
+            fi
+
+            if [ "$count" -ge "$INDIVIDUAL_TIME" ]; then
+                if [ "$is_ignore" -eq 1 ]; then
+                    log_message "WARN" "[monitor] ИГНОРИРУЕМЫЙ процесс $pid ($comm) CPU $cpu% держится уже $INDIVIDUAL_TIME сек (не убит)"
+                    rm -f "$counter_file"
+                else
+                    log_message "ERROR" "[monitor] Превышен порог: процесс $pid ($comm) CPU $cpu% в течение $INDIVIDUAL_TIME сек"
+                    kill_process "$pid"
+                    rm -f "$counter_file"
+                fi
             fi
         done
 
