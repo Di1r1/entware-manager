@@ -22,3 +22,5 @@ logger/config.json
 DEVICE.md
 DEVLOG.md
 forum_post.md
+go/entware-*
+router_backup/

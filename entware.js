@@ -993,6 +993,21 @@ async function renderSettingsTab() {
             <div class="loading-spinner"></div>
         </div>
     `;
+    html += `
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg> Бэкап и восстановление</h3>
+        <p>Скачайте бэкап настроек перед сбросом роутера или для переноса на новое устройство.</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
+            <a href="backup.cgi" class="packages-delete-btn" style="background:#4a5568;" download>
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-download"/></svg> Скачать бэкап
+            </a>
+            <label class="packages-delete-btn" style="background:#4a5568; cursor: pointer;">
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Восстановить
+                <input type="file" id="restoreBackupFile" accept=".tar.gz" style="display: none;" onchange="restoreBackup(this)">
+            </label>
+            <span id="backupStatus"></span>
+        </div>
+    `;
     contentDiv.innerHTML = html;
     fetchTtydStatus();
     if (settingsInterval) clearInterval(settingsInterval);
@@ -1002,6 +1017,29 @@ async function renderSettingsTab() {
     document.getElementById('resetDefaultLinksBtn').addEventListener('click', resetDefaultLinks);
     loadAuthConfig();
 }
+
+window.restoreBackup = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('backupStatus');
+    statusEl.innerHTML = '<span style="color: var(--text-muted);">Восстановление...</span>';
+    try {
+        const response = await fetch('backup_restore.cgi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/gzip' },
+            body: await file.arrayBuffer()
+        });
+        const result = await response.json();
+        if (result.status === 'ok') {
+            statusEl.innerHTML = '<span style="color:#2ecc71;">✓ ' + (result.message || 'Восстановлено') + '</span>';
+        } else {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (result.message || 'Неизвестная ошибка') + '</span>';
+        }
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+    }
+    input.value = '';
+};
 
 async function loadAuthConfig() {
     try {

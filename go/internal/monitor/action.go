@@ -40,13 +40,19 @@ func HandleAction() {
 func handleDaemonAction(action string) {
 	logMonitor("INFO", "Запрос на "+strings.ToUpper(action)+" демона")
 
-	cmd := exec.Command(watchdogScript, action)
-	err := cmd.Run()
+	output, err := exec.Command(watchdogScript, action).CombinedOutput()
+	outStr := strings.TrimSpace(string(output))
 
 	if action == "start" || action == "restart" {
 		if err != nil {
-			logMonitor("ERROR", "Не удалось "+action+" демон: "+err.Error())
-			WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action + " демон"})
+			if strings.Contains(outStr, "Already running") {
+				pid, _ := readPIDFile()
+				logMonitor("INFO", "Демон уже запущен (PID: "+strconv.Itoa(pid)+")")
+				WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
+			} else {
+				logMonitor("ERROR", "Не удалось "+action+" демон: "+outStr)
+				WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action + " демон"})
+			}
 			return
 		}
 		time.Sleep(1 * time.Second)
@@ -57,14 +63,14 @@ func handleDaemonAction(action string) {
 			logAction("INFO", fmt.Sprintf("Демон защиты %s (PID: %d)", verb, pid))
 			WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", verb), "pid": pid})
 		} else {
-			logMonitor("ERROR", "Демон не запустился")
+			logMonitor("ERROR", "Демон не запустился: "+outStr)
 			WriteJSON(map[string]string{"status": "error", "message": "Демон не запустился"})
 		}
 		return
 	}
 
 	if err != nil {
-		logMonitor("ERROR", "Не удалось выполнить действие: "+action)
+		logMonitor("ERROR", "Не удалось выполнить действие: "+action+": "+outStr)
 		WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action})
 		return
 	}

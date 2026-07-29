@@ -43,6 +43,7 @@ load_config() {
     [ -z "$AUTO_RESTART" ] && AUTO_RESTART=false
     [ -z "$EXCLUDE_LIST" ] && EXCLUDE_LIST="dropbear kvas-ws service_watchdog"
     [ -z "$HISTORY_DAYS" ] && HISTORY_DAYS=7
+    [ "$ENABLED" = "null" ] && ENABLED=true
 }
 
 clean_old_pids() {
