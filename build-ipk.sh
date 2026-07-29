@@ -115,7 +115,7 @@ RMEEOF
     cd "$PKG_TMP"
 
     # Сборка ipk в tar.gz-формате (как в Entware)
-    IPK_FILE="$OUT_DIR/entware-manager_${VERSION}_${arch}.ipk"
+    IPK_FILE="$OUT_DIR/entware-manager_${arch}.ipk"
     rm -f "$IPK_FILE"
     tar -czf "$IPK_FILE" \
         ./debian-binary \
