@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "1.06.3")
+VERSION=$(jq -r '.version' version.json 2>/dev/null || python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' version.json | cut -d'"' -f4 || echo "1.06.4")
 ARCHS=("arm" "mips" "mipsel")
 
 command -v ar >/dev/null 2>&1 || {
