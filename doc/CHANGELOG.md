@@ -2,6 +2,14 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.06.6 (2026-07-29)
+
+### Исправлено
+
+- **ipk для aarch64**: маппинг arch `arm64`→`aarch64-3.10`, per-arch зависимости (`coreutils, bridge` вместо `coreutils-base, bridge-utils`). Симлинки `.cgi` теперь включаются в ipk (не удаляются при сборке).
+- **install.sh**: при ipk-установке файлы уже на месте — проверка `SELF_DIR==TARGET_DIR` пропускает `cp -a` (чинит `go.cgi не найден` и `HTTP 404`).
+- **entware.js**: `backup.cgi` и `backup_restore.cgi` — абсолютные пути `/entware-cgi/backup.cgi`, подставлено имя файла для скачивания.
+
 ## 1.06.5 (2026-07-29)
 
 ### Новое
