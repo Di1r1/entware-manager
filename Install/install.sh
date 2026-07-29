@@ -107,10 +107,10 @@ lighttpd|/opt/sbin/lighttpd
 ttyd|/opt/bin/ttyd
 htop|/opt/bin/htop
 jq|/opt/bin/jq
-coreutils-base|/opt/bin/dirname
+coreutils|/opt/bin/dirname
 coreutils-timeout|/opt/bin/timeout
 procps-ng|/opt/bin/ps
-bridge-utils|/opt/sbin/brctl
+bridge|/opt/sbin/brctl
 ip-full|/opt/sbin/ip
 sudo|/opt/bin/sudo
 curl|/opt/bin/curl

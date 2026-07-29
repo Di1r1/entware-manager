@@ -41,11 +41,7 @@ for arch in "${ARCHS[@]}"; do
     # debian-binary
     echo "2.0" > "$PKG_TMP/debian-binary"
 
-    # Per-arch зависимости (на aarch64 пакеты называются иначе)
-    case "$arch" in
-        arm64)   DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb" ;;
-        *)       DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils-base, coreutils-timeout, procps-ng, bridge-utils, ip-full, sudo, smartmontools, smartmontools-drivedb" ;;
-    esac
+    DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb"
 
     # control (Architecture: all — не зависит от версии ядра)
     cat > "$PKG_TMP/control/control" <<EOF
