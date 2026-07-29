@@ -8,6 +8,15 @@
 
 - **arm64 (aarch64)**: добавлена поддержка роутеров на ARM64 — Keenetic Ultra 1812 и аналоги. Go-бинарники компилируются под `GOARCH=arm64`, создаются `ipk` и `tar.gz` для arm64. `build-deploy.sh` и `build-ipk.sh` обновлены.
 
+### Новое
+
+- **Встроенное обновление** — 3 новых CGI-эндпоинта в `entware-stats`:
+  - `update_check.cgi` — GET: GitHub API → semver сравнение → JSON `{current, latest, has_update}`
+  - `update_run.cgi` — POST: фоновая goroutine, download tar.gz → `archive/tar` + `compress/gzip` extract → exec `install.sh`
+  - `update_status.cgi` — GET: tail лога `/tmp/entware/update.log` → JSON `{status, pid, lines}`
+  - UI: секция «Обновление» в Настройках (текущая версия, кнопка Проверить, кнопка Обновить, лог с авто-polling)
+- **install.sh**: сохраняет `.arch` при успешной установке (`echo "$ROUTER_ARCH" > "$TARGET_DIR/.arch"`) — для автоопределения архитектуры при обновлении
+
 ### Исправления
 
 - **build-ipk.sh**: формат ipk изменён с `ar` на `tar.gz`. Entware на Keenetic использует gzip-архив (tar.gz) вместо ar — эталонный `geo-split-data_0.6.0_all.ipk` подтвердил это. Убрана проверка `command -v ar`, `control.tar.gz` с `./` префиксом, сборка через `tar -czf` вместо `ar qc`. Ошибка `Malformed package file` устранена.
