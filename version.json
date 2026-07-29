@@ -1,8 +1,8 @@
 {
-  "version": "1.06.6",
-  "date": "2026-07-29",
+  "version": "1.06.7",
+  "date": "2026-07-30",
   "changes": [
-    "1.06.6: build-ipk.sh: per-arch opkg arch mapping + deps, symlinks сохранены в ipk",
+    "1.06.7: watchdog.sh: прямой парсинг /proc/[pid]/stat вместо top -bn1 (фикс высокого CPU)",
     "1.06.6: install.sh: skip cp when SELF_DIR==TARGET_DIR (ipk path)",
     "1.06.6: entware.js: фикс backup.cgi / backup_restore.cgi — абсолютные пути /entware-cgi/",
     "1.06.5: добавлена архитектура arm64 (aarch64) — сборка Go-бинарников, ipk, tar.gz",
