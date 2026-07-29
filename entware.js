@@ -1007,9 +1007,26 @@ async function renderSettingsTab() {
             </label>
             <span id="backupStatus"></span>
         </div>
+
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновление</h3>
+        <p>Проверьте и установите новую версию Entware Manager.</p>
+        <div id="update-section" style="margin-top: 10px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <span><strong>Текущая версия:</strong> <span id="update-current">загрузка...</span></span>
+                <button id="update-check-btn" class="packages-delete-btn" style="background:#4a5568;" onclick="checkUpdate()">
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg> Проверить
+                </button>
+                <button id="update-run-btn" class="packages-delete-btn" style="background:#2ecc71; display:none;" onclick="runUpdate()">
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить до <span id="update-version"></span>
+                </button>
+            </div>
+            <div id="update-status" style="margin-top: 8px;"></div>
+            <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
+        </div>
     `;
     contentDiv.innerHTML = html;
     fetchTtydStatus();
+    loadUpdateInfo();
     if (settingsInterval) clearInterval(settingsInterval);
     settingsInterval = setInterval(fetchTtydStatus, 5000);
     document.getElementById('addLinkBtn').addEventListener('click', addLinkRow);
@@ -1040,6 +1057,107 @@ window.restoreBackup = async function(input) {
     }
     input.value = '';
 };
+
+async function loadUpdateInfo() {
+    try {
+        const data = await apiGet('/update_check.cgi');
+        document.getElementById('update-current').textContent = data.current;
+        if (data.has_update) {
+            document.getElementById('update-version').textContent = data.latest;
+            document.getElementById('update-run-btn').style.display = '';
+            document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + data.latest + '</span>';
+        } else if (data.error) {
+            document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">' + data.error + '</span>';
+        } else {
+            document.getElementById('update-status').innerHTML = '<span style="color:var(--text-muted);">Установлена последняя версия</span>';
+        }
+    } catch (err) {
+        document.getElementById('update-current').textContent = 'ошибка';
+    }
+}
+
+async function checkUpdate() {
+    const btn = document.getElementById('update-check-btn');
+    const statusEl = document.getElementById('update-status');
+    btn.disabled = true;
+    statusEl.innerHTML = '<span style="color:var(--text-muted);">Проверка...</span>';
+    try {
+        const data = await apiGet('/update_check.cgi');
+        document.getElementById('update-current').textContent = data.current;
+        if (data.has_update) {
+            document.getElementById('update-version').textContent = data.latest;
+            document.getElementById('update-run-btn').style.display = '';
+            statusEl.innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + data.latest + '</span>';
+        } else if (data.error) {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.error + '</span>';
+        } else {
+            statusEl.innerHTML = '<span style="color:var(--text-muted);">Установлена последняя версия</span>';
+        }
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+    }
+    btn.disabled = false;
+}
+
+async function runUpdate() {
+    const btn = document.getElementById('update-run-btn');
+    const logPre = document.getElementById('update-log');
+    const statusEl = document.getElementById('update-status');
+    btn.disabled = true;
+    logPre.style.display = '';
+    logPre.textContent = 'Запуск обновления...';
+    statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление запущено...</span>';
+
+    try {
+        const data = await apiPost('/update_run.cgi', '');
+        if (data.status === 'error') {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.message + '</span>';
+            btn.disabled = false;
+            return;
+        }
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span></span>';
+
+        // Poll status every 2 seconds
+        pollUpdateStatus();
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        btn.disabled = false;
+    }
+}
+
+let updatePollInterval;
+
+function pollUpdateStatus() {
+    if (updatePollInterval) clearInterval(updatePollInterval);
+    updatePollInterval = setInterval(async () => {
+        try {
+            const data = await apiGet('/update_status.cgi');
+            const logPre = document.getElementById('update-log');
+            if (data.lines && data.lines.length) {
+                logPre.textContent = data.lines.join('\n');
+                logPre.scrollTop = logPre.scrollHeight;
+            }
+
+            if (data.status === 'done') {
+                clearInterval(updatePollInterval);
+                document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">✓ Обновление завершено</span>';
+                document.getElementById('update-run-btn').style.display = 'none';
+                document.getElementById('update-current').textContent = data.lines.length > 0
+                    ? (data.lines[data.lines.length-1].replace(/.*v/, '').replace(/ .*/, '') || '?')
+                    : '?';
+            } else if (data.status === 'error') {
+                clearInterval(updatePollInterval);
+                document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
+                document.getElementById('update-run-btn').disabled = false;
+            } else if (data.status === 'running') {
+                const progress = data.lines.length > 0 ? data.lines[data.lines.length-1] : '';
+                document.getElementById('update-progress').textContent = progress;
+            }
+        } catch (err) {
+            // ignore polling errors
+        }
+    }, 2000);
+}
 
 async function loadAuthConfig() {
     try {
