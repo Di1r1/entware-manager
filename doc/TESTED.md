@@ -4,4 +4,4 @@
 |--------|------------|--------|------|-----------|
 | Keenetic Giga | mipsel | ✅ | 2026-07-28 | Установка, все функции |
 | Keenetic KN-2311 | mipsel | ✅ | 2026-07-28 | Установка, все функции |
-| Keenetic Viva 1910 | mipsel | ✅ | 2026-07-28 | Установка v1.06.2 (терминал, ссылки), bugreport: ipk malformed, router link |
+| Keenetic Viva 1910 | mipsel | ✅ | 2026-07-28 | Установка v1.06.2 из tar.gz (терминал, ссылки), bugreport: ipk malformed, router link |
