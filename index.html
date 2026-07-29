@@ -483,6 +483,11 @@
                 if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
                 const sidebarVersion = document.getElementById('sidebarVersion');
                 if (sidebarVersion) sidebarVersion.textContent = `v${data.version}`;
+                fetch('/entware-cgi/update_check.cgi').then(r => r.json()).then(upd => {
+                    if (upd.has_update && sidebarVersion) {
+                        sidebarVersion.innerHTML = `v${upd.current} → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${upd.latest}" target="_blank" style="color:#2ecc71;text-decoration:none;">v${upd.latest}</a>`;
+                    }
+                }).catch(function(){});
             })
             .catch(e => { window.APP_VERSION = 'error'; console.error('Ошибка загрузки версии', e) });
     </script>
