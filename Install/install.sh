@@ -248,14 +248,18 @@ fi
 # ========== 5. КОПИРОВАНИЕ ФАЙЛОВ ==========
 step "Копирование файлов"
 
-mkdir -p "$TARGET_DIR" || {
-	fail "Не удалось создать $TARGET_DIR"
-}
+if [ "$SELF_DIR" = "$TARGET_DIR" ]; then
+	ok "Файлы уже на месте (установка через ipk)"
+else
+	mkdir -p "$TARGET_DIR" || {
+		fail "Не удалось создать $TARGET_DIR"
+	}
 
-rm -f "$TARGET_DIR"/cgi-bin/*.cgi 2>/dev/null
-rm -f "$TARGET_DIR"/cgi-bin/*/*.cgi 2>/dev/null
+	rm -f "$TARGET_DIR"/cgi-bin/*.cgi 2>/dev/null
+	rm -f "$TARGET_DIR"/cgi-bin/*/*.cgi 2>/dev/null
 
-cp -a "$SELF_DIR"/* "$TARGET_DIR/"
+	cp -a "$SELF_DIR"/* "$TARGET_DIR/"
+fi
 if [ -f "$TARGET_DIR/version.json" ]; then
 	VERSION=$(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo '?')
 	ok "Файлы скопированы в $TARGET_DIR (версия $VERSION, $(du -sh "$TARGET_DIR" | cut -f1))"
