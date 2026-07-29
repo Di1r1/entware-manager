@@ -43,6 +43,12 @@ func main() {
 		backup.HandleCreate()
 	case "backup_restore":
 		backup.HandleRestore()
+	case "update_check":
+		stats.HandleUpdateCheck()
+	case "update_run":
+		stats.HandleUpdateRun()
+	case "update_status":
+		stats.HandleUpdateStatus()
 	default:
 		fmt.Println("Content-type: text/html; charset=utf-8\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)
