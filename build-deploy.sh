@@ -52,6 +52,7 @@ rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" 2>/d
 
 echo ""
 echo "=== Компиляция Go ==="
+rm -rf "$DEPLOY_DIR/cgi-bin/go"
 mkdir -p "$DEPLOY_DIR/cgi-bin/go"
 cd "$PROJECT_DIR/go"
 
