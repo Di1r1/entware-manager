@@ -23,6 +23,16 @@ func handleWrapperConfigGet() {
 	data, err := os.ReadFile(wrapperConfig)
 	if err != nil || !json.Valid(data) {
 		data = []byte(defaultServiceConfig)
+	} else {
+		var cfg map[string]interface{}
+		if json.Unmarshal(data, &cfg) == nil {
+			if _, ok := cfg["enabled"]; !ok {
+				cfg["enabled"] = true
+				if patched, err := json.MarshalIndent(cfg, "", "  "); err == nil {
+					data = patched
+				}
+			}
+		}
 	}
 	os.Stdout.WriteString("Content-type: application/json; charset=utf-8\n\n")
 	os.Stdout.Write(data)
@@ -35,13 +45,42 @@ func handleWrapperConfigPost() {
 		return
 	}
 
-	data := string(body)
-	if !json.Valid([]byte(data)) {
+	if !json.Valid(body) {
 		WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON configuration"})
 		return
 	}
 
-	if err := os.WriteFile(wrapperConfig, []byte(data), 0644); err != nil {
+	var newCfg map[string]interface{}
+	if err := json.Unmarshal(body, &newCfg); err != nil {
+		WriteJSON(map[string]string{"status": "error", "message": "Failed to parse JSON"})
+		return
+	}
+
+	var existingCfg map[string]interface{}
+	existingData, err := os.ReadFile(wrapperConfig)
+	if err == nil && json.Valid(existingData) {
+		json.Unmarshal(existingData, &existingCfg)
+	}
+
+	merged := make(map[string]interface{})
+	for k, v := range existingCfg {
+		merged[k] = v
+	}
+	for k, v := range newCfg {
+		merged[k] = v
+	}
+
+	if _, ok := merged["enabled"]; !ok {
+		merged["enabled"] = true
+	}
+
+	out, err := json.MarshalIndent(merged, "", "  ")
+	if err != nil {
+		WriteJSON(map[string]string{"status": "error", "message": "Failed to marshal config"})
+		return
+	}
+
+	if err := os.WriteFile(wrapperConfig, out, 0644); err != nil {
 		WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
 		return
 	}

@@ -8,6 +8,14 @@
 
 - **arm64 (aarch64)**: добавлена поддержка роутеров на ARM64 — Keenetic Ultra 1812 и аналоги. Go-бинарники компилируются под `GOARCH=arm64`, создаются `ipk` и `tar.gz` для arm64. `build-deploy.sh` и `build-ipk.sh` обновлены.
 
+### Исправления
+
+- **build-ipk.sh**: формат ipk изменён с `ar` на `tar.gz`. Entware на Keenetic использует gzip-архив (tar.gz) вместо ar — эталонный `geo-split-data_0.6.0_all.ipk` подтвердил это. Убрана проверка `command -v ar`, `control.tar.gz` с `./` префиксом, сборка через `tar -czf` вместо `ar qc`. Ошибка `Malformed package file` устранена.
+- **tar.gz имена папок**: per-arch архивы (`entware-manager-arm64.tar.gz`) содержали `deploy-arm64/` внутри вместо `deploy/`, из-за чего `cd deploy && sh Install/install.sh` не работал. Исправлено — во всех архивах корневая папка `deploy/`.
+- **Service watchdog не стартовал** — в `service_config.json` отсутствовало поле `"enabled"`. `jq -r '.enabled'` возвращал `"null"` (строка), проверка `[ "$ENABLED" = "true" ]` проваливалась. Исправлено: `service_watchdog.sh` — обработка `"null"` → `true`; Go POST-хендлер мержит с существующим конфигом (не теряет поля); GET-хендлер добавляет `"enabled": true` если отсутствует.
+- **Монитор возвращал «Не удалось start демон»** — при повторном нажатии Пуск `watchdog.sh` выходил с exit 1 ("Already running"), Go-хендлер трактовал как ошибку. Исправлено: `action.go` — если вывод содержит "Already running", возвращаем `status: ok`.
+- **network_stats.cgi → 404** — symlink отсутствовал в `build-deploy.sh` (был `network_status`, но не `network_stats`). Статистика сети на вкладке «Статистика системы» показывала «Ошибка загрузки сети». Исправлено: добавлен в список симлинков.
+
 ## 1.06.4 (2026-07-29)
 
 ### Исправления
