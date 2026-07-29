@@ -517,6 +517,8 @@ fi
 echo ""
 if [ -z "$ERRORS" ] && [ -z "$CHECK_ERRS" ]; then
 	echo "${GREEN}${BOLD}  УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО${NC}"
+	echo "$ROUTER_ARCH" > "$TARGET_DIR/.arch" 2>/dev/null
+	ok "Архитектура сохранена в .arch"
 fi
 echo ""
 echo "${GREEN}  ✓ Архитектура:${NC} $ROUTER_ARCH"
