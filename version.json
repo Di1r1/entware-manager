@@ -1,7 +1,8 @@
 {
-  "version": "1.06.4",
+  "version": "1.06.5",
   "date": "2026-07-29",
   "changes": [
+    "1.06.5: добавлена архитектура arm64 (aarch64) — сборка Go-бинарников, ipk, tar.gz",
     "1.06.4: entware.js: вкладки Процессы/Терминал — прямой iframe + подсказка (убрана проверка ttyd через API)",
     "1.06.4: build-ipk.sh: проверка ar перед сборкой, убран битый fallback tar.gz",
     "1.06.4: install.sh: проверка создания LOG_DIR/LOG_FILE, log() c || true",
