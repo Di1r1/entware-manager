@@ -86,6 +86,9 @@ func HandleUpdateRun() {
 		return
 	}
 
+	os.MkdirAll("/tmp/entware", 0755)
+	os.WriteFile(updateLogFile, []byte("[INIT] Запуск обновления\n"), 0644)
+
 	go runUpdate(latest, arch)
 
 	writeJSON(map[string]string{"status": "ok", "message": "Обновление запущено", "version": latest})
