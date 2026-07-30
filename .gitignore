@@ -28,3 +28,4 @@ conffiles
 control
 postinst
 prerm
+doc/IPK_BUILD.md
