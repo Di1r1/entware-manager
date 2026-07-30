@@ -1,7 +1,13 @@
 {
-  "version": "1.06.8",
+  "version": "1.06.9",
   "date": "2026-07-30",
   "changes": [
+    "1.06.9: ttyd: /bin/sh → /opt/bin/bash (Entware bash), добавлен режим telnet (NDMS console)",
+    "1.06.9: ttyd: восстановлена проверка статуса во вкладке Терминал (если ttyd не запущен — подсказка)",
+    "1.06.9: ttyd: блок управления в Настройках — статический HTML, дропдаун режима не сбрасывается при автообновлении",
+    "1.06.9: bash добавлен в Depends ipk и в проверку пакетов install.sh",
+    "1.06.9: пароль ttyd опционален (если пустой — -c не добавляется)",
+    "1.06.9: Makefile: оркестрация сборки (deploy/ipk/release/clean/install-router)",
     "1.06.8: ttyd: добавлен выбор режима (Entware/telnet), восстановлена проверка статуса во вкладке Терминал",
     "1.06.8: ipk: htop в Depends вместо opkg install в postinst (deadlock), conffiles удалён",
     "1.06.6: install.sh: skip cp when SELF_DIR==TARGET_DIR (ipk path)",

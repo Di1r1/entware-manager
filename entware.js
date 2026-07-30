@@ -773,24 +773,20 @@ function updateTtydStatus(data) {
     html += `  <tr><td>htop (порт 8089):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${htop.state}</span> ${htop.pid ? '(PID ' + htop.pid + ')' : ''}</td></tr>`;
     html += `  <tr><td>Терминал (порт 9089):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
     html += '</table>';
-
-    html += '<div style="display: flex; gap: 20px; margin-top: 20px;">';
-    html += '<div style="flex:1;"><h4>htop (порт 8089)</h4>';
-    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, '', 'htop')" ${htop.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 8089, '', '')" ${htop.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '', 'htop')" ${htop.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
-    html += '</div><div style="flex:1;"><h4>Терминал (порт 9089)</h4>';
-    html += '<div style="margin-bottom: 10px;">';
-    html += '<select id="termMode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">';
-    html += '  <option value="entware"' + (term.mode !== 'telnet' ? ' selected' : '') + '>Консоль Entware</option>';
-    html += '  <option value="telnet"' + (term.mode === 'telnet' ? ' selected' : '') + '>Консоль роутера (telnet)</option>';
-    html += '</select>';
-    html += '<input type="password" id="termPass" placeholder="Пароль (опционально)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>';
-    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" ${term.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '', '')" ${term.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" ${term.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
-    html += '</div></div>';
     statusDiv.innerHTML = html;
+
+    const s = function(id) { return document.getElementById(id); };
+    s('htop-start').disabled = (htop.state === 'running');
+    s('htop-stop').disabled = (htop.state !== 'running');
+    s('htop-restart').disabled = (htop.state !== 'running');
+    s('term-start').disabled = (term.state === 'running');
+    s('term-stop').disabled = (term.state !== 'running');
+    s('term-restart').disabled = (term.state !== 'running');
+
+    const modeSelect = s('termMode');
+    if (modeSelect && term.state === 'running') {
+        modeSelect.value = term.mode;
+    }
 }
 
 window.controlTtyd = async function(action, port, pass, mode) {
@@ -973,6 +969,23 @@ async function renderSettingsTab() {
         </h2>
         <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-terminal"/></svg> Управление ttyd</h3>
         <div id="ttyd-status"><div class="loading-spinner"></div></div>
+        <div id="ttyd-controls" style="display: flex; gap: 20px; margin-top: 20px;">
+          <div style="flex:1;"><h4>htop (порт 8089)</h4>
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, '', 'htop')" id="htop-start">Запустить</button>
+            <button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 8089, '', '')" id="htop-stop">Остановить</button>
+            <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '', 'htop')" id="htop-restart">Перезапустить</button>
+          </div>
+          <div style="flex:1;"><h4>Терминал (порт 9089)</h4>
+            <select id="termMode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
+              <option value="entware">Консоль Entware</option>
+              <option value="telnet">Консоль роутера (telnet)</option>
+            </select>
+            <input type="password" id="termPass" placeholder="Пароль (опционально)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-start">Запустить</button>
+            <button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '', '')" id="term-stop">Остановить</button>
+            <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-restart">Перезапустить</button>
+          </div>
+        </div>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Управление ссылками на главной (общие для всех устройств)</h3>
         <p>Здесь можно добавлять, редактировать и удалять ссылки. Изменения сразу видны на всех устройствах.</p>
         <div style="margin-bottom: 15px;">
@@ -1011,7 +1024,7 @@ async function renderSettingsTab() {
             <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Сбросить по умолчанию</button>
         </div>
         <p class="settings-note" style="margin-top: 20px; font-size: 0.9rem;">
-            Управление веб-терминалами ttyd. Для терминала требуется пароль.<br>
+            Управление веб-терминалами ttyd. Пароль опционален — используется для HTTP-аутентификации ttyd.<br>
             После изменения состояния обновите вкладки "Процессы" и "Терминал".
         </p>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg> Защита файлового менеджера</h3>
