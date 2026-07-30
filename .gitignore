@@ -24,3 +24,7 @@ DEVLOG.md
 
 go/entware-*
 router_backup/
+conffiles
+control
+postinst
+prerm
