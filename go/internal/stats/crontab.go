@@ -29,18 +29,18 @@ func HandleCrontab() {
 			content = string(data)
 		}
 	default:
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"error": "Invalid type"})
 		return
 	}
 
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(map[string]string{"crontab": content})
 }
 
 func HandleCrontabUpdate() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"error": "POST required"})
 		return
 	}
@@ -60,18 +60,18 @@ func HandleCrontabUpdate() {
 		cmd := exec.Command("crontab", "-")
 		cmd.Stdin = strings.NewReader(crontab)
 		if err := cmd.Run(); err != nil {
-			fmt.Println("Content-type: application/json; charset=utf-8\n")
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 			json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "error", "message": "Invalid crontab"})
 			return
 		}
 		logCrontabAction("INFO", "Сохранён crontab (system)")
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "ok"})
 	case "opt", "":
 		dir := "/opt/etc"
 		os.MkdirAll(dir, 0755)
 		if err := os.WriteFile(dir+"/crontab", []byte(crontab), 0644); err != nil {
-			fmt.Println("Content-type: application/json; charset=utf-8\n")
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 			json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "error", "message": "Failed to write file"})
 			return
 		}
@@ -81,10 +81,10 @@ func HandleCrontabUpdate() {
 			}
 		}
 		logCrontabAction("INFO", "Сохранён crontab (opt)")
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "ok"})
 	default:
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "error", "message": "Invalid type"})
 	}
 }

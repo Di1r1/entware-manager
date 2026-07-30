@@ -12,7 +12,7 @@ import (
 func main() {
 	ep := os.Getenv("ENDPOINT")
 	if ep == "" {
-		fmt.Println("Content-type: text/html; charset=utf-8\n")
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Println("<p class='error'>ENDPOINT not set</p>")
 		return
 	}
@@ -52,7 +52,7 @@ func main() {
 	case "update_worker":
 		stats.HandleUpdateWorker()
 	default:
-		fmt.Println("Content-type: text/html; charset=utf-8\n")
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)
 	}
 }

@@ -14,7 +14,7 @@ func HandleSystemLog() {
 		return
 	}
 
-	fmt.Println("Content-type: text/html; charset=utf-8\n")
+	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 
 	fmt.Print(`<!DOCTYPE html>
 <html>

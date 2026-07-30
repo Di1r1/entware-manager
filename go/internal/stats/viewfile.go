@@ -85,7 +85,7 @@ func containsNullByte(data []byte) bool {
 
 func viewFileError(msg string, isXHR bool) {
 	if isXHR {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(ViewFileResponse{Status: "error", Message: msg})
 	} else {
 		html := strings.NewReplacer(
@@ -93,7 +93,7 @@ func viewFileError(msg string, isXHR bool) {
 			"{CONTENT}", fmt.Sprintf(`<p class="error">%s</p>`, html.EscapeString(msg)),
 			"{BACK_BUTTON}", backButton(),
 		).Replace(viewFileTemplate)
-		fmt.Println("Content-type: text/html; charset=utf-8\n")
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Print(html)
 	}
 }
@@ -105,7 +105,7 @@ func viewFileResult(path, content string, isXHR bool) {
 	}
 
 	if isXHR {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(ViewFileResponse{
 			Status:  "ok",
 			Name:    name,
@@ -120,7 +120,7 @@ func viewFileResult(path, content string, isXHR bool) {
 		"{CONTENT}", `<pre class="file-viewer-content">`+escaped+`</pre>`,
 		"{BACK_BUTTON}", backButton(),
 	).Replace(viewFileTemplate)
-	fmt.Println("Content-type: text/html; charset=utf-8\n")
+	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 	fmt.Print(html)
 }
 

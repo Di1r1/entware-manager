@@ -31,7 +31,7 @@ func HandleTmpfs() {
 
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
-		fmt.Println("Content-type: text/html; charset=utf-8\n")
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Printf("<p class='error'>Директория не существует: %s</p>", html.EscapeString(path))
 		return
 	}
@@ -48,7 +48,7 @@ func HandleTmpfs() {
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		fmt.Println("Content-type: text/html; charset=utf-8\n")
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Printf("<p class='error'>Ошибка чтения директории: %s</p>", html.EscapeString(err.Error()))
 		return
 	}
@@ -63,7 +63,7 @@ func HandleTmpfs() {
 	html = strings.ReplaceAll(html, "{FILE_ROWS}", generateFileRows(path, entries))
 	html = strings.ReplaceAll(html, "{AUTH_ENABLED}", authEnabled)
 
-	fmt.Println("Content-type: text/html; charset=utf-8\n")
+	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 	fmt.Print(html)
 }
 

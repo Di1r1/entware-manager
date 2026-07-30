@@ -26,12 +26,12 @@ func htmlEscape(s string) string {
 }
 
 func writeHTML(html string) {
-	fmt.Println("Content-type: text/html; charset=utf-8\n")
+	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 	fmt.Print(html)
 }
 
 func writeJSON(v any) {
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(v)
 }
 

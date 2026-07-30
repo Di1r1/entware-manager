@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: all deploy ipk release clean version check help install-router
+.PHONY: all deploy ipk release clean version check test lint ci help install-router
 
 ARCHS := arm64 arm mips mipsel
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -70,6 +70,25 @@ check:
 	fi; \
 	$$ok
 
+test:
+	@echo "=== Go test ==="
+	@cd "$(MAKEFILE_DIR)/go" && go test ./... 2>&1
+
+lint:
+	@echo "=== Go vet ==="
+	@cd "$(MAKEFILE_DIR)/go" && go vet ./... 2>&1
+	@echo "  [✓] go vet пройден"
+	@if command -v shellcheck &>/dev/null; then \
+		echo "=== ShellCheck ==="; \
+		shellcheck $(MAKEFILE_DIR)/*.sh $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh 2>&1; \
+		echo "  [✓] ShellCheck пройден"; \
+	else \
+		echo "  [ ] shellcheck не найден (пропущено)"; \
+	fi
+
+ci: check lint test
+	@echo "=== CI пройден ==="
+
 ROOT_HOST ?= 192.168.3.1
 ROOT_PORT ?= 222
 ROOT_DIR  ?= /opt/tmp
@@ -95,6 +114,9 @@ help:
 	@echo "  clean          удалить deploy/, *.ipk, *.tar.gz"
 	@echo "  version        показать версию"
 	@echo "  check          проверка инструментов"
+	@echo "  test           go test ./..."
+	@echo "  lint           go vet + shellcheck"
+	@echo "  ci             check → lint → test"
 	@echo "  install-router собрать и установить на роутер"
 	@echo ""
 	@echo "Для одной arch:  make deploy-arm64 ipk-arm64"

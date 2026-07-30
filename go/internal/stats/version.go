@@ -13,11 +13,11 @@ var helpTemplate string
 func HandleVersion() {
 	data, err := os.ReadFile("/opt/web_entware/version.json")
 	if err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"version":"unknown","date":"unknown"}`)
 		return
 	}
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	os.Stdout.Write(data)
 }
 

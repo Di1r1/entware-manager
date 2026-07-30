@@ -161,7 +161,7 @@ func HandleUpdateStatus() {
 
 func writeJSON(v interface{}) {
 	data, _ := json.Marshal(v)
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	os.Stdout.Write(data)
 }
 

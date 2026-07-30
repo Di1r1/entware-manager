@@ -21,7 +21,7 @@ func HandleAuthConfig() {
 func handleAuthConfigGet() {
 	data, err := os.ReadFile(authConfigPath)
 	if err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"enabled":false}`)
 		return
 	}
@@ -29,11 +29,11 @@ func handleAuthConfigGet() {
 		Enabled bool `json:"enabled"`
 	}
 	if json.Unmarshal(data, &cfg) != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"enabled":false}`)
 		return
 	}
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(map[string]bool{"enabled": cfg.Enabled})
 }
 
@@ -59,7 +59,7 @@ func handleAuthConfigPost() {
 	if enabled {
 		if password != "" {
 			if len(password) < 4 {
-				fmt.Println("Content-type: application/json; charset=utf-8\n")
+				fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 				fmt.Println(`{"status":"error","message":"Пароль должен быть минимум 4 символа"}`)
 				return
 			}
@@ -68,7 +68,7 @@ func handleAuthConfigPost() {
 		} else if oldHash != "" {
 			passwordHash = oldHash
 		} else {
-			fmt.Println("Content-type: application/json; charset=utf-8\n")
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 			fmt.Println(`{"status":"error","message":"Введите пароль"}`)
 			return
 		}
@@ -81,11 +81,11 @@ func handleAuthConfigPost() {
 
 	data, _ := json.MarshalIndent(newCfg, "", "    ")
 	if err := os.WriteFile(authConfigPath, data, 0644); err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Не удалось сохранить настройки"}`)
 		return
 	}
 
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	fmt.Println(`{"status":"ok","message":"Настройки сохранены"}`)
 }

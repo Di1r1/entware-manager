@@ -11,7 +11,7 @@ import (
 
 func HandleLinksSave() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"POST required"}`)
 		return
 	}
@@ -20,19 +20,19 @@ func HandleLinksSave() {
 	data := strings.TrimSpace(string(body))
 
 	if !json.Valid([]byte(data)) {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Invalid JSON"}`)
 		return
 	}
 
 	if err := os.WriteFile("/opt/web_entware/links.json", []byte(data), 0644); err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Failed to write links file"}`)
 		return
 	}
 
 	logAction("INFO", fmt.Sprintf("Ссылки сохранены: %s", truncateJSON(data)))
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "ok", "message": "Links saved"})
 }
 

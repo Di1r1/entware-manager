@@ -32,7 +32,7 @@ var configs = []configFile{
 func HandleCreate() {
 	tmpDir, err := os.MkdirTemp("", "entware-backup-*")
 	if err != nil {
-		fmt.Println("Content-type: text/plain; charset=utf-8\n")
+		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
 		fmt.Println("Error: cannot create temp dir:", err)
 		return
 	}
@@ -91,21 +91,21 @@ func HandleCreate() {
 
 func HandleRestore() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
-		fmt.Println("Content-type: text/plain; charset=utf-8\n")
+		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
 		fmt.Println("Error: POST required")
 		return
 	}
 
 	body, err := io.ReadAll(os.Stdin)
 	if err != nil || len(body) < 100 {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Empty or too small file"}`)
 		return
 	}
 
 	tmpDir, err := os.MkdirTemp("", "entware-restore-*")
 	if err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Cannot create temp dir"}`)
 		return
 	}
@@ -113,7 +113,7 @@ func HandleRestore() {
 
 	gr, err := gzip.NewReader(bytes.NewReader(body))
 	if err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Invalid gzip data"}`)
 		return
 	}
@@ -126,7 +126,7 @@ func HandleRestore() {
 			break
 		}
 		if err != nil {
-			fmt.Println("Content-type: application/json; charset=utf-8\n")
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 			fmt.Println(`{"status":"error","message":"Invalid tar archive"}`)
 			return
 		}
@@ -170,7 +170,7 @@ func HandleRestore() {
 		}
 	}
 
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	if len(restored) > 0 {
 		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"status":   "ok",

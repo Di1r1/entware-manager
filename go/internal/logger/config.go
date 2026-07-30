@@ -71,7 +71,7 @@ func HandleConfig() {
 }
 
 func showPrettyConfig() {
-	fmt.Println("Content-type: text/html; charset=utf-8\n")
+	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 
 	enabled := true
 	if data, err := os.ReadFile(configFile); err == nil {

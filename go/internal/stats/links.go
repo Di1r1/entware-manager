@@ -27,7 +27,7 @@ var defaultLinks = []Link{
 func HandleLinksLoad() {
 	data, err := os.ReadFile("/opt/web_entware/links.json")
 	if err == nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		os.Stdout.Write(data)
 		return
 	}
@@ -42,7 +42,7 @@ func HandleLinksLoad() {
 		}
 	}
 
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(links)
 }
 

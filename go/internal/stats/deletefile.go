@@ -12,7 +12,7 @@ import (
 
 func HandleDeleteFile() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Метод не поддерживается"}`)
 		return
 	}
@@ -24,28 +24,28 @@ func HandleDeleteFile() {
 
 	if !isAllowedDeletePath(path) {
 		logDeleteAction("WARN", fmt.Sprintf("Попытка удаления с недопустимым путём: %s", path))
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Доступ запрещен"}`)
 		return
 	}
 
 	if !checkFilemgrAuth(password) {
 		logDeleteAction("WARN", fmt.Sprintf("Неверный пароль при удалении: %s", path))
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Неверный пароль"}`)
 		return
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logDeleteAction("WARN", fmt.Sprintf("Попытка удаления несуществующего объекта: %s", path))
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Файл/папка не существует"}`)
 		return
 	}
 
 	info, err := os.Stat(path)
 	if err != nil {
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Ошибка доступа"}`)
 		return
 	}
@@ -53,24 +53,24 @@ func HandleDeleteFile() {
 	if info.IsDir() {
 		if err := os.Remove(path); err != nil {
 			logDeleteAction("WARN", fmt.Sprintf("Не удалось удалить папку (не пуста): %s", path))
-			fmt.Println("Content-type: application/json; charset=utf-8\n")
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 			fmt.Println(`{"status":"error","message":"Папка не пуста, удаление отменено"}`)
 			return
 		}
 		logDeleteAction("INFO", fmt.Sprintf("Удалена пустая папка: %s", path))
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"ok"}`)
 		return
 	}
 
 	if err := os.Remove(path); err != nil {
 		logDeleteAction("WARN", fmt.Sprintf("Не удалось удалить файл: %s", path))
-		fmt.Println("Content-type: application/json; charset=utf-8\n")
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Не удалось удалить файл"}`)
 		return
 	}
 	logDeleteAction("INFO", fmt.Sprintf("Удалён файл: %s", path))
-	fmt.Println("Content-type: application/json; charset=utf-8\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	fmt.Println(`{"status":"ok"}`)
 }
 
