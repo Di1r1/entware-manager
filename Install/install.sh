@@ -112,7 +112,6 @@ fi
 PACKAGES="\
 lighttpd|/opt/sbin/lighttpd
 ttyd|/opt/bin/ttyd
-htop|/opt/bin/htop
 jq|/opt/bin/jq
 coreutils|/opt/bin/dirname
 coreutils-timeout|/opt/bin/timeout
