@@ -100,7 +100,7 @@ func HandleUpdateStatus() {
 		return
 	}
 
-	resp := UpdateStatusResponse{Status: "done", PID: 0}
+	resp := UpdateStatusResponse{Status: "running", PID: 0}
 
 	data, err := os.ReadFile(updateLogFile)
 	if err != nil {
