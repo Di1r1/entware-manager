@@ -490,17 +490,37 @@ function renderTerminalTab() {
             <span class="stat-icon" style="width: 28px; height: 28px;">
                 <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-terminal"/></svg>
             </span>
-            Терминал (bash)
+            <span id="terminal-title">Терминал</span>
         </h2>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <a href="${BASE_URL}:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
-        </div>
-        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
-            Если страница не открывается — запустите ttyd в <b>Настройки → Терминал</b>
-        </p>
-        <iframe src="${BASE_URL}:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+        <div id="terminal-content"><div class="loading-spinner"></div></div>
     `;
     contentDiv.innerHTML = html;
+    loadTerminalContent();
+}
+
+async function loadTerminalContent() {
+    try {
+        const data = await apiGet('/ttyd_control.cgi');
+        const term = data.terminal;
+        const container = document.getElementById('terminal-content');
+        const title = document.getElementById('terminal-title');
+        if (term.state === 'running') {
+            const modeLabel = term.mode === 'telnet' ? 'Telnet' : 'Entware';
+            title.textContent = 'Терминал (' + modeLabel + ')';
+            container.innerHTML = `
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <a href="${BASE_URL}:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                </div>
+                <iframe src="${BASE_URL}:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+            `;
+        } else {
+            title.textContent = 'Терминал';
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Терминал не запущен. Откройте <b>Настройки → Терминал</b> для запуска.</p>';
+        }
+    } catch (err) {
+        const container = document.getElementById('terminal-content');
+        if (container) container.innerHTML = '<p class="error">Ошибка: ' + err.message + '</p>';
+    }
 }
 
 function loadLogsTab() {
@@ -746,32 +766,39 @@ function updateTtydStatus(data) {
     const statusDiv = document.getElementById('ttyd-status');
     const htop = data.htop;
     const term = data.terminal;
+    const modeLabel = term.mode === 'telnet' ? 'Telnet' : 'Entware';
 
     let html = '<h3>Текущее состояние ttyd</h3>';
     html += '<table class="stat-table">';
     html += `  <tr><td>htop (порт 8089):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${htop.state}</span> ${htop.pid ? '(PID ' + htop.pid + ')' : ''}</td></tr>`;
-    html += `  <tr><td>Терминал (порт 9089):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''}</td></tr>`;
+    html += `  <tr><td>Терминал (порт 9089):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
     html += '</table>';
 
     html += '<div style="display: flex; gap: 20px; margin-top: 20px;">';
     html += '<div style="flex:1;"><h4>htop (порт 8089)</h4>';
-    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, '')" ${htop.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 8089, '')" ${htop.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '')" ${htop.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
+    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, '', 'htop')" ${htop.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
+    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 8089, '', '')" ${htop.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
+    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '', 'htop')" ${htop.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
     html += '</div><div style="flex:1;"><h4>Терминал (порт 9089)</h4>';
-    html += '<div style="margin-bottom: 10px;"><input type="password" id="termPass" placeholder="Пароль (admin)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>';
-    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value)" ${term.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '')" ${term.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
-    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value)" ${term.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
+    html += '<div style="margin-bottom: 10px;">';
+    html += '<select id="termMode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">';
+    html += '  <option value="entware"' + (term.mode !== 'telnet' ? ' selected' : '') + '>Консоль Entware</option>';
+    html += '  <option value="telnet"' + (term.mode === 'telnet' ? ' selected' : '') + '>Консоль роутера (telnet)</option>';
+    html += '</select>';
+    html += '<input type="password" id="termPass" placeholder="Пароль (опционально)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>';
+    html += `<button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" ${term.state === 'running' ? 'disabled' : ''}>Запустить</button> `;
+    html += `<button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '', '')" ${term.state !== 'running' ? 'disabled' : ''}>Остановить</button> `;
+    html += `<button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" ${term.state !== 'running' ? 'disabled' : ''}>Перезапустить</button>`;
     html += '</div></div>';
     statusDiv.innerHTML = html;
 }
 
-window.controlTtyd = async function(action, port, pass) {
+window.controlTtyd = async function(action, port, pass, mode) {
     const formData = new URLSearchParams();
     formData.append('action', action);
     formData.append('port', port);
     if (pass) formData.append('pass', pass);
+    if (mode) formData.append('mode', mode);
     try {
         const data = await apiPost('/ttyd_control.cgi', formData.toString());
         Toast.show(data.message);

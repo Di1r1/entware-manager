@@ -13,12 +13,13 @@ type ttydInstance struct {
 	Port  int    `json:"port"`
 	State string `json:"state"`
 	PID   string `json:"pid"`
+	Mode  string `json:"mode"`
 }
 
 type ttydStatus struct {
-	Status    string        `json:"status"`
-	HTop      ttydInstance  `json:"htop"`
-	Terminal  ttydInstance  `json:"terminal"`
+	Status   string       `json:"status"`
+	HTop     ttydInstance `json:"htop"`
+	Terminal ttydInstance `json:"terminal"`
 }
 
 func HandleTTYDControl() {
@@ -33,6 +34,7 @@ func HandleTTYDControl() {
 		action := params["action"]
 		portStr := params["port"]
 		pass := params["pass"]
+		mode := params["mode"]
 
 		port, err := strconv.Atoi(portStr)
 		if err != nil || portStr == "" {
@@ -42,11 +44,11 @@ func HandleTTYDControl() {
 
 		switch action {
 		case "start":
-			WriteJSON(startTTYD(port, pass))
+			WriteJSON(startTTYD(port, pass, mode))
 		case "stop":
 			WriteJSON(stopTTYD(port))
 		case "restart":
-			WriteJSON(restartTTYD(port, pass))
+			WriteJSON(restartTTYD(port, pass, mode))
 		default:
 			WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие"})
 		}
@@ -59,8 +61,8 @@ func HandleTTYDControl() {
 func getTTYDStatus() ttydStatus {
 	st := ttydStatus{
 		Status: "ok",
-		HTop:   ttydInstance{Port: 8089, State: "stopped", PID: ""},
-		Terminal: ttydInstance{Port: 9089, State: "stopped", PID: ""},
+		HTop:   ttydInstance{Port: 8089, State: "stopped", PID: "", Mode: "htop"},
+		Terminal: ttydInstance{Port: 9089, State: "stopped", PID: "", Mode: "entware"},
 	}
 
 	procMap := scanProc()
@@ -76,6 +78,11 @@ func getTTYDStatus() ttydStatus {
 			if strings.Contains(pi.Cmdline, "9089") {
 				st.Terminal.State = "running"
 				st.Terminal.PID = strconv.Itoa(pi.PID)
+				if strings.Contains(pi.Cmdline, "telnet") {
+					st.Terminal.Mode = "telnet"
+				} else {
+					st.Terminal.Mode = "entware"
+				}
 			}
 		}
 	}
@@ -83,7 +90,11 @@ func getTTYDStatus() ttydStatus {
 	return st
 }
 
-func startTTYD(port int, pass string) map[string]string {
+func startTTYD(port int, pass string, mode string) map[string]string {
+	if mode == "" {
+		mode = "entware"
+	}
+
 	var args []string
 	args = append(args, "-p", strconv.Itoa(port), "-W")
 
@@ -92,7 +103,12 @@ func startTTYD(port int, pass string) map[string]string {
 		if pass != "" {
 			args = append(args, "-c", "admin:"+pass)
 		}
-		args = append(args, "/bin/sh")
+		switch mode {
+		case "telnet":
+			args = append(args, "telnet", "127.0.0.1")
+		default:
+			args = append(args, "/bin/sh")
+		}
 	} else if port == 8089 {
 		args = append(args, "htop")
 	} else {
@@ -107,7 +123,7 @@ func startTTYD(port int, pass string) map[string]string {
 	time.Sleep(1 * time.Second)
 
 	if isTTYDRunning(port) {
-		logAction("INFO", fmt.Sprintf("ttyd запущен на порту %d", port))
+		logAction("INFO", fmt.Sprintf("ttyd запущен на порту %d mode=%s", port, mode))
 		return map[string]string{"status": "ok", "message": fmt.Sprintf("ttyd запущен на порту %d", port)}
 	}
 
@@ -148,10 +164,10 @@ func stopTTYD(port int) map[string]string {
 	return map[string]string{"status": "error", "message": "ttyd на порту " + strconv.Itoa(port) + " не найден"}
 }
 
-func restartTTYD(port int, pass string) map[string]string {
+func restartTTYD(port int, pass string, mode string) map[string]string {
 	stopTTYD(port)
 	time.Sleep(1 * time.Second)
-	return startTTYD(port, pass)
+	return startTTYD(port, pass, mode)
 }
 
 func isTTYDRunning(port int) bool {
