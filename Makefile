@@ -63,7 +63,7 @@ check:
 		echo "  [✗] jq или python3 — требуется для чтения version.json"; \
 		ok=false; \
 	fi; \
-	if command -v upx &>/dev/null; then \
+	if command -v upx &>/dev/null || [ -x /tmp/upx-4.2.4-amd64_linux/upx ]; then \
 		echo "  [✓] upx (опционально)"; \
 	else \
 		echo "  [ ] upx не найден (бинарники без сжатия)"; \
@@ -79,10 +79,10 @@ install-router:
 		echo "Ошибка: deploy/ не найден. Сначала сделай make deploy"; \
 		exit 1; \
 	fi
-	@echo "=== Копирование deploy/ на $(ROOT_HOST):$(ROOT_PORT) ==="
-	@rsync -avz --delete -e "ssh -p $(ROOT_PORT)" "$(MAKEFILE_DIR)/deploy/" "root@$(ROOT_HOST):$(ROOT_DIR)/deploy/"
+	@echo "=== Копирование deploy/ тар+ssh на root@$(ROOT_HOST):$(ROOT_PORT) ==="
+	@tar czf - -C "$(MAKEFILE_DIR)" deploy | ssh -p $(ROOT_PORT) -o StrictHostKeyChecking=no root@$(ROOT_HOST) "tar xzf - -C $(ROOT_DIR)"
 	@echo "=== Установка на роутере ==="
-	@ssh -p $(ROOT_PORT) "root@$(ROOT_HOST)" "cd $(ROOT_DIR)/deploy && sh Install/install.sh"
+	@ssh -p $(ROOT_PORT) -o StrictHostKeyChecking=no root@$(ROOT_HOST) "cd $(ROOT_DIR)/deploy && sh Install/install.sh"
 
 help:
 	@echo "Entware Manager — сборка"
