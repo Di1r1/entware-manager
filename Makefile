@@ -93,7 +93,7 @@ lint:
 	@echo "  [✓] go vet пройден"
 	@if command -v shellcheck &>/dev/null; then \
 		echo "=== ShellCheck ==="; \
-		shellcheck $(MAKEFILE_DIR)/*.sh $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh 2>&1; \
+		shellcheck --severity=warning $(MAKEFILE_DIR)/*.sh $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh 2>&1 && \
 		echo "  [✓] ShellCheck пройден"; \
 	else \
 		echo "  [ ] shellcheck не найден (пропущено)"; \

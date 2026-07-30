@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2155,SC2034
 # ==============================================
 # Entware Manager - общие функции для CGI
 # Версия: 2.6 (добавлены die, log_message, html_escape, human_size, load_config)

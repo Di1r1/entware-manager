@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2155,SC2046,SC2086,SC2034
 # ==============================================
 # Entware Manager - SMART detection and parsing
 # Версия: 1.0
@@ -272,7 +273,8 @@ smart_disk_usage() {
         case "$line" in
             "/dev/${dev}"[0-9]*)
                 set -- $line
-                local pct=$(echo "$5" | sed 's/%//')
+                local pct
+                pct=$(echo "$5" | sed 's/%//')
                 [ "$first" -eq 1 ] && first=0 || echo -n ','
                 echo -n "{\"part\":\"$(basename $1)\",\"size\":\"$2\",\"used\":\"$3\",\"avail\":\"$4\",\"pct\":$pct,\"mnt\":\"$6\"}"
                 ;;

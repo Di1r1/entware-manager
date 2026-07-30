@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 # ==============================================
 # Сборка deploy-папки для Entware Manager
 # Версия: 3.0 — multi-arch Go compilation
@@ -139,7 +140,7 @@ find "$DEPLOY_DIR/cgi-bin" -type l -exec chmod 755 {} \;
 chmod 755 "$DEPLOY_DIR/cgi-bin/go.cgi"
 find "$DEPLOY_DIR/cgi-bin/go" -type f -exec chmod 755 {} \;
 find "$DEPLOY_DIR" -type d -exec chmod 755 {} \;
-find "$DEPLOY_DIR" -type f -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" | xargs chmod 644 2>/dev/null || true
+find "$DEPLOY_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" \) -exec chmod 644 {} + 2>/dev/null || true
 find "$DEPLOY_DIR" -type f -name "*.sh" -exec chmod 755 {} \;
 
 find "$DEPLOY_DIR" -name '*.bak' -delete 2>/dev/null

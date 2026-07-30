@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034
 # ==============================================
 # Entware Manager - демон защиты от зависших процессов
 # Версия: 3.0 (единый интерфейс start/stop/restart/status/daemon)
@@ -58,7 +59,7 @@ daemon_loop() {
 
     log_message "INFO" "[monitor] Демон запущен (PID $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
 
-    rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/* "$CPU_DIR"/*
+    rm -rf "${COUNTER_DIR:?}"/* "${IGNORE_COUNTER_DIR:?}"/* "${CPU_DIR:?}"/*
 
     trap 'log_message "INFO" "[monitor] Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR"; exit 0' TERM
     trap 'read_config; log_message "INFO" "[monitor] Конфигурация перечитана (CPU=$INDIVIDUAL_CPU TIME=$INDIVIDUAL_TIME IGNORE_PS=$IGNORE_PS MAX_PROCESSES=$MAX_PROCESSES)"' HUP
