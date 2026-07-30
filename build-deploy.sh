@@ -159,7 +159,7 @@ for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
 done
 
 if $BUILD_TAR; then
-    ARCHIVE="$PROJECT_DIR/entware-manager_$TIMESTAMP.tar.gz"
+    ARCHIVE="$PROJECT_DIR/entware-manager-all.tar.gz"
     tar -czf "$ARCHIVE" -C "$PROJECT_DIR" deploy/
     echo ""
     echo "Архив: $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"

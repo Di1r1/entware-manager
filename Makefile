@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: all deploy ipk release clean version check test lint ci help install-router
+.PHONY: all deploy ipk release clean version check test lint ci archives help install-router
 
 ARCHS := arm64 arm mips mipsel
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -27,22 +27,32 @@ ipk-%: deploy-%
 	@echo "=== Сборка ipk для $* ==="
 	@$(MAKEFILE_DIR)/build-ipk.sh --arch=$*
 
-release: clean all
+release: clean all archives
 	@echo "============================================"
 	@echo " Релиз v$(VERSION) собран"
 	@echo " Файлы:"
-	@ls -lh $(MAKEFILE_DIR)/entware-manager_*.tar.gz $(MAKEFILE_DIR)/entware-manager_*.ipk 2>/dev/null || echo "  (нет ipk/tar.gz)"
+	@ls -lh $(MAKEFILE_DIR)/entware-manager*.tar.gz $(MAKEFILE_DIR)/entware-manager_*.ipk 2>/dev/null || echo "  (нет ipk/tar.gz)"
 	@echo "============================================"
 
 clean:
 	@echo "=== Очистка ==="
 	rm -rf "$(MAKEFILE_DIR)/deploy"
-	rm -f $(MAKEFILE_DIR)/entware-manager_*.tar.gz
+	rm -f $(MAKEFILE_DIR)/entware-manager_*.tar.gz $(MAKEFILE_DIR)/entware-manager-*.tar.gz
 	rm -f $(MAKEFILE_DIR)/entware-manager_*.ipk
 	@echo "✓ Очищено"
 
 version:
 	@echo "$(VERSION)"
+
+archives: deploy
+	@echo "=== Сборка per-arch tar.gz ==="
+	@for arch in $(ARCHS); do \
+		rm -rf "/tmp/deploy-$$arch" && \
+		cp -a "$(MAKEFILE_DIR)/deploy" "/tmp/deploy-$$arch" && \
+		find "/tmp/deploy-$$arch/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$$arch" -exec rm -rf {} + && \
+		tar -czf "$(MAKEFILE_DIR)/entware-manager-$$arch.tar.gz" -C /tmp "deploy-$$arch" && \
+		echo "  ✓ entware-manager-$$arch.tar.gz"; \
+	done
 
 check:
 	@echo "=== Проверка зависимостей ==="
@@ -110,7 +120,8 @@ help:
 	@echo "  all            deploy + ipk для всех архитектур"
 	@echo "  deploy         сборка deploy/ (Go + файлы)"
 	@echo "  ipk            сборка ipk (зависит от deploy)"
-	@echo "  release        clean → deploy → ipk"
+	@echo "  archives       per-arch tar.gz из deploy/"
+	@echo "  release        clean → deploy → ipk → archives"
 	@echo "  clean          удалить deploy/, *.ipk, *.tar.gz"
 	@echo "  version        показать версию"
 	@echo "  check          проверка инструментов"
