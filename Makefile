@@ -4,7 +4,10 @@ SHELL := /bin/bash
 ARCHS := arm64 arm mips mipsel
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-VERSION := $(shell jq -r '.version' $(MAKEFILE_DIR)/version.json 2>/dev/null || python3 -c "import json; print(json.load(open('$(MAKEFILE_DIR)/version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' $(MAKEFILE_DIR)/version.json | cut -d'"' -f4 || echo "unknown")
+VERSION := $(shell git describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//')
+ifeq ($(VERSION),)
+  VERSION := $(shell jq -r '.version' $(MAKEFILE_DIR)/version.json 2>/dev/null || python3 -c "import json; print(json.load(open('$(MAKEFILE_DIR)/version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' $(MAKEFILE_DIR)/version.json | cut -d'"' -f4 || echo "unknown")
+endif
 
 .DEFAULT_GOAL := help
 
