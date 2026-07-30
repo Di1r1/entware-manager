@@ -369,7 +369,7 @@ async function fetchUpgradable() {
     }
 }
 
-async function runUpdate() {
+async function runPkgUpdate() {
     const updateBtn = document.getElementById('runUpdateBtn');
     const resultDiv = document.getElementById('update-result');
     updateBtn.disabled = true;
@@ -460,7 +460,7 @@ function renderUpdatesTab() {
         <div id="upgradable-table-container"><div class="loading-spinner"></div></div>
     `;
     contentDiv.innerHTML = html;
-    document.getElementById('runUpdateBtn').addEventListener('click', runUpdate);
+    document.getElementById('runUpdateBtn').addEventListener('click', runPkgUpdate);
     document.getElementById('upgradeAllBtn').addEventListener('click', upgradeAll);
     fetchUpgradable();
 }
