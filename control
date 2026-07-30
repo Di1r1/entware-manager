@@ -1,0 +1,8 @@
+Package: entware-manager
+Version: 1.06.6
+Architecture: all
+Maintainer: Di1r1
+Priority: optional
+Section: admin
+Description: Web panel for Entware management on Keenetic/Netcraze
+Depends: lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb
