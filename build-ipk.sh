@@ -41,7 +41,7 @@ for arch in "${ARCHS[@]}"; do
     # debian-binary
     echo "2.0" > "$PKG_TMP/debian-binary"
 
-    DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, htop, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, smartmontools, smartmontools-drivedb"
+    DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, htop, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, bash, smartmontools, smartmontools-drivedb"
 
     # control (Architecture: all — не зависит от версии ядра)
     cat > "$PKG_TMP/control/control" <<EOF

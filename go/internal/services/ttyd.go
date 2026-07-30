@@ -107,7 +107,7 @@ func startTTYD(port int, pass string, mode string) map[string]string {
 		case "telnet":
 			args = append(args, "telnet", "127.0.0.1")
 		default:
-			args = append(args, "/bin/sh")
+			args = append(args, "/opt/bin/bash")
 		}
 	} else if port == 8089 {
 		args = append(args, "htop")

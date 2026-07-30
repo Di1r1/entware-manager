@@ -120,6 +120,7 @@ bridge|/opt/sbin/brctl
 ip-full|/opt/sbin/ip
 sudo|/opt/bin/sudo
 curl|/opt/bin/curl
+bash|/opt/bin/bash
 smartmontools|/opt/sbin/smartctl
 smartmontools-drivedb|/opt/share/smartmontools/drivedb.h"
 
