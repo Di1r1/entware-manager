@@ -1,0 +1,102 @@
+SHELL := /bin/bash
+.PHONY: all deploy ipk release clean version check help install-router
+
+ARCHS := arm64 arm mips mipsel
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+VERSION := $(shell jq -r '.version' $(MAKEFILE_DIR)/version.json 2>/dev/null || python3 -c "import json; print(json.load(open('$(MAKEFILE_DIR)/version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' $(MAKEFILE_DIR)/version.json | cut -d'"' -f4 || echo "unknown")
+
+.DEFAULT_GOAL := help
+
+all: deploy ipk
+	@echo "=== Готово: deploy + ipk для всех архитектур ==="
+
+deploy:
+	@echo "=== Сборка deploy v$(VERSION) ==="
+	@$(MAKEFILE_DIR)/build-deploy.sh --tar
+
+deploy-%:
+	@echo "=== Сборка deploy для $* ==="
+	@$(MAKEFILE_DIR)/build-deploy.sh --arch=$*
+
+ipk: deploy
+	@echo "=== Сборка ipk v$(VERSION) ==="
+	@$(MAKEFILE_DIR)/build-ipk.sh
+
+ipk-%: deploy-%
+	@echo "=== Сборка ipk для $* ==="
+	@$(MAKEFILE_DIR)/build-ipk.sh --arch=$*
+
+release: clean all
+	@echo "============================================"
+	@echo " Релиз v$(VERSION) собран"
+	@echo " Файлы:"
+	@ls -lh $(MAKEFILE_DIR)/entware-manager_*.tar.gz $(MAKEFILE_DIR)/entware-manager_*.ipk 2>/dev/null || echo "  (нет ipk/tar.gz)"
+	@echo "============================================"
+
+clean:
+	@echo "=== Очистка ==="
+	rm -rf "$(MAKEFILE_DIR)/deploy"
+	rm -f $(MAKEFILE_DIR)/entware-manager_*.tar.gz
+	rm -f $(MAKEFILE_DIR)/entware-manager_*.ipk
+	@echo "✓ Очищено"
+
+version:
+	@echo "$(VERSION)"
+
+check:
+	@echo "=== Проверка зависимостей ==="
+	@ok=true; \
+	for cmd in go tar find chmod; do \
+		if command -v $$cmd &>/dev/null; then \
+			echo "  [✓] $$cmd"; \
+		else \
+			echo "  [✗] $$cmd — требуется, но не найден"; \
+			ok=false; \
+		fi; \
+	done; \
+	if command -v jq &>/dev/null; then \
+		echo "  [✓] jq"; \
+	elif command -v python3 &>/dev/null; then \
+		echo "  [✓] python3 (замена jq)"; \
+	else \
+		echo "  [✗] jq или python3 — требуется для чтения version.json"; \
+		ok=false; \
+	fi; \
+	if command -v upx &>/dev/null; then \
+		echo "  [✓] upx (опционально)"; \
+	else \
+		echo "  [ ] upx не найден (бинарники без сжатия)"; \
+	fi; \
+	$$ok
+
+ROOT_HOST ?= 192.168.3.1
+ROOT_PORT ?= 222
+ROOT_DIR  ?= /opt/tmp
+
+install-router:
+	@if [ ! -d "$(MAKEFILE_DIR)/deploy" ]; then \
+		echo "Ошибка: deploy/ не найден. Сначала сделай make deploy"; \
+		exit 1; \
+	fi
+	@echo "=== Копирование deploy/ на $(ROOT_HOST):$(ROOT_PORT) ==="
+	@rsync -avz --delete -e "ssh -p $(ROOT_PORT)" "$(MAKEFILE_DIR)/deploy/" "root@$(ROOT_HOST):$(ROOT_DIR)/deploy/"
+	@echo "=== Установка на роутере ==="
+	@ssh -p $(ROOT_PORT) "root@$(ROOT_HOST)" "cd $(ROOT_DIR)/deploy && sh Install/install.sh"
+
+help:
+	@echo "Entware Manager — сборка"
+	@echo ""
+	@echo "Цели:"
+	@echo "  all            deploy + ipk для всех архитектур"
+	@echo "  deploy         сборка deploy/ (Go + файлы)"
+	@echo "  ipk            сборка ipk (зависит от deploy)"
+	@echo "  release        clean → deploy → ipk"
+	@echo "  clean          удалить deploy/, *.ipk, *.tar.gz"
+	@echo "  version        показать версию"
+	@echo "  check          проверка инструментов"
+	@echo "  install-router собрать и установить на роутер"
+	@echo ""
+	@echo "Для одной arch:  make deploy-arm64 ipk-arm64"
+	@echo ""
+	@echo "Версия: $(VERSION) | Архитектуры: $(ARCHS)"
