@@ -2,7 +2,7 @@
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
 [![Version](https://img.shields.io/badge/version-1.06.5-blue)](version.json)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPLv3-green)](LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
 Всё в браузере, без SSH и консоли.
@@ -239,4 +239,4 @@ cat /tmp/entware/install-logs/install-*.log
 
 ## Лицензия
 
-MIT — используй, меняй, распространяй.
+GNU General Public License v3.0 — используй, меняй, распространяй.
