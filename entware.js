@@ -471,17 +471,33 @@ function renderProcessesTab() {
             <span class="stat-icon" style="width: 28px; height: 28px;">
                 <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-process"/></svg>
             </span>
-            Процессы (htop)
+            <span id="htop-title">Процессы (htop)</span>
         </h2>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <a href="${BASE_URL}:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
-        </div>
-        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
-            Если страница не открывается — запустите ttyd в <b>Настройки → Терминал</b>
-        </p>
-        <iframe src="${BASE_URL}:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+        <div id="htop-content"><div class="loading-spinner"></div></div>
     `;
     contentDiv.innerHTML = html;
+    loadHtopContent();
+}
+
+async function loadHtopContent() {
+    try {
+        const data = await apiGet('/ttyd_control.cgi');
+        const htop = data.htop;
+        const container = document.getElementById('htop-content');
+        if (htop.state === 'running') {
+            container.innerHTML = `
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <a href="${BASE_URL}:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                </div>
+                <iframe src="${BASE_URL}:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+            `;
+        } else {
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">htop не запущен. Запустите в <b>Настройки → Терминал</b>.</p>';
+        }
+    } catch (err) {
+        const container = document.getElementById('htop-content');
+        if (container) container.innerHTML = '<p class="error">Ошибка: ' + err.message + '</p>';
+    }
 }
 
 function renderTerminalTab() {
@@ -986,6 +1002,10 @@ async function renderSettingsTab() {
             <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-restart">Перезапустить</button>
           </div>
         </div>
+        <p class="settings-note" style="margin-top: 20px; font-size: 0.9rem;">
+            Управление веб-терминалами ttyd. Пароль опционален — используется для HTTP-аутентификации ttyd.<br>
+            После изменения состояния обновите вкладки "Процессы" и "Терминал".
+        </p>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Управление ссылками на главной (общие для всех устройств)</h3>
         <p>Здесь можно добавлять, редактировать и удалять ссылки. Изменения сразу видны на всех устройствах.</p>
         <div style="margin-bottom: 15px;">
@@ -1023,10 +1043,6 @@ async function renderSettingsTab() {
             <button id="saveAllLinksBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg> Сохранить все на сервер</button>
             <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Сбросить по умолчанию</button>
         </div>
-        <p class="settings-note" style="margin-top: 20px; font-size: 0.9rem;">
-            Управление веб-терминалами ttyd. Пароль опционален — используется для HTTP-аутентификации ttyd.<br>
-            После изменения состояния обновите вкладки "Процессы" и "Терминал".
-        </p>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg> Защита файлового менеджера</h3>
         <p>Включите пароль для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs).</p>
         <div id="filemgr-auth-settings">
