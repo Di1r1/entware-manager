@@ -101,7 +101,7 @@ echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 
 cd "$DEPLOY_DIR/cgi-bin"
-for ep in api auth_config available backup backup_restore check_deps crontab crontab_update delete_file help install kill_pid links_load links_save network_action network_arp network_events network_interfaces network_routes network_stats network_status packages remove service_action services smart stats temp_history temperature tmpfs ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
+for ep in api auth_config available backup backup_restore check_deps crontab crontab_update delete_file help install kill_pid links_load links_save network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline remove service_action services smart stats temp_history temperature tmpfs ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
     ln -sf go.cgi "$ep.cgi"
     echo "  $ep.cgi -> go.cgi"
 done

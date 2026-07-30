@@ -1061,6 +1061,9 @@ async function renderSettingsTab() {
                 <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Восстановить
                 <input type="file" id="restoreBackupFile" accept=".tar.gz" style="display: none;" onchange="restoreBackup(this)">
             </label>
+            <a href="/entware-cgi/prepare_offline.cgi" class="packages-delete-btn" style="background:#e67e22;">
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-download"/></svg> Подготовить офлайн-пакет
+            </a>
             <span id="backupStatus"></span>
         </div>
 

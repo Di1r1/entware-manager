@@ -51,6 +51,8 @@ func main() {
 		stats.HandleUpdateStatus()
 	case "update_worker":
 		stats.HandleUpdateWorker()
+	case "prepare_offline":
+		stats.HandleOfflinePrepare()
 	default:
 		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)
