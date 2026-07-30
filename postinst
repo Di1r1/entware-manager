@@ -1,0 +1,3 @@
+#!/bin/sh
+# postinst — настройка после установки
+/opt/web_entware/Install/install.sh

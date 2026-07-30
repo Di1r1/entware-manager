@@ -1,0 +1,20 @@
+#!/bin/sh
+# prerm — чистка конфигов перед удалением
+
+LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
+CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
+SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
+
+# Удаляем наши конфиги
+rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+rm -f "$CGI_CONF" 2>/dev/null
+
+# Чистим старые строки из lighttpd.conf
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
+[ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" || true
+sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*8087.*/d' "$LIGHTTPD_CONF" 2>/dev/null
+
+# sudoers
+rm -f "$SUDOERS_FILE" 2>/dev/null
+
+exit 0

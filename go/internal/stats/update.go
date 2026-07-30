@@ -89,9 +89,31 @@ func HandleUpdateRun() {
 	os.MkdirAll("/tmp/entware", 0755)
 	os.WriteFile(updateLogFile, []byte("[INIT] Запуск обновления\n"), 0644)
 
-	go runUpdate(latest, arch)
+	vars := fmt.Sprintf(`{"version":"%s","arch":"%s"}`, latest, arch)
+	os.WriteFile("/tmp/entware/update_vars", []byte(vars), 0644)
+
+	script := "#!/bin/sh\nENDPOINT=update_worker /opt/web_entware/cgi-bin/go/entware-stats >/dev/null 2>&1 &\n"
+	os.WriteFile("/tmp/entware/update.sh", []byte(script), 0755)
+	exec.Command("/bin/sh", "/tmp/entware/update.sh").Start()
 
 	writeJSON(map[string]string{"status": "ok", "message": "Обновление запущено", "version": latest})
+}
+
+func HandleUpdateWorker() {
+	data, err := os.ReadFile("/tmp/entware/update_vars")
+	if err != nil {
+		return
+	}
+	var v struct {
+		Version string `json:"version"`
+		Arch    string `json:"arch"`
+	}
+	if json.Unmarshal(data, &v) != nil {
+		return
+	}
+	os.Remove("/tmp/entware/update_vars")
+	os.Remove("/tmp/entware/update.sh")
+	runUpdate(v.Version, v.Arch)
 }
 
 func HandleUpdateStatus() {
@@ -244,6 +266,16 @@ func parseSemver(v string) [3]int {
 }
 
 func runUpdate(version, arch string) {
+	defer func() {
+		if r := recover(); r != nil {
+			f, _ := os.OpenFile(updateLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if f != nil {
+				fmt.Fprintf(f, "[PANIC] %v\n", r)
+				f.Close()
+			}
+		}
+	}()
+
 	log := func(line string) {
 		f, _ := os.OpenFile(updateLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if f != nil {
@@ -252,6 +284,8 @@ func runUpdate(version, arch string) {
 		}
 	}
 
+	log("[RUNNING] Начало обновления до v" + version)
+
 	tmpDir := "/tmp/entware/update"
 	os.RemoveAll(tmpDir)
 	os.MkdirAll(tmpDir, 0755)
@@ -259,7 +293,6 @@ func runUpdate(version, arch string) {
 	client := &http.Client{Timeout: 120 * time.Second}
 
 	if isInstalledViaOpkg() {
-		log("[RUNNING] Обновление через ipk до v" + version)
 		url := getDownloadURLIPK(version, arch)
 		log("Загрузка " + url)
 		resp, err := client.Get(url)
@@ -302,7 +335,7 @@ func runUpdate(version, arch string) {
 		return
 	}
 
-	log("[RUNNING] Обновление через tar.gz до v" + version)
+	log("Скачивание tar.gz...")
 
 	url := getDownloadURL(version, arch)
 	log("Загрузка " + url)
@@ -358,6 +391,9 @@ func runUpdate(version, arch string) {
 			io.Copy(f, tarReader)
 			f.Close()
 			os.Chmod(target, os.FileMode(header.Mode))
+		case tar.TypeSymlink:
+			os.MkdirAll(filepath.Dir(target), 0755)
+			os.Symlink(header.Linkname, target)
 		}
 	}
 
