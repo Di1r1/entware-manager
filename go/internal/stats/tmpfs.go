@@ -112,7 +112,7 @@ func generateUpLink(path string) string {
 		return ""
 	}
 	parent := filepath.Dir(path)
-	return fmt.Sprintf(`<tr><td colspan="6"><a href="?path=%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> .. (наверх)</a></td></tr>`,
+	return fmt.Sprintf(`<tr class="row-nav"><td colspan="6"><a href="?path=%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> .. (наверх)</a></td></tr>`,
 		url.QueryEscape(parent))
 }
 

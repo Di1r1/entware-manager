@@ -76,7 +76,9 @@ var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pas
 
     function sortTable(table, colIndex, dataType) {
         var tbody = table.tBodies[0];
-        var rows = Array.from(tbody.rows);
+        var rows = Array.from(tbody.rows).filter(function(r) {
+            return !r.classList.contains('row-nav');
+        });
         var sortOrder = table.dataset.sortOrder === 'asc' ? 'desc' : 'asc';
         table.dataset.sortOrder = sortOrder;
 

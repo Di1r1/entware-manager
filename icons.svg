@@ -206,10 +206,10 @@
   </symbol>
     <!-- Иконки сортировки -->
   <symbol id="icon-sort-asc" viewBox="0 0 16 16">
-    <polyline points="8,4 12,8 4,8 8,4" fill="none" stroke="currentColor"/>
+    <polyline points="8,4 12,8 4,8 8,4" fill="none" stroke="#ffffff"/>
   </symbol>
   <symbol id="icon-sort-desc" viewBox="0 0 16 16">
-    <polyline points="8,12 12,8 4,8 8,12" fill="none" stroke="currentColor"/>
+    <polyline points="8,12 12,8 4,8 8,12" fill="none" stroke="#ffffff"/>
   </symbol>
    <symbol id="icon-chevron-left" viewBox="0 0 16 16">
   <polyline points="10,4 6,8 10,12" fill="none" stroke="currentColor"/>
