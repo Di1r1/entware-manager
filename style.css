@@ -1598,29 +1598,17 @@ body.night .theme-toggle-edge:hover {
     -webkit-animation-delay: 0.4s;
     will-change: transform, opacity;
 }
-th.sort-asc::after {
-    content: "";
-    display: inline-block;
-    width: 0.8em;
-    height: 0.8em;
+ th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.7em;
     margin-left: 0.3em;
     vertical-align: middle;
-    background-image: url('/entware-manager/icons.svg?v=2#icon-sort-asc');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
 }
 th.sort-desc::after {
-    content: "";
-    display: inline-block;
-    width: 0.8em;
-    height: 0.8em;
+    content: " ▼";
+    font-size: 0.7em;
     margin-left: 0.3em;
     vertical-align: middle;
-    background-image: url('/entware-manager/icons.svg?v=2#icon-sort-desc');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
 }
 /* Приятная анимация разворачивания меню (плавный pop + fade) */
 .sidebar.menu-animate .menu li {
