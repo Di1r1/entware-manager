@@ -190,8 +190,34 @@ sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" 2>/dev/null
 sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" 2>/dev/null
 sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*/d' "$LIGHTTPD_CONF"
 sed -i '/cgi\.execute-x-only/d' "$LIGHTTPD_CONF" 2>/dev/null
-# Удаляем пустые alias.url = ( ) если образовались
-sed -i '/^alias\.url = (\s*)$/d' "$LIGHTTPD_CONF" 2>/dev/null
+# Удаляем пустые alias.url блоки (одно- и многострочные), оставшиеся от старых версий.
+# Непустые пользовательские alias.url не трогаем.
+awk '
+/^alias\.url (=|\+=) \([[:space:]]*\)$/ { next }
+/^alias\.url (=|\+=) \($/ {
+    start = $0
+    inb = 1
+    empty = 1
+    next
+}
+inb {
+    if ($0 ~ /^\)$/) {
+        if (empty) { inb = 0; next }
+        if (start != "") { print start; start = "" }
+        inb = 0
+        print
+        next
+    }
+    if (empty) {
+        print start
+        start = ""
+        empty = 0
+    }
+    print
+    next
+}
+{ print }
+' "$LIGHTTPD_CONF" > "$LIGHTTPD_CONF.ewm" 2>/dev/null && mv "$LIGHTTPD_CONF.ewm" "$LIGHTTPD_CONF"
 
 # Отдельный конфиг — не конфликтует с nfqws и другими пакетами
 CONF_FILE="/opt/etc/lighttpd/conf.d/90-entware-manager.conf"
