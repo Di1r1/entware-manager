@@ -105,7 +105,6 @@ function init() {
     collapseToggle = document.getElementById('collapseToggle');
 
     initTheme();
-    initAutoTheme();
 
     if (collapseToggle) {
         const collapsedState = localStorage.getItem('sidebar_collapsed');
@@ -143,37 +142,59 @@ function init() {
     loadTab(savedTab || 'stats');
 }
 
-function initTheme() {
+function updateThemeIcon() {
     const themeToggle = document.getElementById('themeToggle');
-    const savedTheme = localStorage.getItem('entware_theme');
-    if (savedTheme === 'night') {
-        document.body.classList.add('night');
-        themeToggle.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=2#icon-moon');
-    } else {
-        document.body.classList.remove('night');
-        themeToggle.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=2#icon-sun');
-    }
-    themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('night');
-        const isNight = document.body.classList.contains('night');
-        localStorage.setItem('entware_theme', isNight ? 'night' : 'day');
-        const useEl = themeToggle.querySelector('use');
-        if (useEl) useEl.setAttribute('href', isNight ? '/entware-manager/icons.svg?v=2#icon-moon' : '/entware-manager/icons.svg?v=2#icon-sun');
+    if (!themeToggle) return;
+    const isNight = document.documentElement.classList.contains('night');
+    themeToggle.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=2#' + (isNight ? 'icon-moon' : 'icon-sun'));
+}
+
+function buildThemePopup() {
+    const popup = document.getElementById('themePopup');
+    if (!popup || !window.Theme) return;
+    const current = window.Theme.current();
+    popup.innerHTML = '';
+    window.Theme.THEMES.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'theme-swatch' + (t.id === current ? ' active' : '');
+        btn.type = 'button';
+        btn.dataset.theme = t.id;
+        btn.innerHTML = '<span class="swatch-dot" style="background:' + t.color + ';" title="' + t.label + '"></span>';
+        btn.addEventListener('click', () => {
+            window.Theme.set(t.id, window.Theme.isNight());
+            popup.classList.remove('show');
+            updateThemeIcon();
+            buildThemePopup();
+        });
+        popup.appendChild(btn);
     });
 }
 
-function initAutoTheme() {
-    const hour = new Date().getHours();
-    const isNightTime = hour >= 20 || hour < 6;
-    const savedTheme = localStorage.getItem('entware_theme');
-    if (!savedTheme) {
-        if (isNightTime) {
-            document.body.classList.add('night');
-            document.getElementById('themeToggle')?.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=2#icon-moon');
-        } else {
-            document.body.classList.remove('night');
-            document.getElementById('themeToggle')?.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=2#icon-sun');
-        }
+function initTheme() {
+    const themeToggle = document.getElementById('themeToggle');
+    const popup = document.getElementById('themePopup');
+    if (window.Theme) window.Theme.init();
+    updateThemeIcon();
+    buildThemePopup();
+
+    if (themeToggle) {
+        themeToggle.addEventListener('mouseenter', () => {
+            buildThemePopup();
+            if (popup) popup.classList.add('show');
+        });
+        themeToggle.addEventListener('click', () => {
+            if (window.Theme) {
+                window.Theme.set(window.Theme.current(), !window.Theme.isNight());
+            }
+            updateThemeIcon();
+            if (popup) popup.classList.remove('show');
+        });
+    }
+    if (popup) {
+        popup.addEventListener('mouseleave', () => popup.classList.remove('show'));
+        popup.addEventListener('click', (e) => {
+            if (e.target.closest('.theme-swatch')) popup.classList.remove('show');
+        });
     }
 }
 
@@ -888,56 +909,97 @@ async function loadNetworkStatus() {
         
         let html = '<div class="stat-table">';
         
-        // Таблица 1: Интерфейсы с IP
-        html += '<div><table>';
-        html += '<tr><th colspan="2">Интерфейсы</th></tr>';
+        // Таблица 1: Интерфейсы с IP (карточки)
+        html += '<div class="net-counters">';
+        html += '<div class="net-counters-title">Интерфейсы</div>';
         if (data.interfaces && data.interfaces.length > 0) {
             data.interfaces.forEach(iface => {
                 if (iface.ip && iface.ip !== '--') {
-                    html += `<tr><td>${escapeHtml(iface.iface)}:</td><td><code>${escapeHtml(iface.ip)}</code></td></tr>`;
+                    html += `<div class="net-counter-card">
+                        <div class="net-counter-head">
+                            <span class="net-counter-name">${escapeHtml(iface.iface)}</span>
+                            <code class="net-counter-value">${escapeHtml(iface.ip)}</code>
+                        </div>
+                    </div>`;
                 }
             });
         }
-        html += '</table></div>';
+        html += '</div>';
         
-        // Таблица 2: Физические порты
-        html += '<div><table>';
-        html += '<tr><th colspan="2">Физические порты</th></tr>';
+        // Таблица 2: Физические порты (карточки)
+        html += '<div class="net-counters">';
+        html += '<div class="net-counters-title">Физические порты</div>';
         if (data.ports && data.ports.length > 0) {
             data.ports.forEach(port => {
                 const carrier = port.carrier === '✓';
                 const speed = port.speed && port.speed !== '—' ? port.speed : '';
-                const label = carrier ? (speed ? `${port.iface} — ${speed}` : `${port.iface} — ✓`) : `${port.iface} —`;
-                html += `<tr><td>${escapeHtml(port.iface)}</td><td class="${carrier ? 'stat-value-normal' : 'stat-value-critical'}">${escapeHtml(label)}</td></tr>`;
+                const label = carrier ? (speed ? `${speed}` : '✓') : '—';
+                const cls = carrier ? 'net-counter-status ok' : 'net-counter-status bad';
+                html += `<div class="net-counter-card">
+                    <div class="net-counter-head">
+                        <span class="net-counter-name">${escapeHtml(port.iface)}</span>
+                        <span class="${cls}">${escapeHtml(label)}</span>
+                    </div>
+                </div>`;
             });
         }
-        html += '</table></div>';
+        html += '</div>';
         
-        // Таблица 3: Сети
-        html += '<div><table>';
-        html += '<tr><th colspan="2">Сети</th></tr>';
+        // Таблица 3: Сети (карточки)
+        html += '<div class="net-counters">';
+        html += '<div class="net-counters-title">Сети</div>';
         if (data.networks && data.networks.length > 0) {
             data.networks.forEach(net => {
-                const members = net.members ? escapeHtml(net.members) : '—';
-                const memberCount = net.members ? net.members.split(/\s+/).filter(Boolean).length : 0;
-                const displayed = memberCount > 0 ? members : '';
-                html += `<tr><td>${escapeHtml(net.name)}</td><td>${displayed ? `<code>${displayed}</code>` : `<span class="stat-value-critical">${escapeHtml(net.bridge)}</span>`}</td></tr>`;
+                const members = net.members ? net.members.trim().split(/\s+/).filter(Boolean) : [];
+                let valueHtml;
+                if (members.length > 0) {
+                    valueHtml = '<div class="net-counter-chips">' + members.map(m =>
+                        `<span class="net-counter-chip">${escapeHtml(m)}</span>`
+                    ).join('') + '</div>';
+                } else if (net.bridge && net.bridge !== '--' && net.bridge !== '—') {
+                    const wanUp = data.wan && data.wan.indexOf(net.bridge) !== -1;
+                    valueHtml = wanUp
+                        ? `<span class="net-counter-status ok">${escapeHtml(data.wan)}</span>`
+                        : `<span class="net-counter-chip">${escapeHtml(net.bridge)}</span>`;
+                } else {
+                    valueHtml = '<span class="net-counter-status bad">—</span>';
+                }
+                html += `<div class="net-counter-card">
+                    <div class="net-counter-head">
+                        <span class="net-counter-name">${escapeHtml(net.name)}</span>
+                        ${valueHtml}
+                    </div>
+                </div>`;
             });
         }
-        html += '</table></div>';
+        html += '</div>';
         
         html += '</div>';
         
         // Таблица 4: WiFi сети (на отдельной строке)
         if (data.wifi_info && data.wifi_info.length > 0 && data.wifi_info[0].name !== '--') {
-            html += '<div class="stat-table" style="margin-top: 10px;">';
-            html += '<div><table>';
-            html += '<tr><th colspan="4">WiFi сети</th></tr>';
-            html += '<tr><th>Сеть</th><th>2.4GHz</th><th>5GHz</th><th>TX/RX</th></tr>';
+            html += '<div class="stat-table wifi-counters" style="margin-top: 10px;">';
+            html += '<div class="wifi-counters-title">WiFi сети</div>';
             data.wifi_info.forEach(wifi => {
-                html += `<tr><td>${escapeHtml(wifi.name)}</td><td>${escapeHtml(wifi['2g'])}</td><td>${escapeHtml(wifi['5g'])}</td><td>${escapeHtml(wifi.tx)} / ${escapeHtml(wifi.rx)}</td></tr>`;
+                const ifaces = wifi.interfaces && wifi.interfaces.length > 0
+                    ? wifi.interfaces
+                    : [];
+                const summary = `<div class="wifi-counter-tx">TX <b>${escapeHtml(wifi.tx)}</b></div>
+                                 <div class="wifi-counter-rx">RX <b>${escapeHtml(wifi.rx)}</b></div>`;
+                let ifaceHtml = '';
+                if (ifaces.length > 0) {
+                    ifaceHtml = '<div class="wifi-counter-ifaces">' + ifaces.map(ifc =>
+                        `<div class="wifi-counter-iface"><span class="wifi-iface-name">${escapeHtml(ifc.iface)}</span><span class="wifi-iface-tx">TX ${escapeHtml(ifc.tx)}</span><span class="wifi-iface-rx">RX ${escapeHtml(ifc.rx)}</span></div>`
+                    ).join('') + '</div>';
+                }
+                html += `<div class="wifi-counter-card">
+                            <div class="wifi-counter-head">
+                                <span class="wifi-counter-name">${escapeHtml(wifi.name)}</span>
+                                ${summary}
+                            </div>
+                            ${ifaceHtml}
+                        </div>`;
             });
-            html += '</table></div>';
             html += '</div>';
         }
         

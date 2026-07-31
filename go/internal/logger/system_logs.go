@@ -42,31 +42,9 @@ func HandleSystemLogs() {
 	<meta charset="UTF-8">
 	<title>Системные логи</title>
 	<link rel="stylesheet" href="/entware-manager/logger/style.css">
-	<style>
-		.logs-container { padding: 1rem; }
-		.log-line {
-			font-family: monospace; font-size: 13px; padding: 4px 8px;
-			border-bottom: 1px solid var(--border-color);
-			white-space: pre-wrap; word-break: break-all;
-			background: var(--input-bg); margin: 2px 0; border-radius: 6px;
-			color: var(--text-primary);
-		}
-		.no-logs { text-align: center; padding: 2rem; color: var(--text-muted); }
-	</style>
+	<script src="/entware-manager/theme.js?v=1"></script>
 	<script>
-		(function() {
-			try {
-				const isNight = localStorage.getItem('entware_theme') === 'night';
-				if (isNight) document.documentElement.classList.add('night');
-				else document.documentElement.classList.remove('night');
-			} catch(e) {}
-		})();
-		window.addEventListener('storage', function(e) {
-			if (e.key === 'entware_theme') {
-				if (e.newValue === 'night') document.documentElement.classList.add('night');
-				else document.documentElement.classList.remove('night');
-			}
-		});
+		if (window.Theme) Theme.init();
 	</script>
 </head>
 <body>

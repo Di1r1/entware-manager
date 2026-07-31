@@ -47,7 +47,7 @@ echo "📂 Копирование /opt/web_entware ..."
 cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
 
 # Проверяем наличие ключевых файлов
-for file in modal.js entware.js monitor.js smart.js style.css index.html icons.svg \
+for file in modal.js entware.js monitor.js smart.js style.css index.html icons.svg theme.js \
   lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json \
   cgi-bin/go.cgi \
   cgi-bin/go/entware-pkg cgi-bin/go/entware-stats cgi-bin/go/entware-net \

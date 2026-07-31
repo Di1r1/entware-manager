@@ -16,11 +16,18 @@ type ifaceIP struct {
 }
 
 type wifiBridge struct {
-	Name string `json:"name"`
-	G2g  string `json:"2g"`
-	G5g  string `json:"5g"`
-	Rx   string `json:"rx"`
-	Tx   string `json:"tx"`
+	Name       string          `json:"name"`
+	G2g        string          `json:"2g"`
+	G5g        string          `json:"5g"`
+	Rx         string          `json:"rx"`
+	Tx         string          `json:"tx"`
+	Interfaces []wifiIfaceStat `json:"interfaces"`
+}
+
+type wifiIfaceStat struct {
+	Iface string `json:"iface"`
+	Rx    string `json:"rx"`
+	Tx    string `json:"tx"`
 }
 
 type portInfo struct {
@@ -36,12 +43,12 @@ type networkInfo struct {
 }
 
 type statsResponse struct {
-	Interfaces []ifaceIP    `json:"interfaces"`
-	LAN        string       `json:"lan"`
-	WiFi       string       `json:"wifi"`
-	WiFiInfo   []wifiBridge `json:"wifi_info"`
-	WAN        string       `json:"wan"`
-	Ports      []portInfo   `json:"ports"`
+	Interfaces []ifaceIP     `json:"interfaces"`
+	LAN        string        `json:"lan"`
+	WiFi       string        `json:"wifi"`
+	WiFiInfo   []wifiBridge  `json:"wifi_info"`
+	WAN        string        `json:"wan"`
+	Ports      []portInfo    `json:"ports"`
 	Networks   []networkInfo `json:"networks"`
 }
 
@@ -250,6 +257,13 @@ func buildWiFiBridge(bridge string, ifaces []string, devData string) wifiBridge 
 		if txMB > maxTX {
 			maxTX = txMB
 		}
+		if strings.HasPrefix(iface, "ra") {
+			b.Interfaces = append(b.Interfaces, wifiIfaceStat{
+				Iface: iface,
+				Rx:    formatTraffic(rxMB),
+				Tx:    formatTraffic(txMB),
+			})
+		}
 	}
 
 	b.Rx = formatTraffic(maxRX)
@@ -320,10 +334,22 @@ func getPhysicalPorts() []portInfo {
 			continue
 		}
 
+		// Пропускаем виртуальные интерфейсы (нет физического устройства)
+		if _, err := os.Lstat(filepath.Join(path, "device")); err != nil {
+			continue
+		}
+
 		p := portInfo{Iface: name, Speed: "—", Carrier: "—"}
 
+		// Порт активен, если есть линк (carrier=1) или он входит в мост
 		carrier, err := os.ReadFile(filepath.Join(path, "carrier"))
-		if err == nil && strings.TrimSpace(string(carrier)) == "1" {
+		hasCarrier := err == nil && strings.TrimSpace(string(carrier)) == "1"
+		inBridge := false
+		if _, err := os.Lstat(filepath.Join(path, "brport", "bridge")); err == nil {
+			inBridge = true
+		}
+
+		if hasCarrier {
 			p.Carrier = "✓"
 
 			speed, err := os.ReadFile(filepath.Join(path, "speed"))
@@ -333,6 +359,8 @@ func getPhysicalPorts() []portInfo {
 					p.Speed = s + "Mbps"
 				}
 			}
+		} else if inBridge {
+			p.Carrier = "✓"
 		}
 
 		list = append(list, p)

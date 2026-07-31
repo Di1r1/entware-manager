@@ -4,10 +4,14 @@
     --logger-text: #1a202c;
     --logger-border: #e2e8f0;
     --logger-input-bg: #ffffff;
-    --logger-accent: #8b5cf6;
+    --logger-accent: var(--accent, #8b5cf6);
     --logger-hover: #f1f5f9;
     --logger-scrollbar-thumb: #cbd5e0;
     --logger-scrollbar-track: #f1f5f9;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #718096;
 }
 
 html.night {
@@ -18,6 +22,10 @@ html.night {
     --logger-hover: #4a5568;
     --logger-scrollbar-thumb: #4a5568;
     --logger-scrollbar-track: #2d3748;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #a0aec0;
 }
 
 * {
@@ -83,7 +91,7 @@ html.night .log-filter label {
 }
 
 .log-filter button {
-    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    background: var(--btn-gradient, linear-gradient(135deg, var(--accent, #8b5cf6), var(--accent-dark, #6d28d9)));
     background-size: 200% 200%;
     color: white;
     border: none;
@@ -93,7 +101,7 @@ html.night .log-filter label {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(139,92,246,0.3);
+    box-shadow: 0 2px 4px var(--accent-glow, rgba(139,92,246,0.3));
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -172,9 +180,9 @@ html.night .no-logs {
     border-radius: 40px;
 }
 .tab-button.active {
-    background: var(--accent-gradient);
+    background: var(--btn-gradient, var(--accent-gradient));
     color: white;
-    box-shadow: 0 2px 4px rgba(139,92,246,0.3);
+    box-shadow: 0 2px 4px var(--accent-glow, rgba(139,92,246,0.3));
 }
 .tab-button:hover:not(.active) {
     background: var(--logger-hover);

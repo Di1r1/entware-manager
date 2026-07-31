@@ -37,24 +37,9 @@ func HandleView() {
 	<meta charset="UTF-8">
 	<title>Логи Entware Manager</title>
 	<link rel="stylesheet" href="/entware-manager/logger/style.css">
-	<style>
-		html.night { background: #1a202c; }
-		html:not(.night) { background: #f9fafb; }
-	</style>
+	<script src="/entware-manager/theme.js?v=1"></script>
 	<script>
-		(function() {
-			try {
-				const isNight = localStorage.getItem('entware_theme') === 'night';
-				if (isNight) document.documentElement.classList.add('night');
-				else document.documentElement.classList.remove('night');
-			} catch(e) {}
-		})();
-		window.addEventListener('storage', function(e) {
-			if (e.key === 'entware_theme') {
-				if (e.newValue === 'night') document.documentElement.classList.add('night');
-				else document.documentElement.classList.remove('night');
-			}
-		});
+		if (window.Theme) Theme.init();
 	</script>
 </head>
 <body>`)

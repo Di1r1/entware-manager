@@ -487,7 +487,7 @@ fi
 
 # Проверка веб-файлов
 echo "  ${BOLD}Веб-файлы:${NC}"
-for f in index.html style.css entware.js icons.svg version.json; do
+for f in index.html style.css entware.js theme.js icons.svg version.json; do
 	if [ -f "$TARGET_DIR/$f" ]; then
 		ok "  $f"
 	else

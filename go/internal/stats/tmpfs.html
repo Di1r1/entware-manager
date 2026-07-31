@@ -4,22 +4,11 @@
     <meta charset="UTF-8">
     <title>tmpfs: {TITLE_PATH}</title>
     <link rel="stylesheet" href="/entware-manager/style.css">
+    <script src="/entware-manager/theme.js?v=1"></script>
     <script src="/entware-manager/modal.js?v=1"></script>
 </head>
 <body class="packages-body">
-<script>
-(function() {
-    try {
-        var saved = localStorage.getItem('entware_theme');
-        var night = saved === 'night';
-        if (!saved) {
-            var h = new Date().getHours();
-            night = h >= 20 || h < 6;
-        }
-        if (night) document.body.classList.add('night');
-    } catch(e) {}
-})();
-</script>
+<script>if (window.Theme) Theme.init();</script>
 <div class="packages-container">
     <div class="file-manager">
         <h2 style="display: flex; align-items: center; gap: 8px;">
