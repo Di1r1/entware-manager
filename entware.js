@@ -1142,7 +1142,7 @@ window.prepareOffline = async function() {
 
         statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Офлайн-пакет готов: ' + filename + '</span>' +
             '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Файл сохранён в папку Загрузки браузера.</p>' +
-            '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Перенесите его на целевой роутер (через SMB или USB) и выполните:</p>' +
+            '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Перенесите его на целевой роутер в <b>/opt/tmp/</b> (через SMB или USB) и выполните:</p>' +
             '<pre style="margin-top:8px;background:var(--pre-bg);padding:0.5rem;font-size:0.85rem;white-space:pre-wrap;">tar xzf ' + filename + '\ncd ' + filename.replace('.tar.gz', '') + '\nsh install-offline.sh</pre>';
     } catch (err) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
