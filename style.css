@@ -1324,6 +1324,14 @@ input[type="submit"]:disabled,
 .path-nav a:hover {
     text-decoration: underline;
 }
+.file-table td a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.file-table td a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
 /* ================================================ */
 
 /* === Адаптивные и дополнительные стили === */
