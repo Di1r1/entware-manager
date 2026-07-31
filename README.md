@@ -1,7 +1,7 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.06.9-blue)](version.json)
+[![Version](https://img.shields.io/badge/version-1.07.3-blue)](version.json)
 [![License](https://img.shields.io/badge/license-GPLv3-green)](LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.

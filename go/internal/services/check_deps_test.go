@@ -84,6 +84,52 @@ func TestCheckDeps_Sections(t *testing.T) {
 	}
 }
 
+func TestCheckDeps_NewFields(t *testing.T) {
+	os.Setenv("REQUEST_METHOD", "GET")
+	defer os.Unsetenv("REQUEST_METHOD")
+
+	body := captureStdout(t, HandleCheckDeps)
+
+	var result DepsResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	// curl/bash/brctl должны быть bool, brctl_path — string
+	if result.Deps.Curl != (lookPath("curl") || lookPath("/opt/bin/curl")) {
+		t.Errorf("Curl mismatch")
+	}
+	if result.Deps.Bash != (lookPath("/opt/bin/bash") || lookPath("bash")) {
+		t.Errorf("Bash mismatch")
+	}
+	if result.Deps.Brctl != (func() bool { _, ok := lookPathWithPath("brctl"); return ok }()) {
+		t.Errorf("Brctl mismatch")
+	}
+}
+
+func TestCheckDeps_SyntaxFields(t *testing.T) {
+	os.Setenv("REQUEST_METHOD", "GET")
+	defer os.Unsetenv("REQUEST_METHOD")
+
+	body := captureStdout(t, HandleCheckSyntax)
+
+	var result SyntaxResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("invalid JSON: %v\noutput: %s", err, string(body))
+	}
+	if result.Timestamp == "" {
+		t.Fatal("missing timestamp")
+	}
+	if result.Results == nil {
+		t.Fatal("missing results")
+	}
+	for _, f := range result.Results {
+		if f.Status != "ok" && f.Status != "error" {
+			t.Errorf("file %s has invalid status: %q", f.File, f.Status)
+		}
+	}
+}
+
 func TestReadPid_NotFound(t *testing.T) {
 	pid := readPid("/nonexistent/pid")
 	if pid != 0 {

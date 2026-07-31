@@ -2047,6 +2047,11 @@ async function checkSystemDeps() {
         if (!ipPkg && ipStatus) {
             html += `<li style="color:#d69e2e;">• Пакет ip-full не установлен, но системная утилита работает</li>`;
         }
+        html += `<li>curl: <b style="color:${deps.curl ? '#38a169' : '#e53e3e'}">${deps.curl ? 'OK' : 'НЕ НАЙДЕН'}</b></li>`;
+        html += `<li>bash: <b style="color:${deps.bash ? '#38a169' : '#e53e3e'}">${deps.bash ? 'OK' : 'НЕ НАЙДЕН'}</b></li>`;
+        const brctlStatus = deps.brctl;
+        const brctlPath = deps.brctl_path || '';
+        html += `<li>brctl (bridge-utils): <b style="color:${brctlStatus ? '#38a169' : '#e53e3e'}">${brctlStatus ? 'OK (' + brctlPath + ')' : 'НЕ НАЙДЕН'}</b></li>`;
         html += '</ul>';
 
         // Статус разделов
@@ -2059,12 +2064,27 @@ async function checkSystemDeps() {
         });
         html += '</ul>';
 
+        // Проверка синтаксиса скриптов
+        const syn = await apiGet('/check_syntax.cgi');
+        html += '<h4>Проверка синтаксиса скриптов:</h4><ul style="list-style:none; padding:0;">';
+        (syn.results || []).forEach(f => {
+            const ok = f.status === 'ok';
+            html += `<li>${escapeHtml(f.file)}: <b style="color:${ok ? '#38a169' : '#e53e3e'}">${ok ? 'ok' : 'ошибка'}</b></li>`;
+            if (f.message) {
+                html += `<li style="color:#e53e3e; margin-left:16px;"><small>${escapeHtml(f.message)}</small></li>`;
+            }
+        });
+        html += `</ul><p style="color:${syn.total_errors > 0 ? '#e53e3e' : '#38a169'}; font-size:12px;">Ошибок: ${syn.total_errors}</p>`;
+
         // Рекомендации
         if (data.overall_status !== 'ok') {
             html += '<hr style="border-color:#4a5568;"><h4>Рекомендации:</h4>';
             if (!deps.cron_installed) html += '<p style="color:#e53e3e;">• Установите cron: <code>opkg install cron</code></p>';
             if (!deps.jq) html += '<p style="color:#e53e3e;">• Установите jq: <code>opkg install jq</code></p>';
             if (!deps.ip) html += '<p style="color:#e53e3e;">• Установите ip-full: <code>opkg install ip-full</code> (или проверьте наличие ip в системе)</p>';
+            if (!deps.curl) html += '<p style="color:#e53e3e;">• Установите curl: <code>opkg install curl</code></p>';
+            if (!deps.bash) html += '<p style="color:#e53e3e;">• Установите bash: <code>opkg install bash</code></p>';
+            if (!deps.brctl) html += '<p style="color:#e53e3e;">• Установите bridge-utils: <code>opkg install bridge-utils</code></p>';
         }
 
         html += '</div>';

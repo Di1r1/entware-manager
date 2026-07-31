@@ -34,6 +34,10 @@ type DepsDeps struct {
 	Ip            bool   `json:"ip"`
 	IpPath        string `json:"ip_path"`
 	IpPkgInstalled bool  `json:"ip_pkg_installed"`
+	Curl          bool   `json:"curl"`
+	Bash          bool   `json:"bash"`
+	Brctl         bool   `json:"brctl"`
+	BrctlPath     string `json:"brctl_path"`
 }
 
 type DepsSections struct {
@@ -83,10 +87,16 @@ func HandleCheckDeps() {
 	r.Deps.IpPath = ipPath
 	r.Deps.IpPkgInstalled = opkgListInstalled("ip-full")
 
+	r.Deps.Curl = lookPath("curl") || lookPath("/opt/bin/curl")
+	r.Deps.Bash = lookPath("/opt/bin/bash") || lookPath("bash")
+	brctlPath, brctlOk := lookPathWithPath("brctl")
+	r.Deps.Brctl = brctlOk
+	r.Deps.BrctlPath = brctlPath
+
 	r.Sections.Packages = statusOk(r.Base.Opkg)
 	r.Sections.Services = statusOk(r.Deps.CronInstalled && r.Deps.Jq)
 	r.Sections.Monitoring = statusPartial(r.Deps.CronInstalled && r.Deps.Jq)
-	r.Sections.Network = statusOk(r.Deps.Ip)
+	r.Sections.Network = statusOk(r.Deps.Ip && r.Deps.Brctl)
 	r.Sections.Logger = statusOk(r.Deps.Jq)
 	r.Sections.Smart = statusSmart()
 
