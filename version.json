@@ -1,7 +1,12 @@
 {
-  "version": "1.06.9",
+  "version": "1.07.0",
   "date": "2026-07-30",
   "changes": [
+    "1.07.0: prepare_offline: офлайн-пакет Entware Manager + все зависимости (скачивание через UI)",
+    "1.07.0: Makefile: test/lint/ci таргеты, archives (per-arch tar.gz), all.tar.gz без таймстемпа",
+    "1.07.0: ShellCheck clean + GitHub Actions workflow (shellcheck.yml + ci.yml)",
+    "1.07.0: авто-версия из git tag (fallback на version.json)",
+    "1.07.0: Go vet fix — fmt.Println с \\n → fmt.Print",
     "1.06.9: ttyd: /bin/sh → /opt/bin/bash (Entware bash), добавлен режим telnet (NDMS console)",
     "1.06.9: ttyd: восстановлена проверка статуса во вкладке Терминал (если ttyd не запущен — подсказка)",
     "1.06.9: ttyd: блок управления в Настройках — статический HTML, дропдаун режима не сбрасывается при автообновлении",
