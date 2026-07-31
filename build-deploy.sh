@@ -36,7 +36,7 @@ echo "=== Сборка deploy ==="
 for f in "$PROJECT_DIR"/*; do
     name=$(basename "$f")
     case "$name" in
-        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|RULES.md|links.json|*_config.json|*.tar.gz|*.ipk)
+        deploy|go|tmp|build-deploy.sh|TECH_SPEC.md|RULES.md|links.json|DEVLOG.md|DEVICE.md|BUILD.md|router_backup|*_config.json|*.tar.gz|*.ipk)
             continue ;;
     esac
     if [ -d "$f" ]; then
@@ -49,7 +49,7 @@ for f in "$PROJECT_DIR"/*; do
 done
 
 # Удаляем dev-артефакты и пользовательские конфиги из deploy
-rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" 2>/dev/null
+rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" "$DEPLOY_DIR/doc/IPK_BUILD.md" "$DEPLOY_DIR/logger/config.json" 2>/dev/null
 
 echo ""
 echo "=== Компиляция Go ==="
