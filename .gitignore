@@ -21,7 +21,6 @@ auth_config.json
 logger/config.json
 DEVICE.md
 DEVLOG.md
-
 go/entware-*
 router_backup/
 conffiles
