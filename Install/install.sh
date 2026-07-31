@@ -269,6 +269,8 @@ else
 	fail "Копирование файлов не удалось — $TARGET_DIR пуст"
 fi
 
+rm -f "$TARGET_DIR/DEVLOG.md" "$TARGET_DIR/DEVICE.md" "$TARGET_DIR/BUILD.md" "$TARGET_DIR/RULES.md" "$TARGET_DIR/TECH_SPEC.md" "$TARGET_DIR/forum_post.md" "$TARGET_DIR/Install/Install.txt" "$TARGET_DIR/doc/NETWORK_PROMPT.md" "$TARGET_DIR/doc/IPK_BUILD.md" "$TARGET_DIR/conffiles" "$TARGET_DIR/control" "$TARGET_DIR/postinst" "$TARGET_DIR/prerm" 2>/dev/null || true
+
 # ========== 6. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
 step "Настройка архитектуры"
 
