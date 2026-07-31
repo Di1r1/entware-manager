@@ -1,7 +1,8 @@
 {
-  "version": "1.07.0",
-  "date": "2026-07-30",
+  "version": "1.07.1",
+  "date": "2026-07-31",
   "changes": [
+    "1.07.1: файловый менеджер: кнопка «На главную» (возврат в интерфейс)",
     "1.07.0: prepare_offline: офлайн-пакет Entware Manager + все зависимости (скачивание через UI)",
     "1.07.0: Makefile: test/lint/ci таргеты, archives (per-arch tar.gz), all.tar.gz без таймстемпа",
     "1.07.0: ShellCheck clean + GitHub Actions workflow (shellcheck.yml + ci.yml)",
