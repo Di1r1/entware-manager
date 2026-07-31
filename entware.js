@@ -1061,9 +1061,9 @@ async function renderSettingsTab() {
                 <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Восстановить
                 <input type="file" id="restoreBackupFile" accept=".tar.gz" style="display: none;" onchange="restoreBackup(this)">
             </label>
-            <a href="/entware-cgi/prepare_offline.cgi" class="packages-delete-btn" style="background:#e67e22;">
+            <button class="packages-delete-btn" style="background:#e67e22;" onclick="prepareOffline()">
                 <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-download"/></svg> Подготовить офлайн-пакет
-            </a>
+            </button>
             <span id="backupStatus"></span>
         </div>
 
@@ -1115,6 +1115,36 @@ window.restoreBackup = async function(input) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
     }
     input.value = '';
+};
+
+window.prepareOffline = async function() {
+    const statusEl = document.getElementById('backupStatus');
+    statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Подготовка офлайн-пакета... (скачивание зависимостей, ~30-60 сек)</span>';
+
+    try {
+        const response = await fetch('/entware-cgi/prepare_offline.cgi?_=' + Date.now());
+        if (!response.ok) {
+            throw new Error('Сервер ответил ' + response.status);
+        }
+
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const filename = disposition.split('filename=')[1] ? disposition.split('filename=')[1].replace(/"/g, '').trim() : 'entware-manager-offline.tar.gz';
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Офлайн-пакет готов: ' + filename + '</span>' +
+            '<pre style="margin-top:8px;background:var(--pre-bg);padding:0.5rem;font-size:0.85rem;white-space:pre-wrap;">tar xzf ' + filename + '\ncd ' + filename.replace('.tar.gz', '') + '\nsh install-offline.sh</pre>';
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+    }
 };
 
 async function loadUpdateInfo() {
