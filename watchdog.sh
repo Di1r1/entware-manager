@@ -187,10 +187,10 @@ case "$1" in
     start)
         read_config
         [ "$ENABLED" = "true" ] || { echo "Disabled in config"; exit 1; }
-        daemon_start "monitor" "$PIDFILE" "$LOG_FILE" "watchdog\.sh daemon"
+        daemon_start "monitor" "$PIDFILE" "$LOG_FILE" "(^|[/ ])watchdog\.sh daemon"
         ;;
     stop)
-        daemon_stop "$PIDFILE" "watchdog\.sh daemon" 'rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*'
+        daemon_stop "$PIDFILE" "(^|[/ ])watchdog\.sh daemon" 'rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*'
         log_message "INFO" "[monitor] Демон защиты остановлен"
         echo "Stopped"
         ;;
@@ -200,7 +200,7 @@ case "$1" in
         "$0" start
         ;;
     status)
-        daemon_status "$PIDFILE" "watchdog\.sh daemon"
+        daemon_status "$PIDFILE" "(^|[/ ])watchdog\.sh daemon"
         ;;
     daemon)
         daemon_loop

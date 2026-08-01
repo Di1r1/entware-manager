@@ -126,10 +126,10 @@ daemon_loop() {
 
 case "$1" in
     start)
-        daemon_start "network" "$PID_FILE" "$LOG_FILE" "network_watchdog\.sh daemon"
+        daemon_start "network" "$PID_FILE" "$LOG_FILE" "(^|[/ ])network_watchdog\.sh daemon"
         ;;
     stop)
-        daemon_stop "$PID_FILE" "network_watchdog\.sh daemon" 'rm -f "$STATE_FILE"'
+        daemon_stop "$PID_FILE" "(^|[/ ])network_watchdog\.sh daemon" 'rm -f "$STATE_FILE"'
         log_message "INFO" "[network] Демон мониторинга сети остановлен"
         ;;
     restart)
@@ -138,7 +138,7 @@ case "$1" in
         "$0" start
         ;;
     status)
-        daemon_status "$PID_FILE" "network_watchdog\.sh daemon"
+        daemon_status "$PID_FILE" "(^|[/ ])network_watchdog\.sh daemon"
         ;;
     daemon)
         daemon_loop

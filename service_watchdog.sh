@@ -292,10 +292,10 @@ case "$1" in
     start)
         load_config
         [ "$ENABLED" = "true" ] || { echo "Service watchdog disabled in config"; exit 0; }
-        daemon_start "service" "$PIDFILE" "$LOG_FILE" "service_watchdog\.sh daemon"
+        daemon_start "service" "$PIDFILE" "$LOG_FILE" "(^|[/ ])service_watchdog\.sh daemon"
         ;;
     stop)
-        daemon_stop "$PIDFILE" "service_watchdog\.sh daemon" 'rm -f "$PID_STATE"'
+        daemon_stop "$PIDFILE" "(^|[/ ])service_watchdog\.sh daemon" 'rm -f "$PID_STATE"'
         log_message "INFO" "[service] Демон мониторинга служб остановлен"
         ;;
     restart)
@@ -309,7 +309,7 @@ case "$1" in
         fi
         ;;
     status)
-        daemon_status "$PIDFILE" "service_watchdog\.sh daemon"
+        daemon_status "$PIDFILE" "(^|[/ ])service_watchdog\.sh daemon"
         ;;
     daemon)
         daemon_loop
