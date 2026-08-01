@@ -18,18 +18,25 @@ LOG_INTERVAL=30
 
 read_config() {
     if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
-        ENABLED=$(jq -r '.enabled' "$CONFIG")
-        INTERVAL=$(jq -r '.interval' "$CONFIG")
-        INDIVIDUAL_ENABLED=$(jq -r '.individual.enabled' "$CONFIG")
-        INDIVIDUAL_CPU=$(jq -r '.individual.threshold_cpu' "$CONFIG")
-        INDIVIDUAL_TIME=$(jq -r '.individual.threshold_time' "$CONFIG")
-        IGNORE_LIST=$(jq -r '.ignore[]' "$CONFIG" | tr '\n' '|')
-        IGNORE_LIST="${IGNORE_LIST%|}"
-        IGNORE_PS=$(jq -r '.ignore_ps' "$CONFIG")
+        i=0
+        while IFS= read -r _v; do
+            i=$((i + 1))
+            case "$i" in
+                1) ENABLED=$_v ;;
+                2) INTERVAL=$_v ;;
+                3) INDIVIDUAL_ENABLED=$_v ;;
+                4) INDIVIDUAL_CPU=$_v ;;
+                5) INDIVIDUAL_TIME=$_v ;;
+                6) IGNORE_PS=$_v ;;
+                7) MAX_PROCESSES=$_v ;;
+                8) IGNORE_LIST=$_v ;;
+            esac
+        done << EOF
+$(jq -r '.enabled, .interval, .individual.enabled, .individual.threshold_cpu, .individual.threshold_time, .ignore_ps, (.max_processes // 200), (if (.ignore|type)=="array" then (.ignore|join("|")) else "" end)' "$CONFIG")
+EOF
         if [ "$IGNORE_PS" != "false" ]; then
             IGNORE_PS="true"
         fi
-        MAX_PROCESSES=$(jq -r '.max_processes // 200' "$CONFIG")
         case "$MAX_PROCESSES" in
             ''|*[!0-9]*) MAX_PROCESSES=200 ;;
             *) [ "$MAX_PROCESSES" -lt 1 ] && MAX_PROCESSES=200 ;;

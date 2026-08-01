@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"entware-manager/internal/cache"
 )
 
 type UpdateCheckResponse struct {
@@ -44,7 +46,7 @@ func HandleUpdateCheck() {
 	}
 
 	current := getLocalVersion()
-	latest, err := getLatestVersion()
+	latest, err := getLatestVersionCached()
 	if err != nil {
 		writeJSON(UpdateCheckResponse{
 			Current:   current,
@@ -222,6 +224,38 @@ func getLatestVersion() (string, error) {
 	}
 
 	return strings.TrimPrefix(rel.TagName, "v"), nil
+}
+
+const updateCheckCacheTTL = 60 * time.Second
+
+type updateCheckCacheEntry struct {
+	Latest string `json:"latest"`
+	Error  string `json:"error,omitempty"`
+}
+
+// getLatestVersionCached кэширует результат GitHub API на 60с (вызывается
+// при каждой загрузке главной страницы).
+func getLatestVersionCached() (string, error) {
+	if data, ok := cache.Get("update_check", updateCheckCacheTTL); ok {
+		var e updateCheckCacheEntry
+		if json.Unmarshal(data, &e) == nil {
+			if e.Error != "" {
+				return "", fmt.Errorf("%s", e.Error)
+			}
+			return e.Latest, nil
+		}
+	}
+	latest, err := getLatestVersion()
+	entry := updateCheckCacheEntry{}
+	if err != nil {
+		entry.Error = err.Error()
+	} else {
+		entry.Latest = latest
+	}
+	if body, merr := json.Marshal(entry); merr == nil {
+		cache.Put("update_check", body)
+	}
+	return latest, err
 }
 
 func getDownloadURL(latestVersion, arch string) string {

@@ -10,6 +10,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"entware-manager/internal/cache"
 )
 
 type SysInfo struct {
@@ -250,15 +253,30 @@ func collectTopProcs(n int) []TopProc {
 }
 
 func collectPkgCounts() (installed, avail int) {
-	out := runCmd("/opt/bin/opkg", "list-installed")
+	out := opkgCached("opkg_installed", "list-installed")
 	if out != "" {
 		installed = len(strings.Split(out, "\n"))
 	}
-	out = runCmd("/opt/bin/opkg", "list")
+	out = opkgCached("opkg_list", "list")
 	if out != "" {
 		avail = len(strings.Split(out, "\n"))
 	}
 	return
+}
+
+const opkgCacheTTL = 60 * time.Second
+
+// opkgCached возвращает вывод opkg из кэша (TTL 60с) либо выполняет команду
+// и заполняет кэш. При ошибке opkg кэш не обновляется и возвращается "".
+func opkgCached(key string, args ...string) string {
+	if data, ok := cache.Get(key, opkgCacheTTL); ok {
+		return strings.TrimSpace(string(data))
+	}
+	out := runCmd("/opt/bin/opkg", args...)
+	if out != "" {
+		cache.Put(key, []byte(out))
+	}
+	return out
 }
 
 func collectPkgChanges() []PkgChange {

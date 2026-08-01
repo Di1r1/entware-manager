@@ -20,14 +20,22 @@ SERVICES_DIR="/opt/etc/init.d"
 
 load_config() {
     if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
-        ENABLED=$(jq -r '.enabled' "$CONFIG")
-        INTERVAL=$(jq -r '.interval' "$CONFIG")
-        MODE=$(jq -r '.mode' "$CONFIG")
-        WATCH_LIST=$(jq -r '.watch_list[]' "$CONFIG" 2>/dev/null | tr '\n' ' ')
-        AUTO_RESTART=$(jq -r '.auto_restart' "$CONFIG")
-        EXCLUDE_LIST=$(jq -r '.exclude_list[]' "$CONFIG" 2>/dev/null | tr '\n' ' ')
-        LOG_TO_MONITOR=$(jq -r '.log_to_monitor' "$CONFIG")
-        HISTORY_DAYS=$(jq -r '.pid_history_days // 7' "$CONFIG")
+        i=0
+        while IFS= read -r _v; do
+            i=$((i + 1))
+            case "$i" in
+                1) ENABLED=$_v ;;
+                2) INTERVAL=$_v ;;
+                3) MODE=$_v ;;
+                4) WATCH_LIST=$_v ;;
+                5) AUTO_RESTART=$_v ;;
+                6) EXCLUDE_LIST=$_v ;;
+                7) LOG_TO_MONITOR=$_v ;;
+                8) HISTORY_DAYS=$_v ;;
+            esac
+        done << EOF
+$(jq -r '.enabled, .interval, .mode, (if (.watch_list|type)=="array" then (.watch_list|join(" ")) else "" end), .auto_restart, (if (.exclude_list|type)=="array" then (.exclude_list|join(" ")) else "" end), .log_to_monitor, (.pid_history_days // 7)' "$CONFIG")
+EOF
     else
         ENABLED=true
         INTERVAL=10

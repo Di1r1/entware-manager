@@ -900,12 +900,12 @@ function renderIconSelect(selectedId) {
     return html;
 }
 
-async function loadNetworkStatus() {
+async function loadNetworkStatus(fresh) {
     const table = document.getElementById('networkTable');
     if (!table) return;
     
     try {
-        const data = await apiGet('/network_stats.cgi');
+        const data = await apiGet(fresh ? '/network_stats.cgi?fresh=1&_=' + Date.now() : '/network_stats.cgi');
         
         let html = '<div class="stat-table">';
         
@@ -1012,7 +1012,7 @@ async function loadNetworkStatus() {
         table.innerHTML = '<div style="padding: 0.5rem 1rem;">Ошибка загрузки сети</div>';
     }
     
-    document.getElementById('network-refresh')?.addEventListener('click', loadNetworkStatus);
+    document.getElementById('network-refresh')?.addEventListener('click', () => loadNetworkStatus(true));
 }
 
 async function renderLinksOnStats() {

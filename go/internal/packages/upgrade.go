@@ -2,6 +2,8 @@ package packages
 
 import (
 	"fmt"
+
+	"entware-manager/internal/cache"
 )
 
 func Upgrade() {
@@ -21,6 +23,7 @@ func Upgrade() {
 		if code == 0 {
 			html += `<p class="success">Все пакеты обновлены.</p>`
 			logPackageChange("upgrade-all", "all-packages", "success")
+			cache.Invalidate("opkg_installed", "opkg_list")
 		} else {
 			html += `<p class="error">Ошибка при обновлении.</p>`
 			logPackageChange("upgrade-all", "all-packages", "error")
@@ -42,6 +45,7 @@ func Upgrade() {
 	if code == 0 {
 		html += `<p class="success">Пакет успешно обновлён.</p>`
 		logPackageChange("upgrade", pkgClean, "success")
+		cache.Invalidate("opkg_installed", "opkg_list")
 	} else {
 		html += `<p class="error">Ошибка при обновлении. Проверьте логи opkg.</p>`
 		logPackageChange("upgrade", pkgClean, "error")

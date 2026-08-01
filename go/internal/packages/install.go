@@ -2,7 +2,13 @@ package packages
 
 import (
 	"fmt"
+
+	"entware-manager/internal/cache"
 )
+
+func invalidateOpkgCache() {
+	cache.Invalidate("opkg_installed", "opkg_list")
+}
 
 func Install() {
 	if !isPOST() {
@@ -27,6 +33,7 @@ func Install() {
 	if code == 0 {
 		html += `<p class="success">Пакет успешно установлен.</p>`
 		logPackageChange("install", pkgClean, "success")
+		invalidateOpkgCache()
 	} else {
 		html += `<p class="error">Ошибка при установке. Проверьте логи opkg.</p>`
 		logPackageChange("install", pkgClean, "error")

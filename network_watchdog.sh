@@ -19,9 +19,17 @@ LOG_MAX_SIZE=1048576
 
 load_config() {
     if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
-        INTERVAL=$(jq -r '.watchdog.interval // 30' "$CONFIG_FILE")
-        PING_HOST=$(jq -r '.watchdog.ping_host // "8.8.8.8"' "$CONFIG_FILE")
-        PING_TIMEOUT=$(jq -r '.watchdog.ping_timeout // 5' "$CONFIG_FILE")
+        i=0
+        while IFS= read -r _v; do
+            i=$((i + 1))
+            case "$i" in
+                1) INTERVAL=$_v ;;
+                2) PING_HOST=$_v ;;
+                3) PING_TIMEOUT=$_v ;;
+            esac
+        done << EOF
+$(jq -r '.watchdog.interval // 30, .watchdog.ping_host // "8.8.8.8", .watchdog.ping_timeout // 5' "$CONFIG_FILE")
+EOF
     else
         INTERVAL=30
         PING_HOST="8.8.8.8"

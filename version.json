@@ -1,7 +1,11 @@
 {
-  "version": "1.07.3",
+  "version": "1.07.4",
   "date": "2026-08-01",
   "changes": [
+    "1.07.4: оптимизация для слабых роутеров — кэш opkg-списков (60с), network_stats (5с) и update_check (60с)",
+    "1.07.4: stats.cgi 180→98мс (-46%), network_stats 50→38мс (-31%), update_check 470→79мс (-83%)",
+    "1.07.4: инвалидация кэша opkg при install/remove/upgrade (данные всегда актуальны)",
+    "1.07.4: watchdog/service_watchdog/network_watchdog — чтение конфига одним jq-вызовом вместо 3-8 (B1)",
     "1.07.3: Проверка системы — добавлены curl, bash, brctl (bridge-utils) в зависимости; network учитывает brctl",
     "1.07.3: Проверка системы — новый блок «Проверка синтаксиса скриптов» (результаты check_syntax.cgi прямо в окне)",
     "1.07.3: fix check_syntax.cgi не создавался симлинком (404 из UI) — добавлен в build-deploy.sh",

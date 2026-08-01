@@ -1,6 +1,7 @@
 package network
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,6 +9,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"entware-manager/internal/cache"
 )
 
 type ifaceIP struct {
@@ -52,10 +56,20 @@ type statsResponse struct {
 	Networks   []networkInfo `json:"networks"`
 }
 
+const networkStatsCacheTTL = 5 * time.Second
+
 func HandleNetworkStats() {
 	if !IsGET() {
 		NotAllowed()
 		return
+	}
+
+	if !strings.Contains(os.Getenv("QUERY_STRING"), "fresh=1") {
+		if data, ok := cache.Get("network_stats", networkStatsCacheTTL); ok {
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+			os.Stdout.Write(data)
+			return
+		}
 	}
 
 	resp := statsResponse{
@@ -68,6 +82,13 @@ func HandleNetworkStats() {
 	resp.LAN = buildLAN(resp.Interfaces)
 	resp.WiFi = getWiFiStatus()
 	resp.WAN = getWANStatus()
+
+	if body, err := json.Marshal(resp); err == nil {
+		cache.Put("network_stats", body)
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		os.Stdout.Write(body)
+		return
+	}
 
 	WriteJSON(resp)
 }
