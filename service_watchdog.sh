@@ -34,7 +34,7 @@ load_config() {
                 8) HISTORY_DAYS=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled, .interval, .mode, (if (.watch_list|type)=="array" then (.watch_list|join(" ")) else "" end), .auto_restart, (if (.exclude_list|type)=="array" then (.exclude_list|join(" ")) else "" end), .log_to_monitor, (.pid_history_days // 7)' "$CONFIG")
+$(jq -r '.enabled // true, (.interval // 10), (.mode // "initd"), (if (.watch_list|type)=="array" then (.watch_list|join(" ")) else "lighttpd cron ttyd" end), (.auto_restart // false), (if (.exclude_list|type)=="array" then (.exclude_list|join(" ")) else "dropbear kvas-ws service_watchdog" end), (.log_to_monitor // true), (.pid_history_days // 7)' "$CONFIG")
 EOF
     else
         ENABLED=true
@@ -47,11 +47,12 @@ EOF
         HISTORY_DAYS=7
     fi
 
-    [ -z "$INTERVAL" ] && INTERVAL=10
-    [ -z "$MODE" ] && MODE="initd"
-    [ -z "$AUTO_RESTART" ] && AUTO_RESTART=false
-    [ -z "$EXCLUDE_LIST" ] && EXCLUDE_LIST="dropbear kvas-ws service_watchdog"
-    [ -z "$HISTORY_DAYS" ] && HISTORY_DAYS=7
+    [ -z "$INTERVAL" ] || [ "$INTERVAL" = "null" ] && INTERVAL=10
+    [ -z "$MODE" ] || [ "$MODE" = "null" ] && MODE="initd"
+    [ -z "$AUTO_RESTART" ] || [ "$AUTO_RESTART" = "null" ] && AUTO_RESTART=false
+    [ -z "$EXCLUDE_LIST" ] || [ "$EXCLUDE_LIST" = "null" ] && EXCLUDE_LIST="dropbear kvas-ws service_watchdog"
+    [ -z "$HISTORY_DAYS" ] || [ "$HISTORY_DAYS" = "null" ] && HISTORY_DAYS=7
+    [ -z "$LOG_TO_MONITOR" ] || [ "$LOG_TO_MONITOR" = "null" ] && LOG_TO_MONITOR=true
     [ "$ENABLED" = "null" ] && ENABLED=true
 }
 

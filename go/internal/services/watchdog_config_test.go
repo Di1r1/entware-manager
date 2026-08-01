@@ -77,6 +77,20 @@ func TestWatchdogConfig_POST_Valid(t *testing.T) {
 	if !strings.Contains(string(saved), "enabled") {
 		t.Errorf("expected valid JSON in config, got: %s", string(saved))
 	}
+
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(saved, &cfg); err != nil {
+		t.Fatalf("saved config is not valid JSON: %v", err)
+	}
+	if cfg["interval"] != float64(60) {
+		t.Errorf("expected interval 60, got %v", cfg["interval"])
+	}
+	if cfg["mode"] != "initd" {
+		t.Errorf("expected default mode 'initd', got %v", cfg["mode"])
+	}
+	if cfg["pid_history_days"] != float64(7) {
+		t.Errorf("expected default pid_history_days 7, got %v", cfg["pid_history_days"])
+	}
 }
 
 func TestWatchdogConfig_POST_InvalidJSON(t *testing.T) {

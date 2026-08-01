@@ -73,6 +73,27 @@ func handleWrapperConfigPost() {
 	if _, ok := merged["enabled"]; !ok {
 		merged["enabled"] = true
 	}
+	if _, ok := merged["interval"]; !ok {
+		merged["interval"] = 10
+	}
+	if _, ok := merged["mode"]; !ok {
+		merged["mode"] = "initd"
+	}
+	if _, ok := merged["watch_list"]; !ok {
+		merged["watch_list"] = []string{"lighttpd", "cron", "ttyd", "AdGuardHome", "koolproxy", "xray"}
+	}
+	if _, ok := merged["auto_restart"]; !ok {
+		merged["auto_restart"] = false
+	}
+	if _, ok := merged["exclude_list"]; !ok {
+		merged["exclude_list"] = []string{"dropbear", "kvas-ws", "service_watchdog"}
+	}
+	if _, ok := merged["log_to_monitor"]; !ok {
+		merged["log_to_monitor"] = true
+	}
+	if _, ok := merged["pid_history_days"]; !ok {
+		merged["pid_history_days"] = 7
+	}
 
 	out, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {

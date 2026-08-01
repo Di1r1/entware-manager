@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const webRoot = "/opt/web_entware"
@@ -30,6 +31,7 @@ var configs = []configFile{
 }
 
 func HandleCreate() {
+	cleanupOldTemp("entware-backup-")
 	tmpDir, err := os.MkdirTemp("", "entware-backup-*")
 	if err != nil {
 		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
@@ -103,6 +105,7 @@ func HandleRestore() {
 		return
 	}
 
+	cleanupOldTemp("entware-restore-")
 	tmpDir, err := os.MkdirTemp("", "entware-restore-*")
 	if err != nil {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
@@ -179,5 +182,21 @@ func HandleRestore() {
 		})
 	} else {
 		fmt.Println(`{"status":"error","message":"No config files found in backup"}`)
+	}
+}
+
+// cleanupOldTemp удаляет временные папки с указанным префиксом старше 24 часов.
+// Защита: папки, изменённые за последние 24 часа, не трогаем — операция может быть активной.
+func cleanupOldTemp(prefix string) {
+	dirs, _ := filepath.Glob(filepath.Join(os.TempDir(), prefix+"*"))
+	cutoff := time.Now().Add(-24 * time.Hour)
+	for _, d := range dirs {
+		fi, err := os.Stat(d)
+		if err != nil || !fi.IsDir() {
+			continue
+		}
+		if fi.ModTime().Before(cutoff) {
+			os.RemoveAll(d)
+		}
 	}
 }

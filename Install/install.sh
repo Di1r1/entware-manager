@@ -14,18 +14,30 @@ NC=$(printf '\033[0m')
 STEP=0
 ERRORS=""
 
-# --- Лог ---
+# --- Лог (единый файл с ротацией по размеру) ---
 LOG_DIR="/tmp/entware/install-logs"
-LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
+LOG_FILE="$LOG_DIR/install.log"
+MAX_LOG_SIZE=524288
+KEEP_LOG_SIZE=262144
 mkdir -p "$LOG_DIR" 2>&1 || {
 	echo "Ошибка: не удалось создать $LOG_DIR"
 	exit 1
 }
 
+# Миграция: старый формат install-*.log больше не используется
+find "$LOG_DIR" -maxdepth 1 -type f -name 'install-*.log' -delete 2>/dev/null
+
+# Ротация: если install.log разросся — оставить последние KEEP_LOG_SIZE байт
+if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)" -gt "$MAX_LOG_SIZE" ]; then
+	tail -c "$KEEP_LOG_SIZE" "$LOG_FILE" > "$LOG_FILE.tmp" 2>/dev/null && mv -f "$LOG_FILE.tmp" "$LOG_FILE"
+fi
+
 ESC=$(printf '\033')
 log() {
 	echo "$1" | sed "s/${ESC}\[[0-9;]*m//g" >> "$LOG_FILE" 2>/dev/null || true
 }
+echo "" >> "$LOG_FILE" 2>/dev/null || true
+echo "============================================" >> "$LOG_FILE" 2>/dev/null || true
 log "=== Установка Entware Manager ==="
 log "Дата: $(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -73,7 +85,6 @@ backup_file() {
 SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET_DIR="/opt/web_entware"
 BACKUP_DIR="$TARGET_DIR/backup"
-BACKUP_DIR="$TARGET_DIR/backup"
 LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 
@@ -84,6 +95,30 @@ echo ""
 echo "  Лог: $LOG_FILE"
 echo "  Смотреть: tail -f $LOG_FILE"
 echo ""
+
+# ========== 0. ОЧИСТКА СТАРЫХ ВЕРСИЙ ==========
+step "Очистка старых версий"
+# Удаляем артефакты предыдущих установок старше 1 дня (кроме текущей SELF_DIR и ручного бэкапа)
+CLEAN_DIR="/opt/tmp"
+if [ -d "$CLEAN_DIR" ]; then
+	DELETED=0
+	for pattern in 'entware-manager-*.tar.gz' 'entware-manager_*.ipk' 'deploy_old*' 'deploy*'; do
+		for f in "$CLEAN_DIR"/$pattern; do
+			[ -e "$f" ] || continue
+			# не трогаем текущий каталог установки и его содержимое
+			case "$f" in
+				"$SELF_DIR"|"$SELF_DIR"/*) continue ;;
+			esac
+			# чистим только то, что старше 1 дня
+			if [ "$(find "$f" -maxdepth 0 -mtime +1 | wc -l)" -gt 0 ]; then
+				rm -rf "$f" 2>/dev/null && DELETED=$((DELETED + 1)) && ok "  удалено: $f"
+			fi
+		done
+	done
+	[ "$DELETED" -eq 0 ] && ok "старые версии не найдены (или свежие, младше 1 дня)"
+else
+	ok "каталог $CLEAN_DIR не существует — пропуск"
+fi
 
 # ========== 1. ПРОВЕРКА ИСТОЧНИКА ==========
 step "Проверка исходных файлов"

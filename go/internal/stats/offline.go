@@ -31,6 +31,8 @@ func HandleOfflinePrepare() {
 		return
 	}
 
+	cleanupOldTemp("entware-offline-")
+
 	tmpDir, err := os.MkdirTemp("", "entware-offline-")
 	if err != nil {
 		writeJSON(map[string]string{"status": "error", "message": "Не удалось создать временную папку"})
@@ -176,4 +178,20 @@ echo "============================================"
 	}
 
 	return nil
+}
+
+// cleanupOldTemp удаляет временные папки с указанным префиксом старше 24 часов.
+// Защита: папки, изменённые за последние 24 часа, не трогаем — операция может быть активной.
+func cleanupOldTemp(prefix string) {
+	dirs, _ := filepath.Glob(filepath.Join(os.TempDir(), prefix+"*"))
+	cutoff := time.Now().Add(-24 * time.Hour)
+	for _, d := range dirs {
+		fi, err := os.Stat(d)
+		if err != nil || !fi.IsDir() {
+			continue
+		}
+		if fi.ModTime().Before(cutoff) {
+			os.RemoveAll(d)
+		}
+	}
 }
