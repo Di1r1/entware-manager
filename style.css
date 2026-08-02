@@ -83,6 +83,66 @@
     --input-focus: #10b981;
 }
 
+/* Пресет «Бирюза» (бирюзовый) */
+[data-theme="teal"] {
+    --accent: #14b8a6;
+    --accent-dark: #0f766e;
+    --accent-rgb: 20, 184, 166;
+    --accent-gradient: linear-gradient(135deg, #2dd4bf, #0d9488);
+    --accent-soft: rgba(var(--accent-rgb), 0.1);
+    --accent-glow: rgba(var(--accent-rgb), 0.25);
+    --table-header-bg: linear-gradient(135deg, #0d9488, #0f766e);
+    --btn-gradient: linear-gradient(135deg, #0d9488, #0f766e);
+    --btn-shadow: 0 4px 6px -1px rgba(var(--accent-rgb), 0.25);
+    --btn-hover-shadow: 0 10px 15px -3px rgba(var(--accent-rgb), 0.35);
+    --input-focus: #14b8a6;
+}
+
+/* Пресет «Янтарь» (оранжевый) */
+[data-theme="amber"] {
+    --accent: #f59e0b;
+    --accent-dark: #b45309;
+    --accent-rgb: 245, 158, 11;
+    --accent-gradient: linear-gradient(135deg, #fbbf24, #d97706);
+    --accent-soft: rgba(var(--accent-rgb), 0.12);
+    --accent-glow: rgba(var(--accent-rgb), 0.25);
+    --table-header-bg: linear-gradient(135deg, #d97706, #b45309);
+    --btn-gradient: linear-gradient(135deg, #d97706, #b45309);
+    --btn-shadow: 0 4px 6px -1px rgba(var(--accent-rgb), 0.3);
+    --btn-hover-shadow: 0 10px 15px -3px rgba(var(--accent-rgb), 0.4);
+    --input-focus: #f59e0b;
+}
+
+/* Пресет «Рубин» (красный) */
+[data-theme="ruby"] {
+    --accent: #ef4444;
+    --accent-dark: #b91c1c;
+    --accent-rgb: 239, 68, 68;
+    --accent-gradient: linear-gradient(135deg, #f87171, #dc2626);
+    --accent-soft: rgba(var(--accent-rgb), 0.12);
+    --accent-glow: rgba(var(--accent-rgb), 0.25);
+    --table-header-bg: linear-gradient(135deg, #dc2626, #b91c1c);
+    --btn-gradient: linear-gradient(135deg, #dc2626, #b91c1c);
+    --btn-shadow: 0 4px 6px -1px rgba(var(--accent-rgb), 0.3);
+    --btn-hover-shadow: 0 10px 15px -3px rgba(var(--accent-rgb), 0.4);
+    --input-focus: #ef4444;
+}
+
+/* Пресет «Роза» (розовый) */
+[data-theme="rose"] {
+    --accent: #ec4899;
+    --accent-dark: #be185d;
+    --accent-rgb: 236, 72, 153;
+    --accent-gradient: linear-gradient(135deg, #f472b6, #db2777);
+    --accent-soft: rgba(var(--accent-rgb), 0.12);
+    --accent-glow: rgba(var(--accent-rgb), 0.25);
+    --table-header-bg: linear-gradient(135deg, #db2777, #be185d);
+    --btn-gradient: linear-gradient(135deg, #db2777, #be185d);
+    --btn-shadow: 0 4px 6px -1px rgba(var(--accent-rgb), 0.3);
+    --btn-hover-shadow: 0 10px 15px -3px rgba(var(--accent-rgb), 0.4);
+    --input-focus: #ec4899;
+}
+
 html.night {
     --bg-gradient: linear-gradient(135deg, #1a202c, #2d3748);
     --app-bg: rgba(26, 32, 44, 0.95);
@@ -150,6 +210,42 @@ html.night[data-theme="forest"] {
     --table-header-bg: linear-gradient(135deg, #047857, #065f46);
     --btn-gradient: linear-gradient(135deg, #059669, #047857);
     --input-focus: #34d399;
+}
+html.night[data-theme="teal"] {
+    --accent: #2dd4bf;
+    --accent-dark: #0d9488;
+    --accent-rgb: 45, 212, 191;
+    --accent-gradient: linear-gradient(135deg, #5eead4, #2dd4bf);
+    --table-header-bg: linear-gradient(135deg, #0f766e, #115e59);
+    --btn-gradient: linear-gradient(135deg, #0d9488, #0f766e);
+    --input-focus: #2dd4bf;
+}
+html.night[data-theme="amber"] {
+    --accent: #fbbf24;
+    --accent-dark: #d97706;
+    --accent-rgb: 251, 191, 36;
+    --accent-gradient: linear-gradient(135deg, #fde68a, #fbbf24);
+    --table-header-bg: linear-gradient(135deg, #b45309, #92400e);
+    --btn-gradient: linear-gradient(135deg, #d97706, #b45309);
+    --input-focus: #fbbf24;
+}
+html.night[data-theme="ruby"] {
+    --accent: #f87171;
+    --accent-dark: #dc2626;
+    --accent-rgb: 248, 113, 113;
+    --accent-gradient: linear-gradient(135deg, #fca5a5, #f87171);
+    --table-header-bg: linear-gradient(135deg, #b91c1c, #991b1b);
+    --btn-gradient: linear-gradient(135deg, #dc2626, #b91c1c);
+    --input-focus: #f87171;
+}
+html.night[data-theme="rose"] {
+    --accent: #f472b6;
+    --accent-dark: #db2777;
+    --accent-rgb: 244, 114, 182;
+    --accent-gradient: linear-gradient(135deg, #fbcfe8, #f472b6);
+    --table-header-bg: linear-gradient(135deg, #be185d, #9d174d);
+    --btn-gradient: linear-gradient(135deg, #db2777, #be185d);
+    --input-focus: #f472b6;
 }
 
 * {

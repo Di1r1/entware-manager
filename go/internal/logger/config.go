@@ -93,17 +93,21 @@ func showPrettyConfig() {
 <head>
 	<meta charset="UTF-8">
 	<title>Настройки логирования</title>
-	<link rel="stylesheet" href="/entware-manager/style.css">
+	<link rel="stylesheet" href="/entware-manager/style.css?v=23">
+	<script src="/entware-manager/theme.js?v=2"></script>
+	<script>
+		if (window.Theme) Theme.init();
+	</script>
 	<style>
-		body { padding: 20px; background: var(--bg-primary, #1a1a2e); color: var(--text-primary, #e0e0e0); }
-		.config-card { background: var(--card-bg, #16213e); border-radius: 12px; padding: 24px; max-width: 500px; margin: 0 auto; }
-		.config-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color, #333); }
+		body { padding: 20px; background: var(--content-bg); color: var(--text-primary); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+		.config-card { background: var(--modal-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; max-width: 500px; margin: 0 auto; box-shadow: var(--shadow); }
+		.config-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
 		.config-item:last-child { border-bottom: none; }
 		.config-label { font-weight: 500; }
-		.config-value { font-family: monospace; color: var(--accent-color, #8b5cf6); }
+		.config-value { font-family: monospace; color: var(--accent); }
 		.status-on { color: #2ecc71; }
 		.status-off { color: #e74c3c; }
-		.btn-back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: var(--accent-color, #8b5cf6); color: #fff; border-radius: 8px; text-decoration: none; }
+		.btn-back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: var(--btn-gradient); color: var(--btn-text); border-radius: 8px; text-decoration: none; box-shadow: var(--btn-shadow); }
 	</style>
 </head>
 <body>

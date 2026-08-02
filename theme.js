@@ -1,5 +1,5 @@
 // Entware Manager — единый механизм тем (пресеты + день/ночь)
-// Ставит data-theme="violet|ocean|forest" и класс night на <html>.
+// Ставит data-theme="violet|ocean|forest|teal|amber|ruby|rose" и класс night на <html>.
 
 (function() {
     'use strict';
@@ -7,7 +7,11 @@
     var THEMES = [
         { id: 'violet', label: 'Фиолетовый', color: '#8b5cf6' },
         { id: 'ocean',   label: 'Океан',      color: '#0ea5e9' },
-        { id: 'forest',  label: 'Изумруд',    color: '#10b981' }
+        { id: 'forest',  label: 'Изумруд',    color: '#10b981' },
+        { id: 'teal',    label: 'Бирюза',     color: '#14b8a6' },
+        { id: 'amber',   label: 'Янтарь',     color: '#f59e0b' },
+        { id: 'ruby',    label: 'Рубин',      color: '#ef4444' },
+        { id: 'rose',    label: 'Роза',       color: '#ec4899' }
     ];
 
     var STORAGE_KEY = 'entware_theme';

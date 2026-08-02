@@ -36,8 +36,8 @@ func HandleView() {
 <head>
 	<meta charset="UTF-8">
 	<title>Логи Entware Manager</title>
-	<link rel="stylesheet" href="/entware-manager/logger/style.css">
-	<script src="/entware-manager/theme.js?v=1"></script>
+	<link rel="stylesheet" href="/entware-manager/logger/style.css?v=2">
+	<script src="/entware-manager/theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();
 	</script>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Справка Entware Manager</title>
-    <link rel="stylesheet" href="/entware-manager/style.css">
-    <script src="/entware-manager/theme.js?v=1"></script>
+    <link rel="stylesheet" href="/entware-manager/style.css?v=23">
+    <script src="/entware-manager/theme.js?v=2"></script>
     <script src="/entware-manager/modal.js?v=2"></script>
 </head>
 <body>
@@ -694,11 +694,15 @@ cat /tmp/entware/logs/service_events.log<br>
 
     <!-- Пресеты тем -->
     <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg> Темы (пресеты) и ночной режим</h3>
-    <p>Оформление интерфейса настраивается через кнопку темы в правом верхнем углу. Доступны <strong>три цветовых пресета</strong>, выбор которых открывается попапом с цветными кружками у кнопки темы:</p>
+    <p>Оформление интерфейса настраивается через кнопку темы в правом верхнем углу. Доступны <strong>семь цветовых пресетов</strong>, выбор которых открывается попапом с цветными кружками у кнопки темы:</p>
     <ul>
         <li><strong>Фиолетовый (violet)</strong> – пресет по умолчанию, фиолетовый акцент.</li>
         <li><strong>Океан (ocean)</strong> – синий акцент.</li>
         <li><strong>Изумруд (forest)</strong> – зелёный акцент.</li>
+        <li><strong>Бирюза (teal)</strong> – бирюзовый акцент.</li>
+        <li><strong>Янтарь (amber)</strong> – оранжевый акцент.</li>
+        <li><strong>Рубин (ruby)</strong> – красный акцент.</li>
+        <li><strong>Роза (rose)</strong> – розовый акцент.</li>
     </ul>
     <p>Клик по кнопке темы переключает <strong>день/ночь</strong> (тёмный режим), клик по цветному кружку — сменяет пресет. Настройка хранится в <code>localStorage</code> (<code>entware_theme</code>) и синхронизируется между вкладками. Старые значения <code>day</code>/<code>night</code> автоматически мигрируют в пресет violet. Все подстраницы (файловый менеджер, логи, справка, пакеты) наследуют выбранную тему.</p>
 
