@@ -23,6 +23,17 @@ fi
 
 BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_BASENAME="EntwareManager_backup_v${APP_VERSION}_${BACKUP_DATE}"
+
+# Определяем IP для инструкции (BusyBox hostname не поддерживает -I).
+# Предпочитаем адрес LAN (br0/br1), иначе — адрес источника маршрута к 8.8.8.8.
+if /opt/sbin/ip -4 addr show dev br0 scope global 2>/dev/null | grep -q 'inet '; then
+    LAN_IP=$(/opt/sbin/ip -4 addr show dev br0 scope global 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)
+elif /opt/sbin/ip -4 addr show dev br1 scope global 2>/dev/null | grep -q 'inet '; then
+    LAN_IP=$(/opt/sbin/ip -4 addr show dev br1 scope global 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)
+else
+    LAN_IP=$(/opt/sbin/ip -4 route get 8.8.8.8 2>/dev/null | awk -F'src ' '{print $2}' | awk '{print $1; exit}')
+fi
+[ -z "$LAN_IP" ] && LAN_IP=$(hostname -i 2>/dev/null)
 BACKUP_DIR="$BACKUP_ROOT/$BACKUP_BASENAME"
 
 mkdir -p "$BACKUP_ROOT"
@@ -62,11 +73,13 @@ for file in modal.js entware.js monitor.js smart.js style.css index.html icons.s
 done
 
 # 4. Создаём файл с историей изменений
-cat > "$BACKUP_DIR/CHANGELOG_$APP_VERSION.md" << 'CHANGELOG'
+cat > "$BACKUP_DIR/CHANGELOG_$APP_VERSION.md" << EOF_CHANGELOG_HEAD
 # История изменений Entware Manager
 
 ## Версия $APP_VERSION ($APP_DATE)
 
+EOF_CHANGELOG_HEAD
+cat >> "$BACKUP_DIR/CHANGELOG_$APP_VERSION.md" << 'CHANGELOG'
 ### Исправления безопасности
 - **Исправлена критическая проблема**: логирование НЕ отключалось при `enabled=false`
   - Причина: `jq '// true'` трактует `false` как "falsy", возвращая `true`
@@ -135,7 +148,8 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 
 === ШАГ 1. Распакуйте архив ===
    cd /opt/temp/backup
-   tar -xzf $BACKUP_BASENAME.tar.gz
+   # Используйте GNU tar (BusyBox не читает этот формат):
+   /opt/bin/tar -xzf $BACKUP_BASENAME.tar.gz
    cd $BACKUP_BASENAME
 
 === ШАГ 2. Установка зависимостей ===
@@ -189,7 +203,7 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 === ШАГ 8. Проверка работы ===
 Откройте в браузере:
 
-   http://$(hostname -I | awk '{print $1}'):8087/entware-manager/
+   http://$LAN_IP:8087/entware-manager/
 
 Проверьте все вкладки: статистика, пакеты, процессы, терминал, настройки, защита, логи.
 
