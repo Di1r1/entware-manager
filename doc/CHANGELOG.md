@@ -14,6 +14,18 @@
 - **B1 — один jq вместо нескольких**: `watchdog.sh` (8→1 вызов), `service_watchdog.sh` (8→1), `network_watchdog.sh` (3→1) — конфиг читается одним `jq -r` (значения построчно через `read`, с сохранением дефолтов и обработки массивов). Демоны проверены на роутере (старт/работа/стоп).
 - Тесты: `go test ./...`, `go vet`, `sh -n` всех скриптов, ShellCheck — чисто.
 
+### Очистка мусора (RAM + flash)
+
+- **install.sh — единый лог** `install.log` с ротацией по размеру (`>512КБ` → хвост 256КБ) и миграцией старых `install-*.log` (раньше — отдельный файл на каждую установку, копилось до 56 шт).
+- **install.sh — шаг 0 «Очистка старых версий»**: в `/opt/tmp` удаляет старые артефакты деплоя (`entware-manager-*.tar.gz`, `entware-manager_*.ipk`, `deploy*`, `deploy_old*` старше 1 дня) с защитой текущего каталога установки `SELF_DIR` и ручного бэкапа — освобождено ~60МБ flash.
+- **Автоочистка временных папок в RAM**: `prepare_offline.cgi` чистит `/tmp/entware-offline-*`, `backup.cgi` — `/tmp/entware-backup-*` (create) и `/tmp/entware-restore-*` (restore) старше 24ч (общая helper `cleanupOldTemp`). Освобождено ~50МБ RAM (135→87МБ).
+- **`cleanupOldTemp`** в `go/internal/stats/offline.go` и `backup.go` — `/tmp` на роутере это tmpfs (RAM), поэтому застрявшие при обрыве процесса папки не копятся.
+
+### Исправлено
+
+- **`sleep: invalid number 'null'`** в `service_watchdog` (спам в service_events.log): конфиг без поля `interval` → jq возвращал `null` → `sleep null`. jq-дефолты (`.interval // 10` и др.) + fallback-проверки `[ -z "$X" ] || [ "$X" = "null" ]` во всех демонах; `handleWrapperConfigPost` заполняет все недостающие дефолты при POST из UI.
+- **Конфликт PID-паттернов демонов**: `pgrep -f "watchdog\.sh daemon"` матчил и `service_watchdog.sh daemon` (подстрока) — второй демон не стартовал («Already running»), stop убивал оба. Исправлено якорными паттернами `(^|[/ ])watchdog\.sh daemon` и т.п. во всех трёх демонах.
+
 ## 1.07.3 (2026-08-01)
 
 ### Новое
