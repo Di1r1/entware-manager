@@ -122,8 +122,9 @@ func getTopProcesses(n int) []Process {
 			}
 			statStr := string(statData)
 
+			openIdx := strings.Index(statStr, "(")
 			idx := strings.LastIndex(statStr, ")")
-			if idx < 0 {
+			if openIdx < 0 || idx < 0 || idx <= openIdx {
 				continue
 			}
 			fields := strings.Fields(statStr[idx+1:])
@@ -142,7 +143,7 @@ func getTopProcesses(n int) []Process {
 				PID:        pid,
 				TotalTicks: utime + stime,
 				StartTicks: starttime,
-				Comm:       strings.TrimSpace(statStr[1:idx]),
+				Comm:       strings.TrimSpace(statStr[openIdx+1 : idx]),
 				Cmdline:    cmdStr,
 			}
 		}
