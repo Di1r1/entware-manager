@@ -513,6 +513,10 @@ cat /tmp/entware/logs/service_events.log<br>
 2026-04-06 12:02:00 [INFO] [SERVICE] AdGuardHome: auto_restart skipped (cooldown 60s)
     </div>
 
+    <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>🔧 Исправления v1.07.4:</strong> «sleep: invalid number 'null'» — если в конфиге отсутствует поле <code>interval</code>, демон больше не пытается выполнить <code>sleep null</code>: применяются дефолты из jq (<code>.interval // 10</code> и др.) и fallback-проверки. Также добавлены дефолты при сохранении конфига из UI. Исправлен конфликт PID-паттернов: <code>watchdog.sh</code>/<code>service_watchdog.sh</code>/<code>network_watchdog.sh</code> теперь запускаются/останавливаются независимо (раньше <code>pgrep</code> одного демона мог захватить другой).
+    </div>
+
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
@@ -688,9 +692,15 @@ cat /tmp/entware/logs/service_events.log<br>
     </h3>
     <p>Эта страница.</p>
 
-    <!-- Ночной режим -->
-    <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg> Ночной режим (тёмная тема)</h3>
-    <p>В правом верхнем углу есть кнопка <strong><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-sun"/></svg> / <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg></strong>, которая переключает тему оформления. Выбор сохраняется в <code>localStorage</code> браузера.</p>
+    <!-- Пресеты тем -->
+    <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-moon"/></svg> Темы (пресеты) и ночной режим</h3>
+    <p>Оформление интерфейса настраивается через кнопку темы в правом верхнем углу. Доступны <strong>три цветовых пресета</strong>, выбор которых открывается попапом с цветными кружками у кнопки темы:</p>
+    <ul>
+        <li><strong>Фиолетовый (violet)</strong> – пресет по умолчанию, фиолетовый акцент.</li>
+        <li><strong>Океан (ocean)</strong> – синий акцент.</li>
+        <li><strong>Изумруд (forest)</strong> – зелёный акцент.</li>
+    </ul>
+    <p>Клик по кнопке темы переключает <strong>день/ночь</strong> (тёмный режим), клик по цветному кружку — сменяет пресет. Настройка хранится в <code>localStorage</code> (<code>entware_theme</code>) и синхронизируется между вкладками. Старые значения <code>day</code>/<code>night</code> автоматически мигрируют в пресет violet. Все подстраницы (файловый менеджер, логи, справка, пакеты) наследуют выбранную тему.</p>
 
     <!-- Уведомления -->
     <h3>
@@ -707,6 +717,92 @@ cat /tmp/entware/logs/service_events.log<br>
         <li><strong>Тост-уведомления</strong> – всплывающие сообщения, исчезающие через несколько секунд, используются для быстрых уведомлений (сохранение ссылок, управление ttyd и т.п.).</li>
     </ul>
     <p>Все уведомления оформлены в едином стиле и поддерживают тёмную тему.</p>
+
+    <!-- Проверка системы -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-shield"/>
+            </svg>
+        </span>
+        Проверка системы
+    </h3>
+    <p>Кнопка <strong>«Проверка системы»</strong> в сайдбаре открывает модальное окно с полной диагностикой готовности роутера к работе с Entware Manager. Проверяются:</p>
+    <ul>
+        <li><strong>Базовые компоненты</strong> – наличие <code>opkg</code> и запущенность <code>lighttpd</code>.</li>
+        <li><strong>Утилиты BusyBox</strong> — <code>sed</code>, <code>awk</code>, <code>grep</code>, <code>ps</code>.</li>
+        <li><strong>Пакеты Entware</strong> — <code>cron</code> (установлен/запущен), <code>jq</code>, сетевые утилиты <code>ip</code> (ip-full), <code>curl</code>, <code>bash</code>, <code>brctl</code> (bridge-utils).
+            Для сети требуется и <code>ip</code>, и <code>brctl</code> (нужен для <code>brctl show</code> в карточке сети).</li>
+        <li><strong>Статус разделов</strong> — сводка по группам зависимостей (ok / partial / неудовлетворительно).</li>
+        <li><strong>Проверка синтаксиса скриптов</strong> — каждый <code>.cgi</code>/<code>.sh</code> через <code>sh -n</code>, со статусом по файлу и общим счётчиком ошибок.</li>
+        <li><strong>Рекомендации</strong> — при неполной готовности подсказываются команды установки недостающих пакетов (<code>opkg install cron/jq/curl/bash/bridge-utils/ip-full</code>).</li>
+    </ul>
+    <div class="command-block">
+# Проверка зависимостей вручную:<br>
+/opt/web_entware/cgi-bin/check_deps.cgi | jq .          # зависимости (JSON)<br>
+/opt/web_entware/cgi-bin/check_syntax.cgi | jq .        # синтаксис .cgi/.sh (JSON)
+    </div>
+
+    <!-- Офлайн-установка -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-download"/>
+            </svg>
+        </span>
+        Офлайн-установка
+    </h3>
+    <p>Для установки на роутерах <strong>без доступа к интернету</strong> предусмотрен офлайн-пакет. Кнопка <strong>«Подготовить офлайн-пакет»</strong> находится в <strong>Настройки → Резервное копирование и восстановление</strong>.</p>
+    <p>При подготовке менеджер скачивает с доступного устройства сам Entware Manager и <strong>все 15 зависимостей</strong> одним архивом <code>entware-manager-offline.tar.gz</code> (~30–60 сек).</p>
+    <div class="command-block">
+# На целевом роутере (без интернета):<br>
+tar xzf entware-manager-offline.tar.gz<br>
+cd entware-manager-offline<br>
+sh install-offline.sh            # автономная установка
+    </div>
+    <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>📌</strong> Endpoint: <code>prepare_offline.cgi</code>. Временная папка подготовки (<code>/tmp/entware-offline-*</code>) автоматически удаляется при следующем запуске, если старше 24ч (см. раздел «Очистка мусора»).
+    </div>
+
+    <!-- Кеширование -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-update"/>
+            </svg>
+        </span>
+        Кеширование тяжёлых ответов (оптимизация v1.07.4)
+    </h3>
+    <p>Для слабых роутеров тяжёлые CGI-ответы кешируются во временной папке <code>/tmp/entware/cache/</code> (запись атомарна temp+rename, безопасна при конкурентных запросах). Цель — снизить задержку UI при многократном обращении к одним данным:</p>
+    <ul>
+        <li><strong>stats.cgi</strong> — кеш списков <code>opkg list</code> / <code>opkg list-installed</code> на <strong>60 секунд</strong>: 180→98 мс (−46%).</li>
+        <li><strong>network_stats.cgi</strong> — кеш JSON на <strong>5 секунд</strong>: 50→38 мс (−31%). Кнопка обновления карточки сети шлёт <code>?fresh=1</code> для принудительного пересчёта.</li>
+        <li><strong>update_check.cgi</strong> — кеш проверки обновлений на <strong>60 секунд</strong>: 470→79 мс (−83%).</li>
+    </ul>
+    <p>Кэш opkg <strong>инвалидируется</strong> при успешной установке/удалении/обновлении пакета — счётчики и списки всегда актуальны.</p>
+    <div class="command-block">
+# Содержимое кэша:<br>
+ls -la /tmp/entware/cache/<br>
+# Принудительный пересчёт карточки сети:<br>
+curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
+    </div>
+
+    <!-- Очистка мусора -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-trash"/>
+            </svg>
+        </span>
+        Очистка мусора (RAM + flash, v1.07.4)
+    </h3>
+    <p>На слабых роутерах накапливался мусор во временной памяти (<code>/tmp</code> — это tmpfs, т.е. RAM) и на флеш-накопителе. В v1.07.4 добавлена автоматическая очистка:</p>
+    <ul>
+        <li><strong>Единый лог установки</strong> — теперь все установки пишут в один файл <code>install.log</code> с ротацией по размеру (при &gt;512КБ остаются последние 256КБ). Раньше на каждую установку создавался отдельный <code>install-TIMESTAMP.log</code> и копилось до 56 файлов.</li>
+        <li><strong>Авто-очистка старых версий при установке</strong> — шаг 0: в <code>/opt/tmp</code> удаляются архивы/папки прошлых деплоев (<code>entware-manager-*.tar.gz</code>, <code>*.ipk</code>, <code>deploy*</code>) старше 1 дня, с защитой текущего каталога установки и ручного бэкапа.</li>
+        <li><strong>Авто-очистка временных папок RAM</strong> — <code>prepare_offline.cgi</code> чистит <code>/tmp/entware-offline-*</code>, <code>backup.cgi</code> — <code>/tmp/entware-backup-*</code> (create) и <code>/tmp/entware-restore-*</code> (restore) старше 24 ч. Застрявшие после обрыва процесса папки больше не «висят» в RAM навсегда.</li>
+    </ul>
+    <p>Итог оптимизации: <strong>/tmp освобождено ~48–50 МБ</strong> (135→87 МБ), флеш — ~60 МБ.</p>
 
     <!-- Резервное копирование -->
     <h3>
