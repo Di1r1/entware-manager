@@ -10,6 +10,7 @@ const NETWORK = {
         this.renderHTML();
         await this.loadData();
         this.attachEvents();
+        this.enableTableSorting();
     },
 
     renderHTML() {
@@ -245,6 +246,30 @@ const NETWORK = {
                     switchNetworkTab(btn, tab);
                 };
             }
+        });
+    },
+
+    enableTableSorting() {
+        const tables = [
+            { tbody: 'interfaces-tbody', types: ['string', 'string', 'ip', 'string', 'string', 'speed'] },
+            { tbody: 'routes-tbody', types: ['ip', 'ip', 'string', 'number'] },
+            { tbody: 'arp-tbody', types: ['ip', 'string', 'string', 'string', 'string'] },
+        ];
+
+        tables.forEach(cfg => {
+            const tbody = document.getElementById(cfg.tbody);
+            if (!tbody) return;
+            const table = tbody.closest('table');
+            if (!table || table.dataset.sortable) return;
+            table.dataset.sortable = 'true';
+
+            const headers = table.querySelectorAll('thead th');
+            headers.forEach((th, idx) => {
+                th.style.cursor = 'pointer';
+                th.addEventListener('click', () => {
+                    sortTable(table, idx, cfg.types[idx] || 'string');
+                });
+            });
         });
     },
 

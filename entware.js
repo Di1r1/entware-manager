@@ -1723,6 +1723,19 @@ function parseSize(str) {
     return val * units[unit];
 }
 
+function parseSpeed(str) {
+    if (!str) return 0;
+    const m = str.trim().match(/^([\d.]+)/);
+    return m ? parseFloat(m[1]) : 0;
+}
+
+function parseIP(str) {
+    if (!str) return [];
+    const parts = str.trim().split('.');
+    if (parts.length !== 4) return parts.map(p => parseInt(p) || 0);
+    return parts.map(p => parseInt(p) || 0);
+}
+
 function sortTable(table, colIndex, dataType = 'string') {
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -1736,9 +1749,26 @@ function sortTable(table, colIndex, dataType = 'string') {
         if (dataType === 'size') {
             aVal = parseSize(aVal);
             bVal = parseSize(bVal);
-        } else if (dataType === 'percent') {
-            aVal = parseFloat(aVal);
-            bVal = parseFloat(bVal);
+        } else if (dataType === 'percent' || dataType === 'number') {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+        } else if (dataType === 'speed') {
+            aVal = parseSpeed(aVal);
+            bVal = parseSpeed(bVal);
+        } else if (dataType === 'ip') {
+            const aIP = parseIP(aVal);
+            const bIP = parseIP(bVal);
+            if (sortOrder === 'asc') {
+                for (let i = 0; i < 4; i++) {
+                    if (aIP[i] !== bIP[i]) return (aIP[i] || 0) - (bIP[i] || 0);
+                }
+                return 0;
+            } else {
+                for (let i = 0; i < 4; i++) {
+                    if (aIP[i] !== bIP[i]) return (bIP[i] || 0) - (aIP[i] || 0);
+                }
+                return 0;
+            }
         }
 
         if (sortOrder === 'asc') {
