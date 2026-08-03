@@ -1893,8 +1893,12 @@ html.night .theme-toggle-edge:hover {
     align-items: center;
 }
 .sidebar.collapsed .theme-popup {
-    right: 30px;
+    left: 50%;
+    right: auto;
     top: 45px;
+    transform: translateX(-50%);
+    flex-direction: column;
+    gap: 8px;
 }
 .theme-popup.show {
     display: flex;
