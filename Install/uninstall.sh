@@ -45,18 +45,30 @@ echo ""
 echo "${BOLD}[2/7] Остановка lighttpd${NC}"
 echo "────────────────────────────────────────"
 
-if pgrep -f lighttpd >/dev/null; then
-	PID=$(pgrep -f lighttpd | head -1)
-	if /opt/etc/init.d/S80lighttpd stop 2>/dev/null; then
+LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
+LIGHTTPD_PID=""
+if [ -f "$LIGHTTPD_PIDF" ]; then
+	LIGHTTPD_PID=$(cat "$LIGHTTPD_PIDF" 2>/dev/null | tr -d ' ')
+	[ -d "/proc/$LIGHTTPD_PID" ] || LIGHTTPD_PID=""
+fi
+
+# Если есть наш init-скрипт — останавливаем ТОЛЬКО свой экземпляр (по pid-файлу),
+# не трогая чужой lighttpd (например zapret). Иначе — стандартный S80lighttpd.
+EWM_INIT="/opt/etc/init.d/S80entware-lighttpd"
+if [ -n "$LIGHTTPD_PID" ] || [ -x "$EWM_INIT" ]; then
+	if [ -x "$EWM_INIT" ]; then
+		$EWM_INIT stop 2>/dev/null
 		sleep 1
-		if pgrep -f lighttpd >/dev/null; then
-			warn "lighttpd (PID $PID) не остановился, убиваю..."
-			kill "$PID" 2>/dev/null
-		fi
-		ok "lighttpd остановлен"
-	else
-		warn "Не удалось остановить lighttpd"
+		ok "lighttpd остановлен (S80entware-lighttpd)"
+	elif [ -n "$LIGHTTPD_PID" ]; then
+		kill "$LIGHTTPD_PID" 2>/dev/null
+		sleep 1
+		rm -f "$LIGHTTPD_PIDF" 2>/dev/null
+		ok "lighttpd остановлен (pid $LIGHTTPD_PID)"
 	fi
+elif /opt/etc/init.d/S80lighttpd stop 2>/dev/null; then
+	sleep 1
+	ok "lighttpd остановлен"
 else
 	warn "lighttpd не запущен"
 fi
@@ -85,6 +97,10 @@ echo "────────────────────────�
 # Удаляем наш отдельный конфиг
 rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
 ok "90-entware-manager.conf удалён"
+
+# Наш init-скрипт (устанавливается только при чужом lighttpd)
+rm -f "/opt/etc/init.d/S80entware-lighttpd" 2>/dev/null
+ok "S80entware-lighttpd удалён"
 
 # 30-cgi.conf — удаляем (восстанавливать нечего, это наш файл)
 rm -f "$CGI_CONF" 2>/dev/null
@@ -125,14 +141,17 @@ echo ""
 echo "${BOLD}[7/8] Запуск lighttpd${NC}"
 echo "────────────────────────────────────────"
 
-if [ -f /opt/etc/init.d/S80lighttpd ]; then
+if [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
+	if /opt/etc/init.d/S80entware-lighttpd start 2>/dev/null; then
+		sleep 1
+		ok "lighttpd запущен (S80entware-lighttpd)"
+	else
+		warn "Не удалось запустить lighttpd (S80entware-lighttpd)"
+	fi
+elif [ -f /opt/etc/init.d/S80lighttpd ]; then
 	if /opt/etc/init.d/S80lighttpd start 2>/dev/null; then
 		sleep 1
-		if pgrep -f lighttpd >/dev/null; then
-			ok "lighttpd запущен"
-		else
-			warn "lighttpd не запустился"
-		fi
+		ok "lighttpd запущен"
 	else
 		warn "Не удалось запустить lighttpd"
 	fi

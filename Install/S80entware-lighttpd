@@ -1,0 +1,154 @@
+#!/bin/sh
+# ==============================================
+# Entware Manager: init-скрипт для собственного lighttpd
+#
+# Зачем нужен:
+#   Стандартный /opt/etc/init.d/S80lighttpd (через rc.func) управляет
+#   процессом по ИМЕНИ "lighttpd" через pidof/killall. Если на роутере
+#   есть ЧУЖОЙ lighttpd (например, веб-панель zapret на 8088), то:
+#     - start: rc.func видит уже запущенный lighttpd -> "already running",
+#       и наш lighttpd (порт 8087) НЕ поднимается;
+#     - stop/restart: killall lighttpd убивает ВСЕ экземпляры, включая чужой.
+#
+# Этот скрипт управляет ТОЛЬКО своим экземпляром по pid-файлу
+# /opt/var/run/lighttpd.pid и реальному ответу порта 8087, не трогая
+# чужие lighttpd. Устанавливается install.sh только когда обнаружен
+# другой lighttpd на роутере.
+# ==============================================
+
+ENABLED=yes
+
+DESC="entware-manager lighttpd"
+LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
+PIDFILE="/opt/var/run/lighttpd.pid"
+PORT=8087
+URL_CHECK="http://127.0.0.1:$PORT/entware-cgi/version.cgi"
+
+LIGHTTPD_BIN=""
+for c in /opt/sbin/lighttpd /usr/sbin/lighttpd /usr/bin/lighttpd; do
+	[ -x "$c" ] && { LIGHTTPD_BIN="$c"; break; }
+done
+[ -z "$LIGHTTPD_BIN" ] && LIGHTTPD_BIN="lighttpd"
+
+ansi_green="\033[1;32m"
+ansi_red="\033[1;31m"
+ansi_white="\033[1;37m"
+ansi_std="\033[m"
+
+# --- Вспомогательные функции ---
+
+# Живой ли PID из pid-файла (и это lighttpd)?
+pid_from_file() {
+	[ -f "$PIDFILE" ] || return 1
+	pid=$(cat "$PIDFILE" 2>/dev/null | tr -d ' ')
+	[ -n "$pid" ] && [ -d "/proc/$pid" ] || return 1
+	cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+	echo "$cmdline" | grep -q "lighttpd" || return 1
+	echo "$pid"
+	return 0
+}
+
+# Отвечает ли порт 8087?
+check_port() {
+	command -v curl >/dev/null 2>&1 || return 1
+	[ "$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "$URL_CHECK" 2>/dev/null)" = "200" ]
+}
+
+# Жив ли какой-либо PID из списка (печатает PID и возвращает 0, если живой)
+any_pid_alive() {
+	for p in $1; do
+		[ -n "$p" ] && [ -d "/proc/$p" ] || continue
+		echo "$p"
+		return 0
+	done
+	return 1
+}
+
+start() {
+	# Уже слушаем 8087 -> не трогаем
+	if check_port; then
+		echo -e "$ansi_white Starting $DESC... $ansi_std            $ansi_green already serving (port $PORT). $ansi_std"
+		return 0
+	fi
+	if pid_from_file >/dev/null; then
+		echo -e "$ansi_white Starting $DESC... $ansi_std            $ansi_green already running. $ansi_std"
+		return 0
+	fi
+
+	echo -e -n "$ansi_white Starting $DESC... $ansi_std"
+	$LIGHTTPD_BIN -f "$LIGHTTPD_CONF" > /dev/null 2>&1 &
+
+	COUNTER=0
+	LIMIT=10
+	while [ $COUNTER -le $LIMIT ]; do
+		if check_port || pid_from_file >/dev/null; then
+			echo -e "            $ansi_green done. $ansi_std"
+			return 0
+		fi
+		sleep 1
+		COUNTER=$((COUNTER + 1))
+	done
+
+	echo -e "            $ansi_red failed. $ansi_std"
+	echo "      Для проверки: $LIGHTTPD_BIN -t -f $LIGHTTPD_CONF"
+	echo "      Лог:          find /opt/var/log/lighttpd/ -name '*.log' -exec tail -5 {} \;"
+	return 1
+}
+
+stop() {
+	echo -e -n "$ansi_white Stopping $DESC... $ansi_std"
+	if check_port || [ -n "$(pid_from_file)" ]; then
+		pid=$(pid_from_file)
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null
+	fi
+
+	COUNTER=0
+	LIMIT=10
+	while [ $COUNTER -le $LIMIT ]; do
+		if check_port || pid_from_file >/dev/null; then
+			sleep 1
+			COUNTER=$((COUNTER + 1))
+		else
+			break
+		fi
+	done
+
+	rm -f "$PIDFILE" 2>/dev/null
+
+	if check_port || pid_from_file >/dev/null; then
+		echo -e "            $ansi_red failed. $ansi_std"
+		return 1
+	fi
+	echo -e "            $ansi_green done. $ansi_std"
+	return 0
+}
+
+restart() {
+	stop
+	start
+}
+
+check() {
+	if check_port; then
+		echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_green alive (port $PORT). $ansi_std"
+		return 0
+	fi
+	pid=$(pid_from_file)
+	if [ -n "$pid" ]; then
+		echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_green alive (pid $pid). $ansi_std"
+		return 0
+	fi
+	echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_red dead. $ansi_std"
+	return 1
+}
+
+case "$1" in
+	start) start ;;
+	stop|kill) stop ;;
+	restart) restart ;;
+	check|status) check ;;
+	*)
+		echo "Usage: $0 (start|stop|restart|check|status)"
+		exit 1
+		;;
+esac

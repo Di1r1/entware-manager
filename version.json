@@ -1,7 +1,11 @@
 {
-  "version": "1.07.7",
-  "date": "2026-08-02",
+  "version": "1.07.8",
+  "date": "2026-08-03",
   "changes": [
+    "1.07.8: сосуществование с чужим lighttpd (zapret и т.п.) — новый init-скрипт S80entware-lighttpd (управление по pid-файлу), install.sh ставит его только при обнаружении чужого светоида, не трогая его",
+    "1.07.8: install.sh — безопасный запуск lighttpd только через S80lighttpd start (убран restart/killall, который убивал чужой lighttpd), проверка порта 8087 по HTTP вместо pgrep по имени",
+    "1.07.8: service_watchdog.sh — для lighttpd источник истины pid-файл /opt/var/run/lighttpd.pid (а не pgrep, который путал с чужим lighttpd); авто-рестарт через S80entware-lighttpd",
+    "1.07.8: uninstall.sh/backup.sh/UI (action.go) — остановка/перезапуск/управление lighttpd через S80entware-lighttpd при его наличии",
     "1.07.7: новые цветовые пресеты темы — Бирюза (teal), Янтарь (amber), Рубин (ruby), Роза (rose) — итого 7 пресетов (violet/ocean/forest/teal/amber/ruby/rose)",
     "1.07.7: страница настроек логгера (config.cgi?pretty) теперь наследует тему — подключён theme.js, CSS переведён на общие переменные",
     "1.07.7: кэш-версии стилей подняты (style.css v=23, theme.js v=2, logger/style.css v=2) во всех страницах",

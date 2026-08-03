@@ -13,6 +13,7 @@ TECH_SPEC.md
 BUILD.md
 Install/Install.txt
 doc/NETWORK_PROMPT.md
+doc/NETDATA_MANUAL.md
 
 # User-specific config files
 links.json
@@ -28,3 +29,4 @@ control
 postinst
 prerm
 doc/IPK_BUILD.md
+forum_post.md

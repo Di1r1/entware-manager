@@ -198,7 +198,11 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
    chmod 755 /opt/web_entware/backup.sh
 
 === ШАГ 7. Перезапуск lighttpd ===
-   /opt/etc/init.d/S80lighttpd restart
+   if [ -x /opt/etc/init.d/S80entware-lighttpd ]; then
+      /opt/etc/init.d/S80entware-lighttpd restart
+   else
+      /opt/etc/init.d/S80lighttpd restart
+   fi
 
 === ШАГ 8. Проверка работы ===
 Откройте в браузере:

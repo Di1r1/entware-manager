@@ -80,7 +80,33 @@ clean_old_pids() {
 
 get_service_pids() {
     service="$1"
-    
+
+    # Для lighttpd — pid-файл менеджера является единственным источником
+    # истины, чтобы не путать с чужим lighttpd (например, веб-панель zapret
+    # на 8088). Если PID из файла мёртв — возвращаем пусто (сервис упал),
+    # а НЕ фолбэчимся на pgrep, который вернул бы чужой процесс.
+    if [ "$service" = "lighttpd" ] && [ -f "/opt/var/run/lighttpd.pid" ]; then
+        pid=$(cat "/opt/var/run/lighttpd.pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+            cmdline=$(cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ')
+            if echo "$cmdline" | grep -qi "lighttpd"; then
+                state=$(cat "/proc/$pid/status" 2>/dev/null | grep "State:" | awk '{print $2}')
+                case "$state" in
+                    Z) ;;
+                    *) echo "$pid"; return ;;
+                esac
+            fi
+        fi
+        return
+    fi
+
+    # pid-файла нет. Если на роутере есть наш S80entware-lighttpd (т.е.
+    # живёт чужой lighttpd), то любой найденный pgrep-ом процесс — чужой,
+    # а наш сервис не запущен: возвращаем пусто.
+    if [ "$service" = "lighttpd" ] && [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
+        return
+    fi
+
     # Маппинг: имя файла службы -> возможные имена процессов
     case "$service" in
         cron|crond)
@@ -229,7 +255,13 @@ check_service() {
                 
                 if [ "$can_restart" = "true" ]; then
                     local init_script
-                    init_script=$(ls /opt/etc/init.d/S* 2>/dev/null | grep -iE "/S[0-9]+${service}" | head -1)
+                    # Для lighttpd используем наш init-скрипт (pid-файл), чтобы не убивать
+                    # чужой lighttpd (zapret на 8088) через killall штатного S80lighttpd.
+                    if [ "$service" = "lighttpd" ] && [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
+                        init_script="/opt/etc/init.d/S80entware-lighttpd"
+                    else
+                        init_script=$(ls /opt/etc/init.d/S* 2>/dev/null | grep -iE "/S[0-9]+${service}" | head -1)
+                    fi
                     if [ -n "$init_script" ] && [ -x "$init_script" ]; then
                         echo "$now" > "$lock_file"
                         log_message "INFO" "[service] $service: auto_restart attempting..."

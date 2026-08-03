@@ -71,6 +71,20 @@ warn() {
 	log "  ⚠ $1"
 }
 
+# --- Проверка что менеджер отвечает по HTTP ---
+lighttpd_http_ok() {
+	local port="${1:-8087}"
+	command -v curl >/dev/null 2>&1 || return 1
+	local code
+	code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://127.0.0.1:$port/entware-cgi/version.cgi" 2>/dev/null)
+	[ "$code" = "200" ]
+}
+
+# --- Есть ли хоть какой-то процесс lighttpd (в т.ч. чужой, напр. zapret) ---
+any_lighttpd_running() {
+	command -v pgrep >/dev/null 2>&1 && pgrep -f lighttpd >/dev/null 2>&1
+}
+
 backup_file() {
 	local src="$1"
 	local label="$2"
@@ -411,22 +425,62 @@ ok "Права доступа установлены"
 # ========== 8. ЗАПУСК LIGHTTPD ==========
 step "Запуск lighttpd"
 
-if /opt/etc/init.d/S80lighttpd status 2>/dev/null | grep -q running; then
-	ok "lighttpd уже запущен"
-	echo "  → перезапуск..."
-	/opt/etc/init.d/S80lighttpd restart 2>&1
-	sleep 1
-else
+# Собственный init-скрипт (управление по pid-файлу) — устанавливается
+# только если на роутере есть ЧУЖОЙ lighttpd (zapret и т.п.):
+# стандартный S80lighttpd в этом случае не поднимает наш порт 8087.
+EWM_INIT="/opt/etc/init.d/S80entware-lighttpd"
+
+# 8.1. Пробуем стандартный путь (чистый роутер: только наш lighttpd).
+# НЕ используем S80lighttpd restart: его rc.func делает killall lighttpd,
+# что убило бы ЧУЖОЙ lighttpd (zapret). start безопасен — при чужом
+# lighttpd он вернёт "already running" и ничего не тронет.
+if lighttpd_http_ok 8087; then
+	ok "lighttpd уже отвечает на 127.0.0.1:8087"
+elif [ -f /opt/etc/init.d/S80lighttpd ]; then
 	echo "  → запуск..."
-	/opt/etc/init.d/S80lighttpd start 2>&1
+	/opt/etc/init.d/S80lighttpd start 2>&1 | sed 's/^/    /'
+	sleep 1
+elif [ -x /opt/sbin/lighttpd ]; then
+	warn "S80lighttpd не найден, попробую запустить напрямую"
+	/opt/sbin/lighttpd -f "$LIGHTTPD_CONF" >/dev/null 2>&1 &
 	sleep 1
 fi
 
-if pgrep -f lighttpd >/dev/null; then
-	ok "lighttpd работает"
+# 8.2. Проверяем реальный ответ порта 8087
+if lighttpd_http_ok 8087; then
+	ok "lighttpd отвечает на 127.0.0.1:8087 (HTTP 200)"
 else
-	fail "lighttpd не запустился"
-	echo "    Для диагностики: lighttpd -D -f $LIGHTTPD_CONF"
+	# Порт не отвечает. Если при этом есть ЧУЖОЙ lighttpd — стандартный
+	# S80lighttpd не смог поднять наш экземпляр. Ставим свой init-скрипт.
+	if any_lighttpd_running; then
+		warn "Обнаружен другой lighttpd — порт 8087 не поднят стандартным скриптом"
+		echo "  → устанавливаю S80entware-lighttpd (управление по pid-файлу)..."
+		if [ -f "$SELF_DIR/Install/S80entware-lighttpd" ]; then
+			cp -a "$SELF_DIR/Install/S80entware-lighttpd" "$EWM_INIT"
+			chmod 755 "$EWM_INIT"
+			if [ -f "$EWM_INIT" ]; then
+				ok "S80entware-lighttpd установлен"
+			else
+				fail "не удалось скопировать S80entware-lighttpd"
+			fi
+		else
+			warn "шаблон S80entware-lighttpd не найден в $SELF_DIR/Install/"
+		fi
+		if [ -f "$EWM_INIT" ]; then
+			echo "  → запуск через S80entware-lighttpd..."
+			$EWM_INIT start 2>&1 | sed 's/^/    /'
+		fi
+	else
+		fail "lighttpd не запустился (порт 8087 не отвечает)"
+		echo "    Для диагностики: lighttpd -D -f $LIGHTTPD_CONF"
+	fi
+fi
+
+if lighttpd_http_ok 8087; then
+	ok "менеджер доступен по HTTP"
+else
+	fail "менеджер не доступен по HTTP (127.0.0.1:8087)"
+	echo "    Для диагностики: tail -20 /opt/var/log/lighttpd/error.log"
 fi
 
 # ========== 9. ПРОВЕРКА УСТАНОВКИ ==========
@@ -532,27 +586,34 @@ for f in index.html style.css entware.js theme.js icons.svg version.json; do
 	fi
 done
 
-# Проверка lighttpd
+# Проверка lighttpd (по pid-файлу, не по имени процесса — чтобы не путать с чужим lighttpd)
 echo "  ${BOLD}Lighttpd:${NC}"
-if pgrep -f lighttpd >/dev/null; then
-	PID=$(pgrep -f lighttpd | head -1)
-	ok "  lighttpd (PID $PID)"
+LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
+LIGHTTPD_PID=""
+if [ -f "$LIGHTTPD_PIDF" ]; then
+	LIGHTTPD_PID=$(cat "$LIGHTTPD_PIDF" 2>/dev/null | tr -d ' ')
+	[ -d "/proc/$LIGHTTPD_PID" ] || LIGHTTPD_PID=""
+fi
+if [ -n "$LIGHTTPD_PID" ]; then
+	ok "  lighttpd (PID $LIGHTTPD_PID)"
+elif lighttpd_http_ok 8087; then
+	ok "  lighttpd работает (порт 8087, pid-файл отсутствует)"
 else
 	CHECK_ERRS="$CHECK_ERRS
-    ✗ lighttpd не запущен"
-	fail "  lighttpd не запущен"
+    ✗ lighttpd не отвечает на 8087"
+	fail "  lighttpd не отвечает на 8087"
 fi
 
-# Проверка HTTP-ответа
+# Проверка HTTP-ответа (фикс бага двойного «000»: -w уже даёт "000" при ошибке, без || echo)
 LIGHTTPD_PORT=$(grep 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null | grep -o '[0-9]*' | head -1)
 LIGHTTPD_PORT=${LIGHTTPD_PORT:-8087}
 echo "  ${BOLD}HTTP-ответ:${NC}"
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi" 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" = "200" ]; then
+if lighttpd_http_ok "$LIGHTTPD_PORT"; then
 	ok "  HTTP 200 (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
 else
+	HTTP_CODE="000"
 	CHECK_ERRS="$CHECK_ERRS
-    ✗ HTTP $HTTP_CODE"
+    ✗ HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
 	fail "  HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
 fi
 
