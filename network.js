@@ -134,9 +134,9 @@ const NETWORK = {
                             <td><strong>${escapeHtml(iface.name)}</strong></td>
                             <td><span class="${iface.state === 'UP' ? 'stat-value-normal' : 'stat-value-critical'}">${escapeHtml(iface.state)}</span></td>
                             <td>${escapeHtml(iface.ip)}</td>
-                            <td><code>${escapeHtml(iface.mac)}</code></td>
-                            <td>${escapeHtml(iface.type)}${iface.ssid ? ` (${escapeHtml(iface.ssid)})` : ''}</td>
-                            <td>${escapeHtml(iface.speed)}</td>
+                            <td><code>${escapeHtml(iface.mac || '-')}</code></td>
+                            <td>${escapeHtml(iface.type || '-')}${iface.ssid ? ` (${escapeHtml(iface.ssid)})` : ''}</td>
+                            <td>${escapeHtml(iface.speed || '-')}</td>
                         </tr>
                     `).join('');
                 } else {

@@ -1,7 +1,10 @@
 {
-  "version": "1.07.8",
+  "version": "1.07.9",
   "date": "2026-08-03",
   "changes": [
+    "1.07.9: Сеть → ARP: колонка «Имя» заполняется из RCI Keenetic (/rci/show/ip/hotspot/host) — приоритет name, иначе hostname; таймаут 3с, при недоступности RCI — пустые имена",
+    "1.07.9: Сеть → Интерфейсы: добавлены MAC, Тип, Скорость, SSID — MAC и тип из ip link, скорость из /sys/class/net/*/speed, SSID для Wi-Fi из RCI (по MAC точки доступа); нет больше undefined",
+    "1.07.9: Сеть → Интерфейсы: тип интерфейса переведён в читаемый (Ethernet, Wi-Fi, Loopback, PPP, IPIP/SIT/GRE/IPv6-туннель)",
     "1.07.8: сосуществование с чужим lighttpd (zapret и т.п.) — новый init-скрипт S80entware-lighttpd (управление по pid-файлу), install.sh ставит его только при обнаружении чужого светоида, не трогая его",
     "1.07.8: install.sh — безопасный запуск lighttpd только через S80lighttpd start (убран restart/killall, который убивал чужой lighttpd), проверка порта 8087 по HTTP вместо pgrep по имени",
     "1.07.8: service_watchdog.sh — для lighttpd источник истины pid-файл /opt/var/run/lighttpd.pid (а не pgrep, который путал с чужим lighttpd); авто-рестарт через S80entware-lighttpd",
