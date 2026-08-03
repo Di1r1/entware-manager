@@ -62,7 +62,7 @@ const MONITOR = {
                         <span class="toggle-slider"></span>
                         <span>Включить защиту (глобально)</span>
                     </label>
-                    <div><label>Интервал сканирования (сек): <select id="settings-interval">${this.generateOptionsList([10,30,60,120,300])}</select></label></div>
+                    <div><label>Интервал сканирования (сек): <select id="settings-interval" class="settings-input">${this.generateOptionsList([10,30,60,120,300])}</select></label></div>
                     <hr>
                     <h4>Индивидуальный режим</h4>
                     <label class="monitor-toggle" title="Включить индивидуальный режим">
@@ -70,10 +70,10 @@ const MONITOR = {
                         <span class="toggle-slider"></span>
                         <span>Включить</span>
                     </label>
-                    <div><label>Порог CPU (%): <select id="settings-individual-cpu">${this.generateOptions(10, 100, 10)}</select></label></div>
-                    <div><label>Время непрерывной нагрузки (мин): <select id="settings-individual-time">${this.generateOptionsList([1,2,3,5,10,15,20,30])}</select></label></div>
+                    <div><label>Порог CPU (%): <select id="settings-individual-cpu" class="settings-input">${this.generateOptions(10, 100, 10)}</select></label></div>
+                    <div><label>Время непрерывной нагрузки (мин): <select id="settings-individual-time" class="settings-input">${this.generateOptionsList([1,2,3,5,10,15,20,30])}</select></label></div>
                     <hr>
-                    <div><label>Игнорируемые процессы (имена, через запятую): <input type="text" id="settings-ignore" style="width:100%"></label></div>
+                    <div><label>Игнорируемые процессы (имена, через запятую): <input type="text" id="settings-ignore" class="settings-input"></label></div>
                     <label class="monitor-toggle" title="Исключать ps из мониторинга">
                         <input type="checkbox" id="settings-ignore-ps" style="display: none;">
                         <span class="toggle-slider"></span>
@@ -81,7 +81,7 @@ const MONITOR = {
                     </label>
                     <hr>
                     <h4>Дополнительные настройки</h4>
-                    <div><label>Максимум процессов для сканирования: <input type="number" id="settings-max-processes" min="10" max="1000" value="200" style="width:80px;"> (10-1000)</label></div>
+                    <div><label>Максимум процессов для сканирования: <input type="number" id="settings-max-processes" min="10" max="1000" value="200" class="settings-input" style="width:80px;"> (10-1000)</label></div>
                     <button type="submit" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg> Сохранить настройки</button>
                 </form>
             </div>

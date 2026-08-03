@@ -395,7 +395,7 @@ body {
     transform: translateX(20px);
 }
 #network-tabs .tab-toggle .toggle-slider {
-    background-color: #ccc;
+    background-color: var(--input-border);
     border-radius: 24px;
     transition: 0.3s;
 }
@@ -410,7 +410,7 @@ body {
     display: inline-block;
     width: 44px;
     height: 24px;
-    background-color: #ccc;
+    background-color: var(--input-border);
     border-radius: 24px;
     transition: 0.3s;
 }
@@ -446,7 +446,7 @@ body {
     display: inline-block;
     width: 44px;
     height: 24px;
-    background-color: #ccc;
+    background-color: var(--input-border);
     border-radius: 24px;
     transition: 0.3s;
 }
@@ -909,6 +909,28 @@ input[type="submit"]:disabled,
     font-weight: 600;
     text-align: center;
     font-size: 1rem;
+}
+
+.settings-input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+select.settings-input {
+    width: auto;
+    min-width: 120px;
+}
+input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+.settings-input:focus {
+    outline: none;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--input-focus) 20%, transparent);
 }
 
 .stats-grid {

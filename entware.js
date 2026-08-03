@@ -891,7 +891,7 @@ async function saveLinks(links) {
 }
 
 function renderIconSelect(selectedId) {
-    let html = `<select class="link-icon-select" style="width: 100%; padding: 6px; border-radius: 6px;">`;
+    let html = `<select class="link-icon-select settings-input" style="max-width: 150px; padding: 6px;">`;
     iconList.forEach(icon => {
         const selected = (icon.id === selectedId) ? 'selected' : '';
         html += `<option value="${icon.id}" ${selected}>${icon.name}</option>`;
@@ -1054,11 +1054,11 @@ async function renderSettingsTab() {
             <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '', 'htop')" id="htop-restart">Перезапустить</button>
           </div>
           <div style="flex:1;"><h4>Терминал (порт 9089)</h4>
-            <select id="termMode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
+            <select id="termMode" class="settings-input" style="margin-bottom: 8px;">
               <option value="entware">Консоль Entware</option>
               <option value="telnet">Консоль роутера (telnet)</option>
             </select>
-            <input type="password" id="termPass" placeholder="Пароль (опционально)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <input type="password" id="termPass" class="settings-input" placeholder="Пароль (опционально)">
             <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-start">Запустить</button>
             <button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '', '')" id="term-stop">Остановить</button>
             <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-restart">Перезапустить</button>
@@ -1088,8 +1088,8 @@ async function renderSettingsTab() {
                         ${renderIconSelect(iconId)}
                     </div>
                  </td>
-                 <td><input type="text" class="link-name" value="${escapeHtml(link.name)}" style="width:100%;"></td>
-                 <td><input type="url" class="link-url" value="${escapeHtml(link.url)}" style="width:100%;"></td>
+                 <td><input type="text" class="link-name settings-input" value="${escapeHtml(link.name)}"></td>
+                 <td><input type="url" class="link-url settings-input" value="${escapeHtml(link.url)}"></td>
                  <td>
                     <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg></button>
                     <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-default"/></svg></button>
@@ -1324,11 +1324,11 @@ async function loadAuthConfig() {
             <div id="filemgrPassFields" style="display: ${enabled ? 'block' : 'none'}; margin: 10px 0;">
                 <div style="margin-bottom: 8px;">
                     <label>Новый пароль (мин. 4 символа):</label>
-                    <input type="password" id="filemgrPass" placeholder="Оставьте пустым чтобы не менять" style="width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="password" id="filemgrPass" class="settings-input" style="max-width: 300px;" placeholder="Оставьте пустым чтобы не менять">
                 </div>
                 <div style="margin-bottom: 8px;">
                     <label>Подтверждение:</label>
-                    <input type="password" id="filemgrPassConfirm" placeholder="Повторите пароль" style="width: 100%; max-width: 300px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="password" id="filemgrPassConfirm" class="settings-input" style="max-width: 300px;" placeholder="Повторите пароль">
                 </div>
                 <button class="packages-delete-btn" style="background:#4a5568;" onclick="saveAuthConfig()">Сохранить</button>
                 <span id="filemgrAuthStatus" style="margin-left: 10px;"></span>
@@ -1383,8 +1383,8 @@ function addLinkRow() {
                 ${renderIconSelect('link')}
             </div>
           </td>
-          <td><input type="text" class="link-name" value="Новая ссылка" style="width:100%;"></td>
-          <td><input type="url" class="link-url" value="http://" style="width:100%;"></td>
+          <td><input type="text" class="link-name settings-input" value="Новая ссылка"></td>
+          <td><input type="url" class="link-url settings-input" value="http://"></td>
           <td>
             <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg></button>
             <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-default"/></svg></button>
