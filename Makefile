@@ -50,10 +50,10 @@ version:
 archives: deploy
 	@echo "=== Сборка per-arch tar.gz ==="
 	@for arch in $(ARCHS); do \
-		rm -rf "/tmp/deploy-$$arch" && \
-		cp -a "$(MAKEFILE_DIR)/deploy" "/tmp/deploy-$$arch" && \
-		find "/tmp/deploy-$$arch/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$$arch" -exec rm -rf {} + && \
-		tar -czf "$(MAKEFILE_DIR)/entware-manager-$$arch.tar.gz" -C /tmp "deploy-$$arch" && \
+		rm -rf "/tmp/deploy" && \
+		cp -a "$(MAKEFILE_DIR)/deploy" "/tmp/deploy" && \
+		find "/tmp/deploy/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$$arch" -exec rm -rf {} + && \
+		tar -czf "$(MAKEFILE_DIR)/entware-manager-$$arch.tar.gz" -C /tmp "deploy" && \
 		echo "  ✓ entware-manager-$$arch.tar.gz"; \
 	done
 
