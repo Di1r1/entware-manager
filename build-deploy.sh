@@ -71,7 +71,7 @@ for i in "${!ARCH_NAMES[@]}"; do
     echo ""
     echo "  [$arch_name] (GOARCH=$goarch${goflags:+ $goflags})"
 
-    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart; do
+    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server; do
         echo -n "    $cmd... "
         out="$DEPLOY_DIR/cgi-bin/go/$dir_name/$cmd"
         env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" "./cmd/$cmd/" 2>&1

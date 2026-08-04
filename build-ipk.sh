@@ -72,6 +72,12 @@ LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
 
+# Останавливаем entware-server (если был)
+if [ -x /opt/etc/init.d/S80entware-server ]; then
+	/opt/etc/init.d/S80entware-server stop 2>/dev/null
+fi
+rm -f /opt/etc/init.d/S80entware-server 2>/dev/null
+
 # Удаляем наши конфиги
 rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
 rm -f "$CGI_CONF" 2>/dev/null

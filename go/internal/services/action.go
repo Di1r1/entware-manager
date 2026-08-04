@@ -102,17 +102,9 @@ func HandleServiceAction() {
 }
 
 func findScript(name string) string {
-	// Для lighttpd предпочитаем наш init-скрипт (управление по pid-файлу),
-	// чтобы stop/restart не убивали чужой lighttpd (например zapret на 8088).
 	// Имя службы в UI приходит как "80lighttpd" (префикс S + номер) — отрезаем цифры.
-	base := strings.TrimLeft(name, "0123456789")
-	if base == "lighttpd" {
-		candidate := filepath.Join(servicesDir, "S80entware-lighttpd")
-		fi, err := os.Stat(candidate)
-		if err == nil && fi.Mode().IsRegular() && (fi.Mode().Perm()&0111) != 0 {
-			return candidate
-		}
-	}
+	// Спец-случай для S80entware-lighttpd убран: собственный lighttpd больше не
+	// используется (режим entware-server), остаётся только стандартный S80lighttpd.
 	for _, prefix := range []string{"S", "K", ""} {
 		candidate := filepath.Join(servicesDir, prefix+name)
 		fi, err := os.Stat(candidate)

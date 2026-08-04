@@ -845,7 +845,7 @@ function getDefaultLinks() {
     const h = BASE_URL;
     return [
         { name: 'Роутер', url: h, icon: 'router' },
-        { name: 'Entware Manager', url: h + ':8087/entware-manager/', icon: 'package' },
+        { name: 'Entware Manager', url: '/entware-manager/', icon: 'package' },
         { name: 'AdGuard Home', url: h + ':3000', icon: 'shield' },
         { name: 'Transmission', url: h + ':9091', icon: 'download' },
         { name: 'Netdata', url: h + ':19999', icon: 'chart' },

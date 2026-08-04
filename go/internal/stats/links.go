@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -34,16 +35,33 @@ func HandleLinksLoad() {
 
 	routerIP := getRouterIP()
 	links := make([]Link, len(defaultLinks))
+	port := getWebPort()
 	for i, l := range defaultLinks {
 		links[i] = Link{
 			Name: l.Name,
 			Icon: l.Icon,
-			URL:  strings.ReplaceAll(l.URL, "192.168.3.1", routerIP),
+			URL:  strings.ReplaceAll(strings.ReplaceAll(l.URL, "192.168.3.1", routerIP), ":8087/entware-manager/", ":"+port+"/entware-manager/"),
 		}
 	}
 
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(links)
+}
+
+// getWebPort читает порт из server_config.json (режим entware-server);
+// для lighttpd-режима остаётся 8087.
+func getWebPort() string {
+	data, err := os.ReadFile("/opt/web_entware/server_config.json")
+	if err != nil {
+		return "8087"
+	}
+	var cfg struct {
+		Port int `json:"port"`
+	}
+	if json.Unmarshal(data, &cfg) == nil && cfg.Port > 0 && cfg.Port < 65536 {
+		return strconv.Itoa(cfg.Port)
+	}
+	return "8087"
 }
 
 func getRouterIP() string {

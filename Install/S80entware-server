@@ -1,71 +1,65 @@
 #!/bin/sh
+# shellcheck disable=SC3037,SC2034,SC2155,SC2086,SC2046,SC3043
 # ==============================================
-# Entware Manager: init-скрипт для собственного lighttpd
+# Entware Manager: init-скрипт собственного Go-сервера
 #
-# Зачем нужен:
-#   Стандартный /opt/etc/init.d/S80lighttpd (через rc.func) управляет
-#   процессом по ИМЕНИ "lighttpd" через pidof/killall. Если на роутере
-#   есть ЧУЖОЙ lighttpd (например, веб-панель zapret на 8088), то:
-#     - start: rc.func видит уже запущенный lighttpd -> "already running",
-#       и наш lighttpd (порт 8087) НЕ поднимается;
-#     - stop/restart: killall lighttpd убивает ВСЕ экземпляры, включая чужой.
+# Используется на роутерах, где есть сторонний lighttpd
+# (nfqws/zapret и т.п.) — общий lighttpd-конфиг конфликтует по
+# server.port, поэтому менеджер отдаёт entware-server сам:
+#   статика (белый список) + CGI через subprocess-glue.
+# Порт берётся из /opt/web_entware/server_config.json ({"port": 8087}).
 #
-# Этот скрипт управляет ТОЛЬКО своим экземпляром по pid-файлу
-# /opt/var/run/lighttpd.pid и реальному ответу порта 8087, не трогая
-# чужие lighttpd. Устанавливается install.sh только когда обнаружен
-# другой lighttpd на роутере.
+# ВНИМАНИЕ: только ash/POSIX, никакого bash/pkill — на роутере их нет.
 # ==============================================
 
 ENABLED=yes
 
-DESC="entware-manager lighttpd"
-LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
-PIDFILE="/opt/var/run/lighttpd.pid"
-PORT=8087
-URL_CHECK="http://127.0.0.1:$PORT/entware-cgi/version.cgi"
-
-LIGHTTPD_BIN=""
-for c in /opt/sbin/lighttpd /usr/sbin/lighttpd /usr/bin/lighttpd; do
-	[ -x "$c" ] && { LIGHTTPD_BIN="$c"; break; }
+DESC="entware-manager server"
+SERVER_BIN=""
+for c in /opt/web_entware/cgi-bin/go/entware-server \
+         /opt/web_entware/cgi-bin/go/*/entware-server; do
+	[ -x "$c" ] && { SERVER_BIN="$c"; break; }
 done
-[ -z "$LIGHTTPD_BIN" ] && LIGHTTPD_BIN="lighttpd"
+[ -z "$SERVER_BIN" ] && SERVER_BIN="/opt/web_entware/cgi-bin/go/entware-server"
+
+PIDFILE="/opt/var/run/entware-server.pid"
+LOGFILE="/opt/var/log/entware/server.log"
+CONFIG_FILE="/opt/web_entware/server_config.json"
+
+# --- Порт из конфига (по умолчанию 8087) ---
+PORT=8087
+if command -v jq >/dev/null 2>&1 && [ -f "$CONFIG_FILE" ]; then
+	p=$(jq -r '.port // 8087' "$CONFIG_FILE" 2>/dev/null)
+	case "$p" in
+		''|*[!0-9]*) ;;
+		*) [ "$p" -gt 0 ] 2>/dev/null && [ "$p" -lt 65536 ] && PORT=$p ;;
+	esac
+fi
+URL_CHECK="http://127.0.0.1:$PORT/entware-cgi/version.cgi"
 
 ansi_green="\033[1;32m"
 ansi_red="\033[1;31m"
 ansi_white="\033[1;37m"
 ansi_std="\033[m"
 
-# --- Вспомогательные функции ---
-
-# Живой ли PID из pid-файла (и это lighttpd)?
+# --- Живой ли PID из pid-файла (и это entware-server)? ---
 pid_from_file() {
 	[ -f "$PIDFILE" ] || return 1
 	pid=$(cat "$PIDFILE" 2>/dev/null | tr -d ' ')
 	[ -n "$pid" ] && [ -d "/proc/$pid" ] || return 1
 	cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
-	echo "$cmdline" | grep -q "lighttpd" || return 1
+	echo "$cmdline" | grep -q "entware-server" || return 1
 	echo "$pid"
 	return 0
 }
 
-# Отвечает ли порт 8087?
+# --- Отвечает ли порт? ---
 check_port() {
 	command -v curl >/dev/null 2>&1 || return 1
 	[ "$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "$URL_CHECK" 2>/dev/null)" = "200" ]
 }
 
-# Жив ли какой-либо PID из списка (печатает PID и возвращает 0, если живой)
-any_pid_alive() {
-	for p in $1; do
-		[ -n "$p" ] && [ -d "/proc/$p" ] || continue
-		echo "$p"
-		return 0
-	done
-	return 1
-}
-
 start() {
-	# Уже слушаем 8087 -> не трогаем
 	if check_port; then
 		echo -e "$ansi_white Starting $DESC... $ansi_std            $ansi_green already serving (port $PORT). $ansi_std"
 		return 0
@@ -75,8 +69,9 @@ start() {
 		return 0
 	fi
 
+	mkdir -p /opt/var/log/entware 2>/dev/null
 	echo -e -n "$ansi_white Starting $DESC... $ansi_std"
-	$LIGHTTPD_BIN -f "$LIGHTTPD_CONF" > /dev/null 2>&1 &
+	$SERVER_BIN >/dev/null 2>>"$LOGFILE" &
 
 	COUNTER=0
 	LIMIT=10
@@ -90,14 +85,13 @@ start() {
 	done
 
 	echo -e "            $ansi_red failed. $ansi_std"
-	echo "      Для проверки: $LIGHTTPD_BIN -t -f $LIGHTTPD_CONF"
-	echo "      Лог:          find /opt/var/log/lighttpd/ -name '*.log' -exec tail -5 {} \;"
+	echo "      Лог: $LOGFILE"
 	return 1
 }
 
 stop() {
 	echo -e -n "$ansi_white Stopping $DESC... $ansi_std"
-	if check_port || [ -n "$(pid_from_file)" ]; then
+	if check_port || pid_from_file >/dev/null; then
 		pid=$(pid_from_file)
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null
 	fi

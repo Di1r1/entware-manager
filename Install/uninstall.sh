@@ -40,10 +40,24 @@ else
 	warn "Установка не найдена ($TARGET_DIR отсутствует)"
 fi
 
-# ========== 2. ОСТАНОВКА LIGHTTPD ==========
+# ========== 2. ОСТАНОВКА СЕРВИСОВ ==========
 echo ""
-echo "${BOLD}[2/7] Остановка lighttpd${NC}"
+echo "${BOLD}[2/8] Остановка сервисов${NC}"
 echo "────────────────────────────────────────"
+
+# Останавливаем наш entware-server (если установлен)
+EWM_SERVER_INIT="/opt/etc/init.d/S80entware-server"
+EWM_SERVER_RAN=0
+if [ -x "$EWM_SERVER_INIT" ]; then
+	if $EWM_SERVER_INIT stop 2>/dev/null; then
+		EWM_SERVER_RAN=1
+		ok "entware-server остановлен (S80entware-server)"
+	else
+		warn "Не удалось остановить entware-server"
+	fi
+else
+	warn "entware-server не установлен (S80entware-server нет)"
+fi
 
 LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
 LIGHTTPD_PID=""
@@ -55,7 +69,10 @@ fi
 # Если есть наш init-скрипт — останавливаем ТОЛЬКО свой экземпляр (по pid-файлу),
 # не трогая чужой lighttpd (например zapret). Иначе — стандартный S80lighttpd.
 EWM_INIT="/opt/etc/init.d/S80entware-lighttpd"
-if [ -n "$LIGHTTPD_PID" ] || [ -x "$EWM_INIT" ]; then
+if [ "$EWM_SERVER_RAN" = "1" ]; then
+	# Режим entware-server: lighttpd не наш, чужой (nfqws/zapret) не трогаем
+	warn "lighttpd не трогаю (режим entware-server)"
+elif [ -n "$LIGHTTPD_PID" ] || [ -x "$EWM_INIT" ]; then
 	if [ -x "$EWM_INIT" ]; then
 		$EWM_INIT stop 2>/dev/null
 		sleep 1
@@ -98,7 +115,11 @@ echo "────────────────────────�
 rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
 ok "90-entware-manager.conf удалён"
 
-# Наш init-скрипт (устанавливается только при чужом lighttpd)
+# Наш init-скрипт entware-server
+rm -f "/opt/etc/init.d/S80entware-server" 2>/dev/null
+ok "S80entware-server удалён"
+
+# Старый init-скрипт entware-lighttpd
 rm -f "/opt/etc/init.d/S80entware-lighttpd" 2>/dev/null
 ok "S80entware-lighttpd удалён"
 
@@ -141,7 +162,10 @@ echo ""
 echo "${BOLD}[7/8] Запуск lighttpd${NC}"
 echo "────────────────────────────────────────"
 
-if [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
+if [ "$EWM_SERVER_RAN" = "1" ]; then
+	# Режим entware-server: светтитхтd чужой, ничего не перезапускаем
+	warn "lighttpd не перезапускаю (режим entware-server, он не наш)"
+elif [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
 	if /opt/etc/init.d/S80entware-lighttpd start 2>/dev/null; then
 		sleep 1
 		ok "lighttpd запущен (S80entware-lighttpd)"

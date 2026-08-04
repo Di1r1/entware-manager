@@ -2,6 +2,28 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.08.0 (2026-08-04)
+
+### Новое
+
+- **Условный переход веб-сервера.** Если на роутере обнаружен **сторонний lighttpd** (nfqws/zapret и т.п.) или общий `/opt/etc/lighttpd/lighttpd.conf` битый (не проходит `lighttpd -t`), менеджер автоматически переключается на **собственный Go-сервер `entware-server`**. Чистый роутер продолжает работать как раньше — через общий lighttpd. Конфликт `server.port` (дубликат `= 8087` поверх `:= 8088` nfqws) устранён полностью: в режиме Go-сервера общий lighttpd **не трогается вообще**.
+- **Новый бинарник `entware-server` (8-й).** Собственный HTTP-сервер:
+  - статика `/entware-manager/` — только из **белого списка** файлов (`index.html`, `*.js`, `*.css`, `icons.svg`, `version.json`, `lib/utils.js`, `menu/menu.js`, `logger/system_sources.json`). Конфиги (`network_config.json`, `server_config.json`) и скрипты наружу **не отдаются** (раньше по `/entware-manager/` был доступен весь каталог);
+  - `/entware-cgi/…` — повторяет маппинг `go.cgi` (включая подкаталоги `network/`, `logger/`, `monitor/`, `service_watchdog/`) и исполняет существующие бинарники **subprocess-glue** с CGI-окружением (`REQUEST_METHOD`, `QUERY_STRING`, `REMOTE_ADDR`, тело запроса → stdin), ответ прокидывается в HTTP;
+  - порт из `/opt/web_entware/server_config.json` (`{"port": 8087}`, по умолчанию 8087), таймаут CGI-запроса настраивается (`"timeout"`, по умолчанию 300 с);
+  - graceful shutdown по SIGTERM, pid-файл `/opt/var/run/entware-server.pid`.
+- **Новый init-скрипт `S80entware-server`** (чистый ash/POSIX, без `pkill` — на роутере его нет): start/stop/restart/check по pid-файлу и HTTP-проверке порта.
+
+### Изменено
+
+- **`install.sh`** — новый шаг «Определение режима веб-сервера»: 8087 уже отвечает → как есть; запущен любой сторонний lighttpd (а 8087 молчит) → режим `go`; иначе `lighttpd -t` валиден → режим `lighttpd`, битый → режим `go`.
+- **Миграция**: при переходе на режим `go` удаляются наши старые lighttpd-артефакты (`conf.d/90-entware-manager.conf`, наш `30-cgi.conf`, `S80entware-lighttpd`), чтобы чужой lighttpd снова был валиден (веб-морда nfqws/zapret оживает).
+- **`uninstall.sh`** — останавливает и удаляет `entware-server`; в режиме Go-сервера чужой lighttpd не трогается.
+- **`build-deploy.sh`** — `entware-server` входит в сборку всех архитектур (8-й бинарник).
+- **`go/internal/services/action.go`** — убран спец-случай `S80entware-lighttpd` (собственный lighttpd больше не используется).
+- **`links.go`** — ссылка «Entware Manager» использует порт из `server_config.json` (порт-независимость).
+- **`entware.js`** — ссылка «Entware Manager» в списке ссылок теперь относительная (работает на любом порту).
+
 ## 1.07.11 (2026-08-04)
 
 ### Исправлено

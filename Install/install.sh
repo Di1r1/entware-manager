@@ -81,8 +81,20 @@ lighttpd_http_ok() {
 }
 
 # --- Есть ли хоть какой-то процесс lighttpd (в т.ч. чужой, напр. zapret) ---
+# Матч по ИМЕНИ процесса (без -f), иначе pgrep -f ловит любой шелл, в cmdline
+# которого встречается слово "lighttpd" (в т.ч. сам install.sh/grep).
 any_lighttpd_running() {
-	command -v pgrep >/dev/null 2>&1 && pgrep -f lighttpd >/dev/null 2>&1
+	command -v pgrep >/dev/null 2>&1 && pgrep lighttpd >/dev/null 2>&1
+}
+
+# --- Жив ли наш entware-server (по pid-файлу + имени процесса) ---
+entware_server_running() {
+	[ -f /opt/var/run/entware-server.pid ] || return 1
+	pid=$(cat /opt/var/run/entware-server.pid 2>/dev/null | tr -d ' ')
+	[ -n "$pid" ] && [ -d "/proc/$pid" ] || return 1
+	cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+	echo "$cmdline" | grep -q "entware-server" || return 1
+	return 0
 }
 
 backup_file() {
@@ -224,10 +236,44 @@ else
 	warn "Нечего бэкапить — чистая установка"
 fi
 
-# ========== 4. НАСТРОЙКА LIGHTTPD ==========
-step "Настройка lighttpd"
+# ========== 4. ОПРЕДЕЛЕНИЕ РЕЖИМА ВЕБ-СЕРВЕРА ==========
+# Режимы:
+#   lighttpd — чистый роутер: общий lighttpd (как раньше).
+#   go       — есть сторонний lighttpd (nfqws/zapret) или общий конфиг
+#              битый: ставим собственный entware-server на 8087.
+step "Определение режима веб-сервера"
+
+WEB_PATH="lighttpd"
+if lighttpd_http_ok 8087; then
+	# 8087 уже отвечает — определяем, кто именно
+	if entware_server_running; then
+		WEB_PATH="go"
+		ok "entware-server уже отвечает на 127.0.0.1:8087"
+	else
+		WEB_PATH="lighttpd"
+		ok "менеджер уже отвечает на 127.0.0.1:8087 (lighttpd)"
+	fi
+elif any_lighttpd_running; then
+	WEB_PATH="go"
+	ok "обнаружен сторонний lighttpd — использую собственный entware-server"
+elif [ -f "$LIGHTTPD_CONF" ] && lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
+	WEB_PATH="lighttpd"
+	ok "общий lighttpd валиден — использую его"
+else
+	WEB_PATH="go"
+	warn "общий lighttpd недоступен — использую собственный entware-server"
+fi
+echo "  ${YELLOW}→ режим: $WEB_PATH${NC}"
+
+# Удаляем старый init-скрипт entware-lighttpd (заменён entware-server).
+rm -f /opt/etc/init.d/S80entware-lighttpd 2>/dev/null
+
+# ========== 5. НАСТРОЙКА ВЕБ-СЕРВЕРА ==========
+step "Настройка веб-сервера"
 
 LIGHTTPD_ERR=""
+
+if [ "$WEB_PATH" = "lighttpd" ]; then
 
 if [ ! -f "/opt/lib/lighttpd/mod_cgi.so" ]; then
 	echo "  → mod_cgi.so нет, устанавливаю lighttpd-mod-cgi..."
@@ -320,6 +366,43 @@ fi
 
 if [ -n "$LIGHTTPD_ERR" ]; then
 	fail "Проблемы с lighttpd:$LIGHTTPD_ERR"
+fi
+
+else
+	# ---- Режим "go": свой entware-server, общий lighttpd не трогаем ----
+
+	# Миграция: убираем наши старые lighttpd-артефакты, чтобы чужой
+	# lighttpd (nfqws/zapret) снова был валиден.
+	if [ -f /opt/etc/lighttpd/conf.d/90-entware-manager.conf ]; then
+		rm -f /opt/etc/lighttpd/conf.d/90-entware-manager.conf 2>/dev/null
+		ok "удалён наш 90-entware-manager.conf (конфликт server.port устранён)"
+	else
+		ok "наших lighttpd-конфигов не найдено"
+	fi
+	if [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ] && grep -q '\.cgi.*=>.*"/bin/sh"' /opt/etc/lighttpd/conf.d/30-cgi.conf 2>/dev/null; then
+		rm -f /opt/etc/lighttpd/conf.d/30-cgi.conf 2>/dev/null
+		ok "удалён наш 30-cgi.conf"
+	fi
+
+	# Конфиг сервера: порт (создаём только если нет — не перетираем настройку пользователя)
+	SERVER_CFG="$TARGET_DIR/server_config.json"
+	if [ ! -f "$SERVER_CFG" ]; then
+		echo '{"port":8087}' > "$SERVER_CFG"
+		ok "server_config.json создан (порт 8087)"
+	else
+		SERVER_PORT=$(jq -r '.port // 8087' "$SERVER_CFG" 2>/dev/null || echo 8087)
+		ok "server_config.json уже есть (порт $SERVER_PORT)"
+	fi
+
+	# Проверяем, что порт не занят чужим сервисом
+	SERVER_PORT=$(jq -r '.port // 8087' "$SERVER_CFG" 2>/dev/null || echo 8087)
+	if [ -n "$SERVER_PORT" ] && command -v ss >/dev/null 2>&1; then
+		if ss -tln 2>/dev/null | grep -q ":$SERVER_PORT "; then
+			warn "порт $SERVER_PORT уже занят — поменяй .port в $SERVER_CFG"
+		fi
+	fi
+
+	ok "общий lighttpd не тронут — конфликтов с nfqws/zapret нет"
 fi
 
 # ========== 5. КОПИРОВАНИЕ ФАЙЛОВ ==========
@@ -422,57 +505,41 @@ find "$TARGET_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o
 find "$TARGET_DIR/cgi-bin" -type d -exec chmod 755 {} \; 2>/dev/null
 ok "Права доступа установлены"
 
-# ========== 8. ЗАПУСК LIGHTTPD ==========
-step "Запуск lighttpd"
+# ========== 8. ЗАПУСК ВЕБ-СЕРВЕРА ==========
+step "Запуск веб-сервера"
 
-# Собственный init-скрипт (управление по pid-файлу) — устанавливается
-# только если на роутере есть ЧУЖОЙ lighttpd (zapret и т.п.):
-# стандартный S80lighttpd в этом случае не поднимает наш порт 8087.
-EWM_INIT="/opt/etc/init.d/S80entware-lighttpd"
-
-# 8.1. Пробуем стандартный путь (чистый роутер: только наш lighttpd).
-# НЕ используем S80lighttpd restart: его rc.func делает killall lighttpd,
-# что убило бы ЧУЖОЙ lighttpd (zapret). start безопасен — при чужом
-# lighttpd он вернёт "already running" и ничего не тронет.
-if lighttpd_http_ok 8087; then
-	ok "lighttpd уже отвечает на 127.0.0.1:8087"
-elif [ -f /opt/etc/init.d/S80lighttpd ]; then
-	echo "  → запуск..."
-	/opt/etc/init.d/S80lighttpd start 2>&1 | sed 's/^/    /'
-	sleep 1
-elif [ -x /opt/sbin/lighttpd ]; then
-	warn "S80lighttpd не найден, попробую запустить напрямую"
-	/opt/sbin/lighttpd -f "$LIGHTTPD_CONF" >/dev/null 2>&1 &
-	sleep 1
-fi
-
-# 8.2. Проверяем реальный ответ порта 8087
-if lighttpd_http_ok 8087; then
-	ok "lighttpd отвечает на 127.0.0.1:8087 (HTTP 200)"
+if [ "$WEB_PATH" = "lighttpd" ]; then
+	# --- Режим lighttpd: чистый роутер, стандартный путь ---
+	# Если раньше стоял entware-server (обратный переход) — убираем его
+	if [ -x /opt/etc/init.d/S80entware-server ]; then
+		/opt/etc/init.d/S80entware-server stop 2>/dev/null
+		rm -f /opt/etc/init.d/S80entware-server 2>/dev/null
+		ok "предыдущий entware-server остановлен и удалён"
+	fi
+	if lighttpd_http_ok 8087; then
+		ok "lighttpd уже отвечает на 127.0.0.1:8087"
+	elif [ -f /opt/etc/init.d/S80lighttpd ]; then
+		echo "  → запуск..."
+		/opt/etc/init.d/S80lighttpd start 2>&1 | sed 's/^/    /'
+		sleep 1
+	elif [ -x /opt/sbin/lighttpd ]; then
+		warn "S80lighttpd не найден, попробую запустить напрямую"
+		/opt/sbin/lighttpd -f "$LIGHTTPD_CONF" >/dev/null 2>&1 &
+		sleep 1
+	fi
 else
-	# Порт не отвечает. Если при этом есть ЧУЖОЙ lighttpd — стандартный
-	# S80lighttpd не смог поднять наш экземпляр. Ставим свой init-скрипт.
-	if any_lighttpd_running; then
-		warn "Обнаружен другой lighttpd — порт 8087 не поднят стандартным скриптом"
-		echo "  → устанавливаю S80entware-lighttpd (управление по pid-файлу)..."
-		if [ -f "$SELF_DIR/Install/S80entware-lighttpd" ]; then
-			cp -a "$SELF_DIR/Install/S80entware-lighttpd" "$EWM_INIT"
-			chmod 755 "$EWM_INIT"
-			if [ -f "$EWM_INIT" ]; then
-				ok "S80entware-lighttpd установлен"
-			else
-				fail "не удалось скопировать S80entware-lighttpd"
-			fi
-		else
-			warn "шаблон S80entware-lighttpd не найден в $SELF_DIR/Install/"
-		fi
-		if [ -f "$EWM_INIT" ]; then
-			echo "  → запуск через S80entware-lighttpd..."
-			$EWM_INIT start 2>&1 | sed 's/^/    /'
-		fi
+	# --- Режим go: собственный entware-server ---
+	EWM_SERVER_INIT="/opt/etc/init.d/S80entware-server"
+	if [ -f "$SELF_DIR/Install/S80entware-server" ]; then
+		cp -a "$SELF_DIR/Install/S80entware-server" "$EWM_SERVER_INIT"
+		chmod 755 "$EWM_SERVER_INIT"
+		ok "S80entware-server установлен"
 	else
-		fail "lighttpd не запустился (порт 8087 не отвечает)"
-		echo "    Для диагностики: lighttpd -D -f $LIGHTTPD_CONF"
+		warn "шаблон S80entware-server не найден в $SELF_DIR/Install/"
+	fi
+	if [ -f "$EWM_SERVER_INIT" ]; then
+		echo "  → запуск entware-server..."
+		$EWM_SERVER_INIT start 2>&1 | sed 's/^/    /'
 	fi
 fi
 
@@ -480,7 +547,7 @@ if lighttpd_http_ok 8087; then
 	ok "менеджер доступен по HTTP"
 else
 	fail "менеджер не доступен по HTTP (127.0.0.1:8087)"
-	echo "    Для диагностики: tail -20 /opt/var/log/lighttpd/error.log"
+	echo "    Для диагностики: tail -20 /opt/var/log/entware/server.log"
 fi
 
 # ========== 9. ПРОВЕРКА УСТАНОВКИ ==========
@@ -586,35 +653,58 @@ for f in index.html style.css entware.js theme.js icons.svg version.json; do
 	fi
 done
 
-# Проверка lighttpd (по pid-файлу, не по имени процесса — чтобы не путать с чужим lighttpd)
-echo "  ${BOLD}Lighttpd:${NC}"
-LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
-LIGHTTPD_PID=""
-if [ -f "$LIGHTTPD_PIDF" ]; then
-	LIGHTTPD_PID=$(cat "$LIGHTTPD_PIDF" 2>/dev/null | tr -d ' ')
-	[ -d "/proc/$LIGHTTPD_PID" ] || LIGHTTPD_PID=""
-fi
-if [ -n "$LIGHTTPD_PID" ]; then
-	ok "  lighttpd (PID $LIGHTTPD_PID)"
-elif lighttpd_http_ok 8087; then
-	ok "  lighttpd работает (порт 8087, pid-файл отсутствует)"
-else
-	CHECK_ERRS="$CHECK_ERRS
+# Проверка веб-сервера (по pid-файлу, не по имени процесса — чтобы не путаться с чужим lighttpd)
+if [ "$WEB_PATH" = "lighttpd" ]; then
+	echo "  ${BOLD}Lighttpd:${NC}"
+	LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
+	LIGHTTPD_PID=""
+	if [ -f "$LIGHTTPD_PIDF" ]; then
+		LIGHTTPD_PID=$(cat "$LIGHTTPD_PIDF" 2>/dev/null | tr -d ' ')
+		[ -d "/proc/$LIGHTTPD_PID" ] || LIGHTTPD_PID=""
+	fi
+	if [ -n "$LIGHTTPD_PID" ]; then
+		ok "  lighttpd (PID $LIGHTTPD_PID)"
+	elif lighttpd_http_ok 8087; then
+		ok "  lighttpd работает (порт 8087, pid-файл отсутствует)"
+	else
+		CHECK_ERRS="$CHECK_ERRS
     ✗ lighttpd не отвечает на 8087"
-	fail "  lighttpd не отвечает на 8087"
+		fail "  lighttpd не отвечает на 8087"
+	fi
+else
+	echo "  ${BOLD}Сервер:${NC}"
+	EWM_PIDF=/opt/var/run/entware-server.pid
+	EWM_PID=""
+	if [ -f "$EWM_PIDF" ]; then
+		EWM_PID=$(cat "$EWM_PIDF" 2>/dev/null | tr -d ' ')
+		[ -d "/proc/$EWM_PID" ] || EWM_PID=""
+	fi
+	if [ -n "$EWM_PID" ]; then
+		ok "  entware-server (PID $EWM_PID)"
+	elif lighttpd_http_ok 8087; then
+		ok "  entware-server работает (порт 8087, pid-файл отсутствует)"
+	else
+		CHECK_ERRS="$CHECK_ERRS
+    ✗ entware-server не отвечает на 8087"
+		fail "  entware-server не отвечает на 8087"
+	fi
 fi
 
 # Проверка HTTP-ответа (фикс бага двойного «000»: -w уже даёт "000" при ошибке, без || echo)
-LIGHTTPD_PORT=$(grep 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null | grep -o '[0-9]*' | head -1)
-LIGHTTPD_PORT=${LIGHTTPD_PORT:-8087}
+if [ "$WEB_PATH" = "lighttpd" ]; then
+	WEB_PORT=$(grep 'server\.port' "$LIGHTTPD_CONF" 2>/dev/null | grep -o '[0-9]*' | head -1)
+	WEB_PORT=${WEB_PORT:-8087}
+else
+	WEB_PORT=$(jq -r '.port // 8087' "$TARGET_DIR/server_config.json" 2>/dev/null || echo 8087)
+fi
 echo "  ${BOLD}HTTP-ответ:${NC}"
-if lighttpd_http_ok "$LIGHTTPD_PORT"; then
-	ok "  HTTP 200 (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
+if lighttpd_http_ok "$WEB_PORT"; then
+	ok "  HTTP 200 (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
 else
 	HTTP_CODE="000"
 	CHECK_ERRS="$CHECK_ERRS
-    ✗ HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
-	fail "  HTTP $HTTP_CODE (127.0.0.1:$LIGHTTPD_PORT/entware-cgi/version.cgi)"
+    ✗ HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
+	fail "  HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
 fi
 
 if [ -n "$CHECK_ERRS" ]; then
@@ -653,14 +743,15 @@ fi
 echo ""
 echo "${GREEN}  ✓ Архитектура:${NC} $ROUTER_ARCH"
 echo "${GREEN}  ✓ Файлы:${NC}    $TARGET_DIR"
-echo "${GREEN}  ✓ Статика:${NC}  http://$(hostname):8087/entware-manager/"
-echo "${GREEN}  ✓ CGI:${NC}      http://$(hostname):8087/entware-cgi/"
+echo "${GREEN}  ✓ Режим:${NC}    $WEB_PATH"
+echo "${GREEN}  ✓ Статика:${NC}  http://$(hostname):${WEB_PORT:-8087}/entware-manager/"
+echo "${GREEN}  ✓ CGI:${NC}      http://$(hostname):${WEB_PORT:-8087}/entware-cgi/"
 echo ""
 echo "  Версия: $(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo 'неизвестна')"
 echo ""
 IP=$(ip -o -4 addr show br0 2>/dev/null | awk '{print $4}' | cut -d/ -f1)
 [ -z "$IP" ] && IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $NF}' | head -1)
-echo "  Открой в браузере: http://${IP:-<IP-роутера>}:8087/entware-manager/"
+echo "  Открой в браузере: http://${IP:-<IP-роутера>}:${WEB_PORT:-8087}/entware-manager/"
 echo ""
 echo "  Терминал: Настройки → Терминал → Запустить"
 echo ""
