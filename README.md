@@ -1,8 +1,8 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.07.3-blue)](version.json)
-[![License](https://img.shields.io/badge/license-GPLv3-green)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.08.1-blue)](version.json)
+[![License](https://img.shields.io/badge/license-GPLv3-green)](doc/LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
 Всё в браузере, без SSH и консоли.
@@ -47,9 +47,6 @@ uname -m
 # arm64 (aarch64)
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-arm64.tar.gz
 
-# arm (armv7l / armv5tel)
-curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-arm.tar.gz
-
 # mips
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager-mips.tar.gz
 
@@ -74,10 +71,6 @@ cd deploy && sh Install/install.sh
 # arm64 (aarch64)
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_arm64.ipk
 opkg install entware-manager_arm64.ipk
-
-# arm (armv7l / armv5tel)
-curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_arm.ipk
-opkg install entware-manager_arm.ipk
 
 # mips
 curl -LO https://github.com/Di1r1/entware-manager/releases/latest/download/entware-manager_mips.ipk
@@ -127,7 +120,7 @@ install.sh пишет лог в `/tmp/entware/install-logs/install-YYYYMMDD-HHMM
 Финальный шаг проверяет:
 - все пакеты и бинарники
 - симлинки `.cgi → go.cgi`
-- 7 Go-бинарников
+- 8 Go-бинарников
 - веб-файлы (index.html, style.css, …)
 - lighttpd (PID + HTTP 200)
 
@@ -162,12 +155,12 @@ chmod +x install.sh
               ┌─────────┼─────────┐
               │         │         │
          entware-*   *.html    *.js
-       (7 Go-бинарн.) статика   логика
+       (8 Go-бинарн.) статика   логика
               │
          система / Entware
 ```
 
-**Технологии:** Go (7 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi`, `jq`, `ttyd`.
+**Технологии:** Go (8 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi` (или собственный `entware-server`, если на роутере сторонний lighttpd), `jq`, `ttyd`.
 
 ## Компоненты
 
@@ -180,6 +173,7 @@ chmod +x install.sh
 | `entware-monitor` | Мониторинг | `temperature`, `wifi_temp`, `temp_history`, `wifi_temp_history`, `kill_pid`, `monitor_*` |
 | `entware-smart` | SMART дисков | `smart` (info, attributes, health, selftest) |
 | `entware-logger` | Логи | `logger_*` (config, view, system_logs, rotate, clear)` |
+| `entware-server` | Веб-сервер | Статика `/entware-manager/` + прокси `/entware-cgi/` (режим с чужим lighttpd) |
 
 ## Конфигурация
 
