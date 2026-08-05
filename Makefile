@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .PHONY: all deploy ipk release clean version check test lint ci archives help install-router
 
-ARCHS := arm64 arm mips mipsel
+ARCHS := arm64 mips mipsel
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 VERSION := $(shell git describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//')

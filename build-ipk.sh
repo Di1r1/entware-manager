@@ -2,7 +2,7 @@
 # ==============================================
 # Сборка ipk для Entware Manager (tar.gz формат)
 # Использование: ./build-ipk.sh [--arch ARCH]
-#   --arch ARCH  — собрать только для одной архи (arm64/arm/mips/mipsel)
+#   --arch ARCH  — собрать только для одной архи (arm64/mips/mipsel)
 # ==============================================
 
 set -e
@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 VERSION="${VERSION:-$(jq -r '.version' version.json 2>/dev/null || python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' version.json | cut -d'"' -f4 || echo "1.06.4")}"
-ARCHS=("arm64" "arm" "mips" "mipsel")
+ARCHS=("arm64" "mips" "mipsel")
 BUILD_ARCH=""
 
 for arg in "$@"; do

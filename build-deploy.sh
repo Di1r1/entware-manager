@@ -4,7 +4,7 @@
 # Сборка deploy-папки для Entware Manager
 # Версия: 3.0 — multi-arch Go compilation
 # Использование: ./build-deploy.sh [--arch ARCH] [--tar]
-#   --arch ARCH  — собрать только для одной архи (arm64/arm/mips/mipsel)
+#   --arch ARCH  — собрать только для одной архи (arm64/mips/mipsel)
 #                  По умолчанию: все архитектуры
 #   --tar        — дополнительно создать tar.gz архив
 # ==============================================
@@ -15,9 +15,9 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$PROJECT_DIR/deploy"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 
-ARCH_NAMES=(arm64 arm mips mipsel)
-ARCH_GOARCH=(arm64 arm mips mipsle)
-ARCH_FLAGS=("" "GOARM=5" "GOMIPS=softfloat" "GOMIPS=softfloat")
+ARCH_NAMES=(arm64 mips mipsel)
+ARCH_GOARCH=(arm64 mips mipsle)
+ARCH_FLAGS=("" "GOMIPS=softfloat" "GOMIPS=softfloat")
 
 BUILD_ARCHS=""
 BUILD_TAR=false
