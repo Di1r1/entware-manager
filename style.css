@@ -935,7 +935,7 @@ input[type="checkbox"] {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 2rem;
     margin: 2rem 0;
 }
@@ -946,6 +946,7 @@ input[type="checkbox"] {
 }
 
 .stat-card {
+    min-width: 0;
     background: var(--link-card-bg);
     border-radius: 24px;
     padding: 2rem;
@@ -1150,7 +1151,9 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
     border: none;
     background: transparent;
     color: var(--text-primary);
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 .stat-table td:first-child {
     font-weight: 500;
@@ -1179,6 +1182,7 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
 .stat-card.memory .top-mem-wrapper {
     margin-top: 8px;
     border-radius: 8px;
+    min-width: 0;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     will-change: transform;
     position: relative;
@@ -1234,7 +1238,8 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
     border: none;
     background: transparent;
     color: var(--text-primary);
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .stat-card.memory .top-mem tr:nth-child(even) td {
     background-color: var(--table-row-even);
@@ -1243,6 +1248,7 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
     font-weight: 500;
     color: var(--text-secondary);
     max-width: 140px;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -2139,6 +2145,7 @@ html.night #toast {
 .stat-card.packages .top-mem-wrapper {
     margin-top: 8px;
     border-radius: 8px;
+    min-width: 0;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     will-change: transform;
     position: relative;
@@ -2174,7 +2181,8 @@ html.night #toast {
     border: none;
     background: transparent;
     color: var(--text-primary);
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .stat-card.packages .top-mem tr:nth-child(even) td {
     background-color: var(--table-row-even);
@@ -2188,6 +2196,7 @@ html.night #toast {
     font-family: 'Courier New', monospace;
     font-weight: 600;
     max-width: 120px;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }

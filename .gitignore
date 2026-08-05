@@ -30,3 +30,8 @@ postinst
 prerm
 doc/IPK_BUILD.md
 forum_post.md
+
+# EWM: локальные скилы/агенты и конфиг opencode — только локально
+# (содержат пароль роутера, доступы, ip; RULES.md тоже локальный)
+.opencode/
+opencode.json

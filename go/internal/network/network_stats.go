@@ -255,7 +255,6 @@ func buildWiFiBridge(bridge string, ifaces []string, devData string) wifiBridge 
 		b.Name = bridge
 	}
 
-	var maxRX, maxTX int64
 	for _, iface := range ifaces {
 		switch {
 		case strings.HasPrefix(iface, "ra") && !strings.HasPrefix(iface, "rai"):
@@ -269,15 +268,12 @@ func buildWiFiBridge(bridge string, ifaces []string, devData string) wifiBridge 
 		}
 	}
 
+	var sumRX, sumTX int64
 	for _, iface := range ifaces {
 		rxMB := calcTrafficMB(devData, iface)
 		txMB := calcTrafficTXMB(devData, iface)
-		if rxMB > maxRX {
-			maxRX = rxMB
-		}
-		if txMB > maxTX {
-			maxTX = txMB
-		}
+		sumRX += rxMB
+		sumTX += txMB
 		if strings.HasPrefix(iface, "ra") {
 			b.Interfaces = append(b.Interfaces, wifiIfaceStat{
 				Iface: iface,
@@ -287,8 +283,8 @@ func buildWiFiBridge(bridge string, ifaces []string, devData string) wifiBridge 
 		}
 	}
 
-	b.Rx = formatTraffic(maxRX)
-	b.Tx = formatTraffic(maxTX)
+	b.Rx = formatTraffic(sumRX)
+	b.Tx = formatTraffic(sumTX)
 
 	return b
 }
