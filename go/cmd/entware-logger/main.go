@@ -4,6 +4,7 @@ package main
 import (
 	"os"
 
+	_ "entware-manager/internal/localtime"
 	"entware-manager/internal/logger"
 )
 

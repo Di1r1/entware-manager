@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "entware-manager/internal/localtime"
 	"entware-manager/internal/server"
 )
 

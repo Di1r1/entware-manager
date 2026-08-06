@@ -51,7 +51,7 @@ cgi-bin)
 	case "$name" in
 	available|packages|install|remove|upgrade|update|upgradable|api)
 		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
-	stats|version|help|links_load|links_save|tmpfs|view_file|delete_file|auth_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline)
+	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline)
 		ENDPOINT="$name" exec "$(go_bin stats)" ;;
 	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_config|network_action)
 		ENDPOINT="$name" exec "$(go_bin net)" ;;

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"sort"
@@ -404,8 +405,8 @@ func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgA
 	b.WriteString(`</div>`)
 
 	renderNetworkPlaceholder(&b)
-	renderTable(&b, "tmpfs", "tmpfs", "folder", tmpfs)
-	renderTable(&b, "storage", "Блочные устройства", "disk", block)
+	renderTable(&b, "tmpfs", "tmpfs", "folder", tmpfs, true)
+	renderTable(&b, "storage", "Блочные устройства", "disk", block, false)
 
 	return b.String()
 }
@@ -509,15 +510,20 @@ func renderNetworkPlaceholder(b *strings.Builder) {
 </div>`)
 }
 
-func renderTable(b *strings.Builder, id, title, icon string, entries []DFEntry) {
+func renderTable(b *strings.Builder, id, title, icon string, entries []DFEntry, cleanable bool) {
 	var rows strings.Builder
 	if len(entries) == 0 {
 		rows.WriteString("<tr><td colspan='6'>Нет данных</td></tr>")
 	} else {
 		for _, e := range entries {
-			rows.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><span class="stat-value-%s">%s</span></td><td><a href="/entware-cgi/tmpfs.cgi?path=%s" style="text-decoration:none; color:inherit;">%s</a></td></tr>`,
+			action := ""
+			if cleanable {
+				q := url.QueryEscape(e.Mount)
+				action = fmt.Sprintf(` <button class="packages-delete-btn tmpfs-clean-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;" onclick="tmpfsClean('%s')">Очистка</button>`, q)
+			}
+			rows.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><span class="stat-value-%s">%s</span></td><td><a href="/entware-cgi/tmpfs.cgi?path=%s" style="text-decoration:none; color:inherit;">%s</a>%s</td></tr>`,
 				esc(e.FS), esc(e.Size), esc(e.Used), esc(e.Avail),
-				e.Class, esc(e.UsePct), e.Mount, esc(e.Mount)))
+				e.Class, esc(e.UsePct), url.QueryEscape(e.Mount), esc(e.Mount), action))
 		}
 	}
 

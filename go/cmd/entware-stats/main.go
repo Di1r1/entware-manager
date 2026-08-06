@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"entware-manager/internal/backup"
+	_ "entware-manager/internal/localtime"
 	"entware-manager/internal/stats"
 )
 
@@ -27,6 +28,8 @@ func main() {
 		stats.HandleLinksLoad()
 	case "tmpfs":
 		stats.HandleTmpfs()
+	case "tmpfs_clean":
+		stats.HandleTmpClean()
 	case "view_file":
 		stats.HandleViewFile()
 	case "delete_file":

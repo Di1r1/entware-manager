@@ -34,7 +34,7 @@ var flatDispatch = map[string]string{
 	"upgrade": "pkg", "update": "pkg", "upgradable": "pkg", "api": "pkg",
 	// stats
 	"stats": "stats", "version": "stats", "help": "stats", "links_load": "stats",
-	"links_save": "stats", "tmpfs": "stats", "view_file": "stats", "delete_file": "stats",
+	"links_save": "stats", "tmpfs": "stats", "tmpfs_clean": "stats", "view_file": "stats", "delete_file": "stats",
 	"auth_config": "stats", "crontab": "stats", "crontab_update": "stats",
 	"backup": "stats", "backup_restore": "stats", "update_check": "stats",
 	"update_run": "stats", "update_status": "stats", "prepare_offline": "stats",
@@ -59,9 +59,9 @@ var subdirDispatch = map[string]struct {
 	prefix string
 	binary string
 }{
-	"network":         {prefix: "network_", binary: "net"},
-	"logger":          {prefix: "logger_", binary: "logger"},
-	"monitor":         {prefix: "monitor_", binary: "monitor"},
+	"network":          {prefix: "network_", binary: "net"},
+	"logger":           {prefix: "logger_", binary: "logger"},
+	"monitor":          {prefix: "monitor_", binary: "monitor"},
 	"service_watchdog": {prefix: "service_watchdog_", binary: "services"},
 }
 

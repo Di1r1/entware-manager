@@ -1036,6 +1036,151 @@ async function renderLinksOnStats() {
     statsContent.insertAdjacentHTML('afterend', html);
 }
 
+function fmtBytesJS(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' КБ';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' МБ';
+    return (n / 1073741824).toFixed(2) + ' ГБ';
+}
+
+// Очистка tmpfs: сканирование корня + удаление выбранных папок (tmpfs_clean.cgi).
+function tmpfsClean(mount) {
+    mount = decodeURIComponent(mount);
+    var state = { mount: mount, data: null };
+
+    function getPass() {
+        try { return sessionStorage.getItem('filemgr_pass') || ''; }
+        catch (e) { return ''; }
+    }
+    function setPass(p) {
+        try { sessionStorage.setItem('filemgr_pass', p); } catch (e) {}
+    }
+
+    function renderResults(data) {
+        var res = document.getElementById('tmpfs-clean-results');
+        if (!res) return;
+        var dirs = data.dirs || [];
+        if (!dirs.length) {
+            var th = document.getElementById('tmpfs-clean-threshold');
+            var mb = th ? parseInt(th.value, 10) : (1 << 20);
+            res.innerHTML = '<p style="padding:0.5rem 0;">Папок размером от ' + fmtBytesJS(mb) + ' нет.</p>';
+            return;
+        }
+        var rows = dirs.map(function(d) {
+            return '<tr>' +
+                '<td style="padding:4px 6px;width:30px;"><input type="checkbox" class="tmpfs-clean-cb" data-path="' + escapeHtml(d.path) + '"></td>' +
+                '<td><span class="file-icon folder"><svg class="icon" width="16" height="16"><use href="'+ICONS+'#icon-folder"/></svg></span> ' + escapeHtml(d.name) + '</td>' +
+                '<td style="text-align:right;white-space:nowrap;">' + fmtBytesJS(d.bytes) + '</td>' +
+                '<td style="text-align:right;color:var(--muted, #999);white-space:nowrap;">' + d.files + ' файлов</td>' +
+                '</tr>';
+        }).join('');
+        res.innerHTML =
+            '<p style="margin:0 0 6px;color:var(--muted,#999);font-size:13px;">Выбрано <span id="clean-count">0</span> из ' + dirs.length + ' · показываются закрытые/свободные папки</p>' +
+            '<table class="file-table" style="width:100%;"><tbody>' + rows + '</tbody></table>' +
+            '<label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;">' +
+            '<input type="checkbox" id="clean-select-all"> Выбрать все</label>' +
+            ' <button class="packages-delete-btn" style="background:#e53e3e;padding:4px 12px;margin-top:8px;" id="clean-do">' +
+            '<svg class="icon" width="14" height="14"><use href="'+ICONS+'#icon-trash"/></svg> Удалить выбранные</button>';
+        wireResults();
+    }
+
+    function wireResults() {
+        var res = document.getElementById('tmpfs-clean-results');
+        if (!res) return;
+        var boxes = res.querySelectorAll('.tmpfs-clean-cb');
+        for (var i = 0; i < boxes.length; i++) {
+            boxes[i].addEventListener('change', updateCount);
+        }
+        var sa = document.getElementById('clean-select-all');
+        if (sa) sa.addEventListener('change', function() {
+            for (var j = 0; j < boxes.length; j++) { boxes[j].checked = sa.checked; }
+            updateCount();
+        });
+        var del = document.getElementById('clean-do');
+        if (del) del.addEventListener('click', doDelete);
+    }
+
+    function updateCount() {
+        var res = document.getElementById('tmpfs-clean-results');
+        var boxes = res ? res.querySelectorAll('.tmpfs-clean-cb:checked') : [];
+        var el = document.getElementById('clean-count');
+        if (el) el.textContent = boxes.length;
+    }
+
+    function doDelete() {
+        if (!state.data) return;
+        var res = document.getElementById('tmpfs-clean-results');
+        var paths = [];
+        var checked = res ? res.querySelectorAll('.tmpfs-clean-cb:checked') : [];
+        for (var i = 0; i < checked.length; i++) { paths.push(checked[i].dataset.path); }
+        if (!paths.length) { Toast.show('Ничего не выбрано', true); return; }
+        var password = '';
+        if (state.data.auth_required) {
+            password = getPass();
+            if (!password) {
+                password = prompt('Введите пароль для доступа к файлам:');
+                if (!password) return;
+                setPass(password);
+            }
+        }
+        if (!confirm('Удалить выбранные папки (' + paths.length + ')?')) return;
+        apiPost('/tmpfs_clean.cgi', 'paths=' + encodeURIComponent(paths.join('\n')) + '&password=' + encodeURIComponent(password))
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    Toast.show('Удалено: ' + data.deleted);
+                    scan(); // повторное сканирование
+                } else if (data.message === 'Доступ запрещен') {
+                    Toast.show('Доступ запрещен', true);
+                } else if (data.message === 'Неверный пароль') {
+                    setPass('');
+                    Toast.show('Неверный пароль', true);
+                } else {
+                    Toast.show('Ошибка: ' + data.message, true);
+                }
+            })
+            .catch(function(e) { Toast.show('Ошибка: ' + e.message, true); });
+    }
+
+    function scan() {
+        var th = document.getElementById('tmpfs-clean-threshold');
+        var mb = th ? parseInt(th.value, 10) : (1 << 20);
+        var res = document.getElementById('tmpfs-clean-results');
+        if (res) res.innerHTML = '<div class="loading-spinner" style="margin:12px 0;"></div>';
+        apiGet('/tmpfs_clean.cgi?path=' + encodeURIComponent(state.mount) + '&min_bytes=' + mb)
+            .then(function(data) {
+                state.data = data;
+                renderResults(data);
+            })
+            .catch(function(e) {
+                if (res) res.innerHTML = '<p class="error">Ошибка: ' + escapeHtml(e.message) + '</p>';
+            });
+    }
+
+    var bodies = [1048576, 5242880, 10485760, 52428800];
+    var labels = ['1 МБ', '5 МБ', '10 МБ', '50 МБ'];
+    var th = bodies.map(function(v, i) {
+        return '<option value="' + v + '"' + (i === 0 ? ' selected' : '') + '>' + labels[i] + '</option>';
+    }).join('');
+
+    var html =
+        '<div style="min-width:460px;">' +
+        '<div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">' +
+        '<label style="color:var(--muted,#999);">Минимум:</label>' +
+        '<select id="tmpfs-clean-threshold" class="settings-input" style="max-width:140px;">' + th + '</select>' +
+        '<button class="packages-delete-btn" style="background:#4a5568;padding:4px 12px;" id="clean-rescan">Сканировать</button>' +
+        '</div>' +
+        '<div style="color:var(--muted,#999);font-size:13px;margin-bottom:8px;">Корень: <b style="color:inherit;">' + escapeHtml(state.mount) + '</b></div>' +
+        '<div id="tmpfs-clean-results"><div class="loading-spinner" style="margin:12px 0;"></div></div>' +
+        '</div>';
+
+    Modal.show(html, false, 'Очистка tmpfs');
+
+    document.getElementById('tmpfs-clean-threshold').addEventListener('change', scan);
+    document.getElementById('clean-rescan').addEventListener('click', scan);
+    scan();
+}
+
 async function renderSettingsTab() {
     const links = await loadLinks();
     let html = `
