@@ -2,8 +2,37 @@ package packages
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 )
+
+const opkgStatusFile = "/opt/lib/opkg/status"
+
+// readInstalledTimes парсит /opt/lib/opkg/status и возвращает
+// map[имя пакета] -> unix-время установки (Installed-Time).
+func readInstalledTimes() map[string]int64 {
+	times := make(map[string]int64)
+	data, err := os.ReadFile(opkgStatusFile)
+	if err != nil {
+		return times
+	}
+	var curPkg string
+	for _, line := range strings.Split(string(data), "\n") {
+		switch {
+		case strings.HasPrefix(line, "Package: "):
+			curPkg = strings.TrimSpace(strings.TrimPrefix(line, "Package: "))
+		case strings.HasPrefix(line, "Installed-Time: ") && curPkg != "":
+			ts, err := strconv.ParseInt(strings.TrimSpace(strings.TrimPrefix(line, "Installed-Time: ")), 10, 64)
+			if err == nil && ts > 0 {
+				times[curPkg] = ts
+			}
+			curPkg = ""
+		}
+	}
+	return times
+}
 
 func Installed() {
 	if !isGET() {
@@ -18,7 +47,7 @@ func Installed() {
 		count = len(strings.Split(pkgList, "\n"))
 	}
 
-	html := "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Установленные пакеты</title>\n<link rel=\"stylesheet\" href=\"/entware-manager/style.css?v=23\">\n<script src=\"/entware-manager/theme.js?v=2\"></script>\n</head>\n<body class=\"packages-body\">\n<script>if (window.Theme) Theme.init();</script>\n<div class=\"packages-container\">\n"
+	html := "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Установленные пакеты</title>\n<link rel=\"stylesheet\" href=\"/entware-manager/style.css?v=24\">\n<script src=\"/entware-manager/theme.js?v=2\"></script>\n</head>\n<body class=\"packages-body\">\n<script>if (window.Theme) Theme.init();</script>\n<div class=\"packages-container\">\n"
 	html += fmt.Sprintf("<h2 style=\"display: flex; align-items: center; gap: 8px;\"><span class=\"stat-icon\" style=\"width: 28px; height: 28px;\"><svg class=\"icon\" width=\"28\" height=\"28\"><use href=\"/entware-manager/icons.svg?v=2#icon-package\"/></svg></span>Установленные пакеты (%d)</h2>\n", count)
 
 	if code != 0 || pkgList == "" || count == 0 {
@@ -35,9 +64,11 @@ func Installed() {
 </div>
 <div class="packages-table-wrapper">
     <table class="packages-table" id="packagesTable">
-        <thead><th>Пакет</th><th>Версия</th><th>Действие</th></thead>
+        <thead><th>Пакет</th><th>Версия</th><th>Установлен</th><th>Действие</th></thead>
         <tbody id="tableBody">
 `
+
+	installedTimes := readInstalledTimes()
 
 	lines := strings.Split(pkgList, "\n")
 	for _, line := range lines {
@@ -54,8 +85,12 @@ func Installed() {
 		if ver == "" {
 			ver = "?"
 		}
-		html += fmt.Sprintf("            <tr>\n                <td>%s</td>\n                <td>%s</td>\n                <td>\n                    <form method=\"post\" style=\"margin:0;\" onsubmit=\"opkgAction(event, 'remove', this.package.value); return false;\">\n                        <input type=\"hidden\" name=\"package\" value=\"%s\">\n                        <input type=\"submit\" value=\"Удалить\" class=\"packages-delete-btn\">\n                    </form>\n                </td>\n            </tr>\n",
-			htmlEscape(pkg), htmlEscape(ver), htmlEscape(pkg))
+		instDate := "—"
+		if ts, ok := installedTimes[pkg]; ok {
+			instDate = time.Unix(ts, 0).Format("2006-01-02 15:04")
+		}
+		html += fmt.Sprintf("            <tr>\n                <td>%s</td>\n                <td>%s</td>\n                <td>%s</td>\n                <td>\n                    <form method=\"post\" style=\"margin:0;\" onsubmit=\"opkgAction(event, 'remove', this.package.value); return false;\">\n                        <input type=\"hidden\" name=\"package\" value=\"%s\">\n                        <input type=\"submit\" value=\"Удалить\" class=\"packages-delete-btn\">\n                    </form>\n                </td>\n            </tr>\n",
+			htmlEscape(pkg), htmlEscape(ver), htmlEscape(instDate), htmlEscape(pkg))
 	}
 
 	html += `        </tbody>

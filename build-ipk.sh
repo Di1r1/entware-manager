@@ -116,7 +116,7 @@ RMEEOF
     tar -czf "$PKG_TMP/data.tar.gz" .
     cd "$PKG_TMP"
 
-    # Сборка ipk в tar.gz-формате (как в Entware)
+    # Сборка ipk в tar.gz-формате (как в Entware — opkg принимает именно его)
     IPK_FILE="$OUT_DIR/entware-manager_${arch}.ipk"
     rm -f "$IPK_FILE"
     tar -czf "$IPK_FILE" \

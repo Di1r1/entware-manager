@@ -340,15 +340,27 @@ func runUpdate(version, arch string) {
 			return
 		}
 		ipkPath := filepath.Join(tmpDir, "entware-manager.ipk")
-		f, _ := os.Create(ipkPath)
-		if f == nil {
-			log("[ERROR] Не удалось создать временный файл")
+		f, err := os.Create(ipkPath)
+		if err != nil {
+			log("[ERROR] Не удалось создать временный файл: " + err.Error())
 			resp.Body.Close()
 			return
 		}
-		io.Copy(f, resp.Body)
+		written, cerr := io.Copy(f, resp.Body)
 		resp.Body.Close()
 		f.Close()
+		if cerr != nil {
+			log("[ERROR] Ошибка загрузки (файл неполный): " + cerr.Error())
+			os.RemoveAll(tmpDir)
+			return
+		}
+		// Проверка целостности: ipk должен быть gzip-архивом >1КБ.
+		// Обрезанная загрузка приводила к «Malformed package file» у opkg.
+		if fi, perr := os.Stat(ipkPath); perr != nil || fi.Size() < 1024 || written < fi.Size() {
+			log("[ERROR] Загруженный файл повреждён или обрезан (" + humanSize(written) + ")")
+			os.RemoveAll(tmpDir)
+			return
+		}
 		log("Установка ipk...")
 		var outBuf bytes.Buffer
 		cmd := exec.Command("opkg", "install", "--force-reinstall", ipkPath)

@@ -261,26 +261,21 @@ body {
     color: var(--text-primary);
     transition: background-color 0.3s, color 0.3s;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
     line-height: 1.5;
     font-size: clamp(14px, 2vw, 16px);
 }
 
 .app-container {
     display: flex;
-    height: 97vh;
-    max-width: 1400px;
     width: 100%;
-    margin: 0 auto;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
     background: var(--app-bg);
     backdrop-filter: blur(10px);
-    border-radius: 32px;
     box-shadow: var(--shadow-lg);
     overflow: hidden;
-    border: 1px solid var(--app-border);
+    border: none;
 }
 
 .sidebar {
@@ -685,7 +680,8 @@ body {
 
 .content {
     flex: 1;
-    padding: 16px;
+    min-width: 0;
+    padding: clamp(1rem, 2vw, 2rem);
     background: var(--content-bg);
     backdrop-filter: blur(10px);
     transition: background-color 0.3s;
@@ -933,15 +929,68 @@ input[type="checkbox"] {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--input-focus) 20%, transparent);
 }
 
+.stats-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background: var(--link-card-bg);
+    border: 1px solid var(--link-card-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: clamp(1rem, 2vw, 1.5rem);
+}
+.stats-hero-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+.stats-hero-title .stat-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--accent-soft);
+}
+.stats-hero-title h1 {
+    margin: 0;
+    font-size: clamp(1.4rem, 3vw, 1.9rem);
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+}
+.stats-hero-sub {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.stats-hero-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem;
-    margin: 2rem 0;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: clamp(1rem, 2vw, 2rem);
+    margin: clamp(1.25rem, 3vw, 2.5rem) 0;
 }
 @media (max-width: 800px) {
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+    .stats-hero {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 

@@ -98,6 +98,13 @@ lint:
 	else \
 		echo "  [ ] shellcheck не найден (пропущено)"; \
 	fi
+	@if command -v checkbashisms &>/dev/null; then \
+		echo "=== checkbashisms ==="; \
+		checkbashisms $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh 2>&1 && \
+		echo "  [✓] checkbashisms пройден"; \
+	else \
+		echo "  [ ] checkbashisms не найден (пропущено)"; \
+	fi
 
 ci: check lint test
 	@echo "=== CI пройден ==="

@@ -387,14 +387,21 @@ func collectDF() (tmpfs, block []DFEntry) {
 func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgAvail int, changes []PkgChange, disk DiskInfo, tmpfs, block []DFEntry) string {
 	var b strings.Builder
 
-	b.WriteString(`<h2 style="display: flex; align-items: center; gap: 10px;">
-    <span class="stat-icon" style="width: 32px; height: 32px;">
-        <svg class="icon" width="32" height="32">
+	b.WriteString(`<div class="stats-hero">
+    <div class="stats-hero-title">
+        <span class="stat-icon"><svg class="icon" width="30" height="30">
             <use href="/entware-manager/icons.svg?v=2#icon-stats"/>
-        </svg>
-    </span>
-    Статистика системы
-</h2>
+        </svg></span>
+        <div>
+            <h1>Статистика системы</h1>
+            <div class="stats-hero-sub">Обзор ресурсов, пакетов и дисков роутера</div>
+        </div>
+    </div>
+    <button class="packages-delete-btn stats-hero-refresh" onclick="window.location.reload()">
+        <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg>
+        Обновить
+    </button>
+</div>
 <div class="stats-grid">`)
 
 	renderSysCard(&b, sys)
