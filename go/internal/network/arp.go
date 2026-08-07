@@ -24,7 +24,7 @@ type rciHost struct {
 }
 
 // rciHotspotURL — переопределяется в тестах
-var rciHotspotURL = "http://127.0.0.1:79/rci/show/ip/hotspot/host"
+var rciHotspotURL = rciBase + "/rci/show/ip/hotspot/host"
 
 // fetchRCIHostnames возвращает map[ip]имя устройства по данным RCI Keenetic
 // (/rci/show/ip/hotspot/host). Приоритет: name, иначе hostname.
@@ -63,7 +63,10 @@ func fetchRCIHostnames() map[string]string {
 }
 
 func HandleARP() {
-	if !IsGET() { NotAllowed(); return }
+	if !IsGET() {
+		NotAllowed()
+		return
+	}
 
 	data, err := exec.Command("ip", "neigh", "show").Output()
 	if err != nil {
@@ -76,7 +79,9 @@ func HandleARP() {
 	var list []ARPEntry
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" { continue }
+		if line == "" {
+			continue
+		}
 
 		ip := strings.Fields(line)[0]
 		// Фильтруем IPv6 (shell: grep -v "^fe80" | grep -v "^::")

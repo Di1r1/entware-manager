@@ -6,38 +6,38 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"syscall"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
 var (
-	opkgBin   = "/opt/bin/opkg"
+	opkgBin         = "/opt/bin/opkg"
 	lighttpdPidFile = "/opt/var/run/lighttpd.pid"
 	cronPidFile     = "/opt/var/run/cron.pid"
 )
 
 type DepsBase struct {
-	Opkg           bool `json:"opkg"`
+	Opkg            bool `json:"opkg"`
 	LighttpdRunning bool `json:"lighttpd_running"`
-	Sed            bool `json:"sed"`
-	Awk            bool `json:"awk"`
-	Grep           bool `json:"grep"`
-	Ps             bool `json:"ps"`
+	Sed             bool `json:"sed"`
+	Awk             bool `json:"awk"`
+	Grep            bool `json:"grep"`
+	Ps              bool `json:"ps"`
 }
 
 type DepsDeps struct {
-	CronInstalled bool   `json:"cron_installed"`
-	CronRunning   bool   `json:"cron_running"`
-	Jq            bool   `json:"jq"`
-	Ip            bool   `json:"ip"`
-	IpPath        string `json:"ip_path"`
-	IpPkgInstalled bool  `json:"ip_pkg_installed"`
-	Curl          bool   `json:"curl"`
-	Bash          bool   `json:"bash"`
-	Brctl         bool   `json:"brctl"`
-	BrctlPath     string `json:"brctl_path"`
+	CronInstalled  bool   `json:"cron_installed"`
+	CronRunning    bool   `json:"cron_running"`
+	Jq             bool   `json:"jq"`
+	Ip             bool   `json:"ip"`
+	IpPath         string `json:"ip_path"`
+	IpPkgInstalled bool   `json:"ip_pkg_installed"`
+	Curl           bool   `json:"curl"`
+	Bash           bool   `json:"bash"`
+	Brctl          bool   `json:"brctl"`
+	BrctlPath      string `json:"brctl_path"`
 }
 
 type DepsSections struct {

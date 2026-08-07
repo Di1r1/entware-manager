@@ -24,15 +24,15 @@ var (
 )
 
 type DiskInfo struct {
-	Device        string `json:"device"`
-	Model         string `json:"model"`
-	Serial        string `json:"serial"`
-	Size          string `json:"size"`
-	Type          string `json:"type"`
-	Health        string `json:"health"`
-	Temperature   any    `json:"temperature"`
-	PowerOnHours  any    `json:"power_on_hours"`
-	AttrHealth    string `json:"attr_health"`
+	Device       string `json:"device"`
+	Model        string `json:"model"`
+	Serial       string `json:"serial"`
+	Size         string `json:"size"`
+	Type         string `json:"type"`
+	Health       string `json:"health"`
+	Temperature  any    `json:"temperature"`
+	PowerOnHours any    `json:"power_on_hours"`
+	AttrHealth   string `json:"attr_health"`
 }
 
 var criticalAttrIDs = map[int]bool{5: true, 10: true, 187: true, 196: true, 197: true, 198: true}
@@ -435,7 +435,9 @@ func diskInfo(name string) DiskInfo {
 	} else {
 		// Get last word
 		parts := strings.Fields(health)
-		health = parts[len(parts)-1]
+		if len(parts) > 0 {
+			health = parts[len(parts)-1]
+		}
 	}
 
 	// USB flash drives don't have SMART — suppress UNKNOWN
@@ -585,7 +587,10 @@ func handleHealth(device string) {
 	}
 
 	parts := strings.Fields(healthLine)
-	result := parts[len(parts)-1]
+	var result string
+	if len(parts) > 0 {
+		result = parts[len(parts)-1]
+	}
 
 	writeJSON(map[string]string{
 		"health":  result,

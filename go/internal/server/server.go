@@ -5,11 +5,12 @@
 // (nfqws/zapret и т.п.) и общий конфиг конфликтует по server.port.
 //
 // Схема:
-//   /entware-manager/  — статика из белого списка файлов (web/ каталог)
-//   /entware-cgi/…     — CGI-вызовы через subprocess-glue:
-//                         маппинг имени .cgi -> бинарник + ENDPOINT
-//                         (повторяет go.cgi), запуск подпроцесса с
-//                         CGI-окружением, ответ прокидывается в HTTP.
+//
+//	/entware-manager/  — статика из белого списка файлов (web/ каталог)
+//	/entware-cgi/…     — CGI-вызовы через subprocess-glue:
+//	                      маппинг имени .cgi -> бинарник + ENDPOINT
+//	                      (повторяет go.cgi), запуск подпроцесса с
+//	                      CGI-окружением, ответ прокидывается в HTTP.
 package server
 
 import (

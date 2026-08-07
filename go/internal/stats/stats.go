@@ -119,7 +119,7 @@ func collectSysInfo() SysInfo {
 		}
 	}
 	if model == "" {
-		if resp, err := http.Get("http://127.0.0.1:79/rci/show/system/"); err == nil {
+		if resp, err := http.Get(rciBase + "/rci/show/system/"); err == nil {
 			if b, err := io.ReadAll(resp.Body); err == nil {
 				resp.Body.Close()
 				var parsed map[string]any
@@ -264,6 +264,8 @@ func collectPkgCounts() (installed, avail int) {
 	}
 	return
 }
+
+const rciBase = "http://127.0.0.1:79"
 
 const opkgCacheTTL = 60 * time.Second
 

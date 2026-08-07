@@ -10,7 +10,7 @@ TARGET_DIR="/opt/var/log/entware"
 mkdir -p "$TARGET_DIR"
 
 # 1. Ежедневные логи
-yesterday=$(date -D "%s" -d "$(($(date +%s) - 86400))" +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d -d "yesterday" 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
+yesterday=$(date -d "@$(($(date +%s) - 86400))" +%Y-%m-%d 2>/dev/null)
 src="$SOURCE_DIR/$yesterday.log"
 if [ -f "$src" ]; then
     cp "$src" "$TARGET_DIR/" 2>/dev/null && rm -f "$src"

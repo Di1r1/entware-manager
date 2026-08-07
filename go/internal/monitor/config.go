@@ -82,11 +82,11 @@ func saveConfigToFile(cfg map[string]interface{}) {
 
 func defaultConfig() map[string]interface{} {
 	return map[string]interface{}{
-		"enabled":      false,
-		"interval":     10,
+		"enabled":  false,
+		"interval": 10,
 		"individual": map[string]interface{}{
-			"enabled":       true,
-			"threshold_cpu": 80,
+			"enabled":        true,
+			"threshold_cpu":  80,
 			"threshold_time": 300,
 		},
 		"ignore":        []string{"lighttpd", "cron", "ttyd", "watchdog"},

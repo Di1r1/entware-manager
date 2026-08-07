@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	tmpLogDir = "/tmp/entware/logs"
+	tmpLogDir  = "/tmp/entware/logs"
 	permLogDir = "/opt/var/log/entware"
 )
 

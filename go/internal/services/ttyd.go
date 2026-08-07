@@ -60,8 +60,8 @@ func HandleTTYDControl() {
 
 func getTTYDStatus() ttydStatus {
 	st := ttydStatus{
-		Status: "ok",
-		HTop:   ttydInstance{Port: 8089, State: "stopped", PID: "", Mode: "htop"},
+		Status:   "ok",
+		HTop:     ttydInstance{Port: 8089, State: "stopped", PID: "", Mode: "htop"},
 		Terminal: ttydInstance{Port: 9089, State: "stopped", PID: "", Mode: "entware"},
 	}
 

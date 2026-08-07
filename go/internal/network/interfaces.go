@@ -37,7 +37,9 @@ var linkTypeNames = map[string]string{
 }
 
 // rciIfaceURL — переопределяется в тестах
-var rciIfaceURL = "http://127.0.0.1:79/rci/show/interface/"
+const rciBase = "http://127.0.0.1:79"
+
+var rciIfaceURL = rciBase + "/rci/show/interface/"
 
 // fetchRCIWifiSSIDs возвращает map[mac]ssid из RCI Keenetic
 // (блоки AccessPoint*. При недоступности RCI — пустая map.
@@ -130,7 +132,10 @@ func isMAC(s string) bool {
 }
 
 func HandleInterfaces() {
-	if !IsGET() { NotAllowed(); return }
+	if !IsGET() {
+		NotAllowed()
+		return
+	}
 
 	data, err := exec.Command("ip", "-o", "link", "show").Output()
 	if err != nil {
@@ -143,10 +148,14 @@ func HandleInterfaces() {
 	var list []Iface
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" { continue }
+		if line == "" {
+			continue
+		}
 
 		parts := strings.SplitN(line, ": ", 3)
-		if len(parts) < 3 { continue }
+		if len(parts) < 3 {
+			continue
+		}
 		name := strings.TrimSpace(parts[1])
 		rest := parts[2]
 

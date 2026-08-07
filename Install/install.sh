@@ -623,7 +623,7 @@ fi
 
 # Проверка Go-бинарников
 echo "  ${BOLD}Go-бинарники:${NC}"
-GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-services entware-smart entware-stats"
+GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-server entware-services entware-smart entware-stats"
 GO_OK=0
 for bin in $GO_BINS; do
 	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
@@ -635,10 +635,10 @@ for bin in $GO_BINS; do
 		fail "  $bin не найден в cgi-bin/go/"
 	fi
 done
-if [ $GO_OK -eq 7 ]; then
-	ok "  Все 7 бинарников ($GO_OK)"
+if [ $GO_OK -eq 8 ]; then
+	ok "  Все 8 бинарников ($GO_OK)"
 else
-	fail "  Найдено $GO_OK из 7 бинарников"
+	fail "  Найдено $GO_OK из 8 бинарников"
 fi
 
 # Проверка веб-файлов

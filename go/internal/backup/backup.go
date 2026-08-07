@@ -17,8 +17,8 @@ import (
 const webRoot = "/opt/web_entware"
 
 type configFile struct {
-	Path    string // relative to webRoot
-	AbsPath string // absolute path (empty = generate)
+	Path    string                  // relative to webRoot
+	AbsPath string                  // absolute path (empty = generate)
 	GenFn   func() (string, string) // returns (filename, content)
 }
 

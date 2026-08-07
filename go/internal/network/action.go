@@ -79,5 +79,3 @@ func readPID() int {
 	}
 	return pid
 }
-
-

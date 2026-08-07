@@ -58,23 +58,16 @@ EOF
 
 clean_old_pids() {
     if [ -f "$PID_STATE" ] && command -v jq >/dev/null 2>&1; then
-        # Используем совместимый способ расчёта даты
-        if date -v -${HISTORY_DAYS}d +"%Y-%m-%d %H:%M:%S" >/dev/null 2>&1; then
-            # BSD date (macOS)
-            cutoff=$(date -v -${HISTORY_DAYS}d +"%Y-%m-%d %H:%M:%S" 2>/dev/null)
-        elif date -d "-${HISTORY_DAYS} days" +"%Y-%m-%d %H:%M:%S" >/dev/null 2>&1; then
-            # GNU date
-            cutoff=$(date -d "-${HISTORY_DAYS} days" +"%Y-%m-%d %H:%M:%S" 2>/dev/null)
-        else
+        # BusyBox-совместимый расчёт даты через epoch (поддержан в date -d @epoch)
+        cutoff=$(date -d "@$(($(date +%s) - HISTORY_DAYS*86400))" +"%Y-%m-%d %H:%M:%S" 2>/dev/null)
+        if [ -z "$cutoff" ]; then
             # Fallback: не удалять старые записи
             return
         fi
-        
-        if [ -n "$cutoff" ]; then
-            temp_file="${PID_STATE}.tmp"
-            jq --arg cutoff "$cutoff" 'to_entries | map(select(.value.last_seen > cutoff)) | from_entries' "$PID_STATE" > "$temp_file" 2>/dev/null
-            mv "$temp_file" "$PID_STATE" 2>/dev/null
-        fi
+
+        temp_file="${PID_STATE}.tmp"
+        jq --arg cutoff "$cutoff" 'to_entries | map(select(.value.last_seen > $cutoff)) | from_entries' "$PID_STATE" > "$temp_file" 2>/dev/null
+        mv "$temp_file" "$PID_STATE" 2>/dev/null
     fi
 }
 

@@ -78,8 +78,10 @@ func HandleWifiTemp() {
 	})
 }
 
+const rciBase = "http://127.0.0.1:79"
+
 func getWifiTemp(iface string) string {
-	url := "http://127.0.0.1:79/rci/show/interface/" + iface
+	url := rciBase + "/rci/show/interface/" + iface
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {

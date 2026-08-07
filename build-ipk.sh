@@ -10,7 +10,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-VERSION="${VERSION:-$(jq -r '.version' version.json 2>/dev/null || python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' version.json | cut -d'"' -f4 || echo "1.06.4")}"
+VERSION="${VERSION:-$(jq -r '.version' version.json 2>/dev/null || python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' version.json | cut -d'"' -f4)}"
+if [ -z "$VERSION" ]; then
+    echo "ERROR: не удалось определить версию из version.json" >&2
+    exit 1
+fi
 ARCHS=("arm64" "mips" "mipsel")
 BUILD_ARCH=""
 

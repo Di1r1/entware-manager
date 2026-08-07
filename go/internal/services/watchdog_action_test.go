@@ -116,7 +116,7 @@ func TestWatchdogAction_ScriptNotFound(t *testing.T) {
 	if result["status"] != "error" {
 		t.Errorf("expected status 'error', got '%s'", result["status"])
 	}
-	if result["message"] != "Демон не найден: " + watchdogScript {
+	if result["message"] != "Демон не найден: "+watchdogScript {
 		t.Errorf("expected 'not found' message, got '%s'", result["message"])
 	}
 }

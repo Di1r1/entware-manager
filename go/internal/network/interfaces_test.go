@@ -8,9 +8,9 @@ import (
 
 func TestParseLinkType(t *testing.T) {
 	cases := []struct {
-		in       string
-		wantTyp  string
-		wantMAC  string
+		in      string
+		wantTyp string
+		wantMAC string
 	}{
 		{"<BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP \\    link/ether d4:9c:53:25:64:d9 brd ff:ff:ff:ff:ff:ff", "ether", "d4:9c:53:25:64:d9"},
 		{"<LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN \\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00", "loopback", "00:00:00:00:00:00"},

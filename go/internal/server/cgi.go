@@ -41,14 +41,13 @@ var flatDispatch = map[string]string{
 	// net
 	"network_interfaces": "net", "network_routes": "net", "network_arp": "net",
 	"network_status": "net", "network_stats": "net", "network_events": "net",
-	"network_config": "net", "network_action": "net",
+	"network_action": "net",
 	// services
 	"check_syntax": "services", "check_deps": "services", "services": "services",
-	"service_action": "services", "ttyd_control": "services", "debug": "services",
+	"service_action": "services", "ttyd_control": "services",
 	// monitor
 	"temperature": "monitor", "wifi_temp": "monitor", "temp_history": "monitor",
-	"wifi_temp_history": "monitor", "kill_pid": "monitor", "monitor_status": "monitor",
-	"monitor_action": "monitor", "monitor_config": "monitor", "monitor_log": "monitor",
+	"wifi_temp_history": "monitor", "kill_pid": "monitor",
 	// smart
 	"smart": "smart",
 }

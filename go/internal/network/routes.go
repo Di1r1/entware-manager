@@ -13,7 +13,10 @@ type Route struct {
 }
 
 func HandleRoutes() {
-	if !IsGET() { NotAllowed(); return }
+	if !IsGET() {
+		NotAllowed()
+		return
+	}
 
 	data, err := exec.Command("ip", "route", "show").Output()
 	if err != nil {
@@ -24,7 +27,9 @@ func HandleRoutes() {
 	var list []Route
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" { continue }
+		if line == "" {
+			continue
+		}
 
 		dest := strings.Fields(line)[0]
 		gateway := "0.0.0.0"

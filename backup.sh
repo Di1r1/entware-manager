@@ -50,8 +50,16 @@ opkg list-installed > "$BACKUP_DIR/EntwareManager_packages_$APP_VERSION.txt"
 
 # 2. Сохраняем важные конфиги
 echo "💾 Сохранение конфигураций lighttpd и rc.local..."
-[ -f /opt/etc/lighttpd/lighttpd.conf ] && cp /opt/etc/lighttpd/lighttpd.conf "$BACKUP_DIR/lighttpd.conf_$APP_VERSION"
-[ -f /opt/etc/rc.local ] && cp /opt/etc/rc.local "$BACKUP_DIR/rc.local_$APP_VERSION"
+if [ -f /opt/etc/lighttpd/lighttpd.conf ]; then
+    cp /opt/etc/lighttpd/lighttpd.conf "$BACKUP_DIR/lighttpd.conf_$APP_VERSION"
+else
+    echo "⚠️  lighttpd.conf не найден — пропуск"
+fi
+if [ -f /opt/etc/rc.local ]; then
+    cp /opt/etc/rc.local "$BACKUP_DIR/rc.local_$APP_VERSION"
+else
+    echo "⚠️  rc.local не найден — пропуск"
+fi
 
 # 3. Копируем весь каталог веб-интерфейса
 echo "📂 Копирование /opt/web_entware ..."

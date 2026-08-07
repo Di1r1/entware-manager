@@ -12,19 +12,19 @@ import (
 // Остальное содержимое /opt/web_entware (конфиги, скрипты, cgi-bin)
 // наружу не отдаётся вообще.
 var staticWhitelist = map[string]bool{
-	"/index.html":                  true,
-	"/style.css":                   true,
-	"/entware.js":                  true,
-	"/monitor.js":                  true,
-	"/network.js":                  true,
-	"/smart.js":                    true,
-	"/modal.js":                    true,
-	"/theme.js":                    true,
-	"/icons.svg":                   true,
-	"/version.json":                true,
-	"/lib/utils.js":                true,
-	"/menu/menu.js":                true,
-	"/logger/system_sources.json":  true,
+	"/index.html":                 true,
+	"/style.css":                  true,
+	"/entware.js":                 true,
+	"/monitor.js":                 true,
+	"/network.js":                 true,
+	"/smart.js":                   true,
+	"/modal.js":                   true,
+	"/theme.js":                   true,
+	"/icons.svg":                  true,
+	"/version.json":               true,
+	"/lib/utils.js":               true,
+	"/menu/menu.js":               true,
+	"/logger/system_sources.json": true,
 }
 
 // handleStatic отдаёт файлы из белого списка под /entware-manager/.
