@@ -2,6 +2,130 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.09.2 (2026-08-11)
+
+### Исправления
+
+- **WASM-клиент RDP: селект Preset и чекбоксы темизированы** (`static/rdp/index.html` из форка grdpwasm). Селект Preset получил стили как у инпутов (`--input-bg`/`--input-border`/`--input-focus` с фокус-подсветкой `--accent-soft`), чекбоксы (Swap Alt/Meta, Битмапы) — `accent-color: var(--accent)`, как в панели. Цвет галок и селекта меняется вместе с пресетом темы и день/ночью.
+- **Починен отключатель пароля (Настройки → Защита панели).** Кнопка «Сохранить» и статус были вложены в блок `#filemgrPassFields`, который `toggleFilemgrPassFields()` скрывал при снятии галочки — отключить защиту было невозможно. Кнопка и статус вынесены в отдельный блок, видимый всегда. Бэкенд `auth_config.cgi` корректно обрабатывал `enabled=false` — правка только во фронтенде.
+- **Пустой экран после установки пароля.** После смены/включения пароля бэкенд инвалидирует сессию (`auth.DestroySession()`), и следующий периодический запрос получал 401 → `showLogin()` показывал оверлей, но не переключал классы `body` (`auth-ready` оставался, `login-shown` не добавлялся) — CSS прятал и панель, и карточку входа, экран оставался пустым до перезагрузки страницы. `showLogin()` теперь снимает `auth-ready` и ставит `login-shown` — экран входа появляется сразу.
+
+### Интерфейс
+
+- **История последних 5 ПК в WASM-клиенте RDP** (`static/rdp/index.html`): поле Host — комбобокс с кастомным дропдауном (стрелка ▾), показывает все сохранённые адреса для выбора. Изначально пробовали `<datalist>`, но браузер фильтрует его по значению поля и показывал только 1 совпадение — заменено на свой список (`#hostDrop`), рендер через `textContent` (XSS-safe), темизация через CSS-переменные панели. Адрес запоминается при клике Connect (cookie `rdp_host_history`, JSON до 5, без дубликатов, свежие сверху).
+
+## 1.09.1 (2026-08-11)
+
+### Исправления
+
+- **Идемпотентность start демонов** (`service_watchdog/action.cgi`, `network/action.cgi`): повторный start уже работающего демона возвращает `status: ok` («Демон уже запущен», PID) вместо `error` — как в `monitor/action.cgi`.
+- **Смена/отключение пароля инвалидирует все сессии**: после сохранения `auth_config.cgi` удаляется файл `/opt/var/run/panel_session`, старые cookie перестают действовать (в обоих режимах гейт проверяет именно этот файл).
+- **`rdp_config.cgi` больше не теряет `allow_subnets` при POST.** Поле не было в структуре `Config` (Go), поэтому любая смена порта/цели через UI перезаписывала конфиг без разрешённых подсетей → grdp-proxy стартовал с fallback `target_host/24`, и цели из второй разрешённой подсети давали 403. Добавлено `AllowSubnets` (принимает и массив, и строку CIDR через запятую), GET отдаёт список, POST мержит/обновляет.
+- **Закрыт доступ к init-скриптам по HTTP** в lighttpd-режиме: `url.access-deny` на `/entware-manager/Install/` (`S90grdp-proxy`, `S80entware-server` без расширения не попадали в `*.sh`).
+
+### Интерфейс
+
+- **WASM-клиент RDP темизирован в стиль панели** (`static/rdp/index.html` из форка grdpwasm): hardcoded-цвета заменены на CSS-переменные панели (`--app-bg`, `--text-primary`, `--command-block-bg`, `--border-color`, `--input-*`, `--btn-gradient`, `--btn-success`, `--scrollbar-*`). Тема синхронизируется с панелью автоматически: в iframe копируются computed-переменные родителя (любой пресет + день/ночь, live-обновление через `MutationObserver`), при открытии в новой вкладке — fallback на `localStorage` + собственные переменные (все 7 пресетов и ночные переопределения). Canvas (RDP-экран) остаётся чёрным. Антикэш: `/rdp/?v=2`, `rdp.js?v=8`.
+
+### Проверено
+
+- В обоих режимах установки: 54/54 эндпоинта, «Проверка системы» (`check_deps.cgi`) ok/ok (флаги веб-сервера соответствуют режиму), `check_syntax.cgi` 0 ошибок, утечки бинарников закрыты (403/404), авторизация, RDP/ttyd/htop-прокси.
+
+## 1.09.0 (2026-08-11)
+
+### Новое
+
+- **Вход в панель по паролю (страница авторизации).** Если в разделе «Защита» задан пароль — GET-страницы панели теперь закрыты, пока пользователь не войдёт:
+  - `login.cgi` (POST пароль → `Set-Cookie: panel_session=…; HttpOnly; SameSite=Strict`), `logout.cgi`, `session.cgi` (статус для фронта);
+  - файл-сессия `/opt/var/run/panel_session`: токен из `/dev/urandom` (32 байта), TTL 24 ч, constant-time сравнение, атомарная запись temp+mv;
+  - гейт на все CGI: **go-режим** — в `entware-server` (`handleCGI`), **lighttpd-режим** — в `go.cgi` (одна точка, `cmp` токена + TTL по mtime);
+  - антибрутфорс: задержка 1 с при неверном пароле;
+  - фронтенд: экран входа (оверлей), глобальный обработчик 401 в `apiFetch` (возврат к логину при истечении), кнопка «Выйти» в сайдбаре.
+- **`enabled=false` / пароль не настроен** — панель открыта как раньше (обратная совместимость, логин не показывается).
+- **Защита от скачивания конфигов в lighttpd-режиме:** `url.access-deny` для `*.sh`/`*.conf`/`*.md`/`.cgi` + точечная блокировка `*_config.json` (раньше `auth_config.json` с хэшем пароля качался по `/entware-manager/auth_config.json` без авторизации; в go-режиме whitelist уже защищал).
+- **Рекомендация по Keenetic:** внешний барьер — панельный логин; авторизацию Keenetic (двойной Basic) рекомендуется отключить.
+
+### Технические изменения
+- `go/internal/auth/session.go` (новый): `CreateSession`, `DestroySession`, `SessionTokenFromCookie`, `SessionValid`, `Enabled`.
+- `go/internal/stats/login.go` (новый): `HandleLogin`, `HandleLogout`, `HandleSession`.
+- `go/internal/server/cgi.go`: проброс `HTTP_COOKIE` в CGI-окружение; гейт авторизации в `handleCGI`.
+- `cgi-bin/go.cgi`: `auth_gate` (lighttpd-режим), эндпоинты `login|logout|session`.
+- `go/cmd/entware-stats/main.go`, `build-deploy.sh`: маппинг новых эндпоинтов.
+- Фронтенд: `index.html` (оверлей логина, кнопка «Выйти»), `entware.js` (проверка сессии, login/logout), `lib/utils.js` (401-обработчик), `style.css` (login-overlay). Кэш: `style.css?v=28`, `entware.js?v=6`, `utils.js?v=4`.
+
+### Исправления (проверка установки в 2 режимах)
+- **Проверка веб-сервера (`lighttpd_http_ok`, `S80entware-server`) переведена с `version.cgi` на `session.cgi`** — после внедрения логина version.cgi отдаёт 401 без cookie, из-за чего install.sh ошибочно считал рабочий lighttpd недоступным и переключался в go-режим (HTTP 000).
+- **Устранено «мелькание» интерфейса перед окном входа.** CSS: `.app-container` скрыт, пока `session.cgi` не подтвердит доступ (`body.auth-ready`), оверлей логина непрозрачен по умолчанию, карточка входа видна только при `body.login-shown`; оверлей скрывается после авторизации (`body.auth-ready .login-overlay { display:none }`). Пред-авторизационные запросы (температура, версия, `update_check`) перенесены из инлайн-скрипта `index.html` в `startPanelWidgets()`, вызываемый после входа — до авторизации гейченных 401-запросов больше нет.
+- **Исправлен `HandleSession`** (баг при `enabled:false`): панель открыта тогда и только тогда, когда открыт гейт — `authenticated := !auth.Enabled() || auth.SessionValid()`.
+- **Синхронизирован гейт при отсутствии `auth_config.json`**: `auth.Enabled()` возвращает `false` (панель открыта) при отсутствии/битости конфига, как в `go.cgi` (lighttpd). Раньше в go-режиме свежая установка без конфига приводила к лок-ауту (гейт закрыт, `session.cgi` → true, первый запрос → 401).
+- **Закрыта утечка Go-бинарников в lighttpd-режиме (полный аудит).** Раньше бинарники в `/entware-manager/cgi-bin/go/` отдавались как статика (200); после фикса `url.access-deny` на этот путь оставался второй alias `/entware-cgi/go/*` → тоже отдавался (200). Теперь оба пути закрыты (403/404), проверено в обоих режимах (go: 404 через whitelist; lighttpd: 403).
+- **Синхронизирован `deploy/` перед сборкой ipk** — `build-ipk.sh` собирал пакет из устаревшей `deploy/`, поэтому фиксы в `Install/install.sh` не попадали в ipk (после opkg-переустановки бинарники снова отдавались 200). Теперь обязателен `make deploy` перед сборкой.
+- **«Проверка системы» (`check_deps.cgi`) больше не показывает critical в go-режиме.** Раньше статус считался по pid-файлу `lighttpd.pid`, а при работающем `entware-server` lighttpd не запущен → всегда `critical`. Добавлено поле `entware_server_running` (pid `/opt/var/run/entware-server.pid`); `overall_status = ok`, если работает lighttpd **или** entware-server. Фронтенд показывает активный веб-сервер («Веб-сервер (lighttpd/entware-server): запущен»).
+- Кэш: `style.css?v=30`, `entware.js?v=9`.
+
+## 1.08.9 (2026-08-10)
+
+### Исправления
+
+- **`lighttpd-mod-access` проверяется по `/opt/etc/lighttpd/conf.d/30-access.conf`** (в этой сборке Entware mod_access встроен в lighttpd, `.so` не поставляется — неверный check_path приводил к ложному «не установился»).
+- **`/menu/menu.json` добавлен в whitelist `static.go`** (в go-режиме меню отдавало 404 → вкладки пропадали).
+- **Гейт авторизации в go-режиме читает cookie из HTTP-запроса** (`TokenFromHeader`), а не из `os.Getenv("HTTP_COOKIE")` (которой нет в entware-server).
+- **RDP-артефакты включены в поставку (build-deploy.sh).** WASM-клиент (`static/rdp/`: index.html, main.wasm, wasm_exec.js) и `grdp-proxy` теперь собираются из форка grdpwasm (`GRDP_FORK=/tmp/opencode/grdpwasm`, настраивается env) и попадают в deploy/ipk. Раньше они не входили в поставку — при установке ipk `static/rdp/` очищался и RDP-клиент пропадал (пустая страница вместо формы ввода).
+- `url.access-deny` в `90-entware-manager.conf` ограничен `/entware-manager/` и блокирует только секретные конфиги (auth_config/server_config/service_config/monitor_config/network_config/links.json); rdp_config.json, menu.json, version.json, system_sources.json отдаются. Ранее блокировка `*.cgi` ломала все CGI-эндпоинты, а блокировка всех `.json` — меню.
+
+### Новое
+
+- **Сжатие статики при раздаче (mod_deflate + gzip в grdp-proxy).** `lighttpd-mod-deflate` добавлен в PACKAGES; `deflate.mimetypes` расширен до `application/wasm` + CSS/JS/JSON/SVG. WASM-клиент RDP передаётся сжатым (~10МБ → ~3МБ, gzip), браузер распаковывает автоматически. В go-режиме сжатие обеспечивает сам `grdp-proxy` (`gzipHandler` для статики) — работает в обоих режимах веб-сервера. `grdp-proxy` сжимается **UPX** (5.9МБ → ~2.1МБ); сам WASM UPX не поддерживает (формат WebAssembly) — только gzip при раздаче.
+- **RDP-модуль приведён к единой структуре проекта.** Все файлы физически в `/opt/web_entware/`: бинарник `grdp-proxy` — в `cgi-bin/go/`, WASM-клиент — в `static/rdp/`, `S90grdp-proxy` — в `Install/`. Устранён второй корень `/opt/entware-manager/`. Init-скрипты `S90grdp-proxy` (и `S80entware-server` в go-режиме) теперь ставятся **симлинками** из `/opt/etc/init.d` на `/opt/web_entware/Install/...`.
+- **RDP-доступ к любому ПК в LAN.** `grdp-proxy` теперь принимает `-allow-target` в виде CIDR-подсетей (`allow_subnets` из `rdp_config.json`) или списка целей через запятую — можно подключаться к любому хосту разрешённой подсети вместо одной фиксированной цели. Fallback: подсеть `/24` адреса `target_host`. Цели вне разрешённых подсетей по-прежнему отклоняются (403, защита от открытого релея).
+- **Удалённый доступ к вкладкам Процессы / Терминал / RDP через единый origin панели.** Внешний доступ (Keenetic Remote / KeenDNS) пробрасывает только порт 8087; раньше ttyd (9089/8089) и grdp-proxy (9099) на отдельных портах из интернета были недоступны. Теперь все три сервиса проксируются на том же origin:
+  - **Go-режим** (`entware-server`): новые роуты `/terminal/`, `/htop/`, `/rdp/`, `/ws` через `httputil.ReverseProxy` (WebSocket из коробки) — `go/internal/server/proxy.go`.
+  - **lighttpd-режим**: `mod_proxy` + `proxy.header = ("upgrade" => "enable")` в `90-entware-manager.conf`; `lighttpd-mod-proxy` добавлен в PACKAGES и в проверку установки.
+- **Сервисы переведены на loopback** — прямые порты закрыты даже в LAN, доступ только через панель:
+  - ttyd: `-i lo` + `--base-path /terminal` (9089) и `/htop` (8089);
+  - grdp-proxy: `-listen 127.0.0.1:9099` + статика под префиксом `/rdp/`.
+- **Пароль ttyd обязателен** для терминала и htop (`-c admin:<pass>`): терминал = root shell, при доступе извне без пароля недопустим.
+- **Защита RDP от открытого релея:** grdp-proxy принимает `-allow-target <host:port>` из `rdp_config.json` (`target_host`/`target_port`); любые другие `target=` в `/ws` → 403.
+- **Фронтенд** переведён на same-origin пути: iframe и «Открыть в новой вкладке» — `/htop/`, `/terminal/`, `/rdp/` (работают в LAN и удалённо, решают mixed-content при HTTPS). Кэш поднят: `entware.js?v=5`, `rdp.js?v=6`.
+- **Миграция `links.json`**: прямые порты ttyd (`:8089`/`:9089`) заменяются на пути панели (с бэкапом).
+
+### Исправления
+
+- htop теперь запускается с обязательным паролем (раньше — без аутентификации).
+- `links.go`: дефолтные ссылки htop/терминал — относительные `/htop/`, `/terminal/`.
+
+## 1.08.8 (2026-08-10)
+
+### Новое
+
+- **RDP-вкладка приведена к единому стилю панели.**
+  - `.rdp-panel` переведён с несуществующей `--card-bg` (прозрачный фон) на `--command-block-bg` — как у status-панелей network/monitor;
+  - кнопки Start/Stop/Open темизируются через новые переменные `--btn-success`/`--btn-danger`/`--btn-muted` в `:root` и `html.night` (hex-fallback удалены);
+  - инлайн-стили статуса и подсказок вынесены в классы `.rdp-meta`/`.rdp-url` (ellipsis)/`.rdp-hint`.
+- Кэш-версии подняты: `style.css?v=27`, `rdp.js?v=5`.
+
+## 1.08.7 (2026-08-10)
+
+### Новое
+
+- **RDP-бэкенд: управление grdp-proxy через CGI.** Бинарник `entware-rdp` (диспетчер `ENDPOINT`, флэт-маппинги) с эндпоинтами:
+  - `rdp_status.cgi` (GET, публичный) — состояние прокси: `state` (`running`/`stopped`), PID, порт из `rdp_config.json`;
+  - `rdp_start.cgi` / `rdp_stop.cgi` (POST) — управление через init-скрипт `S90grdp-proxy` (идемпотентно, PID-файл), только с паролем + Origin-чек (CSRF);
+  - `rdp_config.cgi` (GET/POST) — конфиг прокси: `proxy_port`, `proxy_host`, `target_host`, `target_port`, `enabled` (валидация портов, без хранения паролей).
+- **Общий `go/internal/auth` (fail-closed):** авторизация по `auth_config.json` — файл отсутствует/битый/нет hash → отказ («Настройте пароль»), `enabled=false` в валидном конфиге → доступ; `CheckPassword`, `SHA256Hex`, `IsCrossSiteOrigin` (Origin vs `HTTP_HOST` + `Sec-Fetch-Site`). Защищены `rdp_*`-мутации и `auth_config.cgi` (смена/отключение пароля — только после ввода действующего).
+- **`Install/S90grdp-proxy`:** init-скрипт прокси (ash, PID-файл, start/stop/restart/check, чтение порта из `rdp_config.json`); устанавливается в `/opt/etc/init.d/`.
+- **`install.sh`:** установка артефактов RDP (бинарник `grdp-proxy`, статика `static/rdp/`, `S90grdp-proxy`) в единую структуру `/opt/web_entware/` (бинарник — в `cgi-bin/go/`, статика — в `static/rdp/`), `entware-rdp` добавлен в список Go-бинарников.
+
+### Исправления
+
+- **`auth_config.cgi`: смена/отключение пароля без действующего теперь невозможна** (fail-closed `current_password`), GET возвращает `{enabled, configured}`.
+
+## 1.08.6 (2026-08-10)
+
+### Новое
+
+- **RDP-вкладка (веб-RDP-клиент grdpwasm) — интеграция интерфейса.** Добавлен изолированный модуль `rdp.js` (паттерн SMART: `init`/`stopUpdates`, ленивая загрузка через `loadScript`), пункт меню «RDP» (иконка vpn). Все пути и порт прокси берутся из единого конфига `rdp_config.json` (порт прокси, host, путь к бинарнику и статике); файл создаётся на роутере `install.sh` (по умолчанию порт 9099). Прокси-клиент встраивается в iframe (полноэкранный, pointer-lock, autoplay). Статус: детект доступности прокси через cross-origin `img` (без бэкенда), при наличии будущего `rdp_status.cgi` — через API. Кнопки «Запустить/Остановить» задействуют управляющие эндпоинты (`rdp_start.cgi`/`rdp_stop.cgi`), при их отсутствии — заблокированы с подсказкой. Статика `rdp.js`/`rdp_config.json` добавлена в whitelist `static.go`; `rdp.js` — в проверку веб-файлов `install.sh`; кэш-версия `entware.js` поднята до v=4.
+
 ## 1.08.5 (2026-08-07)
 
 ### Исправления

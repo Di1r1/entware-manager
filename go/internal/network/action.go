@@ -28,7 +28,7 @@ func HandleAction() {
 
 func handleStart() {
 	if pid := readPID(); pid > 0 && pidAlive(pid) {
-		WriteJSON(map[string]interface{}{"status": "error", "message": "Демон уже запущен", "pid": pid})
+		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
 		return
 	}
 	os.Remove(PidFile)

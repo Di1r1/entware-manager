@@ -47,7 +47,7 @@ func Installed() {
 		count = len(strings.Split(pkgList, "\n"))
 	}
 
-	html := "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Установленные пакеты</title>\n<link rel=\"stylesheet\" href=\"/entware-manager/style.css?v=24\">\n<script src=\"/entware-manager/theme.js?v=2\"></script>\n</head>\n<body class=\"packages-body\">\n<script>if (window.Theme) Theme.init();</script>\n<div class=\"packages-container\">\n"
+	html := "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Установленные пакеты</title>\n<link rel=\"stylesheet\" href=\"/entware-manager/style.css?v=30\">\n<script src=\"/entware-manager/theme.js?v=2\"></script>\n</head>\n<body class=\"packages-body\">\n<script>if (window.Theme) Theme.init();</script>\n<div class=\"packages-container\">\n"
 	html += fmt.Sprintf("<h2 style=\"display: flex; align-items: center; gap: 8px;\"><span class=\"stat-icon\" style=\"width: 28px; height: 28px;\"><svg class=\"icon\" width=\"28\" height=\"28\"><use href=\"/entware-manager/icons.svg?v=2#icon-package\"/></svg></span>Установленные пакеты (%d)</h2>\n", count)
 
 	if code != 0 || pkgList == "" || count == 0 {

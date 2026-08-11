@@ -35,7 +35,7 @@ if command -v jq >/dev/null 2>&1 && [ -f "$CONFIG_FILE" ]; then
 		*) [ "$p" -gt 0 ] 2>/dev/null && [ "$p" -lt 65536 ] && PORT=$p ;;
 	esac
 fi
-URL_CHECK="http://127.0.0.1:$PORT/entware-cgi/version.cgi"
+URL_CHECK="http://127.0.0.1:$PORT/entware-cgi/session.cgi"
 
 ansi_green="\033[1;32m"
 ansi_red="\033[1;31m"

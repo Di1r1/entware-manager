@@ -2,7 +2,9 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -135,4 +137,29 @@ func TestReadPid_NotFound(t *testing.T) {
 	if pid != 0 {
 		t.Errorf("expected 0, got %d", pid)
 	}
+}
+
+func TestWebServerStatus(t *testing.T) {
+	// Статус должен быть ok, если работает lighttpd ИЛИ entware-server.
+	// Тест логики: моделируем через pid-файлы (HandleCheckDeps читает их).
+	dir := t.TempDir()
+	entwareServerPidFile = filepath.Join(dir, "entware-server.pid")
+	lighttpdPidFile = filepath.Join(dir, "lighttpd.pid")
+
+	// entware-server "запущен" (наш pid — процесс теста жив)
+	os.WriteFile(entwareServerPidFile, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644)
+	os.Remove(lighttpdPidFile)
+
+	os.Setenv("REQUEST_METHOD", "GET")
+	defer os.Unsetenv("REQUEST_METHOD")
+	body := captureStdout(t, HandleCheckDeps)
+
+	var result DepsResult
+	json.Unmarshal(body, &result)
+
+	if !result.Base.EntwareServerRunning {
+		t.Error("EntwareServerRunning = false, want true (наш pid жив)")
+	}
+	// Суть фикса: entware-server учитывается как рабочий веб-сервер —
+	// поле теперь присутствует в JSON и заполняется по pid-файлу.
 }

@@ -64,6 +64,12 @@ EOF
 #!/bin/sh
 # postinst — настройка после установки
 /opt/web_entware/Install/install.sh
+# Перезапуск веб-сервера, чтобы сбросить состояние proxy-бэкендов
+# (grdp-proxy мог быть остановлен во время обновления файлов → 503 на /rdp/).
+if [ -x /opt/etc/init.d/S80lighttpd ]; then
+	/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1 || true
+fi
+exit 0
 INSTEOF
     chmod 755 "$PKG_TMP/control/postinst"
 

@@ -71,7 +71,7 @@ for i in "${!ARCH_NAMES[@]}"; do
     echo ""
     echo "  [$arch_name] (GOARCH=$goarch${goflags:+ $goflags})"
 
-    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server; do
+    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server entware-rdp; do
         echo -n "    $cmd... "
         out="$DEPLOY_DIR/cgi-bin/go/$dir_name/$cmd"
         env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" "./cmd/$cmd/" 2>&1
@@ -81,18 +81,66 @@ done
 
 if command -v upx &>/dev/null || [ -x /tmp/upx-4.2.4-amd64_linux/upx ]; then
     UPX=$(command -v upx || echo "/tmp/upx-4.2.4-amd64_linux/upx")
-    echo ""
-    echo "=== UPX сжатие ==="
-    for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
-        [ -d "$arch_dir" ] || continue
-        echo "  [$(basename "$arch_dir")]"
-        for f in "$arch_dir"entware-*; do
-            [ -f "$f" ] || continue
-            echo -n "    $(basename $f)... "
-            tmpf=$(mktemp -u)
-            "$UPX" -9 "$f" -o "$tmpf" 2>/dev/null && mv "$tmpf" "$f" && echo "OK ($(du -h "$f" | cut -f1))" || { rm -f "$tmpf"; echo "SKIP"; }
-        done
+fi
+echo ""
+echo "=== UPX сжатие ==="
+for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
+    [ -d "$arch_dir" ] || continue
+    echo "  [$(basename "$arch_dir")]"
+    for f in "$arch_dir"entware-*; do
+        [ -f "$f" ] || continue
+        echo -n "    $(basename $f)... "
+        tmpf=$(mktemp -u)
+        "$UPX" -9 "$f" -o "$tmpf" 2>/dev/null && mv "$tmpf" "$f" && echo "OK ($(du -h "$f" | cut -f1))" || { rm -f "$tmpf"; echo "SKIP"; }
     done
+done
+
+# ==============================================
+# RDP-артефакты (WASM-клиент grdpwasm + grdp-proxy)
+# Форк grdpwasm — ВНЕ репозитория (gitignored static/), собран в /tmp/opencode/grdpwasm.
+# Если форк доступен — собираем grdp-proxy под каждую arch и копируем WASM-клиент.
+# Если нет — предупреждаем (RDP-вкладка будет недоступна до ручной сборки).
+# ==============================================
+GRDP_FORK="${GRDP_FORK:-/tmp/opencode/grdpwasm}"
+if [ -d "$GRDP_FORK/proxy" ] && [ -f "$GRDP_FORK/static/index.html" ]; then
+    echo ""
+    echo "=== RDP-артефакты (форк grdpwasm: $GRDP_FORK) ==="
+
+    # WASM-клиент (архитектурно независим, один раз)
+    mkdir -p "$DEPLOY_DIR/static/rdp"
+    cp "$GRDP_FORK/static/index.html" "$DEPLOY_DIR/static/rdp/"
+    if [ ! -f "$GRDP_FORK/static/main.wasm" ]; then
+        echo "  WASM main.wasm не найден — собираю (может занять несколько минут)..."
+        ( cd "$GRDP_FORK" && GOOS=js GOARCH=wasm go build -o static/main.wasm . ) || echo "  WARNING: сборка WASM не удалась"
+    fi
+    cp "$GRDP_FORK/static/main.wasm" "$DEPLOY_DIR/static/rdp/" 2>/dev/null && echo "  WASM-клиент: index.html + main.wasm ($(du -h "$DEPLOY_DIR/static/rdp/main.wasm" | cut -f1))"
+    cp "$GRDP_FORK/static/wasm_exec.js" "$DEPLOY_DIR/static/rdp/" 2>/dev/null || true
+
+    # grdp-proxy под каждую arch
+    cd "$PROJECT_DIR/go"
+    for i in "${!ARCH_NAMES[@]}"; do
+        arch_name="${ARCH_NAMES[$i]}"
+        goarch="${ARCH_GOARCH[$i]}"
+        goflags="${ARCH_FLAGS[$i]}"
+        if [ -n "$BUILD_ARCHS" ] && [ "$arch_name" != "$BUILD_ARCHS" ]; then
+            continue
+        fi
+        echo -n "  [grdp-proxy $arch_name]... "
+        out="$DEPLOY_DIR/cgi-bin/go/$arch_name/grdp-proxy"
+        ( cd "$GRDP_FORK" && env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" ./proxy/ ) 2>&1 && {
+            "$UPX" -9 "$out" -o "$out.tmp" 2>/dev/null && mv "$out.tmp" "$out" || true
+            echo "OK ($(du -h "$out" | cut -f1))"
+        } || echo "FAIL"
+    done
+    cd "$PROJECT_DIR"
+
+    chmod 755 "$DEPLOY_DIR/static/rdp/index.html"
+    chmod 644 "$DEPLOY_DIR/static/rdp/main.wasm" "$DEPLOY_DIR/static/rdp/wasm_exec.js" 2>/dev/null
+    chmod 755 "$DEPLOY_DIR"/cgi-bin/go/*/grdp-proxy 2>/dev/null
+else
+    echo ""
+    echo "WARNING: форк grdpwasm не найден ($GRDP_FORK) — RDP-артефакты не собраны."
+    echo "         Вкладка RDP будет недоступна до ручной сборки (см. doc/RDP_MODULE.md)."
 fi
 
 cp "$PROJECT_DIR/cgi-bin/go.cgi" "$DEPLOY_DIR/cgi-bin/go.cgi"
@@ -101,7 +149,7 @@ echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 
 cd "$DEPLOY_DIR/cgi-bin"
-for ep in api auth_config available backup backup_restore check_deps check_syntax crontab crontab_update delete_file help install kill_pid links_load links_save network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline remove service_action services smart stats temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
+for ep in api auth_config available backup backup_restore check_deps check_syntax crontab crontab_update delete_file help install kill_pid links_load links_save login logout network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline rdp_config rdp_start rdp_status rdp_stop remove service_action services session smart stats temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
     ln -sf go.cgi "$ep.cgi"
     echo "  $ep.cgi -> go.cgi"
 done

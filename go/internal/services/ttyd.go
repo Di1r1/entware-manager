@@ -94,15 +94,15 @@ func startTTYD(port int, pass string, mode string) map[string]string {
 	if mode == "" {
 		mode = "entware"
 	}
+	if pass == "" {
+		return map[string]string{"status": "error", "message": "Пароль обязателен: терминал доступен извне через прокси, без пароля запуск запрещён"}
+	}
 
 	var args []string
-	args = append(args, "-p", strconv.Itoa(port), "-W")
+	args = append(args, "-p", strconv.Itoa(port), "-W", "--permit-any-origin", "-c", "admin:"+pass)
 
 	if port == 9089 {
-		args = append(args, "--permit-any-origin")
-		if pass != "" {
-			args = append(args, "-c", "admin:"+pass)
-		}
+		args = append(args, "-i", "lo", "--base-path", "/terminal")
 		switch mode {
 		case "telnet":
 			args = append(args, "telnet", "127.0.0.1")
@@ -110,7 +110,7 @@ func startTTYD(port int, pass string, mode string) map[string]string {
 			args = append(args, "/opt/bin/bash")
 		}
 	} else if port == 8089 {
-		args = append(args, "htop")
+		args = append(args, "-i", "lo", "--base-path", "/htop", "htop")
 	} else {
 		return map[string]string{"status": "error", "message": "Неизвестный порт"}
 	}

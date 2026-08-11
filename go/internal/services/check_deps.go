@@ -13,18 +13,20 @@ import (
 )
 
 var (
-	opkgBin         = "/opt/bin/opkg"
-	lighttpdPidFile = "/opt/var/run/lighttpd.pid"
-	cronPidFile     = "/opt/var/run/cron.pid"
+	opkgBin              = "/opt/bin/opkg"
+	lighttpdPidFile      = "/opt/var/run/lighttpd.pid"
+	entwareServerPidFile = "/opt/var/run/entware-server.pid"
+	cronPidFile          = "/opt/var/run/cron.pid"
 )
 
 type DepsBase struct {
-	Opkg            bool `json:"opkg"`
-	LighttpdRunning bool `json:"lighttpd_running"`
-	Sed             bool `json:"sed"`
-	Awk             bool `json:"awk"`
-	Grep            bool `json:"grep"`
-	Ps              bool `json:"ps"`
+	Opkg                 bool `json:"opkg"`
+	LighttpdRunning      bool `json:"lighttpd_running"`
+	EntwareServerRunning bool `json:"entware_server_running"`
+	Sed                  bool `json:"sed"`
+	Awk                  bool `json:"awk"`
+	Grep                 bool `json:"grep"`
+	Ps                   bool `json:"ps"`
 }
 
 type DepsDeps struct {
@@ -75,6 +77,8 @@ func HandleCheckDeps() {
 
 	lighttpdPid := readPid(lighttpdPidFile)
 	r.Base.LighttpdRunning = lighttpdPid > 0 && pidIsAlive(lighttpdPid)
+	entwarePid := readPid(entwareServerPidFile)
+	r.Base.EntwareServerRunning = entwarePid > 0 && pidIsAlive(entwarePid)
 
 	r.Deps.CronInstalled = opkgListInstalled("cron")
 	cronPid := readPid(cronPidFile)
@@ -101,7 +105,8 @@ func HandleCheckDeps() {
 	r.Sections.Smart = statusSmart()
 
 	r.OverallStatus = "ok"
-	if !r.Base.Opkg || !r.Base.LighttpdRunning {
+	webServerUp := r.Base.LighttpdRunning || r.Base.EntwareServerRunning
+	if !r.Base.Opkg || !webServerUp {
 		r.OverallStatus = "critical"
 	} else if r.Sections.Services == "missing" || r.Sections.Network == "missing" || r.Sections.Logger == "missing" || r.Sections.Smart == "missing" {
 		r.OverallStatus = "partial"

@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	"entware-manager/internal/auth"
 )
 
 const (
@@ -70,13 +72,36 @@ func LoadConfig() Config {
 
 // NewHandler собирает маршруты сервера.
 func NewHandler() http.Handler {
+	registerProxyBackends()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/entware-manager/", handleStatic)
 	mux.HandleFunc("/entware-cgi/", handleCGI)
+	// Прокси встроенных сервисов на едином origin 8087 (см. proxy.go).
+	// Гейт сессии: если пароль панели настроен, прокси доступны только
+	// после входа (иначе любой LAN-клиент дёргал бы RDP/терминал без пароля).
+	mux.Handle("/ws", authGate(newWebSocketProxy()))
+	for _, b := range proxyBackends {
+		mux.Handle(b.prefix, authGate(handleRemoteProxy(b)))
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/entware-manager/", http.StatusFound)
 	})
 	return mux
+}
+
+// authGate закрывает прокси-маршруты, если включён пароль панели.
+// Поведение повторяет гейт из handleCGI (cgi.go): без валидной сессии — 401.
+func authGate(next http.Handler) http.Handler {
+	if next == nil {
+		return http.NotFoundHandler()
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth.Enabled() && !auth.SessionValidCookie(auth.TokenFromHeader(r.Header.Get("Cookie"))) {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // SetupLogging открывает лог-файл (каталог создаёт init-скрипт).

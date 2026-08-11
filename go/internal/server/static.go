@@ -18,12 +18,15 @@ var staticWhitelist = map[string]bool{
 	"/monitor.js":                 true,
 	"/network.js":                 true,
 	"/smart.js":                   true,
+	"/rdp.js":                     true,
+	"/rdp_config.json":            true,
 	"/modal.js":                   true,
 	"/theme.js":                   true,
 	"/icons.svg":                  true,
 	"/version.json":               true,
 	"/lib/utils.js":               true,
 	"/menu/menu.js":               true,
+	"/menu/menu.json":             true,
 	"/logger/system_sources.json": true,
 }
 

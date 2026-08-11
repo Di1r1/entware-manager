@@ -6,6 +6,10 @@ tmp/
 .DS_Store
 cgi-bin/go/
 
+# Внешний форк grdpwasm (static/rdp/, ~10+ МБ WASM) — артефакт поставки,
+# не должен попадать в git. Сборка/деплой из /tmp/opencode/grdpwasm.
+static/
+
 RULES.md
 
 # Dev/workspace artifacts

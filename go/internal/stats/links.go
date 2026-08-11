@@ -21,8 +21,8 @@ var defaultLinks = []Link{
 	{Name: "AdGuard Home", URL: "http://192.168.3.1:3000", Icon: "shield"},
 	{Name: "Transmission", URL: "http://192.168.3.1:9091", Icon: "download"},
 	{Name: "Netdata", URL: "http://192.168.3.1:19999", Icon: "chart"},
-	{Name: "htop (ttyd)", URL: "http://192.168.3.1:8089", Icon: "process"},
-	{Name: "Терминал (ttyd)", URL: "http://192.168.3.1:9089", Icon: "terminal"},
+	{Name: "htop (ttyd)", URL: "/htop/", Icon: "process"},
+	{Name: "Терминал (ttyd)", URL: "/terminal/", Icon: "terminal"},
 }
 
 func HandleLinksLoad() {

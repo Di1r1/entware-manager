@@ -76,7 +76,9 @@ lighttpd_http_ok() {
 	local port="${1:-8087}"
 	command -v curl >/dev/null 2>&1 || return 1
 	local code
-	code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://127.0.0.1:$port/entware-cgi/version.cgi" 2>/dev/null)
+	# session.cgi открыт без авторизации (в отличие от version.cgi, который
+	# после внедрения логина отдаёт 401 без cookie).
+	code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://127.0.0.1:$port/entware-cgi/session.cgi" 2>/dev/null)
 	[ "$code" = "200" ]
 }
 
@@ -173,6 +175,9 @@ fi
 
 PACKAGES="\
 lighttpd|/opt/sbin/lighttpd
+lighttpd-mod-proxy|/opt/lib/lighttpd/mod_proxy.so
+lighttpd-mod-deflate|/opt/lib/lighttpd/mod_deflate.so
+lighttpd-mod-access|/opt/etc/lighttpd/conf.d/30-access.conf
 ttyd|/opt/bin/ttyd
 jq|/opt/bin/jq
 coreutils|/opt/bin/dirname
@@ -280,6 +285,11 @@ if [ ! -f "/opt/lib/lighttpd/mod_cgi.so" ]; then
 	opkg install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
 fi
 
+if [ ! -f "/opt/lib/lighttpd/mod_proxy.so" ]; then
+	echo "  → mod_proxy.so нет, устанавливаю lighttpd-mod-proxy..."
+	opkg install lighttpd-mod-proxy 2>/dev/null && ok "lighttpd-mod-proxy установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-proxy"
+fi
+
 # Удаляем старые строки entware из lighttpd.conf (совместимость с предыдущими версиями)
 sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" 2>/dev/null
 sed -i '\|"/entware-cgi/"|d' "$LIGHTTPD_CONF" 2>/dev/null
@@ -321,17 +331,96 @@ cat > "$CONF_FILE" <<'EOF'
 server.port = 8087
 server.modules += ( "mod_alias" )
 server.modules += ( "mod_cgi" )
+server.modules += ( "mod_proxy" )
+server.modules += ( "mod_access" )
 
 alias.url += (
     "/entware-manager/" => "/opt/web_entware/",
     "/entware-cgi/" => "/opt/web_entware/cgi-bin/"
 )
+
+# Защита статики: нельзя скачивать скрипты/секретные конфиги из /entware-manager/.
+# rdp_config.json, version.json, menu.json, system_sources.json отдаются (публичные).
+# (В go-режиме это обеспечивает whitelist.) /entware-cgi/*.cgi НЕ блокируем — это эндпоинты.
+$HTTP["url"] =~ "^/entware-manager/" {
+    url.access-deny = ( "~", ".sh", ".conf", ".md", ".cgi" )
+    # Go-бинарники (без расширения) — не отдаём как статику: иначе их можно скачать.
+    $HTTP["url"] =~ "^/entware-manager/cgi-bin/go/" {
+        url.access-deny = ( "" )
+    }
+    $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config)\.json$" {
+        url.access-deny = ( "" )
+    }
+    # Init-скрипты (S90grdp-proxy, S80entware-server, install.sh) — не статика.
+    $HTTP["url"] =~ "^/entware-manager/Install/" {
+        url.access-deny = ( "" )
+    }
+}
+
+# Второй alias "/entware-cgi/" => cgi-bin/: Go-бинарники (без расширения)
+# не попадают в static-file.exclude-extensions и отдавались бы как статика.
+$HTTP["url"] =~ "^/entware-cgi/go/" {
+    url.access-deny = ( "" )
+}
+
+# Встроенные сервисы через тот же origin (удалённый доступ + HTTPS)
+proxy.header = ( "upgrade" => "enable" )
+$HTTP["url"] =~ "^/terminal/" {
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9089 ) ) )
+}
+$HTTP["url"] =~ "^/htop/" {
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 8089 ) ) )
+}
+$HTTP["url"] =~ "^/rdp/" {
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9099 ) ) )
+}
+$HTTP["url"] =~ "^/ws" {
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9099 ) ) )
+}
 EOF
 if [ -f "$CONF_FILE" ]; then
 	ok "90-entware-manager.conf: port, modules, alias"
 else
 	LIGHTTPD_ERR="$LIGHTTPD_ERR 90-entware-manager.conf"
 	fail "90-entware-manager.conf не создался"
+fi
+
+# Сжатие статики (mod_deflate): WASM-клиент RDP ~10МБ → ~3МБ при передаче.
+# Расширяем deflate.mimetypes в системном 30-deflate.conf (если есть).
+DEFLATE_CONF="/opt/etc/lighttpd/conf.d/30-deflate.conf"
+if [ -f "$DEFLATE_CONF" ] && [ -f "/opt/lib/lighttpd/mod_deflate.so" ]; then
+	if grep -q "^deflate.mimetypes" "$DEFLATE_CONF"; then
+		sed -i 's#^deflate.mimetypes.*#deflate.mimetypes         = ("text/plain", "text/html", "text/css", "application/javascript", "application/json", "image/svg+xml", "application/wasm")#' "$DEFLATE_CONF" 2>/dev/null
+	else
+		echo 'deflate.mimetypes = ("text/plain", "text/html", "text/css", "application/javascript", "application/json", "image/svg+xml", "application/wasm")' >> "$DEFLATE_CONF"
+	fi
+	ok "mod_deflate: сжатие статики/WASM включено"
+else
+	ok "mod_deflate не установлен — сжатие статики пропущено"
+fi
+
+# Корень сервера: meta-refresh на панель (для Keenetic Remote/KeenDNS,
+# которые публикуют корневой URL и отдают 403 на пустой document-root).
+DOC_ROOT=$(grep -o "var.server_root = \"[^\"]*\"" "$LIGHTTPD_CONF" 2>/dev/null | cut -d'"' -f2)
+if [ -z "$DOC_ROOT" ]; then
+	DOC_ROOT="/opt/share/www"
+fi
+mkdir -p "$DOC_ROOT" 2>/dev/null
+if [ ! -f "$DOC_ROOT/index.html" ] || ! grep -q "/entware-manager/" "$DOC_ROOT/index.html" 2>/dev/null; then
+	cat > "$DOC_ROOT/index.html" <<'INDEXEOF'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=/entware-manager/">
+<title>Entware Manager</title>
+</head>
+<body>
+<p>Перенаправление... <a href="/entware-manager/">Открыть Entware Manager</a></p>
+</body>
+</html>
+INDEXEOF
+	ok "корень $DOC_ROOT/index.html → редирект на панель"
 fi
 
 # 30-cgi.conf — cgi.assign
@@ -429,6 +518,26 @@ fi
 
 rm -f "$TARGET_DIR/README.md" "$TARGET_DIR/LICENSE" "$TARGET_DIR/DEVLOG.md" "$TARGET_DIR/DEVICE.md" "$TARGET_DIR/BUILD.md" "$TARGET_DIR/RULES.md" "$TARGET_DIR/TECH_SPEC.md" "$TARGET_DIR/forum_post.md" "$TARGET_DIR/Makefile" "$TARGET_DIR/build-ipk.sh" "$TARGET_DIR/Install/Install.txt" "$TARGET_DIR/doc/NETWORK_PROMPT.md" "$TARGET_DIR/doc/IPK_BUILD.md" "$TARGET_DIR/conffiles" "$TARGET_DIR/control" "$TARGET_DIR/postinst" "$TARGET_DIR/prerm" 2>/dev/null || true
 
+# Миграция links.json: прямые порты ttyd (8089/9089) теперь доступны через панель
+# (/htop/, /terminal/ — тот же origin, работает и в LAN, и через KeenDNS/Remote).
+LINKS_FILE="$TARGET_DIR/links.json"
+if [ -f "$LINKS_FILE" ] && grep -qE ':(8089|9089)' "$LINKS_FILE" 2>/dev/null; then
+	backup_file "$LINKS_FILE" "links.json"
+	# Было "http://<ip>:8089" или "http://<ip>:9089" → относительный путь панели.
+	sed -i 's#http://[^"]*:8089#/htop/#g; s#http://[^"]*:9089#/terminal/#g' "$LINKS_FILE" 2>/dev/null
+	ok "links.json: порты ttyd → /htop/, /terminal/ (миграция)"
+fi
+
+# Конфиг RDP-модуля: порт прокси и пути (создаём в обоих режимах — lighttpd и go)
+# build-deploy.sh исключает *_config.json из deploy, поэтому файл создаём здесь.
+RDP_CFG="$TARGET_DIR/rdp_config.json"
+if [ ! -f "$RDP_CFG" ]; then
+	echo '{"proxy_port":9099,"proxy_host":"","bin_path":"/opt/web_entware/cgi-bin/go/grdp-proxy","static_dir":"/opt/web_entware/static/rdp/","enabled":false}' > "$RDP_CFG"
+	ok "rdp_config.json создан (порт 9099)"
+else
+	ok "rdp_config.json уже есть"
+fi
+
 # ========== 6. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
 step "Настройка архитектуры"
 
@@ -478,6 +587,35 @@ if [ -n "$ROUTER_ARCH" ]; then
 	fi
 else
 	warn "Не удалось определить архитектуру роутера ($(uname -m))"
+fi
+
+# RDP-модуль: grdp-proxy + WASM-клиент + init-скрипт (если присутствуют в поставке).
+# Блок после flatten-шага: бинарники уже разложены из cgi-bin/go/<arch>/ в cgi-bin/go/,
+# поэтому проверки идут по финальным путям TARGET_DIR (не по SELF_DIR до распаковки).
+RDP_PKG_DIR="$TARGET_DIR"
+if [ -f "$RDP_PKG_DIR/cgi-bin/go/grdp-proxy" ] || [ -d "$RDP_PKG_DIR/static/rdp" ] || [ -f "$RDP_PKG_DIR/Install/S90grdp-proxy" ]; then
+	mkdir -p "$RDP_PKG_DIR/cgi-bin/go" "$RDP_PKG_DIR/static/rdp"
+	if [ -f "$RDP_PKG_DIR/cgi-bin/go/grdp-proxy" ]; then
+		chmod 755 "$RDP_PKG_DIR/cgi-bin/go/grdp-proxy" 2>/dev/null
+		ok "grdp-proxy установлен"
+	else
+		warn "grdp-proxy не найден в поставке — RDP-клиент будет недоступен"
+	fi
+	if [ -d "$RDP_PKG_DIR/static/rdp" ]; then
+		chmod 644 "$RDP_PKG_DIR/static/rdp"/* 2>/dev/null
+		ok "WASM-клиент RDP установлен"
+	else
+		warn "WASM-клиент RDP не найден в поставке"
+	fi
+	if [ -f "$RDP_PKG_DIR/Install/S90grdp-proxy" ]; then
+		ln -sf "$RDP_PKG_DIR/Install/S90grdp-proxy" "/opt/etc/init.d/S90grdp-proxy" 2>/dev/null
+		chmod 755 "$RDP_PKG_DIR/Install/S90grdp-proxy" 2>/dev/null
+		ok "S90grdp-proxy установлен (симлинк)"
+	else
+		warn "S90grdp-proxy не найден в поставке — прокси придётся запускать вручную"
+	fi
+else
+	ok "RDP-артефакты не в поставке — пропускаю установку модуля"
 fi
 
 # ========== 7. SUDOERS + ПРАВА ==========
@@ -531,9 +669,9 @@ else
 	# --- Режим go: собственный entware-server ---
 	EWM_SERVER_INIT="/opt/etc/init.d/S80entware-server"
 	if [ -f "$SELF_DIR/Install/S80entware-server" ]; then
-		cp -a "$SELF_DIR/Install/S80entware-server" "$EWM_SERVER_INIT"
-		chmod 755 "$EWM_SERVER_INIT"
-		ok "S80entware-server установлен"
+		ln -sf "$TARGET_DIR/Install/S80entware-server" "$EWM_SERVER_INIT"
+		chmod 755 "$TARGET_DIR/Install/S80entware-server"
+		ok "S80entware-server установлен (симлинк)"
 	else
 		warn "шаблон S80entware-server не найден в $SELF_DIR/Install/"
 	fi
@@ -623,7 +761,7 @@ fi
 
 # Проверка Go-бинарников
 echo "  ${BOLD}Go-бинарники:${NC}"
-GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-server entware-services entware-smart entware-stats"
+GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats"
 GO_OK=0
 for bin in $GO_BINS; do
 	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
@@ -635,15 +773,15 @@ for bin in $GO_BINS; do
 		fail "  $bin не найден в cgi-bin/go/"
 	fi
 done
-if [ $GO_OK -eq 8 ]; then
-	ok "  Все 8 бинарников ($GO_OK)"
+if [ $GO_OK -eq 9 ]; then
+	ok "  Все 9 бинарников ($GO_OK)"
 else
-	fail "  Найдено $GO_OK из 8 бинарников"
+	fail "  Найдено $GO_OK из 9 бинарников"
 fi
 
 # Проверка веб-файлов
 echo "  ${BOLD}Веб-файлы:${NC}"
-for f in index.html style.css entware.js theme.js icons.svg version.json; do
+for f in index.html style.css entware.js theme.js icons.svg rdp.js version.json; do
 	if [ -f "$TARGET_DIR/$f" ]; then
 		ok "  $f"
 	else
@@ -699,12 +837,12 @@ else
 fi
 echo "  ${BOLD}HTTP-ответ:${NC}"
 if lighttpd_http_ok "$WEB_PORT"; then
-	ok "  HTTP 200 (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
+	ok "  HTTP 200 (127.0.0.1:$WEB_PORT/entware-cgi/session.cgi)"
 else
 	HTTP_CODE="000"
 	CHECK_ERRS="$CHECK_ERRS
-    ✗ HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
-	fail "  HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/version.cgi)"
+    ✗ HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/session.cgi)"
+	fail "  HTTP $HTTP_CODE (127.0.0.1:$WEB_PORT/entware-cgi/session.cgi)"
 fi
 
 if [ -n "$CHECK_ERRS" ]; then

@@ -1,0 +1,181 @@
+#!/bin/sh
+# shellcheck disable=SC3037,SC2034,SC2086,SC2155,SC3043
+# ==============================================
+# Entware Manager: RDP-прокси (grdp-proxy)
+#
+# Веб-RDP-прокси grdpwasm: раздаёт статику клиента и проксирует
+# WebSocket-трафик к RDP-серверу в LAN.
+# Порт и пути берутся из /opt/web_entware/rdp_config.json
+# ({"proxy_port":9099,"bin_path":...,"static_dir":...}).
+#
+# ВНИМАНИЕ: только ash/POSIX, без pkill/kill -0 — на роутере их нет.
+# ==============================================
+
+ENABLED=no
+
+DESC="entware RDP proxy"
+CONFIG_FILE="/opt/web_entware/rdp_config.json"
+PIDFILE="/opt/var/run/grdp-proxy.pid"
+LOGFILE="/opt/var/log/entware/rdp.log"
+
+# --- Чтение конфига (jq с дефолтами) ---
+PORT=9099
+BIN_PATH="/opt/web_entware/cgi-bin/go/grdp-proxy"
+STATIC_DIR="/opt/web_entware/static/rdp/"
+if command -v jq >/dev/null 2>&1 && [ -f "$CONFIG_FILE" ]; then
+	P=$(jq -r '.proxy_port // 9099' "$CONFIG_FILE" 2>/dev/null)
+	case "$P" in
+		''|*[!0-9]*) ;;
+		*) [ "$P" -gt 0 ] 2>/dev/null && [ "$P" -lt 65536 ] && PORT=$P ;;
+	esac
+	B=$(jq -r '.bin_path // ""' "$CONFIG_FILE" 2>/dev/null)
+	[ -n "$B" ] && BIN_PATH=$B
+	S=$(jq -r '.static_dir // ""' "$CONFIG_FILE" 2>/dev/null)
+	[ -n "$S" ] && STATIC_DIR=$S
+fi
+STATIC_DIR=$(echo "$STATIC_DIR" | sed 's/\/$//')
+LISTEN="127.0.0.1:$PORT"
+URL_CHECK="http://127.0.0.1:$PORT/"
+
+# Разрешённые цели RDP — защита от открытого релея (SSRF).
+# Приоритет: .allow_subnets (массив/строка CIDR через запятую) →
+#           .target_host (подсеть /24 его адреса).
+ALLOW_TARGET=""
+if command -v jq >/dev/null 2>&1 && [ -f "$CONFIG_FILE" ]; then
+	AS=$(jq -r 'if (.allow_subnets|type)=="array" then (.allow_subnets|join(",")) elif (.allow_subnets|type)=="string" then .allow_subnets else "" end' "$CONFIG_FILE" 2>/dev/null)
+	if [ -n "$AS" ]; then
+		ALLOW_TARGET="$AS"
+	else
+		TH=$(jq -r '.target_host // ""' "$CONFIG_FILE" 2>/dev/null)
+		if [ -n "$TH" ]; then
+			ALLOW_TARGET="$TH/24"
+		fi
+	fi
+fi
+
+ansi_green="\033[1;32m"
+ansi_red="\033[1;31m"
+ansi_white="\033[1;37m"
+ansi_std="\033[m"
+
+# --- Живой ли PID из pid-файла (и это grdp-proxy)? ---
+pid_from_file() {
+	[ -f "$PIDFILE" ] || return 1
+	pid=$(cat "$PIDFILE" 2>/dev/null | tr -d ' ')
+	[ -n "$pid" ] && [ -d "/proc/$pid" ] || return 1
+	cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+	echo "$cmdline" | grep -q "grdp-proxy" || return 1
+	echo "$pid"
+	return 0
+}
+
+# --- Отвечает ли порт? (curl; ss в BusyBox нет) ---
+check_port() {
+	command -v curl >/dev/null 2>&1 || return 1
+	[ "$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "$URL_CHECK" 2>/dev/null)" = "200" ]
+}
+
+is_running() {
+	check_port || pid_from_file >/dev/null
+}
+
+start() {
+	if is_running; then
+		echo -e "$ansi_white Starting $DESC... $ansi_std  $ansi_green already running (port $PORT). $ansi_std"
+		return 0
+	fi
+	if [ ! -x "$BIN_PATH" ]; then
+		echo -e "$ansi_red Binary not found: $BIN_PATH $ansi_std"
+		return 1
+	fi
+	if [ ! -d "$STATIC_DIR" ]; then
+		echo -e "$ansi_red Static dir not found: $STATIC_DIR $ansi_std"
+		return 1
+	fi
+
+	mkdir -p /opt/var/log/entware 2>/dev/null
+	echo -e -n "$ansi_white Starting $DESC on port $PORT... $ansi_std"
+	ARGS="-listen $LISTEN -static $STATIC_DIR/"
+	if [ -z "$ALLOW_TARGET" ]; then
+		echo -e "\n  $ansi_red WARNING: target не задан в $CONFIG_FILE — прокси разрешит ЛЮБОЙ target (открытый релей)! $ansi_std"
+	fi
+	[ -n "$ALLOW_TARGET" ] && ARGS="$ARGS -allow-target $ALLOW_TARGET"
+	# shellcheck disable=SC2086
+	"$BIN_PATH" $ARGS >/dev/null 2>>"$LOGFILE" &
+	PID=$!
+	echo "$PID" > "$PIDFILE" 2>/dev/null
+
+	COUNTER=0
+	LIMIT=10
+	while [ $COUNTER -le $LIMIT ]; do
+		if check_port || pid_from_file >/dev/null; then
+			echo -e "          $ansi_green done. $ansi_std"
+			return 0
+		fi
+		sleep 1
+		COUNTER=$((COUNTER + 1))
+	done
+
+	echo -e "          $ansi_red failed. $ansi_std"
+	rm -f "$PIDFILE" 2>/dev/null
+	echo "      Лог: $LOGFILE"
+	return 1
+}
+
+stop() {
+	echo -e -n "$ansi_white Stopping $DESC... $ansi_std"
+	if is_running; then
+		pid=$(pid_from_file)
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null
+	fi
+
+	COUNTER=0
+	LIMIT=10
+	while [ $COUNTER -le $LIMIT ]; do
+		if is_running; then
+			sleep 1
+			COUNTER=$((COUNTER + 1))
+		else
+			break
+		fi
+	done
+
+	rm -f "$PIDFILE" 2>/dev/null
+
+	if is_running; then
+		echo -e "          $ansi_red failed. $ansi_std"
+		return 1
+	fi
+	echo -e "          $ansi_green done. $ansi_std"
+	return 0
+}
+
+restart() {
+	stop
+	start
+}
+
+check() {
+	if is_running; then
+		pid=$(pid_from_file)
+		if [ -n "$pid" ]; then
+			echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_green alive (pid $pid, port $PORT). $ansi_std"
+		else
+			echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_green alive (port $PORT). $ansi_std"
+		fi
+		return 0
+	fi
+	echo -e "$ansi_white Checking $DESC... $ansi_std  $ansi_red dead. $ansi_std"
+	return 1
+}
+
+case "$1" in
+	start) start ;;
+	stop|kill) stop ;;
+	restart) restart ;;
+	check|status) check ;;
+	*)
+		echo "Usage: $0 (start|stop|restart|check|status)"
+		exit 1
+		;;
+esac

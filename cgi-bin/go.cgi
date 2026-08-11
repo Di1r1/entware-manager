@@ -46,12 +46,56 @@ go_bin() {
 	fi
 }
 
+# --- Гейт авторизации (lighttpd-режим) ---
+# Если в auth_config.json enabled=true и задан hash — все CGI, кроме
+# login/logout/session, требуют валидную файл-сессию /opt/var/run/panel_session.
+# Токен сравнивается с HTTP_COOKIE (constant-time через cmp).
+SESSION_FILE="/opt/var/run/panel_session"
+SESSION_TTL_SECONDS=86400
+
+auth_gate() {
+	case "$name" in
+	login|logout|session) return 0 ;;
+	esac
+	[ -f /opt/web_entware/auth_config.json ] || return 0
+	ENABLED=$(jq -r '.enabled // false' /opt/web_entware/auth_config.json 2>/dev/null)
+	[ "$ENABLED" = "true" ] || return 0
+	HASH=$(jq -r '.password_hash // .password // ""' /opt/web_entware/auth_config.json 2>/dev/null)
+	[ -n "$HASH" ] || return 0
+
+	[ -f "$SESSION_FILE" ] || { echo_401; exit 1; }
+	TOKEN=$(echo "$HTTP_COOKIE" | tr ';' '\n' | sed -n 's/^[[:space:]]*panel_session=//p' | head -1)
+	[ -n "$TOKEN" ] || { echo_401; exit 1; }
+	printf '%s\n' "$TOKEN" > /tmp/panel_cookie.$$ 2>/dev/null || { echo_401; exit 1; }
+	chmod 600 /tmp/panel_cookie.$$ 2>/dev/null
+	if ! cmp -s /tmp/panel_cookie.$$ "$SESSION_FILE"; then
+		rm -f /tmp/panel_cookie.$$ 2>/dev/null
+		echo_401
+		exit 1
+	fi
+	rm -f /tmp/panel_cookie.$$ 2>/dev/null
+	# TTL по mtime (BusyBox: stat -c %Y недоступен, используем date -r)
+	MTIME=$(date -r "$SESSION_FILE" +%s 2>/dev/null || echo 0)
+	NOW=$(date +%s)
+	[ $((NOW - MTIME)) -le "$SESSION_TTL_SECONDS" ] || { rm -f "$SESSION_FILE"; echo_401; exit 1; }
+	return 0
+}
+
+echo_401() {
+	echo "Status: 401 Unauthorized"
+	echo "Content-Type: application/json; charset=utf-8"
+	echo ""
+	echo '{"error":"unauthorized"}'
+}
+
+auth_gate
+
 case "$dir" in
 cgi-bin)
 	case "$name" in
 	available|packages|install|remove|upgrade|update|upgradable|api)
 		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
-	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline)
+	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline|login|logout|session)
 		ENDPOINT="$name" exec "$(go_bin stats)" ;;
 	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_action)
 		ENDPOINT="$name" exec "$(go_bin net)" ;;
@@ -61,6 +105,8 @@ cgi-bin)
 		ENDPOINT="$name" exec "$(go_bin monitor)" ;;
 	smart)
 		exec "$(go_bin smart)" ;;
+	rdp_status|rdp_start|rdp_stop|rdp_config)
+		ENDPOINT="$name" exec "$(go_bin rdp)" ;;
 	*)
 		echo "Content-type: text/plain"
 		echo ""

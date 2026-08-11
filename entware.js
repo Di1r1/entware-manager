@@ -106,6 +106,66 @@ function init() {
 
     initTheme();
 
+    // Проверка сессии: если пароль панели настроен, а сессии нет — показать вход.
+    checkSessionAndStart();
+}
+
+function checkSessionAndStart() {
+    fetch('/entware-cgi/session.cgi?_=' + Date.now())
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.authenticated) {
+                document.body.classList.add('auth-ready');
+                initPanel();
+            } else {
+                document.body.classList.add('login-shown');
+                showLogin();
+            }
+        })
+        .catch(() => {
+            document.body.classList.add('auth-ready');
+            initPanel();
+        });
+}
+
+// Запуск виджетов панели после авторизации (температура, версия, проверка
+// обновлений) — чтобы не делать гейченных запросов до входа в панель.
+function startPanelWidgets() {
+    if (typeof updateTemp === 'function') {
+        updateTemp();
+        setInterval(updateTemp, 30000);
+    }
+    if (typeof updateWifiTemp === 'function') {
+        updateWifiTemp();
+        setInterval(updateWifiTemp, 30000);
+    }
+    fetch('/entware-manager/version.json')
+        .then(r => r.json())
+        .then(data => {
+            window.APP_VERSION = data.version;
+            document.title = `Entware Manager v${data.version}`;
+            const footer = document.getElementById('mainFooter');
+            if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
+            const sidebarVersion = document.getElementById('sidebarVersion');
+            if (sidebarVersion) sidebarVersion.textContent = `v${data.version}`;
+            fetch('/entware-cgi/update_check.cgi').then(r => r.json()).then(upd => {
+                if (upd.has_update && sidebarVersion) {
+                    sidebarVersion.innerHTML = `v${upd.current} → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${upd.latest}" target="_blank" style="color:#2ecc71;text-decoration:none;">v${upd.latest}</a>`;
+                }
+            }).catch(function(){});
+        })
+        .catch(e => { window.APP_VERSION = 'error'; console.error('Ошибка загрузки версии', e) });
+}
+
+function initPanel() {
+    // Кнопка «Выйти» видна только когда пароль панели настроен (есть логин).
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        fetch('/entware-cgi/session.cgi?_=' + Date.now())
+            .then(r => r.json())
+            .then(d => { if (d && d.authenticated) logoutBtn.style.display = 'block'; })
+            .catch(() => {});
+    }
     if (collapseToggle) {
         const collapsedState = localStorage.getItem('sidebar_collapsed');
         if (collapsedState === 'true') {
@@ -140,6 +200,57 @@ function init() {
     window.addEventListener('resize', debounce(handleResponsive, 200));
     const savedTab = localStorage.getItem('entware_active_tab');
     loadTab(savedTab || 'stats');
+    startPanelWidgets();
+}
+
+function showLogin() {
+    const overlay = document.getElementById('loginOverlay');
+    const pass = document.getElementById('loginPassword');
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    if (!overlay) return;
+    // Показываем экран входа и гасим панель: снимаем auth-ready (скрывает
+    // app-container через body:not(.auth-ready)) и ставим login-shown (видна
+    // карточка логина через body:not(.login-shown) .login-card {visibility:hidden}).
+    // Иначе при 401 после инвалидации сессии экран остаётся пустым.
+    document.body.classList.remove('auth-ready');
+    document.body.classList.add('login-shown');
+    overlay.style.display = 'flex';
+    if (pass) pass.focus();
+
+    const doLogin = function() {
+        if (!pass || !pass.value) return;
+        if (btn) btn.disabled = true;
+        apiPost('/login.cgi', 'password=' + encodeURIComponent(pass.value))
+            .then(function(data) {
+                if (data && data.status === 'ok') {
+                    overlay.style.display = 'none';
+                    location.reload();
+                } else {
+                    if (err) { err.style.display = 'block'; err.textContent = (data && data.message) || 'Неверный пароль'; }
+                    if (pass) { pass.value = ''; pass.focus(); }
+                    if (btn) btn.disabled = false;
+                }
+            })
+            .catch(function(e) {
+                if (err) { err.style.display = 'block'; err.textContent = 'Ошибка: ' + e.message; }
+                if (btn) btn.disabled = false;
+            });
+    };
+
+    if (btn) {
+        btn.onclick = doLogin;
+        btn.disabled = false;
+    }
+    if (pass) {
+        pass.onkeydown = function(e) { if (e.key === 'Enter') doLogin(); };
+    }
+}
+
+function doLogout() {
+    apiPost('/logout.cgi', '')
+        .then(function() { location.reload(); })
+        .catch(function() { location.reload(); });
 }
 
 function updateThemeIcon() {
@@ -207,6 +318,7 @@ async function loadTab(tabName) {
     servicesInterval = null;
     if (typeof MONITOR !== 'undefined' && MONITOR.stopUpdates) MONITOR.stopUpdates();
     if (typeof SMART !== 'undefined' && SMART.stopUpdates) SMART.stopUpdates();
+    if (typeof RDP !== 'undefined' && RDP.stopUpdates) RDP.stopUpdates();
 
     if (tabName === 'available') { loadAvailableTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'updates') { renderUpdatesTab(); Menu.setActiveTab(tabName); return; }
@@ -237,6 +349,13 @@ async function loadTab(tabName) {
             window.SMART_LOADED = true;
         }
         SMART.init(); Menu.setActiveTab(tabName); return;
+    }
+    if (tabName === 'rdp') {
+        if (!window.RDP_LOADED) {
+            await loadScript('/entware-manager/rdp.js?v=9');
+            window.RDP_LOADED = true;
+        }
+        RDP.init(); Menu.setActiveTab(tabName); return;
     }
 
     contentDiv.innerHTML = '<p>Загрузка...</p>';
@@ -508,9 +627,9 @@ async function loadHtopContent() {
         if (htop.state === 'running') {
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="${BASE_URL}:8089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/htop/" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe src="${BASE_URL}:8089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+                <iframe src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
             `;
         } else {
             container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">htop не запущен. Запустите в <b>Настройки → Терминал</b>.</p>';
@@ -546,9 +665,9 @@ async function loadTerminalContent() {
             title.textContent = 'Терминал (' + modeLabel + ')';
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="${BASE_URL}:9089" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/terminal/" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe src="${BASE_URL}:9089" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+                <iframe src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
             `;
         } else {
             title.textContent = 'Терминал';
@@ -807,8 +926,8 @@ function updateTtydStatus(data) {
 
     let html = '<h3>Текущее состояние ttyd</h3>';
     html += '<table class="stat-table">';
-    html += `  <tr><td>htop (порт 8089):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${htop.state}</span> ${htop.pid ? '(PID ' + htop.pid + ')' : ''}</td></tr>`;
-    html += `  <tr><td>Терминал (порт 9089):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
+    html += `  <tr><td>htop (8089, доступ /htop/):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${htop.state}</span> ${htop.pid ? '(PID ' + htop.pid + ')' : ''}</td></tr>`;
+    html += `  <tr><td>Терминал (9089, доступ /terminal/):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
     html += '</table>';
     statusDiv.innerHTML = html;
 
@@ -849,8 +968,8 @@ function getDefaultLinks() {
         { name: 'AdGuard Home', url: h + ':3000', icon: 'shield' },
         { name: 'Transmission', url: h + ':9091', icon: 'download' },
         { name: 'Netdata', url: h + ':19999', icon: 'chart' },
-        { name: 'htop (ttyd)', url: h + ':8089', icon: 'process' },
-        { name: 'Терминал (ttyd)', url: h + ':9089', icon: 'terminal' }
+        { name: 'htop (ttyd)', url: '/htop/', icon: 'process' },
+        { name: 'Терминал (ttyd)', url: '/terminal/', icon: 'terminal' }
     ];
 }
 
@@ -1194,24 +1313,25 @@ async function renderSettingsTab() {
         <div id="ttyd-status"><div class="loading-spinner"></div></div>
         <div id="ttyd-controls" style="display: flex; gap: 20px; margin-top: 20px;">
           <div style="flex:1;"><h4>htop (порт 8089)</h4>
-            <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, '', 'htop')" id="htop-start">Запустить</button>
+            <input type="password" id="htopPass" class="settings-input" placeholder="Пароль" style="margin-bottom: 8px;">
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 8089, document.getElementById('htopPass').value, 'htop')" id="htop-start">Запустить</button>
             <button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 8089, '', '')" id="htop-stop">Остановить</button>
-            <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, '', 'htop')" id="htop-restart">Перезапустить</button>
+            <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 8089, document.getElementById('htopPass').value, 'htop')" id="htop-restart">Перезапустить</button>
           </div>
           <div style="flex:1;"><h4>Терминал (порт 9089)</h4>
             <select id="termMode" class="settings-input" style="margin-bottom: 8px;">
               <option value="entware">Консоль Entware</option>
               <option value="telnet">Консоль роутера (telnet)</option>
             </select>
-            <input type="password" id="termPass" class="settings-input" placeholder="Пароль (опционально)">
+            <input type="password" id="termPass" class="settings-input" placeholder="Пароль" style="margin-bottom: 8px;">
             <button class="packages-delete-btn" style="background:#4a5568;" onclick="controlTtyd('start', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-start">Запустить</button>
             <button class="packages-delete-btn" style="background:#e53e3e;" onclick="controlTtyd('stop', 9089, '', '')" id="term-stop">Остановить</button>
             <button class="packages-delete-btn" style="background:#f59e0b;" onclick="controlTtyd('restart', 9089, document.getElementById('termPass').value, document.getElementById('termMode').value)" id="term-restart">Перезапустить</button>
           </div>
         </div>
         <p class="settings-note" style="margin-top: 20px; font-size: 0.9rem;">
-            Управление веб-терминалами ttyd. Пароль опционален — используется для HTTP-аутентификации ttyd.<br>
-            После изменения состояния обновите вкладки "Процессы" и "Терминал".
+            Управление веб-терминалами ttyd. <strong>Пароль обязателен</strong> для обоих сервисов — терминал доступен извне через панель, без пароля запуск запрещён.<br>
+            Доступ: панель → <code>/terminal/</code> и <code>/htop/</code> (тот же origin, порты 9089/8089 слушают только loopback).
         </p>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Управление ссылками на главной (общие для всех устройств)</h3>
         <p>Здесь можно добавлять, редактировать и удалять ссылки. Изменения сразу видны на всех устройствах.</p>
@@ -1250,8 +1370,8 @@ async function renderSettingsTab() {
             <button id="saveAllLinksBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg> Сохранить все на сервер</button>
             <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Сбросить по умолчанию</button>
         </div>
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg> Защита файлового менеджера</h3>
-        <p>Включите пароль для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs).</p>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg> Защита панели</h3>
+        <p>Пароль используется для входа в панель и для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs). Если пароль задан — при открытии панели будет показан экран входа.</p>
         <div id="filemgr-auth-settings">
             <div class="loading-spinner"></div>
         </div>
@@ -1461,6 +1581,7 @@ async function loadAuthConfig() {
     try {
         const data = await apiGet('/auth_config.cgi');
         const enabled = data.enabled;
+        window.AUTH_CURRENTLY_ENABLED = !!(data.configured || enabled);
         let html = `
             <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
                 <input type="checkbox" id="filemgrAuthEnabled" ${enabled ? 'checked' : ''} onchange="toggleFilemgrPassFields()">
@@ -1475,8 +1596,10 @@ async function loadAuthConfig() {
                     <label>Подтверждение:</label>
                     <input type="password" id="filemgrPassConfirm" class="settings-input" style="max-width: 300px;" placeholder="Повторите пароль">
                 </div>
+            </div>
+            <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px;">
                 <button class="packages-delete-btn" style="background:#4a5568;" onclick="saveAuthConfig()">Сохранить</button>
-                <span id="filemgrAuthStatus" style="margin-left: 10px;"></span>
+                <span id="filemgrAuthStatus"></span>
             </div>
         `;
         document.getElementById('filemgr-auth-settings').innerHTML = html;
@@ -1495,6 +1618,7 @@ window.saveAuthConfig = async function() {
     const password = document.getElementById('filemgrPass').value;
     const confirm = document.getElementById('filemgrPassConfirm').value;
     const statusEl = document.getElementById('filemgrAuthStatus');
+    let currentPassword = '';
 
     if (enabled && password && password !== confirm) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Пароли не совпадают</span>';
@@ -1509,10 +1633,26 @@ window.saveAuthConfig = async function() {
         const formData = new URLSearchParams();
         formData.append('enabled', enabled ? 'true' : 'false');
         formData.append('password', password);
+
+        // Если авторизация уже включена (или был задан пароль) — запросить текущий.
+        if (window.AUTH_CURRENTLY_ENABLED) {
+            currentPassword = prompt('Введите текущий пароль:');
+            if (currentPassword === null) {
+                statusEl.innerHTML = '<span style="color:#e53e3e;">Отменено</span>';
+                return;
+            }
+            formData.append('current_password', currentPassword);
+        }
+
         const data = await apiPost('/auth_config.cgi', formData.toString());
         statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Настройки сохранены</span>';
         document.getElementById('filemgrPass').value = '';
         document.getElementById('filemgrPassConfirm').value = '';
+        // после успешного сохранения обновить флаг
+        window.AUTH_CURRENTLY_ENABLED = enabled;
+        if (statusEl.previousElementSibling) {
+            statusEl.previousElementSibling.disabled = false;
+        }
     } catch (err) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
     }
@@ -2198,7 +2338,9 @@ async function checkSystemDeps() {
         // Базовые компоненты
         html += '<h4>Базовые компоненты:</h4><ul style="list-style:none; padding:0;">';
         html += `<li>opkg: <b style="color:${data.base.opkg ? '#38a169' : '#e53e3e'}">${data.base.opkg ? 'OK' : 'НЕ НАЙДЕН'}</b></li>`;
-        html += `<li>lighttpd (запущен): <b style="color:${data.base.lighttpd_running ? '#38a169' : '#e53e3e'}">${data.base.lighttpd_running ? 'ДА' : 'НЕТ'}</b></li>`;
+        const wsUp = data.base.lighttpd_running || data.base.entware_server_running;
+        const wsLabel = data.base.entware_server_running ? 'entware-server' : (data.base.lighttpd_running ? 'lighttpd' : '—');
+        html += `<li>Веб-сервер (${wsLabel}): <b style="color:${wsUp ? '#38a169' : '#e53e3e'}">${wsUp ? 'запущен' : 'НЕ ЗАПУЩЕН'}</b></li>`;
         html += '</ul>';
 
         // Утилиты

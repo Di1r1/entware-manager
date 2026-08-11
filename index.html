@@ -8,11 +8,11 @@
     <meta name="theme-color" content="#8b5cf6" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#1a202c" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="/entware-manager/icons.svg?v=2" type="image/svg+xml">
-    <link rel="stylesheet" href="/entware-manager/style.css?v=24">
+    <link rel="stylesheet" href="/entware-manager/style.css?v=30">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script>if (window.Theme) Theme.init();</script>
     <script src="/entware-manager/modal.js?v=1"></script>
-    <script src="/entware-manager/lib/utils.js?v=3"></script>
+    <script src="/entware-manager/lib/utils.js?v=4"></script>
 </head>
 <body>
     <div class="app-container">
@@ -68,6 +68,12 @@
                     </svg>
                     Проверка системы
                 </a>
+                <a href="javascript:void(0)" onclick="doLogout()" id="logoutBtn" class="sidebar-btn" style="margin-bottom:8px; display:none; text-align:center;">
+                    <svg class="icon" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                        <use href="/entware-manager/icons.svg?v=2#icon-lock"/>
+                    </svg>
+                    Выйти
+                </a>
                 <span class="version" id="sidebarVersion"></span>
             </div>
         </nav>
@@ -88,7 +94,7 @@
     </div>
 
     <script src="/entware-manager/menu/menu.js?v=2"></script>
-    <script src="/entware-manager/entware.js?v=3"></script>
+    <script src="/entware-manager/entware.js?v=12"></script>
     <script>
         function updateTemp() {
             fetch('/entware-cgi/temperature.cgi?_=' + Date.now())
@@ -472,27 +478,22 @@
             }).catch(() => Modal.error('Ошибка загрузки данных'));
         }
 
-        updateTemp();
-        setInterval(updateTemp, 30000);
-        updateWifiTemp();
-        setInterval(updateWifiTemp, 30000);
-
-        fetch('/entware-manager/version.json')
-            .then(r => r.json())
-            .then(data => {
-                window.APP_VERSION = data.version;
-                document.title = `Entware Manager v${data.version}`;
-                const footer = document.getElementById('mainFooter');
-                if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
-                const sidebarVersion = document.getElementById('sidebarVersion');
-                if (sidebarVersion) sidebarVersion.textContent = `v${data.version}`;
-                fetch('/entware-cgi/update_check.cgi').then(r => r.json()).then(upd => {
-                    if (upd.has_update && sidebarVersion) {
-                        sidebarVersion.innerHTML = `v${upd.current} → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${upd.latest}" target="_blank" style="color:#2ecc71;text-decoration:none;">v${upd.latest}</a>`;
-                    }
-                }).catch(function(){});
-            })
-            .catch(e => { window.APP_VERSION = 'error'; console.error('Ошибка загрузки версии', e) });
+        // Виджеты запускаются после авторизации (entware.js: startPanelWidgets()),
+        // чтобы не делать гейченных запросов до входа в панель.
     </script>
+
+    <!-- Экран входа (показывается, если в разделе «Защита» задан пароль) -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <svg class="icon" width="40" height="40"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg>
+            </div>
+            <h2>Entware Manager</h2>
+            <p class="login-sub">Введите пароль панели (задаётся в Настройки → Защита)</p>
+            <input type="password" id="loginPassword" class="settings-input" placeholder="Пароль" autocomplete="current-password">
+            <button id="loginBtn" class="packages-delete-btn" style="width:100%;justify-content:center;">Войти</button>
+            <p id="loginError" class="error" style="display:none;margin-top:8px;"></p>
+        </div>
+    </div>
 </body>
 </html>

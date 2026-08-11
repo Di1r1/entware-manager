@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 const cgiPath = "/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin"
@@ -38,6 +40,7 @@ var flatDispatch = map[string]string{
 	"auth_config": "stats", "crontab": "stats", "crontab_update": "stats",
 	"backup": "stats", "backup_restore": "stats", "update_check": "stats",
 	"update_run": "stats", "update_status": "stats", "prepare_offline": "stats",
+	"login": "stats", "logout": "stats", "session": "stats",
 	// net
 	"network_interfaces": "net", "network_routes": "net", "network_arp": "net",
 	"network_status": "net", "network_stats": "net", "network_events": "net",
@@ -50,6 +53,8 @@ var flatDispatch = map[string]string{
 	"wifi_temp_history": "monitor", "kill_pid": "monitor",
 	// smart
 	"smart": "smart",
+	// rdp
+	"rdp_status": "rdp", "rdp_start": "rdp", "rdp_stop": "rdp", "rdp_config": "rdp",
 }
 
 // subdirDispatch — подкаталоги /entware-cgi/<dir>/<name>.cgi.
@@ -140,6 +145,18 @@ func handleCGI(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// Гейт авторизации (go-режим): все CGI, кроме login/logout/session,
+	// требуют валидную сессию, если пароль панели настроен.
+	if !auth.Enabled() {
+		// пароль не настроен — панель открыта
+	} else if name != "login" && name != "logout" && name != "session" {
+		if !auth.SessionValidCookie(auth.TokenFromHeader(r.Header.Get("Cookie"))) {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+	}
+
 	binPath, err := resolveBinary(res.binary)
 	if err != nil {
 		writeJSONError(w, err.Error())
@@ -200,8 +217,17 @@ func buildCGIEnv(r *http.Request, endpoint string) []string {
 	if x := r.Header.Get("X-Requested-With"); x != "" {
 		env = append(env, "HTTP_X_REQUESTED_WITH="+x)
 	}
+	if origin := r.Header.Get("Origin"); origin != "" {
+		env = append(env, "HTTP_ORIGIN="+origin)
+	}
+	if sfs := r.Header.Get("Sec-Fetch-Site"); sfs != "" {
+		env = append(env, "HTTP_SEC_FETCH_SITE="+sfs)
+	}
 	if host := r.Host; host != "" {
 		env = append(env, "HTTP_HOST="+host)
+	}
+	if cookie := r.Header.Get("Cookie"); cookie != "" {
+		env = append(env, "HTTP_COOKIE="+cookie)
 	}
 	return env
 }

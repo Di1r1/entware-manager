@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Справка Entware Manager</title>
-    <link rel="stylesheet" href="/entware-manager/style.css?v=24">
+    <link rel="stylesheet" href="/entware-manager/style.css?v=30">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script src="/entware-manager/modal.js?v=2"></script>
 </head>
@@ -22,8 +22,8 @@
     <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
 
     <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 12px; margin: 16px 0; border-radius: 4px;">
-        <strong>🧬 Архитектура:</strong> Все 62 CGI-эндпоинта — Go-бинарники (7 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart).<br>
-        Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (55 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
+        <strong>🧬 Архитектура:</strong> Все 76 CGI-эндпоинтов — Go-бинарники (8 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart, entware-rdp; плюс HTTP-сервер entware-server).<br>
+        Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (76 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
     </div>
 
     <div class="search-container" style="display: flex; gap: 8px; align-items: center; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; margin-bottom: 24px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
@@ -148,7 +148,7 @@
         </span>
         Терминал (bash)
     </h3>
-    <p>Полноценный доступ к командной строке роутера через веб-терминал ttyd. По умолчанию используется порт 9089. При первом запуске может потребоваться ввести пароль (устанавливается во вкладке «Настройки»).</p>
+    <p>Полноценный доступ к командной строке роутера через веб-терминал ttyd. Доступен на адресе панели по пути <code>/terminal/</code>. Запуск и остановка — во вкладке «Настройки»; пароль обязателен и задаётся там же (запрашивается ttyd при открытии).</p>
 
     <!-- Сеть -->
     <h3>
@@ -337,6 +337,59 @@ curl -X POST 'http://localhost:8087/entware-cgi/smart.cgi' -d 'action=selftest&a
 curl -s http://localhost:8087/entware-cgi/smart.cgi?action=list | jq .<br>
 curl -s http://localhost:8087/entware-cgi/smart.cgi?action=attributes&amp;device=sda | jq .<br>
 curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda' | jq .
+    </div>
+
+    <!-- RDP -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-vpn"/>
+            </svg>
+        </span>
+        RDP (веб-клиент)
+    </h3>
+    <p>Подключение к компьютерам локальной сети по RDP (порт 3389) прямо из браузера, без внешних плагинов. Роль компонентов:</p>
+    <ul>
+        <li><strong>grdp-proxy</strong> — лёгкий прокси-сервер на роутере: раздаёт страницу клиента и ретранслирует WebSocket-трафик к RDP-серверу. Порт и пути берутся из конфига, порт по умолчанию — 9099.</li>
+        <li><strong>Клиент grdpwasm</strong> (Go+WASM) — полноценная RDP-сессия, рендерится браузером (кодек H.264 / RemoteFX).</li>
+    </ul>
+
+    <h4>Запуск и остановка</h4>
+    <p>Кнопки <strong>«Запустить прокси»</strong> и <strong>«Остановить»</strong> на вкладке RDP. Для каждой операции вводится пароль панели (раздел «Защита»): пароль запрашивается в окне браузера, в логи и URL не попадает. Прокси управляется init-скриптом <code>/opt/etc/init.d/S90grdp-proxy</code>, PID хранится в <code>/opt/var/run/grdp-proxy.pid</code>.</p>
+    <p>Адрес RDP-сервера задаётся в конфиге <code>/opt/web_entware/rdp_config.json</code> (поля <code>target_host</code> / <code>target_port</code>; порт прокси — <code>proxy_port</code>). Логин и пароль Windows вводятся в окне самого клиента внутри браузера — на роутере они не хранятся. Пароли добавлять в конфиг нельзя: файл читается всей локальной сетью.</p>
+
+    <div class="warning" style="background: var(--command-block-bg); border-left: 4px solid #f59e0b; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>⚠️ Безопасность:</strong> прокси слушает только <code>127.0.0.1</code> и доступен исключительно через панель (тот же origin, порт 8087). Разрешена одна цель — из <code>target_host</code>/<code>target_port</code> конфига; любые другие адреса отклоняются (защита от открытого релея). Креды Windows передаются внутри WebSocket — при работе панели по HTTP без шифрования используйте модуль только в доверенной сети, а извне — через Keenetic Remote/KeenDNS (HTTPS). Останавливайте прокси сразу после завершения работы.
+    </div>
+
+    <h4>Удалённый доступ (Keenetic Remote / KeenDNS)</h4>
+    <p>Все встроенные сервисы доступны на том же адресе, что и панель — никаких отдельных портов открывать не нужно:</p>
+    <ul>
+        <li><code>/terminal/</code> — Терминал (ttyd, порт 9089 только на loopback);</li>
+        <li><code>/htop/</code> — Процессы (ttyd, порт 8089 только на loopback);</li>
+        <li><code>/rdp/</code> — веб-RDP-клиент (grdp-proxy, порт 9099 только на loopback).</li>
+    </ul>
+    <p>Прямые порты <code>9089</code>/<code>8089</code>/<code>9099</code> на сетевых интерфейсах закрыты — доступ только через панель. Терминал и htop при запуске требуют пароль (раздел «Настройки → Терминал»); этот же пароль запрашивает ttyd при открытии. Внешний доступ к панели гейтится вашим Keenetic-аккаунтом (Keenetic Remote, «только для меня») — первый барьер защиты.</p>
+
+    <h4>Настройки потока (пресеты)</h4>
+    <p>В окне клиента есть выбор пресета, определяющего разрешение и скорость/качество потока:</p>
+    <ul>
+        <li><strong>Compact</strong> — 1024×600, приоритет плавности (меньше трафика).</li>
+        <li><strong>Balanced</strong> (по умолчанию) — 1280×800, сбалансированный режим.</li>
+        <li><strong>Crisp</strong> — 1920×1080, максимальное качество.</li>
+        <li><strong>Custom</strong> — размеры и параметр качества (queueDepth) вводятся вручную.</li>
+    </ul>
+    <p>В статус-баре клиента отображается счётчик кадров. Если браузер не поддерживает декодирование H.264 (WebCodecs), клиент автоматически переключается на поток сжатых изображений (RemoteFX/NSCodec).</p>
+
+    <h5>CGI-эндпоинты модуля</h5>
+    <div class="command-block">
+/opt/web_entware/cgi-bin/rdp_status.cgi   # статус (GET, публичный): state running/stopped, PID, порт<br>
+/opt/web_entware/cgi-bin/rdp_config.cgi   # конфиг (GET — чтение; POST — сохранение с паролем)<br>
+/opt/web_entware/cgi-bin/rdp_start.cgi    # запуск прокси (только POST, пароль + защита от CSRF)<br>
+/opt/web_entware/cgi-bin/rdp_stop.cgi     # остановка прокси (только POST, пароль + защита от CSRF)<br>
+<br>
+# Пример чтения статуса:<br>
+curl -s http://localhost:8087/entware-cgi/rdp_status.cgi | jq .
     </div>
 
     <!-- Службы и Cron -->
@@ -550,7 +603,8 @@ cat /tmp/entware/logs/service_events.log<br>
     <p>Объединяет управление ttyd и редактирование ссылок на главной странице.</p>
     <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-terminal"/></svg> Управление ttyd</h4>
     <ul>
-        <li>Показывает состояние процессов htop (порт 8089) и терминала (порт 9089).</li>
+        <li>Показывает состояние процессов htop (порт 8089, только loopback) и терминала (порт 9089, только loopback).</li>
+        <li>Запуск htop/терминала требует пароль; сервисы доступны через панель по путям <code>/htop/</code> и <code>/terminal/</code> (тот же origin — работают в LAN и через Keenetic Remote).</li>
         <li>Кнопки «Запустить», «Остановить», «Перезапустить» для каждого экземпляра.</li>
         <li>Для терминала можно задать пароль (поле ввода скрыто звёздочками). Пароль не сохраняется в бэкапах, его нужно вводить при каждом запуске.</li>
     </ul>
