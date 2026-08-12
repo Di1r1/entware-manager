@@ -234,3 +234,10 @@ cat /tmp/entware/install-logs/install-*.log
 ## Лицензия
 
 GNU General Public License v3.0 — используй, меняй, распространяй.
+
+---------------------------------------------------------
+<a href="https://boosty.to/di1r1/donate" target="_blank">
+  <button style="background: #f50; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 18px; cursor: pointer;">
+    🚀 Поддержать на Boosty
+  </button>
+</a>
