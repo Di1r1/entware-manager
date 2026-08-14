@@ -109,6 +109,14 @@ func sha256Hex(s string) string {
 	return fmt.Sprintf("%x", h)
 }
 
+func readPOSTBody() string {
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
 func parsePostForm(body string) map[string]string {
 	params := make(map[string]string)
 	for _, part := range strings.Split(body, "&") {

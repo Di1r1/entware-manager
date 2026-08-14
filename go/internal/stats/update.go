@@ -82,23 +82,41 @@ func HandleUpdateRun() {
 		return
 	}
 
-	latest, err := getLatestVersion()
-	if err != nil {
-		writeJSON(map[string]string{"status": "error", "message": "Не удалось проверить версию: " + err.Error()})
-		return
+	body := readPOSTBody()
+	params := parsePostForm(body)
+	reinstall := params["mode"] == "reinstall"
+
+	version := ""
+	if reinstall {
+		version = getLocalVersion()
+		if version == "0.0.0" || version == "" {
+			writeJSON(map[string]string{"status": "error", "message": "Не удалось определить установленную версию. Переустановка невозможна."})
+			return
+		}
+	} else {
+		var err error
+		version, err = getLatestVersion()
+		if err != nil {
+			writeJSON(map[string]string{"status": "error", "message": "Не удалось проверить версию: " + err.Error()})
+			return
+		}
 	}
 
+	label := "Обновление"
+	if reinstall {
+		label = "Переустановка"
+	}
 	os.MkdirAll("/tmp/entware", 0755)
-	os.WriteFile(updateLogFile, []byte("[INIT] Запуск обновления\n"), 0644)
+	os.WriteFile(updateLogFile, []byte("[INIT] "+label+" до v"+version+"\n"), 0644)
 
-	vars := fmt.Sprintf(`{"version":"%s","arch":"%s"}`, latest, arch)
+	vars := fmt.Sprintf(`{"version":"%s","arch":"%s"}`, version, arch)
 	os.WriteFile("/tmp/entware/update_vars", []byte(vars), 0644)
 
 	script := "#!/bin/sh\nENDPOINT=update_worker /opt/web_entware/cgi-bin/go/entware-stats >/dev/null 2>&1 &\n"
 	os.WriteFile("/tmp/entware/update.sh", []byte(script), 0755)
 	exec.Command("/bin/sh", "/tmp/entware/update.sh").Start()
 
-	writeJSON(map[string]string{"status": "ok", "message": "Обновление запущено", "version": latest})
+	writeJSON(map[string]string{"status": "ok", "message": label + " запущено", "version": version})
 }
 
 func HandleUpdateWorker() {
@@ -375,6 +393,7 @@ func runUpdate(version, arch string) {
 			}
 		} else {
 			log("[DONE] Обновление до v" + version + " завершено")
+			restartWebServer(log)
 		}
 		os.RemoveAll(tmpDir)
 		log("Временные файлы удалены")
@@ -467,8 +486,37 @@ func runUpdate(version, arch string) {
 		}
 	} else {
 		log("[DONE] Обновление до v" + version + " завершено")
+		restartWebServer(log)
 	}
 
 	os.RemoveAll(tmpDir)
 	log("Временные файлы удалены")
+}
+
+// restartWebServer перезапускает entware-server (go-режим), если он работает.
+// При обновлении через кнопку install.sh не останавливает работающий
+// entware-server (S80entware-server start идемпотентен) — процесс продолжает
+// работать со старым бинарником, и новые пути (menu.json, session.cgi и т.п.)
+// отдают 404. Перезапуск заставляет процесс подхватить обновлённый бинарник.
+func restartWebServer(log func(string)) {
+	init := "/opt/etc/init.d/S80entware-server"
+	if _, err := os.Stat(init); err != nil {
+		return
+	}
+	// Перезапускаем только если entware-server реально работает (go-режим).
+	// В lighttpd-режиме его нет — порт 8087 занимает lighttpd, и запуск
+	// entware-server приведёт к падению процесса (address in use).
+	if data, err := os.ReadFile("/opt/var/run/entware-server.pid"); err == nil {
+		pid := strings.TrimSpace(string(data))
+		if pid != "" {
+			if _, err := os.Stat("/proc/" + pid); err == nil {
+				cmd := exec.Command(init, "restart")
+				if _, err := cmd.CombinedOutput(); err != nil {
+					log("[WARN] Не удалось перезапустить entware-server: " + err.Error())
+					return
+				}
+				log("entware-server перезапущен (новый бинарник подхвачен)")
+			}
+		}
+	}
 }

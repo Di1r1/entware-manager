@@ -1405,6 +1405,9 @@ async function renderSettingsTab() {
                 <button id="update-run-btn" class="packages-delete-btn" style="background:#2ecc71; display:none;" onclick="runUpdate()">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить до <span id="update-version"></span>
                 </button>
+                <button id="update-reinstall-btn" class="packages-delete-btn" style="background:#e67e22;" onclick="reinstallUpdate()">
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Переустановить
+                </button>
             </div>
             <div id="update-status" style="margin-top: 8px;"></div>
             <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
@@ -1545,6 +1548,34 @@ async function runUpdate() {
 
 let updatePollInterval;
 
+async function reinstallUpdate() {
+    if (!confirm('Переустановить текущую версию Entware Manager?\nБудет повторно скачана и установлена установленная версия. Это полезно, если что-то повредилось при прошлой установке (пропали вкладки, 404, битые файлы). Конфигурация сохранится.')) {
+        return;
+    }
+    const btn = document.getElementById('update-reinstall-btn');
+    const logPre = document.getElementById('update-log');
+    const statusEl = document.getElementById('update-status');
+    btn.disabled = true;
+    logPre.style.display = '';
+    logPre.textContent = 'Запуск переустановки...';
+    statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка запущена...</span>';
+
+    try {
+        const data = await apiPost('/update_run.cgi', 'mode=reinstall');
+        if (data.status === 'error') {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.message + '</span>';
+            btn.disabled = false;
+            return;
+        }
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span></span>';
+
+        pollUpdateStatus();
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        btn.disabled = false;
+    }
+}
+
 function pollUpdateStatus() {
     if (updatePollInterval) clearInterval(updatePollInterval);
     updatePollInterval = setInterval(async () => {
@@ -1560,6 +1591,8 @@ function pollUpdateStatus() {
                 clearInterval(updatePollInterval);
                 document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">✓ Обновление завершено</span>';
                 document.getElementById('update-run-btn').style.display = 'none';
+                const rbtn = document.getElementById('update-reinstall-btn');
+                if (rbtn) rbtn.disabled = false;
                 document.getElementById('update-current').textContent = data.lines.length > 0
                     ? (data.lines[data.lines.length-1].replace(/.*v/, '').replace(/ .*/, '') || '?')
                     : '?';
@@ -1567,6 +1600,8 @@ function pollUpdateStatus() {
                 clearInterval(updatePollInterval);
                 document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
                 document.getElementById('update-run-btn').disabled = false;
+                const rbtn = document.getElementById('update-reinstall-btn');
+                if (rbtn) rbtn.disabled = false;
             } else if (data.status === 'running') {
                 const progress = data.lines.length > 0 ? data.lines[data.lines.length-1] : '';
                 document.getElementById('update-progress').textContent = progress;
