@@ -1,7 +1,7 @@
 # Entware Manager
 
 [![ShellCheck](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Di1r1/entware-manager/actions/workflows/shellcheck.yml)
-[![Version](https://img.shields.io/badge/version-1.08.1-blue)](version.json)
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FDi1r1%2Fentware-manager%2Fmain%2Fversion.json&label=version&query=version&color=blue)](version.json)
 [![License](https://img.shields.io/badge/license-GPLv3-green)](doc/LICENSE)
 
 **Entware Manager** — веб-панель управления Entware на роутерах Keenetic и Netcraze с NDMS.
@@ -19,7 +19,8 @@
 | **Логи** | Просмотр системных логов, поиск, ротация, очистка |
 | **Файлы** | Просмотр файлов в `/tmp/`, backup/restore настроек |
 | **Терминал** | Встроенный веб-терминал (ttyd) для прямого доступа к shell |
-| **Безопасность** | Защита паролем (SHA-256), auth_config.json |
+| **RDP** | Веб-RDP-клиент (grdpwasm) для подключения к компьютерам в LAN: доступ к любому ПК в разрешённых подсетях, клипборд, история последних 5 ПК, темизация |
+| **Безопасность** | Защита паролем (SHA-256), вход в панель по паролю (сессия, гейт на все CGI в обоих режимах), антибрутфорс |
 
 ### Интерфейс
 
@@ -114,13 +115,13 @@ opkg remove entware-manager
 
 ### Лог установки
 
-install.sh пишет лог в `/tmp/entware/install-logs/install-YYYYMMDD-HHMMSS.log`.
-При повторной установке создаётся новый файл, старые не затираются.
+install.sh пишет лог в `/tmp/entware/install-logs/install.log` (единый файл с ротацией по размеру, старые `install-*.log` не используются).
+При повторной установке записи дописываются в тот же файл.
 
 Финальный шаг проверяет:
 - все пакеты и бинарники
 - симлинки `.cgi → go.cgi`
-- 8 Go-бинарников
+- 9 Go-бинарников
 - веб-файлы (index.html, style.css, …)
 - lighttpd (PID + HTTP 200)
 
@@ -155,12 +156,12 @@ chmod +x install.sh
               ┌─────────┼─────────┐
               │         │         │
          entware-*   *.html    *.js
-       (8 Go-бинарн.) статика   логика
+       (9 Go-бинарн.) статика   логика
               │
          система / Entware
 ```
 
-**Технологии:** Go (8 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi` (или собственный `entware-server`, если на роутере сторонний lighttpd), `jq`, `ttyd`.
+**Технологии:** Go (9 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi` (или собственный `entware-server`, если на роутере сторонний lighttpd), `jq`, `ttyd`.
 
 ## Компоненты
 
@@ -169,10 +170,11 @@ chmod +x install.sh
 | `entware-pkg` | Пакеты Entware | `available`, `packages`, `install`, `remove`, `upgrade`, `update`, `upgradable`, `api` |
 | `entware-stats` | Инфо, файлы, ссылки | `stats`, `version`, `help`, `links_load/save`, `tmpfs`, `view_file`, `delete_file`, `auth_config`, `crontab` |
 | `entware-net` | Сеть | `network_interfaces`, `routes`, `arp`, `status`, `stats`, `events`, `config`, `action` |
-| `entware-services` | Сервисы, watchdog | `check_syntax/deps`, `services`, `service_action`, `ttyd_control`, `debug`, `service_watchdog/*` |
+| `entware-services` | Сервисы, watchdog | `check_syntax/deps`, `services`, `service_action`, `ttyd_control`, `service_watchdog/*` |
 | `entware-monitor` | Мониторинг | `temperature`, `wifi_temp`, `temp_history`, `wifi_temp_history`, `kill_pid`, `monitor_*` |
 | `entware-smart` | SMART дисков | `smart` (info, attributes, health, selftest) |
 | `entware-logger` | Логи | `logger_*` (config, view, system_logs, rotate, clear)` |
+| `entware-rdp` | RDP-модуль | `rdp_status`, `rdp_config`, `rdp_start`, `rdp_stop` (управление grdp-proxy) |
 | `entware-server` | Веб-сервер | Статика `/entware-manager/` + прокси `/entware-cgi/` (режим с чужим lighttpd) |
 
 ## Конфигурация
@@ -181,7 +183,7 @@ chmod +x install.sh
 |------|----------|
 | `/opt/etc/entware-manager.conf` | Пути (генерируется install.sh): `ENTWARE_MANAGER_ROOT`, `ENTWARE_MANAGER_CGI`, `ENTWARE_MANAGER_LOGS`, `ENTWARE_MANAGER_AUTH`, `ENTWARE_MANAGER_VERSION` |
 | `/opt/web_entware/auth_config.json` | Пароль веб-панели: `{"enabled":true,"password_hash":"<sha256>"}` |
-| `/opt/web_entware/version.json` | Версия проекта: `{"version":"2.6","date":"2026-07-16"}` |
+| `/opt/web_entware/version.json` | Версия проекта: `{"version":"1.09.5","date":"2026-08-14"}` |
 
 ## Troubleshooting
 
