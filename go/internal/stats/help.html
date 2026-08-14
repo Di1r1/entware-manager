@@ -22,7 +22,7 @@
     <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
 
     <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 12px; margin: 16px 0; border-radius: 4px;">
-        <strong>🧬 Архитектура:</strong> Все 76 CGI-эндпоинтов — Go-бинарники (8 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart, entware-rdp; плюс HTTP-сервер entware-server).<br>
+        <strong>🧬 Архитектура:</strong> Все 76 CGI-эндпоинтов — Go-бинарники (9 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart, entware-server, entware-rdp). Отдельно собирается <code>grdp-proxy</code> — прокси-сервер RDP (не CGI: раздаёт веб-клиент и ретранслирует WebSocket-трафик).<br>
         Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (76 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
     </div>
 
@@ -356,10 +356,10 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
 
     <h4>Запуск и остановка</h4>
     <p>Кнопки <strong>«Запустить прокси»</strong> и <strong>«Остановить»</strong> на вкладке RDP. Для каждой операции вводится пароль панели (раздел «Защита»): пароль запрашивается в окне браузера, в логи и URL не попадает. Прокси управляется init-скриптом <code>/opt/etc/init.d/S90grdp-proxy</code>, PID хранится в <code>/opt/var/run/grdp-proxy.pid</code>.</p>
-    <p>Адрес RDP-сервера задаётся в конфиге <code>/opt/web_entware/rdp_config.json</code> (поля <code>target_host</code> / <code>target_port</code>; порт прокси — <code>proxy_port</code>). Логин и пароль Windows вводятся в окне самого клиента внутри браузера — на роутере они не хранятся. Пароли добавлять в конфиг нельзя: файл читается всей локальной сетью.</p>
+    <p>Настройки задаются в конфиге <code>/opt/web_entware/rdp_config.json</code>: <code>target_host</code> / <code>target_port</code> (цель по умолчанию), <code>proxy_port</code> (порт прокси) и <code>allow_subnets</code> — список разрешённых CIDR-подсетей через запятую (например, <code>192.168.1.0/24, 192.168.3.0/24</code>). Подключаться можно к <strong>любому ПК</strong> в разрешённой подсети; если <code>allow_subnets</code> пуст, используется подсеть <code>/24</code> адреса <code>target_host</code>. Цели вне разрешённых подсетей отклоняются (403). Логин и пароль Windows вводятся в окне самого клиента внутри браузера — на роутере они не хранятся. Пароли добавлять в конфиг нельзя: файл читается всей локальной сетью.</p>
 
     <div class="warning" style="background: var(--command-block-bg); border-left: 4px solid #f59e0b; padding: 10px; margin: 10px 0; border-radius: 4px;">
-        <strong>⚠️ Безопасность:</strong> прокси слушает только <code>127.0.0.1</code> и доступен исключительно через панель (тот же origin, порт 8087). Разрешена одна цель — из <code>target_host</code>/<code>target_port</code> конфига; любые другие адреса отклоняются (защита от открытого релея). Креды Windows передаются внутри WebSocket — при работе панели по HTTP без шифрования используйте модуль только в доверенной сети, а извне — через Keenetic Remote/KeenDNS (HTTPS). Останавливайте прокси сразу после завершения работы.
+        <strong>⚠️ Безопасность:</strong> прокси слушает только <code>127.0.0.1</code> и доступен исключительно через панель (тот же origin, порт 8087). Разрешены только подсети из <code>allow_subnets</code> конфига (fallback — <code>/24</code> адреса <code>target_host</code>); цели вне разрешённых подсетей отклоняются (403, защита от открытого релея). Креды Windows передаются внутри WebSocket — при работе панели по HTTP без шифрования используйте модуль только в доверенной сети, а извне — через Keenetic Remote/KeenDNS (HTTPS). Останавливайте прокси сразу после завершения работы.
     </div>
 
     <h4>Удалённый доступ (Keenetic Remote / KeenDNS)</h4>
@@ -371,6 +371,20 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
     </ul>
     <p>Прямые порты <code>9089</code>/<code>8089</code>/<code>9099</code> на сетевых интерфейсах закрыты — доступ только через панель. Терминал и htop при запуске требуют пароль (раздел «Настройки → Терминал»); этот же пароль запрашивает ttyd при открытии. Внешний доступ к панели гейтится вашим Keenetic-аккаунтом (Keenetic Remote, «только для меня») — первый барьер защиты.</p>
 
+    <h4>История последних 5 ПК</h4>
+    <p>Поле <strong>Host</strong> в клиенте — комбобокс со стрелкой ▾: сохранённые адреса доступны для повторного выбора. Адрес запоминается при клике <strong>Connect</strong> в cookie (<code>rdp_host_history</code>, до 5 записей, без дубликатов, свежие сверху).</p>
+
+    <h4>Клипборд</h4>
+    <p>Направление «локальный → удалённый» работает. Механика зависит от протокола:</p>
+    <ul>
+        <li><strong>Clipboard API</strong> (<code>navigator.clipboard</code>) работает только в secure context (HTTPS/localhost). Через HTTPS клипборд работает <strong>в обе стороны</strong>.</li>
+        <li><strong>По HTTP</strong> (по LAN): «браузер → RDP» работает через событие <code>paste</code>; «RDP → браузер» ограничено самим браузером (<code>execCommand copy</code> требует user gesture) — надёжно через HTTPS.</li>
+        <li>Клавиши <kbd>Ctrl+V</kbd>/<kbd>Cmd+V</kbd> работают, в том числе из RDP — Windows вставляет из своего клипборда.</li>
+    </ul>
+
+    <h4>Темизация</h4>
+    <p>Клиент RDP оформлен в стиль панели (CSS-переменные). Тема синхронизируется с панелью автоматически: в iframe — live (включая смену пресета и день/ночь); при открытии в новой вкладке берётся из <code>localStorage</code> — все 7 пресетов и ночные переопределения.</p>
+
     <h4>Настройки потока (пресеты)</h4>
     <p>В окне клиента есть выбор пресета, определяющего разрешение и скорость/качество потока:</p>
     <ul>
@@ -380,6 +394,7 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
         <li><strong>Custom</strong> — размеры и параметр качества (queueDepth) вводятся вручную.</li>
     </ul>
     <p>В статус-баре клиента отображается счётчик кадров. Если браузер не поддерживает декодирование H.264 (WebCodecs), клиент автоматически переключается на поток сжатых изображений (RemoteFX/NSCodec).</p>
+    <p>Селект выбора пресета и чекбоксы темизированы в стиль панели (селект — как инпуты <code>--input-*</code> с фокус-подсветкой, галки — <code>accent-color: var(--accent)</code>): цвет меняется вместе с пресетом темы и день/ночью.</p>
 
     <h5>CGI-эндпоинты модуля</h5>
     <div class="command-block">
@@ -614,6 +629,27 @@ cat /tmp/entware/logs/service_events.log<br>
         <li>Для каждой ссылки указывается иконка (выбор из списка), название и URL.</li>
         <li>Изменения сохраняются в файле <code>/opt/web_entware/links.json</code> и видны всем устройствам.</li>
     </ul>
+
+    <!-- Вход по паролю (Защита панели) -->
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=2#icon-shield"/>
+            </svg>
+        </span>
+        Защита панели (вход по паролю)
+    </h3>
+    <p>Если в разделе «Настройки → Защита панели» задан пароль — панель закрыта экраном входа до авторизации. Без пароля (<code>enabled=false</code>) панель открыта как раньше (обратная совместимость).</p>
+    <ul>
+        <li><strong>Сессия</strong> — файл <code>/opt/var/run/panel_session</code>: токен 32 байта из <code>/dev/urandom</code>, TTL 24 часа, constant-time сравнение. Cookie <code>panel_session</code> — <code>HttpOnly</code> + <code>SameSite=Strict</code>.</li>
+        <li><strong>Гейт на все CGI</strong> — в обоих режимах: go-режим (entware-server) и lighttpd-режим (go.cgi). Антибрутфорс-задержка — 1 секунда при неверном пароле.</li>
+        <li><strong>Выход</strong> — кнопка «Выйти» в сайдбаре. При истечении сессии интерфейс сам возвращает к экрану входа (обработка 401).</li>
+        <li><strong>Инвалидация</strong> — смена или отключение пароля удаляет <code>panel_session</code>: все активные сессии перестают действовать, нужно войти заново.</li>
+        <li><strong>Эндпоинты</strong> — <code>login.cgi</code> (POST пароль → Set-Cookie), <code>logout.cgi</code>, <code>session.cgi</code> (статус сессии для фронтенда).</li>
+    </ul>
+    <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>📌 Рекомендация:</strong> внешний барьер — панельный логин; авторизацию Keenetic (двойной Basic) рекомендуется отключить.
+    </div>
 
     <!-- Защита (мониторинг процессов) -->
     <h3>
@@ -958,3 +994,4 @@ curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
     <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>
 </div>
 </body>
+</html>
