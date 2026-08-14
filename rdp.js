@@ -55,7 +55,7 @@ const RDP = {
                 <div id="rdpFrameWrap" style="display:none;">
                     <iframe id="rdpFrame" width="100%"
                         style="border: 1px solid var(--border-color); border-radius: 8px; background: var(--pre-bg);"
-                        allow="fullscreen; autoplay"></iframe>
+                        allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
                     <p class="rdp-hint">
                         Нажмите внутри окна, чтобы захватить клавиатуру и мышь. Раскладка: Windows + Space.
                     </p>
@@ -88,7 +88,7 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=3';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=6';
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).

@@ -139,7 +139,7 @@ function startPanelWidgets() {
         updateWifiTemp();
         setInterval(updateWifiTemp, 30000);
     }
-    fetch('/entware-manager/version.json')
+    fetch('/entware-manager/version.json?_=' + Date.now())
         .then(r => r.json())
         .then(data => {
             window.APP_VERSION = data.version;
@@ -352,7 +352,7 @@ async function loadTab(tabName) {
     }
     if (tabName === 'rdp') {
         if (!window.RDP_LOADED) {
-            await loadScript('/entware-manager/rdp.js?v=9');
+            await loadScript('/entware-manager/rdp.js?v=10');
             window.RDP_LOADED = true;
         }
         RDP.init(); Menu.setActiveTab(tabName); return;

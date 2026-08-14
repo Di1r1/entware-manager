@@ -79,11 +79,19 @@ for i in "${!ARCH_NAMES[@]}"; do
     done
 done
 
-if command -v upx &>/dev/null || [ -x /tmp/upx-4.2.4-amd64_linux/upx ]; then
-    UPX=$(command -v upx || echo "/tmp/upx-4.2.4-amd64_linux/upx")
+# Приоритет UPX: 5.2.0 (новый, быстрее) → 4.2.4 → системный.
+if [ -x /tmp/upx-5.2.0-amd64_linux/upx ]; then
+    UPX=/tmp/upx-5.2.0-amd64_linux/upx
+elif [ -x /tmp/upx-4.2.4-amd64_linux/upx ]; then
+    UPX=/tmp/upx-4.2.4-amd64_linux/upx
+elif command -v upx &>/dev/null; then
+    UPX=$(command -v upx)
 fi
 echo ""
 echo "=== UPX сжатие ==="
+if [ -z "${UPX:-}" ]; then
+    echo "  UPX не найден — сжатие пропущено (ставьте upx в PATH)"
+else
 for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
     [ -d "$arch_dir" ] || continue
     echo "  [$(basename "$arch_dir")]"
@@ -94,6 +102,7 @@ for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
         "$UPX" -9 "$f" -o "$tmpf" 2>/dev/null && mv "$tmpf" "$f" && echo "OK ($(du -h "$f" | cut -f1))" || { rm -f "$tmpf"; echo "SKIP"; }
     done
 done
+fi
 
 # ==============================================
 # RDP-артефакты (WASM-клиент grdpwasm + grdp-proxy)
