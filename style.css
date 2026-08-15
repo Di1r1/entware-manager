@@ -809,6 +809,54 @@ tr:hover td {
     box-shadow: none;
 }
 
+/* Вкладка «Пакеты» — контейнер фильтров (адаптивный) */
+.pkg-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.pkg-action-btn {
+    flex: 0 1 auto;
+    max-width: 100%;
+    white-space: normal;
+}
+.pkg-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 6px;
+    background: var(--input-bg);
+    border-radius: 40px;
+    width: fit-content;
+    max-width: 100%;
+}
+.pkg-filter-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: none;
+    white-space: nowrap;
+    flex: 0 1 auto;
+}
+.pkg-filter-btn:hover:not(.active) {
+    background: var(--accent-soft);
+    box-shadow: none;
+    transform: none;
+}
+.pkg-filter-btn.active {
+    background: var(--btn-gradient);
+    color: white;
+    box-shadow: 0 2px 4px var(--accent-glow);
+}
+
 input[type="submit"],
 .packages-delete-btn,
 button {
@@ -1750,6 +1798,18 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
         font-size: 12px;
     }
     .packages-table-wrapper { border-radius: 8px; }
+    .pkg-tabs {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        border-radius: 12px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pkg-filter-btn { flex: 1 0 auto; padding: 8px 12px; }
+    .pkg-tabs::-webkit-scrollbar { height: 4px; }
+    .pkg-tabs::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+    .pkg-actions .pkg-action-btn { flex: 1 1 100%; justify-content: center; }
     .links-grid {
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 0.8rem;

@@ -472,13 +472,13 @@ function renderPackagesTab(initialFilter) {
             </span>
             <span id="pkg-title">Пакеты</span>
         </h2>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px;">
-            <button id="runUpdateBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить списки пакетов</button>
-            <button id="upgradeAllBtn" class="packages-delete-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Обновить все пакеты</button>
+        <div class="pkg-actions">
+            <button id="runUpdateBtn" class="packages-delete-btn pkg-action-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить списки пакетов</button>
+            <button id="upgradeAllBtn" class="packages-delete-btn pkg-action-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Обновить все пакеты</button>
         </div>
         <div id="update-result" style="margin-bottom: 20px;"></div>
-        <div id="pkg-tabs" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; padding: 6px; background: var(--input-bg); border-radius: 40px; width: fit-content;">
-            ${PKG_FILTERS.map(f => `<button class="packages-delete-btn pkg-filter-btn" data-filter="${f.id}" style="border:none; background:transparent; color:var(--text-secondary); font-weight:500; padding:8px 16px; border-radius:40px; cursor:pointer;">${f.text}${f.id === 'updates' ? ' <span id="pkg-upd-count" style="display:none;"></span>' : ''}</button>`).join('')}
+        <div class="pkg-tabs" id="pkg-tabs">
+            ${PKG_FILTERS.map(f => `<button class="packages-delete-btn pkg-filter-btn" data-filter="${f.id}">${f.text}${f.id === 'updates' ? ' <span id="pkg-upd-count" style="display:none;"></span>' : ''}</button>`).join('')}
         </div>
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 24px;">
             <div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
@@ -500,11 +500,7 @@ function renderPackagesTab(initialFilter) {
 function setPkgFilter(filter) {
     pkgCurrentFilter = filter;
     document.querySelectorAll('.pkg-filter-btn').forEach(btn => {
-        const active = btn.dataset.filter === filter;
-        btn.classList.toggle('active', active);
-        btn.style.background = active ? 'var(--btn-gradient)' : 'transparent';
-        btn.style.color = active ? 'white' : 'var(--text-secondary)';
-        btn.style.boxShadow = active ? '0 2px 4px var(--accent-glow)' : 'none';
+        btn.classList.toggle('active', btn.dataset.filter === filter);
     });
     loadPkgTable();
 }
