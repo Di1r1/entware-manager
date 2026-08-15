@@ -17,6 +17,10 @@ type ttydInstance struct {
 	Mode  string `json:"mode"`
 }
 
+// ttydIndexHTML — путь к форку index.html ttyd (добавляет перехват вставки).
+// Пустой — использовать встроенный index.html ttyd (вставка только Shift+Insert/правая кнопка).
+const ttydIndexHTML = "/opt/web_entware/static/ttyd/index.html"
+
 type ttydStatus struct {
 	Status   string       `json:"status"`
 	HTop     ttydInstance `json:"htop"`
@@ -99,6 +103,13 @@ func startTTYD(port int, pass string, mode string) map[string]string {
 
 	var args []string
 	args = append(args, "-p", strconv.Itoa(port), "-W", "--permit-any-origin", "-c", "admin:"+pass)
+
+	// Форк index.html: xterm.js 5.4 по Ctrl+V шлёт в PTY литеральный ^V
+	// (не вставляет). Свой index.html добавляет перехват Ctrl+V/Cmd+V/
+	// Shift+Insert → term.paste() (работает и по HTTP).
+	if idx := ttydIndexHTML; idx != "" {
+		args = append(args, "-I", idx)
+	}
 
 	if port == 9089 {
 		args = append(args, "-i", "lo", "--base-path", "/terminal")

@@ -531,6 +531,19 @@ function pkgCacheClear(key, timeKey) {
     localStorage.removeItem(timeKey);
 }
 
+async function fetchInstalledWithRetry(seq) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const data = await apiGet('/installed.cgi');
+            // Успешный ответ (даже пустой []) — валиден: не ретраим.
+            return Array.isArray(data) ? data : [];
+        } catch (e) { /* временная ошибка — повторим */ }
+        if (seq !== pkgLoadSeq) return null;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 800));
+    }
+    return null;
+}
+
 async function loadPkgData(forceRefresh, seq) {
     let installed = forceRefresh ? null : pkgCacheGet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, CACHE_PKG_MAX_AGE);
     let upgradable = forceRefresh ? null : pkgCacheGet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, CACHE_PKG_MAX_AGE);
@@ -538,21 +551,19 @@ async function loadPkgData(forceRefresh, seq) {
     if (installed && !installed.length) installed = null;
     if (upgradable && !upgradable.length) upgradable = null;
 
-    const fetchTasks = [];
-    if (!installed) fetchTasks.push(apiGet('/installed.cgi'));
-    if (!upgradable) fetchTasks.push(apiGet('/upgradable.cgi'));
-
-    if (fetchTasks.length) {
-        const results = await Promise.all(fetchTasks);
-        let idx = 0;
-        if (!installed) {
-            installed = results[idx++];
-            if (installed && installed.length) pkgCacheSet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, installed);
+    if (!installed) {
+        installed = await fetchInstalledWithRetry(seq);
+        if (seq !== pkgLoadSeq) return;
+        if (installed && installed.length) pkgCacheSet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, installed);
+    }
+    if (!upgradable) {
+        try {
+            upgradable = await apiGet('/upgradable.cgi');
+        } catch (e) {
+            upgradable = null;
         }
-        if (!upgradable) {
-            upgradable = results[idx];
-            if (upgradable && upgradable.length) pkgCacheSet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, upgradable);
-        }
+        if (seq !== pkgLoadSeq) return;
+        if (upgradable && upgradable.length) pkgCacheSet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, upgradable);
     }
 
     if (seq !== pkgLoadSeq) return;
@@ -796,8 +807,9 @@ async function loadHtopContent() {
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+                <iframe id="htopFrame" src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay"></iframe>
             `;
+            focusTtydFrame('htopFrame');
         } else {
             container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">htop не запущен. Откройте <b>Настройки → Терминал</b>, задайте пароль и нажмите <b>Запустить</b>.</p>';
         }
@@ -834,8 +846,9 @@ async function loadTerminalContent() {
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
+                <iframe id="terminalFrame" src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
             `;
+            focusTtydFrame('terminalFrame');
         } else {
             title.textContent = 'Терминал';
             container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Терминал не запущен. Откройте <b>Настройки → Терминал</b>, задайте пароль и нажмите <b>Запустить</b>.</p>';
@@ -844,6 +857,28 @@ async function loadTerminalContent() {
         const container = document.getElementById('terminal-content');
         if (container) container.innerHTML = '<p class="error">Ошибка: ' + escapeHtml(err.message) + '</p>';
     }
+}
+
+function focusTtydFrame(id) {
+    const frame = document.getElementById(id);
+    if (!frame) return;
+    const focusInner = () => {
+        try {
+            const w = frame.contentWindow;
+            if (!w) return;
+            // ttyd выставляет window.term (xterm.js) — фокусируем textarea,
+            // иначе Ctrl+V уходит в PTY как литеральный ^V.
+            if (w.term && typeof w.term.focus === 'function') {
+                w.term.focus();
+            } else {
+                w.focus();
+            }
+        } catch (e) { /* cross-origin или ещё не готово — игнорируем */ }
+    };
+    frame.addEventListener('load', () => {
+        setTimeout(focusInner, 400);
+        setTimeout(focusInner, 1200);
+    });
 }
 
 function loadLogsTab() {

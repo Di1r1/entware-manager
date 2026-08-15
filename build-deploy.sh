@@ -154,6 +154,22 @@ fi
 
 cp "$PROJECT_DIR/cgi-bin/go.cgi" "$DEPLOY_DIR/cgi-bin/go.cgi"
 
+# ==============================================
+# Форк index.html ttyd (перехват вставки Ctrl+V)
+# Источник — сгенерированный артефакт вне репозитория (как grdpwasm).
+# В xterm.js 5.4 (ttyd 1.7.7) Ctrl+V шлёт в PTY ^V — форк добавляет term.paste().
+# ==============================================
+TTYD_FORK="${TTYD_FORK:-/tmp/opencode/ttyd-fork.html}"
+if [ -f "$TTYD_FORK" ]; then
+    mkdir -p "$DEPLOY_DIR/static/ttyd"
+    cp "$TTYD_FORK" "$DEPLOY_DIR/static/ttyd/index.html"
+    chmod 644 "$DEPLOY_DIR/static/ttyd/index.html"
+    echo "  ttyd index.html: форк ($(du -h "$DEPLOY_DIR/static/ttyd/index.html" | cut -f1))"
+else
+    echo "WARNING: форк ttyd index.html не найден ($TTYD_FORK) — вставка Ctrl+V в терминале не будет перехватываться."
+    echo "         (сгенерируйте: curl встроенный index.html ttyd + инъекция term.paste)."
+fi
+
 echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 

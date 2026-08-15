@@ -769,6 +769,13 @@ else
 	ok "RDP-артефакты не в поставке — пропускаю установку модуля"
 fi
 
+# Форк index.html ttyd (перехват вставки Ctrl+V) — модуль терминала, не RDP,
+# поэтому отдельный блок вне условия RDP-артефактов.
+if [ -f "$TARGET_DIR/static/ttyd/index.html" ]; then
+	chmod 644 "$TARGET_DIR/static/ttyd/index.html" 2>/dev/null
+	ok "форк index.html ttyd установлен (вставка Ctrl+V)"
+fi
+
 # ========== 7. SUDOERS + ПРАВА ==========
 step "Настройка sudoers и прав доступа"
 
