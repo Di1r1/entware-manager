@@ -32,7 +32,7 @@ func readArch() string {
 // ENDPOINT в этом случае = имени (кроме smart — он вызывается без ENDPOINT).
 var flatDispatch = map[string]string{
 	// pkg
-	"available": "pkg", "packages": "pkg", "install": "pkg", "remove": "pkg",
+	"available": "pkg", "packages": "pkg", "installed": "pkg", "install": "pkg", "remove": "pkg",
 	"upgrade": "pkg", "update": "pkg", "upgradable": "pkg", "api": "pkg",
 	// stats
 	"stats": "stats", "version": "stats", "help": "stats", "links_load": "stats",

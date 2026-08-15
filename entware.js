@@ -6,10 +6,14 @@ const BASE_URL = window.location.protocol + '//' + window.location.hostname;
 const CACHE_KEY = 'entware_available_packages';
 const CACHE_TIME_KEY = 'entware_available_timestamp';
 const CACHE_MAX_AGE = 3600 * 1000;
+const CACHE_INSTALLED_KEY = 'entware_installed_packages';
+const CACHE_INSTALLED_TIME = 'entware_installed_timestamp';
+const CACHE_UPGRADABLE_KEY = 'entware_upgradable_packages';
+const CACHE_UPGRADABLE_TIME = 'entware_upgradable_timestamp';
+const CACHE_PKG_MAX_AGE = 60 * 1000;
 
 let settingsInterval = null;
 let servicesInterval = null;
-let upgradableData = [];
 
 let contentDiv, sidebar, menuToggle, collapseToggle;
 
@@ -202,12 +206,20 @@ function initPanel() {
     }
 
     Menu.init('#dynamic-menu').then(() => {
-        const savedTab = localStorage.getItem('entware_active_tab');
+        let savedTab = localStorage.getItem('entware_active_tab');
+        if (savedTab === 'available' || savedTab === 'updates') {
+            savedTab = 'packages';
+            localStorage.setItem('entware_active_tab', 'packages');
+        }
         Menu.setActiveTab(savedTab || 'stats');
     });
     handleResponsive();
     window.addEventListener('resize', debounce(handleResponsive, 200));
-    const savedTab = localStorage.getItem('entware_active_tab');
+    let savedTab = localStorage.getItem('entware_active_tab');
+    if (savedTab === 'available' || savedTab === 'updates') {
+        savedTab = 'packages';
+        localStorage.setItem('entware_active_tab', 'packages');
+    }
     loadTab(savedTab || 'stats');
     startPanelWidgets();
 }
@@ -329,8 +341,11 @@ async function loadTab(tabName) {
     if (typeof SMART !== 'undefined' && SMART.stopUpdates) SMART.stopUpdates();
     if (typeof RDP !== 'undefined' && RDP.stopUpdates) RDP.stopUpdates();
 
-    if (tabName === 'available') { loadAvailableTab(); Menu.setActiveTab(tabName); return; }
-    if (tabName === 'updates') { renderUpdatesTab(); Menu.setActiveTab(tabName); return; }
+    if (tabName === 'packages' || tabName === 'available' || tabName === 'updates') {
+        renderPackagesTab(tabName);
+        Menu.setActiveTab('packages');
+        return;
+    }
     if (tabName === 'processes') { renderProcessesTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'terminal') { renderTerminalTab(); Menu.setActiveTab(tabName); return; }
     if (tabName === 'settings') { renderSettingsTab(); Menu.setActiveTab(tabName); return; }
@@ -372,8 +387,7 @@ async function loadTab(tabName) {
         const response = await apiFetch('/' + tabName + '.cgi');
         const html = await response.text();
         contentDiv.innerHTML = html;
-        if (tabName === 'packages') initPackagesSearch();
-        else if (tabName === 'stats') {
+        if (tabName === 'stats') {
             initStatsTabs();
             loadNetworkStatus();
             setTimeout(() => { renderLinksOnStats(); enableTableSorting(); }, 100);
@@ -434,88 +448,272 @@ async function showPackageInfo(pkg) {
     }
 }
 
-function initPackagesSearch() {
-    initTableSearch('searchInput', 'packagesTable', 0);
-    const table = document.getElementById('packagesTable');
-    if (!table) return;
-    const rows = table.getElementsByTagName('tr');
-    for (let i = 1; i < rows.length; i++) {
-        rows[i].style.cursor = 'pointer';
-        rows[i].addEventListener('click', function(e) {
+let pkgInstalledData = [];
+let pkgUpgradableData = [];
+let pkgAvailableData = null;
+let pkgCurrentFilter = 'installed';
+
+const PKG_FILTERS = [
+    { id: 'all', text: 'Все' },
+    { id: 'installed', text: 'Установленные' },
+    { id: 'updates', text: 'Обновления' },
+    { id: 'available', text: 'Доступные' }
+];
+
+function renderPackagesTab(initialFilter) {
+    const filter = (initialFilter === 'available' || initialFilter === 'updates')
+        ? (initialFilter === 'available' ? 'available' : 'updates')
+        : 'installed';
+    pkgCurrentFilter = filter;
+    const html = `
+        <h2 style="display: flex; align-items: center; gap: 8px;">
+            <span class="stat-icon" style="width: 28px; height: 28px;">
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-package"/></svg>
+            </span>
+            <span id="pkg-title">Пакеты</span>
+        </h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px;">
+            <button id="runUpdateBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить списки пакетов</button>
+            <button id="upgradeAllBtn" class="packages-delete-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Обновить все пакеты</button>
+        </div>
+        <div id="update-result" style="margin-bottom: 20px;"></div>
+        <div id="pkg-tabs" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; padding: 6px; background: var(--input-bg); border-radius: 40px; width: fit-content;">
+            ${PKG_FILTERS.map(f => `<button class="packages-delete-btn pkg-filter-btn" data-filter="${f.id}" style="border:none; background:transparent; color:var(--text-secondary); font-weight:500; padding:8px 16px; border-radius:40px; cursor:pointer;">${f.text}${f.id === 'updates' ? ' <span id="pkg-upd-count" style="display:none;"></span>' : ''}</button>`).join('')}
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 24px;">
+            <div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
+                <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg>
+                <input type="text" id="searchPkg" placeholder="Поиск по названию..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
+            </div>
+        </div>
+        <div id="pkg-table-container" class="packages-table-wrapper"><div class="loading-spinner"></div></div>
+    `;
+    contentDiv.innerHTML = html;
+    document.getElementById('runUpdateBtn').addEventListener('click', runPkgUpdate);
+    document.getElementById('upgradeAllBtn').addEventListener('click', upgradeAll);
+    document.querySelectorAll('.pkg-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => setPkgFilter(btn.dataset.filter));
+    });
+    setPkgFilter(filter);
+}
+
+function setPkgFilter(filter) {
+    pkgCurrentFilter = filter;
+    document.querySelectorAll('.pkg-filter-btn').forEach(btn => {
+        const active = btn.dataset.filter === filter;
+        btn.classList.toggle('active', active);
+        btn.style.background = active ? 'var(--btn-gradient)' : 'transparent';
+        btn.style.color = active ? 'white' : 'var(--text-secondary)';
+        btn.style.boxShadow = active ? '0 2px 4px var(--accent-glow)' : 'none';
+    });
+    loadPkgTable();
+}
+
+let pkgLoadSeq = 0;
+
+function pkgCacheGet(key, timeKey, ttl) {
+    try {
+        const cached = localStorage.getItem(key);
+        const timestamp = localStorage.getItem(timeKey);
+        const now = Date.now();
+        if (cached && timestamp && (now - parseInt(timestamp) < ttl)) {
+            return JSON.parse(cached);
+        }
+    } catch (e) { /* битый кэш — игнорируем */ }
+    return null;
+}
+
+function pkgCacheSet(key, timeKey, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        localStorage.setItem(timeKey, Date.now().toString());
+    } catch (e) { /* квота localStorage — не критично */ }
+}
+
+function pkgCacheClear(key, timeKey) {
+    localStorage.removeItem(key);
+    localStorage.removeItem(timeKey);
+}
+
+async function loadPkgData(forceRefresh, seq) {
+    let installed = forceRefresh ? null : pkgCacheGet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, CACHE_PKG_MAX_AGE);
+    let upgradable = forceRefresh ? null : pkgCacheGet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, CACHE_PKG_MAX_AGE);
+
+    const fetchTasks = [];
+    if (!installed) fetchTasks.push(apiGet('/installed.cgi'));
+    if (!upgradable) fetchTasks.push(apiGet('/upgradable.cgi'));
+
+    if (fetchTasks.length) {
+        const results = await Promise.all(fetchTasks);
+        let idx = 0;
+        if (!installed) { installed = results[idx++]; pkgCacheSet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, installed); }
+        if (!upgradable) { upgradable = results[idx]; pkgCacheSet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, upgradable); }
+    }
+
+    if (seq !== pkgLoadSeq) return;
+    pkgInstalledData = installed || [];
+    pkgUpgradableData = (upgradable || []).filter(p => p.package && p.current && p.new && p.package !== 'undefined');
+
+    if (pkgCurrentFilter === 'all' || pkgCurrentFilter === 'available') {
+        const cached = localStorage.getItem(CACHE_KEY);
+        const timestamp = localStorage.getItem(CACHE_TIME_KEY);
+        const now = Date.now();
+        if (!forceRefresh && cached && timestamp && (now - parseInt(timestamp) < CACHE_MAX_AGE)) {
+            pkgAvailableData = JSON.parse(cached);
+        } else {
+            pkgAvailableData = await apiGet('/available.cgi');
+            localStorage.setItem(CACHE_KEY, JSON.stringify(pkgAvailableData));
+            localStorage.setItem(CACHE_TIME_KEY, now.toString());
+        }
+        if (seq !== pkgLoadSeq) return;
+    }
+}
+
+function buildPkgRows() {
+    const upgradableMap = {};
+    pkgUpgradableData.forEach(p => { if (p.package) upgradableMap[p.package] = p; });
+
+    let rows = [];
+    if (pkgCurrentFilter === 'updates') {
+        const installedMap = {};
+        pkgInstalledData.forEach(p => { if (p.package) installedMap[p.package] = p; });
+        rows = pkgUpgradableData.map(p => {
+            const inst = installedMap[p.package];
+            return {
+                name: p.package,
+                current: p.current,
+                new: p.new,
+                installed_date: inst ? (inst.installed_date || '') : '',
+                status: 'upgrade'
+            };
+        });
+    } else if (pkgCurrentFilter === 'installed') {
+        rows = pkgInstalledData.map(p => {
+            const up = upgradableMap[p.package];
+            return {
+                name: p.package,
+                version: p.version,
+                installed_date: p.installed_date || '',
+                status: up ? 'upgrade' : 'installed'
+            };
+        });
+    } else {
+        const installedMap = {};
+        pkgInstalledData.forEach(p => { if (p.package) installedMap[p.package] = p; });
+        if (!pkgAvailableData) {
+            rows = pkgInstalledData.map(p => {
+                const up = upgradableMap[p.package];
+                return { name: p.package, version: p.version, installed_date: p.installed_date || '', status: up ? 'upgrade' : 'installed' };
+            });
+        } else {
+            const source = pkgCurrentFilter === 'available'
+                ? pkgAvailableData.filter(p => p.package && !installedMap[p.package])
+                : pkgAvailableData;
+            rows = source.map(p => {
+                const inst = installedMap[p.package];
+                const up = upgradableMap[p.package];
+                return {
+                    name: p.package,
+                    version: inst ? inst.version : p.version,
+                    installed_date: inst ? (inst.installed_date || '') : '',
+                    status: up ? 'upgrade' : (inst ? 'installed' : 'available')
+                };
+            });
+        }
+    }
+    return rows;
+}
+
+function statusBadge(status) {
+    if (status === 'upgrade') return '<span style="display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.8rem; background:rgba(230,126,34,0.15); color:#e67e22; white-space:nowrap;">есть обновление</span>';
+    if (status === 'installed') return '<span style="display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.8rem; background:rgba(39,174,96,0.15); color:#27ae60; white-space:nowrap;">установлен</span>';
+    return '<span style="display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.8rem; background:rgba(120,120,120,0.15); color:var(--text-secondary); white-space:nowrap;">доступен</span>';
+}
+
+function actionCell(row) {
+    if (row.status === 'upgrade') {
+        return `<form method="post" style="display:inline;" onsubmit="opkgAction(event, 'upgrade', this.package.value); return false;">
+            <input type="hidden" name="package" value="${escapeHtml(row.name)}">
+            <input type="submit" value="Обновить" class="packages-delete-btn" style="background:#27ae60;">
+        </form>`;
+    }
+    if (row.status === 'installed') {
+        return `<form method="post" style="display:inline;" onsubmit="opkgAction(event, 'remove', this.package.value); return false;">
+            <input type="hidden" name="package" value="${escapeHtml(row.name)}">
+            <input type="submit" value="Удалить" class="packages-delete-btn">
+        </form>`;
+    }
+    return `<form method="post" style="display:inline;" onsubmit="opkgAction(event, 'install', this.package.value); return false;">
+        <input type="hidden" name="package" value="${escapeHtml(row.name)}">
+        <input type="submit" value="Установить" class="packages-delete-btn">
+    </form>`;
+}
+
+function renderPkgTable(rows) {
+    const container = document.getElementById('pkg-table-container');
+    if (!container) return;
+    const count = document.getElementById('pkg-upd-count');
+    if (count) {
+        if (pkgUpgradableData.length > 0) {
+            count.style.display = 'inline';
+            count.textContent = '(' + pkgUpgradableData.length + ')';
+        } else {
+            count.style.display = 'none';
+        }
+    }
+    if (!rows.length) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">Ничего не найдено.</p>';
+        return;
+    }
+    let html = '<table class="packages-table" id="pkgTable"><thead><th>Пакет</th><th>Версия</th><th>Установлен</th><th>Статус</th><th>Действие</th></thead><tbody>';
+    rows.forEach(row => {
+        let ver = row.version ? escapeHtml(row.version) : (row.current ? escapeHtml(row.current) + ' → ' + escapeHtml(row.new) : '?');
+        if (row.status === 'upgrade' && row.current && row.new) {
+            ver = '<span style="color:var(--text-muted);">' + escapeHtml(row.current) + '</span> → <b style="color:#27ae60;">' + escapeHtml(row.new) + '</b>';
+        }
+        const instDate = row.installed_date ? escapeHtml(row.installed_date) : '<span style="color:var(--text-muted);">—</span>';
+        html += `<tr>
+            <td>${escapeHtml(row.name)}</td>
+            <td>${ver}</td>
+            <td style="white-space:nowrap;">${instDate}</td>
+            <td>${statusBadge(row.status)}</td>
+            <td>${actionCell(row)}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    initTableSearch('searchPkg', 'pkgTable', -1);
+    const table = document.getElementById('pkgTable');
+    const rowsEl = table.getElementsByTagName('tr');
+    for (let i = 1; i < rowsEl.length; i++) {
+        rowsEl[i].style.cursor = 'pointer';
+        rowsEl[i].addEventListener('click', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'FORM') return;
-            const packageName = this.cells[0].textContent.trim();
-            showPackageInfo(packageName);
+            const pkgName = this.cells[0].textContent.trim();
+            showPackageInfo(pkgName);
         });
     }
 }
 
-function renderAvailableTable(packages) {
-    let html = `<h2 style="display: flex; align-items: center; gap: 8px;">
-        <span class="stat-icon" style="width: 28px; height: 28px;">
-            <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-package"/></svg>
-        </span>
-        Доступные пакеты (${packages.length})
-    </h2>`;
-    html += '<div style="display: flex; gap: 10px; align-items: center; margin-bottom: 24px;">';
-    html += '<div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">';
-    html += '<svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg>';
-    html += '<input type="text" id="searchAvailable" placeholder="Поиск по названию..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">';
-    html += '</div>';
-    html += '<button id="refreshAvailable" class="packages-delete-btn" style="background: #4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить</button>';
-    html += '</div>';
-    html += '<div class="packages-table-wrapper">';
-    html += '<table class="packages-table" id="availableTable">';
-    html += '<thead> <th>Пакет</th><th>Версия</th><th>Описание</th><th>Действие</th> </thead>';
-    html += '<tbody id="availableTableBody">';
-    packages.forEach(pkg => {
-        html += `  <tr>
-              <td>${escapeHtml(pkg.package)}</td>
-              <td>${escapeHtml(pkg.version)}</td>
-              <td>${escapeHtml(pkg.description)}</td>
-              <td>
-                <form method="post" style="display:inline;" onsubmit="opkgAction(event, 'install', '${escapeHtml(pkg.package)}'); return false;">
-                    <input type="hidden" name="package" value="${escapeHtml(pkg.package)}">
-                    <input type="submit" value="Установить" class="packages-delete-btn">
-                </form>
-              </td>
-          </tr>`;
-    });
-    html += '</tbody></table></div>';
-    contentDiv.innerHTML = html;
-
-    initTableSearch('searchAvailable', 'availableTable', 0);
-    document.getElementById('refreshAvailable').addEventListener('click', () => loadAvailableTab(true));
-}
-
-async function loadAvailableTab(forceRefresh = false) {
-    const cached = localStorage.getItem(CACHE_KEY);
-    const timestamp = localStorage.getItem(CACHE_TIME_KEY);
-    const now = Date.now();
-    if (!forceRefresh && cached && timestamp && (now - parseInt(timestamp) < CACHE_MAX_AGE)) {
-        const packages = JSON.parse(cached);
-        renderAvailableTable(packages);
-    } else {
-        contentDiv.innerHTML = '<p>Загрузка...</p>';
-        try {
-            const packages = await apiGet('/available.cgi');
-            localStorage.setItem(CACHE_KEY, JSON.stringify(packages));
-            localStorage.setItem(CACHE_TIME_KEY, now.toString());
-            renderAvailableTable(packages);
-        } catch (err) {
-            contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${err.message}</p>`;
-        }
-    }
-}
-
-async function fetchUpgradable() {
+async function loadPkgTable() {
+    const container = document.getElementById('pkg-table-container');
+    if (!container) return;
+    container.innerHTML = '<div class="loading-spinner"></div>';
+    const seq = ++pkgLoadSeq;
     try {
-        let data = await apiGet('/upgradable.cgi');
-        data = data.filter(pkg => pkg.package && pkg.current && pkg.new && pkg.package !== 'undefined');
-        upgradableData = data;
-        renderUpdatesTabContent(upgradableData);
+        await loadPkgData(false, seq);
+        if (seq !== pkgLoadSeq) return;
+        renderPkgTable(buildPkgRows());
     } catch (err) {
-        document.getElementById('upgradable-table-container').innerHTML = `<p class="error">Ошибка загрузки обновлений: ${err.message}</p>`;
+        if (seq !== pkgLoadSeq) return;
+        container.innerHTML = `<p class="error">Ошибка загрузки: ${escapeHtml(err.message)}</p>`;
     }
+}
+
+function pkgCacheClearAll() {
+    pkgCacheClear(CACHE_KEY, CACHE_TIME_KEY);
+    pkgCacheClear(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME);
+    pkgCacheClear(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME);
 }
 
 async function runPkgUpdate() {
@@ -529,9 +727,10 @@ async function runPkgUpdate() {
         const response = await apiFetch('/update.cgi?run=1');
         const text = await response.text();
         resultDiv.innerHTML = `<pre>${text}</pre>`;
-        await fetchUpgradable();
+        pkgCacheClearAll();
+        await loadPkgTable();
     } catch (err) {
-        resultDiv.innerHTML = `<p class="error">Ошибка: ${err.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">Ошибка: ${escapeHtml(err.message)}</p>`;
     } finally {
         updateBtn.disabled = false;
         updateBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить списки пакетов';
@@ -558,60 +757,14 @@ async function upgradeAll() {
         });
         const text = await response.text();
         resultDiv.innerHTML = `<pre>${text}</pre>`;
-        await fetchUpgradable();
+        pkgCacheClearAll();
+        await loadPkgTable();
     } catch (err) {
-        resultDiv.innerHTML = `<p class="error">Ошибка: ${err.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">Ошибка: ${escapeHtml(err.message)}</p>`;
     } finally {
         upgradeAllBtn.disabled = false;
         upgradeAllBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Обновить все пакеты';
     }
-}
-
-function renderUpdatesTabContent(packages) {
-    const container = document.getElementById('upgradable-table-container');
-    if (!container) return;
-    if (packages.length === 0) {
-        container.innerHTML = '<p>Все пакеты актуальны.</p>';
-        return;
-    }
-    let html = '<div class="packages-table-wrapper"><table class="packages-table"><thead> <th>Пакет</th><th>Текущая версия</th><th>Новая версия</th><th>Действие</th> </thead><tbody>';
-    packages.forEach(pkg => {
-        html += `  <tr>
-              <td>${escapeHtml(pkg.package)}</td>
-              <td>${escapeHtml(pkg.current)}</td>
-              <td>${escapeHtml(pkg.new)}</td>
-              <td>
-                <form method="post" style="display:inline;" onsubmit="opkgAction(event, 'upgrade', '${escapeHtml(pkg.package)}'); return false;">
-                    <input type="hidden" name="package" value="${escapeHtml(pkg.package)}">
-                    <input type="submit" value="Обновить" class="packages-delete-btn" style="background:#27ae60;">
-                </form>
-              </td>
-          </tr>`;
-    });
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-}
-
-function renderUpdatesTab() {
-    const html = `
-        <h2 style="display: flex; align-items: center; gap: 8px;">
-            <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg>
-            </span>
-            Обновления и списки
-        </h2>
-        <div style="margin-bottom: 20px;">
-            <button id="runUpdateBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить списки пакетов</button>
-            <button id="upgradeAllBtn" class="packages-delete-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-update"/></svg> Обновить все пакеты</button>
-        </div>
-        <div id="update-result" style="margin-bottom: 20px;"></div>
-        <h3>Доступные обновления</h3>
-        <div id="upgradable-table-container"><div class="loading-spinner"></div></div>
-    `;
-    contentDiv.innerHTML = html;
-    document.getElementById('runUpdateBtn').addEventListener('click', runPkgUpdate);
-    document.getElementById('upgradeAllBtn').addEventListener('click', upgradeAll);
-    fetchUpgradable();
 }
 
 function renderProcessesTab() {
@@ -1832,9 +1985,11 @@ async function opkgAction(event, action, pkg) {
         const text = await response.text();
         Modal.show(text, false, `${action === 'install' ? 'Установка' : action === 'remove' ? 'Удаление' : 'Обновление'} пакета`);
 
-        // Если текущая активная вкладка – "Установленные", перезагружаем её (оригинальная логика)
+        pkgCacheClearAll();
+
+        // Если активна вкладка пакетов — перезагружаем её (единая вкладка «Пакеты»)
         const activeTab = document.querySelector('.menu li.active')?.dataset.tab;
-        if (activeTab === 'packages') {
+        if (activeTab === 'packages' || activeTab === 'available' || activeTab === 'updates') {
             loadTab('packages');
         }
     } catch (err) {

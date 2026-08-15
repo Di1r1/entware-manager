@@ -102,3 +102,53 @@ func Installed() {
 
 	writeHTML(html)
 }
+
+// InstalledPkg — JSON-представление установленного пакета (для единой вкладки «Пакеты»).
+type InstalledPkg struct {
+	Package       string `json:"package"`
+	Version       string `json:"version"`
+	InstalledDate string `json:"installed_date,omitempty"`
+}
+
+// InstalledJSON отдаёт список установленных пакетов как JSON:
+// [{package, version, installed_date}] — версии из opkg list-installed,
+// дата установки из /opt/lib/opkg/status.
+func InstalledJSON() {
+	if !isGET() {
+		methodNotAllowed()
+		return
+	}
+
+	out, code := runOpkg("list-installed")
+	if code != 0 {
+		writeJSON([]InstalledPkg{})
+		return
+	}
+
+	installedTimes := readInstalledTimes()
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	pkgs := make([]InstalledPkg, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " - ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		pkg := parts[0]
+		ver := parts[1]
+		if ver == "" {
+			ver = "?"
+		}
+		instDate := ""
+		if ts, ok := installedTimes[pkg]; ok {
+			instDate = time.Unix(ts, 0).Format("2006-01-02 15:04")
+		}
+		pkgs = append(pkgs, InstalledPkg{Package: pkg, Version: ver, InstalledDate: instDate})
+	}
+
+	writeJSON(pkgs)
+}

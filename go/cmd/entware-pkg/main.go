@@ -20,6 +20,8 @@ func main() {
 		packages.Available()
 	case "packages":
 		packages.Installed()
+	case "installed":
+		packages.InstalledJSON()
 	case "install":
 		packages.Install()
 	case "remove":

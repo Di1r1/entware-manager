@@ -22,9 +22,7 @@ const Menu = (() => {
             // Дефолтное меню (запасной вариант)
             return [
                 { tab: "stats", icon: "stats", text: "Статистика" },
-                { tab: "packages", icon: "package", text: "Установленные" },
-                { tab: "available", icon: "package", text: "Доступные" },
-                { tab: "updates", icon: "update", text: "Обновления" },
+                { tab: "packages", icon: "package", text: "Пакеты" },
                 { tab: "processes", icon: "process", text: "Процессы" },
                 { tab: "terminal", icon: "terminal", text: "Терминал" },
                 { tab: "system-services", icon: "services", text: "Службы и Cron" },
