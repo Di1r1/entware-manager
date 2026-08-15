@@ -660,6 +660,25 @@ if [ -f "$LINKS_FILE" ] && grep -qE ':(8089|9089)' "$LINKS_FILE" 2>/dev/null; th
 	ok "links.json: порты ttyd → /htop/, /terminal/ (миграция)"
 fi
 
+# Устаревшие процессы ttyd (запущенные до v1.09.2) не знают про --base-path и
+# отвечают 404 на /htop/ и /terminal/. Останавливаем их, чтобы после обновления
+# панель показала "служба не запущена" (запуск — через Настройки → Терминал).
+# Корректные процессы с --base-path не трогаем — активные сессии сохраняются.
+for TTYD_CMDLINE in /proc/[0-9]*/cmdline; do
+	[ -r "$TTYD_CMDLINE" ] || continue
+	TTYD_PID=${TTYD_CMDLINE#/proc/}
+	TTYD_PID=${TTYD_PID%/cmdline}
+	TTYD_CMD=$(tr '\0' ' ' < "$TTYD_CMDLINE" 2>/dev/null)
+	case "$TTYD_CMD" in
+		*ttyd*-p\ 8089*|*ttyd*-p\ 9089*)
+			case "$TTYD_CMD" in
+				*--base-path*) ;;
+				*) kill "$TTYD_PID" 2>/dev/null && warn "ttyd: остановлен устаревший процесс (PID $TTYD_PID) — запустите службу в Настройки → Терминал" || true ;;
+			esac
+			;;
+	esac
+done
+
 # Конфиг RDP-модуля: порт прокси и пути (создаём в обоих режимах — lighttpd и go)
 # build-deploy.sh исключает *_config.json из deploy, поэтому файл создаём здесь.
 RDP_CFG="$TARGET_DIR/rdp_config.json"

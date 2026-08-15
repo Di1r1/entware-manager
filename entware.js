@@ -641,7 +641,7 @@ async function loadHtopContent() {
                 <iframe src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
             `;
         } else {
-            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">htop не запущен. Запустите в <b>Настройки → Терминал</b>.</p>';
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">htop не запущен. Откройте <b>Настройки → Терминал</b>, задайте пароль и нажмите <b>Запустить</b>.</p>';
         }
     } catch (err) {
         const container = document.getElementById('htop-content');
@@ -680,7 +680,7 @@ async function loadTerminalContent() {
             `;
         } else {
             title.textContent = 'Терминал';
-            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Терминал не запущен. Откройте <b>Настройки → Терминал</b> для запуска.</p>';
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Терминал не запущен. Откройте <b>Настройки → Терминал</b>, задайте пароль и нажмите <b>Запустить</b>.</p>';
         }
     } catch (err) {
         const container = document.getElementById('terminal-content');
