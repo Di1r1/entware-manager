@@ -124,7 +124,64 @@ echo "  Лог: $LOG_FILE"
 echo "  Смотреть: tail -f $LOG_FILE"
 echo ""
 
-# ========== 0. ОЧИСТКА СТАРЫХ ВЕРСИЙ ==========
+# --- Lock против параллельного запуска install.sh ---
+# Два install.sh одновременно писали бы в один TARGET_DIR (гонка). flock в
+# BusyBox-сборках нет, поэтому используем атомарный mkdir + PID-файл:
+# если процесс жив — отказываемся, если lock битый (процесс умер) — забираем.
+# В postinst-контексте opkg сам держит свой lock — наш не нужен.
+LOCK_DIR="/opt/var/run/entware-install.lock.d"
+if [ "$OPKG_POSTINST" != "1" ]; then
+	mkdir -p /opt/var/run 2>/dev/null
+	if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+		LOCK_PID=""
+		[ -f "$LOCK_DIR/pid" ] && LOCK_PID=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+		if [ -n "$LOCK_PID" ] && [ -d "/proc/$LOCK_PID" ]; then
+			echo "${RED}  ✗ Установка уже выполняется (PID $LOCK_PID). Дождись завершения.${NC}"
+			echo "    Лог: $LOG_FILE"
+			exit 1
+		fi
+		# Lock битый (процесс умер) — забираем
+		rm -rf "$LOCK_DIR" 2>/dev/null
+		mkdir "$LOCK_DIR" 2>/dev/null || {
+			echo "${RED}  ✗ Не удалось создать lock $LOCK_DIR${NC}"
+			exit 1
+		}
+	fi
+	echo "$$" > "$LOCK_DIR/pid" 2>/dev/null
+	trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT INT TERM
+fi
+
+# --- opkg с таймаутом (защита от зависания при недоступном/медленном feed) ---
+# coreutils-timeout уже в зависимостях; если ещё не установлен — без таймаута.
+opkg_t() {
+	if command -v timeout >/dev/null 2>&1; then
+		timeout 60 opkg "$@"
+	else
+		opkg "$@"
+	fi
+}
+
+# ========== 0. ОБНОВЛЕНИЕ СПИСКОВ ПАКЕТОВ ==========
+# Вынесено в самое начало: это единственная операция, ходящая в интернет.
+# Если feed недоступен — install.sh падает/продолжает ДО любых изменений системы.
+# В postinst-контексте opkg уже держит lock на текущую установку — вложенный
+# opkg update/install привёл бы к self-deadlock, поэтому списки НЕ обновляем
+# (они свежие, т.к. только что пришёл ipk, а модули ставятся через Depends).
+NET_FAILED=""
+if [ "$OPKG_POSTINST" = "1" ]; then
+	ok "Списки пакетов уже обновлены (установка через ipk)"
+else
+	step "Обновление списков пакетов"
+	echo "  → opkg update (таймаут 60с)..."
+	if opkg_t update >/dev/null 2>&1; then
+		ok "Списки пакетов обновлены"
+	else
+		warn "opkg update не удался или таймаут — пробуем продолжить"
+		NET_FAILED="1"
+	fi
+fi
+
+# ========== 1. ОЧИСТКА СТАРЫХ ВЕРСИЙ ==========
 step "Очистка старых версий"
 # Удаляем артефакты предыдущих установок старше 1 дня (кроме текущей SELF_DIR и ручного бэкапа)
 CLEAN_DIR="/opt/tmp"
@@ -163,15 +220,15 @@ for d in cgi-bin lib Install doc; do
 	[ -d "$SELF_DIR/$d" ] && ok "  папка $d/" || fail "  папка $d/ отсутствует"
 done
 
-# ========== 2. ПРОВЕРКА ПАКЕТОВ ==========
-step "Проверка установленных пакетов"
-
-echo "  → обновление списков пакетов..."
-if opkg update >/dev/null 2>&1; then
-	ok "Списки пакетов обновлены"
-else
-	warn "opkg update не удался, пробуем продолжить"
+# Целостность источника: version.json непустой (битый/обрезанный архив ловим до изменений системы)
+if [ ! -s "$SELF_DIR/version.json" ]; then
+	fail "version.json отсутствует или пуст — исходные файлы повреждены (битый/обрезанный архив)"
+	exit 1
 fi
+ok "  version.json: $(jq -r .version "$SELF_DIR/version.json" 2>/dev/null || echo '?')"
+
+# ========== 3. ПРОВЕРКА ПАКЕТОВ ==========
+step "Проверка установленных пакетов"
 
 PACKAGES="\
 lighttpd|/opt/sbin/lighttpd
@@ -206,23 +263,31 @@ if [ -z "$MISSING_PKGS" ]; then
 	ok "Все пакеты уже установлены"
 else
 	warn "Отсутствуют:$MISSING_PKGS"
-	step "Установка отсутствующих пакетов"
+	if [ "$OPKG_POSTINST" = "1" ]; then
+		# postinst выполняется ПОД lock'ом opkg: вложенный opkg install =
+		# self-deadlock. Все зависимости должны быть покрыты Depends ipk;
+		# если что-то не пришло — только предупреждение, чистку даст
+		# повторный install.sh после установки пакета.
+		warn "не могу установить в postinst-режиме (opkg держит lock) — проверь Depends, повтори install.sh позже"
+	else
+		step "Установка отсутствующих пакетов"
 
-	for pkg in $MISSING_PKGS; do
-		echo "  → $pkg..."
-		if opkg install "$pkg"; then
-			ok "$pkg установлен"
-		else
-			fail "$pkg не установился"
-		fi
-	done
+		for pkg in $MISSING_PKGS; do
+			echo "  → $pkg..."
+			if opkg_t install "$pkg"; then
+				ok "$pkg установлен"
+			else
+				fail "$pkg не установился"
+			fi
+		done
 
-	for pkg in $MISSING_PKGS; do
-		check_path=$(echo "$PACKAGES" | grep "^${pkg}|" | cut -d'|' -f2)
-		if [ -n "$check_path" ] && [ ! -f "$check_path" ] && [ ! -x "$check_path" ]; then
-			fail "$pkg — бинарник не найден после установки"
-		fi
-	done
+		for pkg in $MISSING_PKGS; do
+			check_path=$(echo "$PACKAGES" | grep "^${pkg}|" | cut -d'|' -f2)
+			if [ -n "$check_path" ] && [ ! -f "$check_path" ] && [ ! -x "$check_path" ]; then
+				fail "$pkg — бинарник не найден после установки"
+			fi
+		done
+	fi
 fi
 
 # ========== 3. БЭКАП СУЩЕСТВУЮЩИХ ФАЙЛОВ ==========
@@ -281,13 +346,23 @@ LIGHTTPD_ERR=""
 if [ "$WEB_PATH" = "lighttpd" ]; then
 
 if [ ! -f "/opt/lib/lighttpd/mod_cgi.so" ]; then
-	echo "  → mod_cgi.so нет, устанавливаю lighttpd-mod-cgi..."
-	opkg install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
+	if [ "$OPKG_POSTINST" = "1" ]; then
+		warn "lighttpd-mod-cgi отсутствует — в postinst не ставлю (opkg lock), проверь Depends"
+		LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
+	else
+		echo "  → mod_cgi.so нет, устанавливаю lighttpd-mod-cgi..."
+		opkg_t install lighttpd-mod-cgi 2>/dev/null && ok "lighttpd-mod-cgi установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-cgi"
+	fi
 fi
 
 if [ ! -f "/opt/lib/lighttpd/mod_proxy.so" ]; then
-	echo "  → mod_proxy.so нет, устанавливаю lighttpd-mod-proxy..."
-	opkg install lighttpd-mod-proxy 2>/dev/null && ok "lighttpd-mod-proxy установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-proxy"
+	if [ "$OPKG_POSTINST" = "1" ]; then
+		warn "lighttpd-mod-proxy отсутствует — в postinst не ставлю (opkg lock), проверь Depends"
+		LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-proxy"
+	else
+		echo "  → mod_proxy.so нет, устанавливаю lighttpd-mod-proxy..."
+		opkg_t install lighttpd-mod-proxy 2>/dev/null && ok "lighttpd-mod-proxy установлен" || LIGHTTPD_ERR="$LIGHTTPD_ERR lighttpd-mod-proxy"
+	fi
 fi
 
 # Удаляем старые строки entware из lighttpd.conf (совместимость с предыдущими версиями)
@@ -500,20 +575,77 @@ step "Копирование файлов"
 if [ "$SELF_DIR" = "$TARGET_DIR" ]; then
 	ok "Файлы уже на месте (установка через ipk)"
 else
+	# Копирование в staging-каталог + атомарный swap:
+	#  1) новая версия собирается в $TARGET_DIR.new (никаких изменений текущей),
+	#  2) после успешной проверки каталоги меняются местами через mv (атомарно
+	#     в пределах одной ФС — /opt это одна точка монтирования),
+	#  3) старая версия остаётся в $TARGET_DIR.old до конца установки — откат
+	#     при любой ошибке: rm -rf $TARGET_DIR && mv $TARGET_DIR.old $TARGET_DIR.
+	# Пользовательские конфиги (*_config.json, links.json, .arch, backup/) из
+	# старой установки переносятся в новую — их нет в deploy/.
+	STAGE_DIR="$TARGET_DIR.new"
+	OLD_DIR="$TARGET_DIR.old"
+
 	mkdir -p "$TARGET_DIR" || {
 		fail "Не удалось создать $TARGET_DIR"
+		exit 1
 	}
 
-	rm -f "$TARGET_DIR"/cgi-bin/*.cgi 2>/dev/null
-	rm -f "$TARGET_DIR"/cgi-bin/*/*.cgi 2>/dev/null
+	rm -rf "$STAGE_DIR" 2>/dev/null
+	mkdir -p "$STAGE_DIR" || {
+		fail "Не удалось создать staging ($STAGE_DIR)"
+		exit 1
+	}
+	if ! cp -a "$SELF_DIR"/* "$STAGE_DIR/" 2>/dev/null; then
+		fail "Не удалось скопировать файлы в staging ($STAGE_DIR)"
+		rm -rf "$STAGE_DIR" 2>/dev/null
+		exit 1
+	fi
 
-	cp -a "$SELF_DIR"/* "$TARGET_DIR/"
+	# Целостность источника: version.json обязан быть непустым
+	if [ ! -s "$STAGE_DIR/version.json" ]; then
+		fail "Исходные файлы повреждены — version.json отсутствует или пуст"
+		rm -rf "$STAGE_DIR" 2>/dev/null
+		exit 1
+	fi
+
+	# Переносим пользовательские конфиги из старой установки в staging
+	for cfg in "$TARGET_DIR"/*_config.json; do
+		[ -f "$cfg" ] && cp -a "$cfg" "$STAGE_DIR/" 2>/dev/null
+	done
+	[ -f "$TARGET_DIR/links.json" ] && cp -a "$TARGET_DIR/links.json" "$STAGE_DIR/" 2>/dev/null
+	[ -f "$TARGET_DIR/.arch" ] && cp -a "$TARGET_DIR/.arch" "$STAGE_DIR/" 2>/dev/null
+	if [ -d "$TARGET_DIR/backup" ]; then
+		rm -rf "$STAGE_DIR/backup" 2>/dev/null
+		cp -a "$TARGET_DIR/backup" "$STAGE_DIR/" 2>/dev/null
+	fi
+
+	# Атомарный swap: старая → .old, новая → на место
+	rm -rf "$OLD_DIR" 2>/dev/null
+	mv "$TARGET_DIR" "$OLD_DIR" 2>/dev/null || {
+		fail "Не удалось отложить старую версию ($OLD_DIR)"
+		rm -rf "$STAGE_DIR" 2>/dev/null
+		exit 1
+	}
+	if ! mv "$STAGE_DIR" "$TARGET_DIR" 2>/dev/null; then
+		fail "Не удалось подменить каталог — восстанавливаю старую версию"
+		mv "$OLD_DIR" "$TARGET_DIR" 2>/dev/null
+		rm -rf "$STAGE_DIR" 2>/dev/null
+		exit 1
+	fi
 fi
 if [ -f "$TARGET_DIR/version.json" ]; then
 	VERSION=$(jq -r .version "$TARGET_DIR/version.json" 2>/dev/null || echo '?')
 	ok "Файлы скопированы в $TARGET_DIR (версия $VERSION, $(du -sh "$TARGET_DIR" | cut -f1))"
+	if [ -d "$OLD_DIR" ]; then
+		ok "Предыдущая версия сохранена в $OLD_DIR (удалится при успешной установке)"
+	fi
 else
 	fail "Копирование файлов не удалось — $TARGET_DIR пуст"
+	if [ -d "$OLD_DIR" ]; then
+		echo "    Восстановление: rm -rf $TARGET_DIR && mv $OLD_DIR $TARGET_DIR"
+	fi
+	exit 1
 fi
 
 rm -f "$TARGET_DIR/README.md" "$TARGET_DIR/LICENSE" "$TARGET_DIR/DEVLOG.md" "$TARGET_DIR/DEVICE.md" "$TARGET_DIR/BUILD.md" "$TARGET_DIR/RULES.md" "$TARGET_DIR/TECH_SPEC.md" "$TARGET_DIR/forum_post.md" "$TARGET_DIR/Makefile" "$TARGET_DIR/build-ipk.sh" "$TARGET_DIR/Install/Install.txt" "$TARGET_DIR/doc/NETWORK_PROMPT.md" "$TARGET_DIR/doc/IPK_BUILD.md" "$TARGET_DIR/conffiles" "$TARGET_DIR/control" "$TARGET_DIR/postinst" "$TARGET_DIR/prerm" 2>/dev/null || true
@@ -856,6 +988,13 @@ echo "${BOLD}========================================"
 echo " РЕЗУЛЬТАТ УСТАНОВКИ"
 echo "========================================${NC}"
 
+if [ "$NET_FAILED" = "1" ]; then
+	echo ""
+	echo "${YELLOW}  ⚠ ВНИМАНИЕ: opkg update не выполнился (сеть/feed недоступны).${NC}"
+	echo "${YELLOW}    Ошибки ниже могут быть следствием устаревших списков пакетов.${NC}"
+	echo "${YELLOW}    Повтори установку при доступном bin.entware.net.${NC}"
+fi
+
 if [ -n "$ERRORS" ]; then
 	echo ""
 	echo "${RED}${BOLD}  ОШИБКИ В ХОДЕ УСТАНОВКИ:${NC}"
@@ -877,6 +1016,11 @@ if [ -z "$ERRORS" ] && [ -z "$CHECK_ERRS" ]; then
 	echo "${GREEN}${BOLD}  УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО${NC}"
 	echo "$ROUTER_ARCH" > "$TARGET_DIR/.arch" 2>/dev/null
 	ok "Архитектура сохранена в .arch"
+	# Удаляем отложенную предыдущую версию (успех — откат не нужен)
+	if [ -n "${OLD_DIR:-}" ] && [ -d "$OLD_DIR" ]; then
+		rm -rf "$OLD_DIR" 2>/dev/null
+		ok "Предыдущая версия $OLD_DIR удалена"
+	fi
 fi
 echo ""
 echo "${GREEN}  ✓ Архитектура:${NC} $ROUTER_ARCH"

@@ -45,7 +45,7 @@ for arch in "${ARCHS[@]}"; do
     # debian-binary
     echo "2.0" > "$PKG_TMP/debian-binary"
 
-    DEPS="lighttpd, lighttpd-mod-cgi, jq, curl, ttyd, htop, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, bash, smartmontools, smartmontools-drivedb"
+    DEPS="lighttpd, lighttpd-mod-cgi, lighttpd-mod-proxy, lighttpd-mod-deflate, lighttpd-mod-access, jq, curl, ttyd, htop, coreutils, coreutils-timeout, procps-ng, bridge, ip-full, sudo, bash, smartmontools, smartmontools-drivedb"
 
     # control (Architecture: all — не зависит от версии ядра)
     cat > "$PKG_TMP/control/control" <<EOF
@@ -62,8 +62,11 @@ EOF
     # postinst
     cat > "$PKG_TMP/control/postinst" <<'INSTEOF'
 #!/bin/sh
-# postinst — настройка после установки
-/opt/web_entware/Install/install.sh
+# postinst — настройка после установки.
+# OPKG_POSTINST=1 сообщает install.sh, что мы внутри postinst: opkg уже держит
+# lock на эту установку, поэтому install.sh НЕ должен вызывать opkg update/install
+# (иначе self-deadlock). Модули lighttpd ставятся через Depends.
+OPKG_POSTINST=1 /opt/web_entware/Install/install.sh
 # Перезапуск веб-сервера, чтобы сбросить состояние proxy-бэкендов
 # (grdp-proxy мог быть остановлен во время обновления файлов → 503 на /rdp/).
 if [ -x /opt/etc/init.d/S80lighttpd ]; then
@@ -76,7 +79,18 @@ INSTEOF
     # prerm
     cat > "$PKG_TMP/control/prerm" <<'RMEEOF'
 #!/bin/sh
-# prerm — чистка конфигов перед удалением
+# prerm — чистка конфигов ПЕРЕД УДАЛЕНИЕМ пакета.
+#
+# ВАЖНО: при upgrade ($1=upgrade) конфиги НЕ трогаем — opkg вызывает prerm
+# перед установкой новой версии, и если процесс оборвётся (kill, обрыв SSH,
+# таймаут), роутер останется без конфигов веб-сервера при живом пакете.
+# Это была причина инцидента: повторный `opkg install` удалил конфиги,
+# opkg был убит до записи статуса → панель мертва, база говорит "installed".
+# Новые конфиги создаст postinst новой версии.
+case "$1" in
+	remove|purge|deconfigure) ;;
+	upgrade|*) exit 0 ;;
+esac
 
 LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
@@ -99,6 +113,14 @@ sed -i '/^[[:space:]]*server\.port[[:space:]]*=.*8087.*/d' "$LIGHTTPD_CONF" 2>/d
 
 # sudoers
 rm -f "$SUDOERS_FILE" 2>/dev/null
+
+# Симлинк RDP-прокси (в ipk он в cgi-bin/go/ — opkg удалит сам, симлинк висит)
+rm -f /opt/etc/init.d/S90grdp-proxy 2>/dev/null
+
+# flatten-копии Go-бинарников, которые install.sh раскладывает из
+# cgi-bin/go/<arch>/ в cgi-bin/go/ (opkg удаляет только пути из data.tar.gz)
+rm -f /opt/web_entware/cgi-bin/go/entware-* 2>/dev/null
+rm -f /opt/web_entware/cgi-bin/go/grdp-proxy 2>/dev/null
 
 exit 0
 RMEEOF

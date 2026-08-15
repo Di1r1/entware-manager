@@ -28,10 +28,12 @@ type UpdateCheckResponse struct {
 }
 
 type UpdateStatusResponse struct {
-	Status string   `json:"status"` // running / done / error
-	PID    int      `json:"pid"`
-	Lines  []string `json:"lines"`
-	Error  string   `json:"error,omitempty"`
+	Status   string   `json:"status"` // running / done / error
+	PID      int      `json:"pid"`
+	Lines    []string `json:"lines"`
+	Progress string   `json:"progress,omitempty"` // «Этап 2/5: установка...»
+	Elapsed  string   `json:"elapsed,omitempty"`  // «2 мин» — сколько идёт обновление
+	Error    string   `json:"error,omitempty"`
 }
 
 var (
@@ -70,6 +72,14 @@ func HandleUpdateRun() {
 		return
 	}
 
+	// updateLock (sync.Mutex) живёт в процессе CGI, а реальная работа — в
+	// отдельном воркере. Поэтому дополнительно проверяем pidfile: если
+	// воркер жив (например, пользователь обновил страницу и нажал снова) —
+	// отказываем. Иначе воркеры побежали бы параллельно на opkg-lock.
+	if updateWorkerRunning() {
+		writeJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
+		return
+	}
 	if !updateLock.TryLock() {
 		writeJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
 		return
@@ -119,6 +129,32 @@ func HandleUpdateRun() {
 	writeJSON(map[string]string{"status": "ok", "message": label + " запущено", "version": version})
 }
 
+// updateWorkerRunning — жив ли процесс-воркер обновления (по pidfile).
+// Путь к воркеру — /opt/web_entware/cgi-bin/go/entware-stats (см. update.sh).
+func updateWorkerRunning() bool {
+	pidData, err := os.ReadFile("/tmp/entware/update.pid")
+	if err != nil {
+		return false
+	}
+	pid := strings.TrimSpace(string(pidData))
+	if pid == "" {
+		return false
+	}
+	var p int
+	if _, err := fmt.Sscanf(pid, "%d", &p); err != nil || p <= 0 {
+		// pidfile битый (не число) — считаем, что воркера нет
+		os.Remove("/tmp/entware/update.pid")
+		return false
+	}
+	cmdline, err := os.ReadFile("/proc/" + pid + "/cmdline")
+	if err != nil {
+		// процесс умер — битый pidfile, забираем
+		os.Remove("/tmp/entware/update.pid")
+		return false
+	}
+	return strings.Contains(string(cmdline), "entware-stats")
+}
+
 func HandleUpdateWorker() {
 	data, err := os.ReadFile("/tmp/entware/update_vars")
 	if err != nil {
@@ -133,6 +169,8 @@ func HandleUpdateWorker() {
 	}
 	os.Remove("/tmp/entware/update_vars")
 	os.Remove("/tmp/entware/update.sh")
+	os.WriteFile("/tmp/entware/update.pid", []byte(strconv.Itoa(os.Getpid())), 0644)
+	defer os.Remove("/tmp/entware/update.pid")
 	runUpdate(v.Version, v.Arch)
 }
 
@@ -152,26 +190,61 @@ func HandleUpdateStatus() {
 		return
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	allLines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	// Статус ищем по всему логу: [DONE] → done, иначе [ERROR]/[FAIL] → error.
+	status := "running"
+	var firstErr string
+	for _, line := range allLines {
+		if strings.Contains(line, "[DONE]") {
+			status = "done"
+			break
+		}
+		if strings.Contains(line, "[ERROR]") || strings.Contains(line, "[FAIL]") {
+			if firstErr == "" {
+				firstErr = strings.TrimSpace(line)
+			}
+			status = "error"
+		}
+	}
+	resp.Status = status
+	resp.Error = firstErr
+
+	// Фронту отдаём последние 20 строк.
+	lines := allLines
 	if len(lines) > 20 {
 		lines = lines[len(lines)-20:]
 	}
 	resp.Lines = lines
 
-	for _, line := range lines {
-		if strings.Contains(line, "[RUNNING]") {
-			resp.Status = "running"
+	// Прогресс: последняя строка вида «[STEP N/M] описание» или последняя строка.
+	for i := len(lines) - 1; i >= 0; i-- {
+		idx := strings.Index(lines[i], "[STEP")
+		if idx >= 0 {
+			// «[STEP 2/5] описание» → «Этап 2/5: описание»
+			stepPart := lines[i][idx:]
+			stepPart = strings.TrimPrefix(stepPart, "[")
+			if closeIdx := strings.Index(stepPart, "]"); closeIdx >= 0 {
+				stepNo := strings.TrimSpace(stepPart[:closeIdx])
+				desc := strings.TrimSpace(stepPart[closeIdx+1:])
+				if strings.HasPrefix(stepNo, "STEP ") {
+					stepNo = "Этап " + stepNo[len("STEP "):]
+				}
+				if desc != "" {
+					stepPart = stepNo + ": " + desc
+				} else {
+					stepPart = stepNo
+				}
+			}
+			resp.Progress = stepPart
 			break
 		}
-		if strings.Contains(line, "[ERROR]") || strings.Contains(line, "[FAIL]") {
-			resp.Status = "error"
-			resp.Error = line
-			break
+	}
+	if resp.Progress == "" && len(lines) > 0 {
+		last := lines[len(lines)-1]
+		if len(last) >= 10 && last[0] == '[' && last[9] == ']' {
+			last = strings.TrimSpace(last[10:])
 		}
-		if strings.Contains(line, "[DONE]") {
-			resp.Status = "done"
-			break
-		}
+		resp.Progress = last
 	}
 
 	writeJSON(resp)
@@ -292,6 +365,18 @@ func isInstalledViaOpkg() bool {
 	return strings.Contains(string(out), "entware-manager")
 }
 
+// opkgWithTimeout выполняет opkg с таймаутом 60с через coreutils-timeout
+// (в Depends), если он доступен — иначе напрямую. Защита от зависания на
+// недоступном/медленном feed: в v1.09.5 opkg update/install без таймаута
+// «висел несколько минут» (инцидент).
+func opkgWithTimeout(args ...string) error {
+	if _, err := exec.LookPath("timeout"); err == nil {
+		cmd := append([]string{"60", "opkg"}, args...)
+		return exec.Command("timeout", cmd...).Run()
+	}
+	return exec.Command("opkg", args...).Run()
+}
+
 func semverGreater(a, b string) bool {
 	pa := parseSemver(a)
 	pb := parseSemver(b)
@@ -336,6 +421,15 @@ func runUpdate(version, arch string) {
 		}
 	}
 
+	// stepLog выводит этап вида «[STEP N/M] описание» — фронт показывает его
+	// как понятный прогресс («Этап 2/5: установка ipk...»).
+	totalSteps := 5
+	stepNum := 0
+	stepLog := func(desc string) {
+		stepNum++
+		log(fmt.Sprintf("[STEP %d/%d] %s", stepNum, totalSteps, desc))
+	}
+
 	log("[RUNNING] Начало обновления до v" + version)
 
 	tmpDir := "/tmp/entware/update"
@@ -344,7 +438,23 @@ func runUpdate(version, arch string) {
 
 	client := &http.Client{Timeout: 120 * time.Second}
 
-	if isInstalledViaOpkg() {
+	// Выбор ветки: opkg-база и диск — независимые источники истины.
+	// Если opkg говорит "installed", но панель на диске отсутствует —
+	// это БИТАЯ запись (инцидент v1.09.5: убитый opkg оставил "installed"
+	// при пустом каталоге). Ставить по такой записи opkg install нельзя
+	// (снова prerm по живому пакету) — лечим tar.gz-восстановлением.
+	viaOpkg := isInstalledViaOpkg()
+	panelPresent := false
+	if vd, err := os.ReadFile("/opt/web_entware/version.json"); err == nil {
+		panelPresent = len(vd) > 0
+	}
+	if viaOpkg && !panelPresent {
+		log("[WARN] opkg считает пакет установленным, но /opt/web_entware/version.json отсутствует — битая запись/пустой каталог. Восстанавливаю через tar.gz")
+		viaOpkg = false
+	}
+
+	if viaOpkg {
+		stepLog("скачивание ipk-файла")
 		url := getDownloadURLIPK(version, arch)
 		log("Загрузка " + url)
 		resp, err := client.Get(url)
@@ -379,29 +489,57 @@ func runUpdate(version, arch string) {
 			os.RemoveAll(tmpDir)
 			return
 		}
-		log("Установка ipk...")
+		stepLog("обновление списков пакетов (opkg update)")
+		// Свежие списки пакетов нужны для резолва Depends (модули lighttpd
+		// и т.п.). Внешний вызов — НЕ в postinst, lock свободен. Таймаут 60с
+		// через coreutils-timeout (уже в Depends), чтобы не висеть на feed.
+		log("opkg update (таймаут 60с)...")
+		if updErr := opkgWithTimeout("update"); updErr != nil {
+			log("[WARN] opkg update не удался: " + updErr.Error() + " — пробуем продолжить")
+		} else {
+			log("Списки пакетов обновлены")
+		}
+		stepLog("установка ipk (opkg install)")
 		var outBuf bytes.Buffer
 		cmd := exec.Command("opkg", "install", "--force-reinstall", ipkPath)
+		if _, err := exec.LookPath("timeout"); err == nil {
+			cmd = exec.Command("timeout", "60", "opkg", "install", "--force-reinstall", ipkPath)
+		}
 		cmd.Stdout = &outBuf
 		cmd.Stderr = &outBuf
-		if err := cmd.Run(); err != nil {
-			log("[FAIL] opkg install: " + err.Error())
+		installErr := cmd.Run()
+		// Проверка результата по факту на диске, а не только по exit-коду:
+		// убитый/оборванный opkg может оставить статус "installed" при пустом
+		// каталоге (инцидент v1.09.5: повторный opkg install после обрыва).
+		verData, verErr := os.ReadFile("/opt/web_entware/version.json")
+		installed := verErr == nil && strings.Contains(string(verData), version)
+		if installErr != nil {
+			log("[FAIL] opkg install: " + installErr.Error())
 			for _, line := range strings.Split(outBuf.String(), "\n") {
 				if line != "" {
 					log("[FAIL] " + line)
 				}
 			}
-		} else {
+		}
+		if installed {
+			stepLog("проверка и перезапуск веб-сервера")
 			log("[DONE] Обновление до v" + version + " завершено")
 			restartWebServer(log)
+		} else {
+			log("[ERROR] Файлы панели не установлены (/opt/web_entware/version.json отсутствует или старая версия)")
+			for _, line := range strings.Split(outBuf.String(), "\n") {
+				if line != "" {
+					log("[FAIL] " + line)
+				}
+			}
+			log("[ERROR] Запустите восстановление вручную: распакуйте entware-manager-" + arch + ".tar.gz и выполните Install/install.sh")
 		}
 		os.RemoveAll(tmpDir)
 		log("Временные файлы удалены")
 		return
 	}
 
-	log("Скачивание tar.gz...")
-
+	stepLog("скачивание архива tar.gz")
 	url := getDownloadURL(version, arch)
 	log("Загрузка " + url)
 
@@ -417,7 +555,7 @@ func runUpdate(version, arch string) {
 		return
 	}
 
-	log("Распаковка...")
+	stepLog("распаковка архива")
 
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
@@ -462,7 +600,7 @@ func runUpdate(version, arch string) {
 		}
 	}
 
-	log("Установка...")
+	stepLog("установка через install.sh")
 
 	installScript := filepath.Join(tmpDir, "Install", "install.sh")
 	if _, err := os.Stat(installScript); os.IsNotExist(err) {
@@ -477,16 +615,32 @@ func runUpdate(version, arch string) {
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &outBuf
 
-	if err := cmd.Run(); err != nil {
-		log("[FAIL] Установка завершилась с ошибкой: " + err.Error())
+	installErr := cmd.Run()
+	// Проверка по факту на диске (как в ipk-ветке): install.sh завершается
+	// с 0, даже если в конце ошибки — надёжнее проверить version.json.
+	verData, verErr := os.ReadFile("/opt/web_entware/version.json")
+	installed := verErr == nil && strings.Contains(string(verData), version)
+
+	if installErr != nil {
+		log("[FAIL] Установка завершилась с ошибкой: " + installErr.Error())
 		for _, line := range strings.Split(outBuf.String(), "\n") {
 			if line != "" {
 				log("[FAIL] " + line)
 			}
 		}
-	} else {
+	}
+	if installed {
+		stepLog("проверка и перезапуск веб-сервера")
 		log("[DONE] Обновление до v" + version + " завершено")
 		restartWebServer(log)
+	} else {
+		log("[ERROR] Файлы панели не установлены (/opt/web_entware/version.json отсутствует или старая версия)")
+		for _, line := range strings.Split(outBuf.String(), "\n") {
+			if line != "" {
+				log("[FAIL] " + line)
+			}
+		}
+		log("[ERROR] Восстановление вручную: распакуйте entware-manager-" + arch + ".tar.gz и выполните Install/install.sh")
 	}
 
 	os.RemoveAll(tmpDir)

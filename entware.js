@@ -1536,7 +1536,7 @@ async function runUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно 3-7 мин, не закрывайте страницу)</span></span>';
 
         // Poll status every 2 seconds
         pollUpdateStatus();
@@ -1567,7 +1567,7 @@ async function reinstallUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно 3-7 мин, не закрывайте страницу)</span></span>';
 
         pollUpdateStatus();
     } catch (err) {
@@ -1578,6 +1578,7 @@ async function reinstallUpdate() {
 
 function pollUpdateStatus() {
     if (updatePollInterval) clearInterval(updatePollInterval);
+    const startedAt = Date.now();
     updatePollInterval = setInterval(async () => {
         try {
             const data = await apiGet('/update_status.cgi');
@@ -1587,9 +1588,11 @@ function pollUpdateStatus() {
                 logPre.scrollTop = logPre.scrollHeight;
             }
 
+            const statusEl = document.getElementById('update-status');
+
             if (data.status === 'done') {
                 clearInterval(updatePollInterval);
-                document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">✓ Обновление завершено</span>';
+                statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Обновление завершено</span>';
                 document.getElementById('update-run-btn').style.display = 'none';
                 const rbtn = document.getElementById('update-reinstall-btn');
                 if (rbtn) rbtn.disabled = false;
@@ -1598,13 +1601,20 @@ function pollUpdateStatus() {
                     : '?';
             } else if (data.status === 'error') {
                 clearInterval(updatePollInterval);
-                document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
+                statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
                 document.getElementById('update-run-btn').disabled = false;
                 const rbtn = document.getElementById('update-reinstall-btn');
                 if (rbtn) rbtn.disabled = false;
             } else if (data.status === 'running') {
-                const progress = data.lines.length > 0 ? data.lines[data.lines.length-1] : '';
-                document.getElementById('update-progress').textContent = progress;
+                const elapsed = Math.round((Date.now() - startedAt) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                const timeStr = mins > 0 ? mins + ' мин ' + secs + ' с' : secs + ' с';
+                const progress = data.progress || (data.lines.length > 0 ? data.lines[data.lines.length-1] : '');
+                statusEl.innerHTML = '<span style="color:#f59e0b;">' +
+                    '<b>' + escapeHtml(progress) + '</b>' +
+                    ' <span style="color:var(--text-muted); font-size:0.85em;">(' + timeStr + ' — обычно 3-7 мин, не закрывайте страницу)</span>' +
+                    '</span>';
             }
         } catch (err) {
             // ignore polling errors
