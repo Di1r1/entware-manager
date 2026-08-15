@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -23,6 +24,25 @@ func HandleLinksSave() {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Invalid JSON"}`)
 		return
+	}
+
+	var links []Link
+	if err := json.Unmarshal([]byte(data), &links); err != nil {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"Invalid links array"}`)
+		return
+	}
+	if len(links) > 50 {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"Too many links (max 50)"}`)
+		return
+	}
+	for _, l := range links {
+		if strings.TrimSpace(l.Name) == "" || !isSafeLinkURL(l.URL) || !isSafeLinkIcon(l.Icon) {
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+			fmt.Println(`{"status":"error","message":"Invalid link (name, URL scheme or icon)"}`)
+			return
+		}
 	}
 
 	if err := os.WriteFile("/opt/web_entware/links.json", []byte(data), 0644); err != nil {
@@ -56,4 +76,43 @@ func truncateJSON(s string) string {
 		return s[:100] + "..."
 	}
 	return s
+}
+
+// isSafeLinkURL допускает только http/https и относительные пути (/...).
+// Блокирует javascript:, data:, vbscript: и протокольно-относительные //host.
+func isSafeLinkURL(u string) bool {
+	u = strings.TrimSpace(u)
+	if u == "" || len(u) > 2048 {
+		return false
+	}
+	if strings.HasPrefix(u, "/") {
+		return !strings.HasPrefix(u, "//")
+	}
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	switch parsed.Scheme {
+	case "http", "https":
+		return parsed.Host != ""
+	default:
+		return false
+	}
+}
+
+// isSafeLinkIcon допускает только латиницу, цифры, "-" и "_".
+func isSafeLinkIcon(s string) bool {
+	if s == "" {
+		return true
+	}
+	if len(s) > 32 {
+		return false
+	}
+	for _, r := range s {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }

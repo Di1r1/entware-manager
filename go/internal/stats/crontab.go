@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -89,8 +90,15 @@ func HandleCrontabUpdate() {
 	}
 }
 
+// findCronPID ищет PID демона cron/crond по имени процесса (argv[0]),
+// а не по подстроке "cron" во всём cmdline (иначе может убить чужой
+// процесс — например, curl на собственный эндпоинт).
 func findCronPID() int {
-	entries, err := os.ReadDir("/proc")
+	return findCronPIDIn("/proc")
+}
+
+func findCronPIDIn(procDir string) int {
+	entries, err := os.ReadDir(procDir)
 	if err != nil {
 		return 0
 	}
@@ -99,15 +107,17 @@ func findCronPID() int {
 		if err != nil {
 			continue
 		}
-		cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+		cmdline, err := os.ReadFile(fmt.Sprintf("%s/%d/cmdline", procDir, pid))
 		if err != nil {
 			continue
 		}
 		args := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
-		for _, arg := range args {
-			if strings.Contains(arg, "cron") {
-				return pid
-			}
+		if len(args) == 0 || args[0] == "" {
+			continue
+		}
+		name := filepath.Base(args[0])
+		if name == "cron" || name == "crond" {
+			return pid
 		}
 	}
 	return 0

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -70,19 +71,17 @@ func getTTYDStatus() ttydStatus {
 		if strings.HasPrefix(pi.State, "Z") {
 			continue
 		}
-		if strings.Contains(pi.Cmdline, "ttyd") {
-			if strings.Contains(pi.Cmdline, "8089") {
-				st.HTop.State = "running"
-				st.HTop.PID = strconv.Itoa(pi.PID)
-			}
-			if strings.Contains(pi.Cmdline, "9089") {
-				st.Terminal.State = "running"
-				st.Terminal.PID = strconv.Itoa(pi.PID)
-				if strings.Contains(pi.Cmdline, "telnet") {
-					st.Terminal.Mode = "telnet"
-				} else {
-					st.Terminal.Mode = "entware"
-				}
+		if isTTYDOnPort(pi.Cmdline, 8089) {
+			st.HTop.State = "running"
+			st.HTop.PID = strconv.Itoa(pi.PID)
+		}
+		if isTTYDOnPort(pi.Cmdline, 9089) {
+			st.Terminal.State = "running"
+			st.Terminal.PID = strconv.Itoa(pi.PID)
+			if strings.Contains(pi.Cmdline, "telnet") {
+				st.Terminal.Mode = "telnet"
+			} else {
+				st.Terminal.Mode = "entware"
 			}
 		}
 	}
@@ -136,10 +135,7 @@ func stopTTYD(port int) map[string]string {
 		if strings.HasPrefix(pi.State, "Z") {
 			continue
 		}
-		if !strings.Contains(pi.Cmdline, "ttyd") {
-			continue
-		}
-		if !strings.Contains(pi.Cmdline, strconv.Itoa(port)) {
+		if !isTTYDOnPort(pi.Cmdline, port) {
 			continue
 		}
 
@@ -151,14 +147,17 @@ func stopTTYD(port int) map[string]string {
 			continue
 		}
 
-		time.Sleep(500 * time.Millisecond)
-
-		if isTTYDRunning(port) {
-			return map[string]string{"status": "error", "message": "Не удалось остановить ttyd на порту " + strconv.Itoa(port)}
+		// Даём процессу и его детям время умереть: дочерние процессы ttyd
+		// могут переживать родителя на сотни миллисекунд.
+		for i := 0; i < 4; i++ {
+			time.Sleep(500 * time.Millisecond)
+			if !isTTYDRunning(port) {
+				logAction("INFO", fmt.Sprintf("ttyd остановлен на порту %d", port))
+				return map[string]string{"status": "ok", "message": fmt.Sprintf("ttyd на порту %d остановлен", port)}
+			}
 		}
 
-		logAction("INFO", fmt.Sprintf("ttyd остановлен на порту %d", port))
-		return map[string]string{"status": "ok", "message": fmt.Sprintf("ttyd на порту %d остановлен", port)}
+		return map[string]string{"status": "error", "message": "Не удалось остановить ttyd на порту " + strconv.Itoa(port)}
 	}
 
 	return map[string]string{"status": "error", "message": "ttyd на порту " + strconv.Itoa(port) + " не найден"}
@@ -172,12 +171,41 @@ func restartTTYD(port int, pass string, mode string) map[string]string {
 
 func isTTYDRunning(port int) bool {
 	procMap := scanProc()
-	portStr := strconv.Itoa(port)
 	for _, pi := range procMap {
 		if strings.HasPrefix(pi.State, "Z") {
 			continue
 		}
-		if strings.Contains(pi.Cmdline, "ttyd") && strings.Contains(pi.Cmdline, portStr) {
+		if isTTYDOnPort(pi.Cmdline, port) {
+			return true
+		}
+	}
+	return false
+}
+
+// isTTYDOnPort определяет, что процесс — это именно демон ttyd (argv[0] == "ttyd"),
+// слушающий указанный порт. Матчинг по подстроке "ttyd"/порта в cmdline запрещён:
+// он ловит собственный процесс CGI (cmdline содержит "ttyd_control", "--port 8089").
+func isTTYDOnPort(cmdline string, port int) bool {
+	args := strings.Fields(cmdline)
+	if len(args) == 0 {
+		return false
+	}
+	if filepath.Base(args[0]) != "ttyd" {
+		return false
+	}
+	portStr := strconv.Itoa(port)
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-p" || a == "--port" {
+			if i+1 < len(args) && args[i+1] == portStr {
+				return true
+			}
+			continue
+		}
+		if strings.HasPrefix(a, "--port=") && a[len("--port="):] == portStr {
+			return true
+		}
+		if a == portStr {
 			return true
 		}
 	}

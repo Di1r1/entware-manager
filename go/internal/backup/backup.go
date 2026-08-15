@@ -53,10 +53,7 @@ func HandleCreate() {
 		os.WriteFile(filepath.Join(tmpDir, "packages.txt"), pkgList, 0644)
 	}
 
-	info := map[string]string{
-		"version": "1.06.5",
-		"date":    "2026-07-29",
-	}
+	info := backupInfo()
 	infoJSON, _ := json.MarshalIndent(info, "", "  ")
 	os.WriteFile(filepath.Join(tmpDir, "backup.json"), infoJSON, 0644)
 
@@ -199,4 +196,27 @@ func cleanupOldTemp(prefix string) {
 			os.RemoveAll(d)
 		}
 	}
+}
+
+// backupInfo читает актуальную версию/дату из version.json.
+func backupInfo() map[string]string {
+	info := map[string]string{"version": "unknown", "date": ""}
+	data, err := os.ReadFile(filepath.Join(webRoot, "version.json"))
+	if err != nil {
+		return info
+	}
+	var v struct {
+		Version string `json:"version"`
+		Date    string `json:"date"`
+	}
+	if json.Unmarshal(data, &v) != nil {
+		return info
+	}
+	if v.Version != "" {
+		info["version"] = v.Version
+	}
+	if v.Date != "" {
+		info["date"] = v.Date
+	}
+	return info
 }

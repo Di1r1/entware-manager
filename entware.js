@@ -636,7 +636,7 @@ async function loadHtopContent() {
         if (htop.state === 'running') {
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/htop/" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
             `;
@@ -645,7 +645,7 @@ async function loadHtopContent() {
         }
     } catch (err) {
         const container = document.getElementById('htop-content');
-        if (container) container.innerHTML = '<p class="error">Ошибка: ' + err.message + '</p>';
+        if (container) container.innerHTML = '<p class="error">Ошибка: ' + escapeHtml(err.message) + '</p>';
     }
 }
 
@@ -674,7 +674,7 @@ async function loadTerminalContent() {
             title.textContent = 'Терминал (' + modeLabel + ')';
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/terminal/" target="_blank" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;"></iframe>
             `;
@@ -684,7 +684,7 @@ async function loadTerminalContent() {
         }
     } catch (err) {
         const container = document.getElementById('terminal-content');
-        if (container) container.innerHTML = '<p class="error">Ошибка: ' + err.message + '</p>';
+        if (container) container.innerHTML = '<p class="error">Ошибка: ' + escapeHtml(err.message) + '</p>';
     }
 }
 
@@ -1012,9 +1012,14 @@ async function loadLinks() {
 async function saveLinks(links) {
     try {
         const result = await apiPostJSON('/links_save.cgi', links);
-        if (result.status !== 'ok') Toast.show('Ошибка сохранения ссылок: ' + result.message, true);
+        if (result.status !== 'ok') {
+            Toast.show('Ошибка сохранения ссылок: ' + result.message, true);
+            return false;
+        }
+        return true;
     } catch (err) {
         Toast.show('Ошибка соединения с сервером', true);
+        return false;
     }
 }
 
@@ -1152,16 +1157,33 @@ async function renderLinksOnStats() {
 
     let html = '<h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Полезные ссылки</h3><div class="links-grid">';
     links.forEach(link => {
-        const iconId = `icon-${link.icon || 'link'}`;
+        if (!isSafeLinkUrl(link.url)) return;
+        const iconId = 'icon-' + (link.icon && isSafeLinkIcon(link.icon) ? link.icon : 'link');
         html += `
-            <a href="${escapeHtml(link.url)}" target="_blank" class="link-card">
-                <span class="link-icon"><svg class="icon" width="32" height="32"><use href="/entware-manager/icons.svg?v=2#${iconId}"/></svg></span>
+            <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-card">
+                <span class="link-icon"><svg class="icon" width="32" height="32"><use href="/entware-manager/icons.svg?v=2#${escapeHtml(iconId)}"/></svg></span>
                 <span class="link-name">${escapeHtml(link.name)}</span>
             </a>
         `;
     });
     html += '</div>';
     statsContent.insertAdjacentHTML('afterend', html);
+}
+
+// isSafeLinkUrl — только http/https и относительные пути (/...).
+function isSafeLinkUrl(u) {
+    if (!u || typeof u !== 'string') return false;
+    u = u.trim();
+    if (u.length === 0 || u.length > 2048) return false;
+    if (u.charAt(0) === '/') return u.charAt(1) !== '/';
+    return /^https?:\/\//i.test(u);
+}
+
+// isSafeLinkIcon — только латиница, цифры, "-" и "_".
+function isSafeLinkIcon(s) {
+    if (!s) return true;
+    if (s.length > 32) return false;
+    return /^[a-zA-Z0-9_-]+$/.test(s);
 }
 
 function fmtBytesJS(n) {
@@ -1744,9 +1766,10 @@ window.saveLink = async function(btn) {
     const newLink = { name, url, icon };
     if (index !== undefined) links[index] = newLink;
     else links.push(newLink);
-    await saveLinks(links);
-    Toast.show('Ссылка сохранена');
-    renderSettingsTab();
+    if (await saveLinks(links)) {
+        Toast.show('Ссылка сохранена');
+        renderSettingsTab();
+    }
 };
 
 window.deleteLink = async function(btn) {
@@ -1756,9 +1779,10 @@ window.deleteLink = async function(btn) {
     if (index !== undefined) {
         const links = await loadLinks();
         links.splice(index, 1);
-        await saveLinks(links);
-        Toast.show('Ссылка удалена');
-        renderSettingsTab();
+        if (await saveLinks(links)) {
+            Toast.show('Ссылка удалена');
+            renderSettingsTab();
+        }
     } else {
         row.remove();
     }
@@ -1774,16 +1798,18 @@ async function saveAllLinks() {
         const url = row.querySelector('.link-url').value;
         if (name && url) links.push({ name, url, icon });
     });
-    await saveLinks(links);
-    Toast.show('Ссылки сохранены на сервер');
-    renderSettingsTab();
+    if (await saveLinks(links)) {
+        Toast.show('Ссылки сохранены на сервер');
+        renderSettingsTab();
+    }
 }
 
 async function resetDefaultLinks() {
     if (confirm('Восстановить ссылки по умолчанию? Текущие будут потеряны.')) {
-        await saveLinks(getDefaultLinks());
-        Toast.show('Ссылки сброшены к настройкам по умолчанию');
-        renderSettingsTab();
+        if (await saveLinks(getDefaultLinks())) {
+            Toast.show('Ссылки сброшены к настройкам по умолчанию');
+            renderSettingsTab();
+        }
     }
 }
 
