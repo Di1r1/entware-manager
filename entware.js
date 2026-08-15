@@ -1536,7 +1536,7 @@ async function runUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно 3-7 мин, не закрывайте страницу)</span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
 
         // Poll status every 2 seconds
         pollUpdateStatus();
@@ -1567,7 +1567,7 @@ async function reinstallUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно 3-7 мин, не закрывайте страницу)</span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
 
         pollUpdateStatus();
     } catch (err) {
@@ -1613,7 +1613,7 @@ function pollUpdateStatus() {
                 const progress = data.progress || (data.lines.length > 0 ? data.lines[data.lines.length-1] : '');
                 statusEl.innerHTML = '<span style="color:#f59e0b;">' +
                     '<b>' + escapeHtml(progress) + '</b>' +
-                    ' <span style="color:var(--text-muted); font-size:0.85em;">(' + timeStr + ' — обычно 3-7 мин, не закрывайте страницу)</span>' +
+                    ' <span style="color:var(--text-muted); font-size:0.85em;">(' + timeStr + ' — обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span>' +
                     '</span>';
             }
         } catch (err) {
