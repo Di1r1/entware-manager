@@ -535,6 +535,9 @@ async function loadPkgData(forceRefresh, seq) {
     let installed = forceRefresh ? null : pkgCacheGet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, CACHE_PKG_MAX_AGE);
     let upgradable = forceRefresh ? null : pkgCacheGet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, CACHE_PKG_MAX_AGE);
 
+    if (installed && !installed.length) installed = null;
+    if (upgradable && !upgradable.length) upgradable = null;
+
     const fetchTasks = [];
     if (!installed) fetchTasks.push(apiGet('/installed.cgi'));
     if (!upgradable) fetchTasks.push(apiGet('/upgradable.cgi'));
@@ -542,8 +545,14 @@ async function loadPkgData(forceRefresh, seq) {
     if (fetchTasks.length) {
         const results = await Promise.all(fetchTasks);
         let idx = 0;
-        if (!installed) { installed = results[idx++]; pkgCacheSet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, installed); }
-        if (!upgradable) { upgradable = results[idx]; pkgCacheSet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, upgradable); }
+        if (!installed) {
+            installed = results[idx++];
+            if (installed && installed.length) pkgCacheSet(CACHE_INSTALLED_KEY, CACHE_INSTALLED_TIME, installed);
+        }
+        if (!upgradable) {
+            upgradable = results[idx];
+            if (upgradable && upgradable.length) pkgCacheSet(CACHE_UPGRADABLE_KEY, CACHE_UPGRADABLE_TIME, upgradable);
+        }
     }
 
     if (seq !== pkgLoadSeq) return;
@@ -1772,6 +1781,7 @@ function pollUpdateStatus() {
 
             if (data.status === 'done') {
                 clearInterval(updatePollInterval);
+                pkgCacheClearAll();
                 statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Обновление завершено</span>';
                 document.getElementById('update-run-btn').style.display = 'none';
                 const rbtn = document.getElementById('update-reinstall-btn');
