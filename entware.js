@@ -145,12 +145,21 @@ function startPanelWidgets() {
             window.APP_VERSION = data.version;
             document.title = `Entware Manager v${data.version}`;
             const footer = document.getElementById('mainFooter');
-            if (footer) footer.innerHTML = `Entware Manager v${data.version} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
+            if (footer) footer.innerHTML = `Entware Manager v${escapeHtml(data.version)} — интерфейс на базе CGI и вкладок. Разработчик: Di1r1`;
             const sidebarVersion = document.getElementById('sidebarVersion');
-            if (sidebarVersion) sidebarVersion.textContent = `v${data.version}`;
+            if (sidebarVersion) {
+                // Версия всегда кликабельна → ведёт на текущий релиз на GitHub.
+                const vEsc = escapeHtml(data.version);
+                sidebarVersion.innerHTML =
+                    `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${vEsc}" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">v${vEsc}</a>`;
+            }
             fetch('/entware-cgi/update_check.cgi').then(r => r.json()).then(upd => {
                 if (upd.has_update && sidebarVersion) {
-                    sidebarVersion.innerHTML = `v${upd.current} → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${upd.latest}" target="_blank" style="color:#2ecc71;text-decoration:none;">v${upd.latest}</a>`;
+                    const curEsc = escapeHtml(upd.current);
+                    const latEsc = escapeHtml(upd.latest);
+                    sidebarVersion.innerHTML =
+                        `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${curEsc}" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">v${curEsc}</a>` +
+                        ` → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${latEsc}" target="_blank" rel="noopener" style="color:#2ecc71;text-decoration:none;">v${latEsc}</a>`;
                 }
             }).catch(function(){});
         })
