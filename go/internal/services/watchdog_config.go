@@ -38,6 +38,12 @@ func handleWrapperConfigGet() {
 					data = patched
 				}
 			}
+			if _, ok := cfg["autostart"]; !ok {
+				cfg["autostart"] = false
+				if patched, err := json.MarshalIndent(cfg, "", "  "); err == nil {
+					data = patched
+				}
+			}
 		}
 	}
 	os.Stdout.WriteString("Content-type: application/json; charset=utf-8\n\n")
@@ -90,6 +96,9 @@ func handleWrapperConfigPost() {
 	}
 	if _, ok := merged["auto_restart"]; !ok {
 		merged["auto_restart"] = false
+	}
+	if _, ok := merged["autostart"]; !ok {
+		merged["autostart"] = false
 	}
 	if _, ok := merged["exclude_list"]; !ok {
 		merged["exclude_list"] = []string{"dropbear", "kvas-ws", "service_watchdog"}

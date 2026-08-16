@@ -123,6 +123,10 @@ ok "S80entware-server удалён"
 rm -f "/opt/etc/init.d/S80entware-lighttpd" 2>/dev/null
 ok "S80entware-lighttpd удалён"
 
+# Автозапуск демонов мониторинга
+rm -f "/opt/etc/init.d/S85entware-watchdogs" 2>/dev/null
+ok "S85entware-watchdogs удалён"
+
 # 30-cgi.conf — удаляем (восстанавливать нечего, это наш файл)
 rm -f "$CGI_CONF" 2>/dev/null
 ok "30-cgi.conf удалён"

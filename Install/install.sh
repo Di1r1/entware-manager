@@ -839,6 +839,15 @@ else
 	fi
 fi
 
+# --- Автозапуск демонов мониторинга (S85entware-watchdogs) ---
+if [ -f "$SELF_DIR/Install/S85entware-watchdogs" ]; then
+	ln -sf "$TARGET_DIR/Install/S85entware-watchdogs" "/opt/etc/init.d/S85entware-watchdogs" 2>/dev/null
+	chmod 755 "$TARGET_DIR/Install/S85entware-watchdogs" 2>/dev/null
+	ok "S85entware-watchdogs установлен (автозапуск демонов)"
+else
+	warn "шаблон S85entware-watchdogs не найден в $SELF_DIR/Install/"
+fi
+
 if lighttpd_http_ok 8087; then
 	ok "менеджер доступен по HTTP"
 else

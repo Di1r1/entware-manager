@@ -2078,6 +2078,11 @@ async function loadSystemServicesTab() {
                 <button id="service-watchdog-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
                 <button id="service-watchdog-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
                 <button id="service-watchdog-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
+                <label class="service-watch-toggle" title="Запускать демон мониторинга при загрузке роутера">
+                    <input type="checkbox" id="service-autostart" style="display: none;">
+                    <span class="toggle-slider"></span>
+                    <span>Автозапуск при загрузке</span>
+                </label>
             </div>
             <div style="margin-top: 10px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
                 <label class="service-watch-toggle" title="Мониторить кастомный список процессов">
@@ -2459,7 +2464,7 @@ function loadNetworkTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/network.js?v=2';
+    script.src = '/entware-manager/network.js?v=3';
     script.onload = () => {
         if (typeof initNetworkTab === 'function') initNetworkTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля сети</p>';
@@ -2474,7 +2479,7 @@ function loadMonitorTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/monitor.js?v=2';
+    script.src = '/entware-manager/monitor.js?v=3';
     script.onload = () => {
         if (typeof initMonitorTab === 'function') initMonitorTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля защиты</p>';
@@ -2522,6 +2527,8 @@ const SERVICE_WATCHDOG = {
                 }
                 if (listContainer) listContainer.style.display = data.config.mode === 'custom' ? 'block' : 'none';
                 if (autoRestartEl) autoRestartEl.checked = data.config.auto_restart == true || data.config.auto_restart === 'true';
+                const autostartEl = document.getElementById('service-autostart');
+                if (autostartEl) autostartEl.checked = data.config.autostart === true;
                 
                 let excludeArr = data.config.exclude_list;
                 if (excludeArr && typeof excludeArr === 'object' && !Array.isArray(excludeArr)) {
@@ -2571,6 +2578,7 @@ const SERVICE_WATCHDOG = {
         document.getElementById('service-watchdog-start')?.addEventListener('click', () => this.doAction('start'));
         document.getElementById('service-watchdog-stop')?.addEventListener('click', () => this.doAction('stop'));
         document.getElementById('service-watchdog-restart')?.addEventListener('click', () => this.doAction('restart'));
+        document.getElementById('service-autostart')?.addEventListener('change', () => this.saveConfig());
         
         const modeCheckbox = document.getElementById('service-watch-mode');
         const listContainer = document.getElementById('service-watch-list-container');
@@ -2616,8 +2624,11 @@ const SERVICE_WATCHDOG = {
             exclude_list = null;
         }
         
+        const autostartEl = document.getElementById('service-autostart');
+        const autostart = autostartEl?.checked || false;
+
         try {
-            const result = await apiPostJSON('/service_watchdog/config.cgi', { mode: mode, watch_list: watchList, auto_restart: auto_restart, exclude_list: exclude_list });
+            const result = await apiPostJSON('/service_watchdog/config.cgi', { mode: mode, watch_list: watchList, auto_restart: auto_restart, autostart: autostart, exclude_list: exclude_list });
             if (result.status === 'ok') {
                 Toast.show(result.message || 'Конфигурация сохранена');
                 await this.loadStatus();

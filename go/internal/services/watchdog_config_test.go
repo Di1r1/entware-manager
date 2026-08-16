@@ -91,6 +91,9 @@ func TestWatchdogConfig_POST_Valid(t *testing.T) {
 	if cfg["pid_history_days"] != float64(7) {
 		t.Errorf("expected default pid_history_days 7, got %v", cfg["pid_history_days"])
 	}
+	if cfg["autostart"] != false {
+		t.Errorf("expected default autostart false, got %v", cfg["autostart"])
+	}
 }
 
 func TestWatchdogConfig_POST_InvalidJSON(t *testing.T) {

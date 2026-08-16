@@ -1,0 +1,107 @@
+#!/bin/sh
+# shellcheck disable=SC3037,SC2034,SC2155,SC2086,SC2046,SC3043
+# ==============================================
+# Entware Manager: автозапуск демонов мониторинга
+#
+# При загрузке роутера стартует демоны Защиты/Сети/Служб,
+# для которых в конфигах задано "autostart": true.
+#   /opt/web_entware/monitor_config.json   (.autostart, .enabled)
+#   /opt/web_entware/network_config.json   (.autostart)
+#   /opt/web_entware/service_config.json   (.autostart, .enabled)
+#
+# ВНИМАНИЕ: только ash/POSIX, без pkill/kill -0 — на роутере их нет.
+# ==============================================
+
+ENABLED=no
+
+DESC="entware watchdogs autostart"
+MONITOR_CFG="/opt/web_entware/monitor_config.json"
+NETWORK_CFG="/opt/web_entware/network_config.json"
+SERVICE_CFG="/opt/web_entware/service_config.json"
+MONITOR_SH="/opt/web_entware/watchdog.sh"
+NETWORK_SH="/opt/web_entware/network_watchdog.sh"
+SERVICE_SH="/opt/web_entware/service_watchdog.sh"
+
+ansi_green="\033[1;32m"
+ansi_red="\033[1;31m"
+ansi_white="\033[1;37m"
+ansi_std="\033[m"
+
+# jq_autostart cfg — вернёт "true" если автозапуск включён.
+cfg_autostart() {
+	[ -f "$1" ] || return 1
+	command -v jq >/dev/null 2>&1 || return 1
+	[ "$(jq -r '.autostart // false' "$1" 2>/dev/null)" = "true" ]
+}
+
+# cfg_enabled cfg — вернёт 0 если явно не выключен (монитор/службы: .enabled).
+cfg_enabled() {
+	[ -f "$1" ] || return 0
+	command -v jq >/dev/null 2>&1 || return 0
+	[ "$(jq -r '.enabled // true' "$1" 2>/dev/null)" != "false" ]
+}
+
+# start_daemon script cfg name — запускает демон если autostart=true и enabled.
+start_daemon() {
+	script="$1"
+	cfg="$2"
+	name="$3"
+	if cfg_autostart "$cfg"; then
+		if ! cfg_enabled "$cfg"; then
+			echo -e "$ansi_white $name: $ansi_std autostart включён, но демон отключён в конфиге — пропускаю."
+			return 0
+		fi
+		if [ ! -x "$script" ]; then
+			echo -e "$ansi_white $name: $ansi_std скрипт не найден: $script"
+			return 0
+		fi
+		echo -e -n "$ansi_white Starting $name... $ansi_std"
+		# daemon_start идемпотентен, но при «Already running» возвращает 1 — толерируем.
+		if "$script" start >/dev/null 2>&1; then
+			echo -e "          $ansi_green done. $ansi_std"
+		else
+			# Проверяем реальный статус (может уже запущен).
+			if "$script" status >/dev/null 2>&1; then
+				echo -e "          $ansi_green already running. $ansi_std"
+			else
+				echo -e "          $ansi_red failed. $ansi_std"
+			fi
+		fi
+	fi
+}
+
+start() {
+	start_daemon "$MONITOR_SH" "$MONITOR_CFG" "monitor watchdog"
+	start_daemon "$NETWORK_SH" "$NETWORK_CFG" "network watchdog"
+	start_daemon "$SERVICE_SH" "$SERVICE_CFG" "service watchdog"
+}
+
+stop() {
+	# Останавливаем демоны, даже если autostart выключен (полный stop).
+	for s in "$MONITOR_SH" "$NETWORK_SH" "$SERVICE_SH"; do
+		[ -x "$s" ] && "$s" stop >/dev/null 2>&1
+	done
+}
+
+check() {
+	for pair in "$MONITOR_SH|monitor watchdog" "$NETWORK_SH|network watchdog" "$SERVICE_SH|service watchdog"; do
+		script="${pair%%|*}"
+		name="${pair##*|}"
+		if [ -x "$script" ] && "$script" status >/dev/null 2>&1; then
+			echo -e "$ansi_white Checking $name... $ansi_std  $ansi_green running. $ansi_std"
+		else
+			echo -e "$ansi_white Checking $name... $ansi_std  $ansi_red stopped. $ansi_std"
+		fi
+	done
+}
+
+case "$1" in
+	start) start ;;
+	stop|kill) stop ;;
+	restart) stop; start ;;
+	check|status) check ;;
+	*)
+		echo "Usage: $0 (start|stop|restart|check|status)"
+		exit 1
+		;;
+esac

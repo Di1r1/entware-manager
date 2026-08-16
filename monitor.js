@@ -39,6 +39,11 @@ const MONITOR = {
                     <button id="monitor-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
                     <button id="monitor-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
                     <button id="monitor-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
+                    <label class="monitor-toggle" title="Запускать демон при загрузке роутера">
+                        <input type="checkbox" id="monitor-autostart" style="display: none;">
+                        <span class="toggle-slider"></span>
+                        <span>Автозапуск при загрузке</span>
+                    </label>
                 </div>
             </div>
             <div id="monitor-processes">
@@ -153,6 +158,7 @@ const MONITOR = {
             document.getElementById('settings-ignore').value = (cfg.ignore || []).join(', ');
             document.getElementById('settings-ignore-ps').checked = cfg.ignore_ps === true;
             document.getElementById('settings-max-processes').value = cfg.max_processes || 200;
+            document.getElementById('monitor-autostart').checked = cfg.autostart === true;
         } catch(e) {
             console.error(e);
         }
@@ -171,7 +177,8 @@ const MONITOR = {
             },
             ignore: document.getElementById('settings-ignore').value.split(',').map(s => s.trim()).filter(s => s),
             ignore_ps: document.getElementById('settings-ignore-ps').checked,
-            max_processes: maxProcesses
+            max_processes: maxProcesses,
+            autostart: document.getElementById('monitor-autostart').checked
         };
         try {
             var result = await apiPostJSON('/monitor/config.cgi', config);

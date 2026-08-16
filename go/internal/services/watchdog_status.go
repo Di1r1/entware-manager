@@ -97,6 +97,7 @@ const defaultServiceConfig = `{
   "mode": "initd",
   "watch_list": ["lighttpd","cron","ttyd","AdGuardHome","koolproxy","xray"],
   "auto_restart": false,
+  "autostart": false,
   "exclude_list": ["dropbear","kvas-ws","service_watchdog"],
   "log_to_monitor": true,
   "pid_history_days": 7

@@ -11,6 +11,7 @@ const NETWORK = {
         await this.loadData();
         this.attachEvents();
         this.enableTableSorting();
+        this.loadConfig();
     },
 
     renderHTML() {
@@ -28,6 +29,11 @@ const NETWORK = {
                     <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
                     <button id="network-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
                     <button id="network-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
+                    <label class="service-watch-toggle" title="Запускать демон при загрузке роутера">
+                        <input type="checkbox" id="network-autostart" style="display: none;">
+                        <span class="toggle-slider"></span>
+                        <span>Автозапуск при загрузке</span>
+                    </label>
                 </div>
             </div>
             <div id="network-tabs">
@@ -228,10 +234,37 @@ const NETWORK = {
         }
     },
 
+    async loadConfig() {
+        try {
+            const cfg = await apiGet('/network/config.cgi');
+            this.config = cfg || {};
+            const box = document.getElementById('network-autostart');
+            if (box) box.checked = this.config.autostart === true;
+        } catch(e) {
+            console.error(e);
+        }
+    },
+
+    async saveAutostart(checked) {
+        if (!this.config) this.config = {};
+        this.config.autostart = !!checked;
+        try {
+            const res = await apiPostJSON('/network/config.cgi', this.config);
+            if (res && res.status === 'ok') {
+                Toast.show(checked ? 'Автозапуск включён' : 'Автозапуск выключен');
+            } else {
+                Toast.show('Ошибка сохранения автозапуска', true);
+            }
+        } catch (err) {
+            Toast.show('Ошибка соединения: ' + err.message, true);
+        }
+    },
+
     attachEvents() {
         document.getElementById('network-start')?.addEventListener('click', () => this.doAction('start'));
         document.getElementById('network-stop')?.addEventListener('click', () => this.doAction('stop'));
         document.getElementById('network-restart')?.addEventListener('click', () => this.doAction('restart'));
+        document.getElementById('network-autostart')?.addEventListener('change', (e) => this.saveAutostart(e.target.checked));
         document.getElementById('refresh-events')?.addEventListener('click', () => this.loadEvents());
         
         document.getElementById('hide-unknown-ifaces')?.addEventListener('change', () => {

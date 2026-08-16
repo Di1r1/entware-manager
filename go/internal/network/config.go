@@ -15,6 +15,7 @@ const defaultConfig = `{
   "watch_internet": true,
   "ping_host": "8.8.8.8",
   "ping_timeout": 5,
+  "autostart": false,
   "notify_on": ["interface_down", "no_internet", "ip_changed"]
 }`
 
@@ -37,6 +38,16 @@ func handleConfigGet() {
 	data, err := os.ReadFile(ConfigFile)
 	if err != nil || !json.Valid(data) {
 		data = []byte(defaultConfig)
+	} else {
+		var cfg map[string]interface{}
+		if json.Unmarshal(data, &cfg) == nil {
+			if _, ok := cfg["autostart"]; !ok {
+				cfg["autostart"] = false
+				if patched, err := json.MarshalIndent(cfg, "", "  "); err == nil {
+					data = patched
+				}
+			}
+		}
 	}
 	os.Stdout.WriteString("Content-type: application/json; charset=utf-8\n\n")
 	os.Stdout.Write(data)

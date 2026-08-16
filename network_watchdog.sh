@@ -26,14 +26,16 @@ load_config() {
                 1) INTERVAL=$_v ;;
                 2) PING_HOST=$_v ;;
                 3) PING_TIMEOUT=$_v ;;
+                4) AUTOSTART=$_v ;;
             esac
         done << EOF
-$(jq -r '.watchdog.interval // 30, .watchdog.ping_host // "8.8.8.8", .watchdog.ping_timeout // 5' "$CONFIG_FILE")
+$(jq -r '.watchdog.interval // 30, .watchdog.ping_host // "8.8.8.8", .watchdog.ping_timeout // 5, .autostart // false' "$CONFIG_FILE")
 EOF
     else
         INTERVAL=30
         PING_HOST="8.8.8.8"
         PING_TIMEOUT=5
+        AUTOSTART=false
     fi
     
     [ -z "$INTERVAL" ] && INTERVAL=30

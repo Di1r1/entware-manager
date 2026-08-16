@@ -32,9 +32,10 @@ load_config() {
                 6) EXCLUDE_LIST=$_v ;;
                 7) LOG_TO_MONITOR=$_v ;;
                 8) HISTORY_DAYS=$_v ;;
+                9) AUTOSTART=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled // true, (.interval // 10), (.mode // "initd"), (if (.watch_list|type)=="array" then (.watch_list|join(" ")) else "lighttpd cron ttyd" end), (.auto_restart // false), (if (.exclude_list|type)=="array" then (.exclude_list|join(" ")) else "dropbear kvas-ws service_watchdog" end), (.log_to_monitor // true), (.pid_history_days // 7)' "$CONFIG")
+$(jq -r '.enabled // true, (.interval // 10), (.mode // "initd"), (if (.watch_list|type)=="array" then (.watch_list|join(" ")) else "lighttpd cron ttyd" end), (.auto_restart // false), (if (.exclude_list|type)=="array" then (.exclude_list|join(" ")) else "dropbear kvas-ws service_watchdog" end), (.log_to_monitor // true), (.pid_history_days // 7), (.autostart // false)' "$CONFIG")
 EOF
     else
         ENABLED=true
@@ -45,6 +46,7 @@ EOF
         EXCLUDE_LIST=""
         LOG_TO_MONITOR=true
         HISTORY_DAYS=7
+        AUTOSTART=false
     fi
 
     [ -z "$INTERVAL" ] || [ "$INTERVAL" = "null" ] && INTERVAL=10
@@ -53,6 +55,7 @@ EOF
     [ -z "$EXCLUDE_LIST" ] || [ "$EXCLUDE_LIST" = "null" ] && EXCLUDE_LIST="dropbear kvas-ws service_watchdog"
     [ -z "$HISTORY_DAYS" ] || [ "$HISTORY_DAYS" = "null" ] && HISTORY_DAYS=7
     [ -z "$LOG_TO_MONITOR" ] || [ "$LOG_TO_MONITOR" = "null" ] && LOG_TO_MONITOR=true
+    [ -z "$AUTOSTART" ] || [ "$AUTOSTART" = "null" ] && AUTOSTART=false
     [ "$ENABLED" = "null" ] && ENABLED=true
 }
 
@@ -208,6 +211,7 @@ check_service() {
     local service="$1"
     
     [ "$service" = "service_watchdog" ] && return
+    [ "$service" = "entware-watchdogs" ] && return
     
     for excl in $EXCLUDE_LIST; do
         [ "$service" = "$excl" ] && return

@@ -30,9 +30,10 @@ read_config() {
                 6) IGNORE_PS=$_v ;;
                 7) MAX_PROCESSES=$_v ;;
                 8) IGNORE_LIST=$_v ;;
+                9) AUTOSTART=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled // true, (.interval // 30), (.individual.enabled // true), (.individual.threshold_cpu // 20), (.individual.threshold_time // 120), (.ignore_ps // true), (.max_processes // 200), (if (.ignore|type)=="array" then (.ignore|join("|")) else "lighttpd|cron|ttyd|watchdog|ps|top" end)' "$CONFIG")
+$(jq -r '.enabled // true, (.interval // 30), (.individual.enabled // true), (.individual.threshold_cpu // 20), (.individual.threshold_time // 120), (.ignore_ps // true), (.max_processes // 200), (if (.ignore|type)=="array" then (.ignore|join("|")) else "lighttpd|cron|ttyd|watchdog|ps|top" end), (.autostart // false)' "$CONFIG")
 EOF
         if [ "$IGNORE_PS" != "false" ]; then
             IGNORE_PS="true"
@@ -49,6 +50,7 @@ EOF
         INDIVIDUAL_TIME=120
         IGNORE_LIST="lighttpd|cron|ttyd|watchdog|ps|top"
         IGNORE_PS=true
+        AUTOSTART=false
         log_message "WARN" "[monitor] jq не найден, использую настройки по умолчанию"
     fi
 
@@ -58,6 +60,7 @@ EOF
     [ -z "$INDIVIDUAL_CPU" ] || [ "$INDIVIDUAL_CPU" = "null" ] && INDIVIDUAL_CPU=20
     [ -z "$INDIVIDUAL_TIME" ] || [ "$INDIVIDUAL_TIME" = "null" ] && INDIVIDUAL_TIME=120
     [ -z "$IGNORE_LIST" ] || [ "$IGNORE_LIST" = "null" ] && IGNORE_LIST="lighttpd|cron|ttyd|watchdog|ps|top"
+    [ -z "$AUTOSTART" ] || [ "$AUTOSTART" = "null" ] && AUTOSTART=false
 }
 
 kill_process() {

@@ -20,9 +20,13 @@ func HandleConfig() {
 		if data == nil {
 			data = defaultConfig()
 		} else {
-			// Auto-migrate: add max_processes if missing
+			// Auto-migrate: add max_processes/autostart if missing
 			if _, ok := data["max_processes"]; !ok {
 				data["max_processes"] = 200
+				saveConfigToFile(data)
+			}
+			if _, ok := data["autostart"]; !ok {
+				data["autostart"] = false
 				saveConfigToFile(data)
 			}
 		}
@@ -98,6 +102,7 @@ func defaultConfig() map[string]interface{} {
 		"ignore":        []string{"lighttpd", "cron", "ttyd", "watchdog"},
 		"ignore_ps":     true,
 		"max_processes": 200,
+		"autostart":     false,
 		"log_file":      "/tmp/entware/logs/monitor.log",
 		"log_max_size":  1048576,
 	}
