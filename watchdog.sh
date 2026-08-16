@@ -71,11 +71,11 @@ daemon_loop() {
     CPU_DIR="/tmp/entware/cpu_times"
     mkdir -p "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR" "$(dirname "$PIDFILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
 
-    log_message "INFO" "[monitor] Демон запущен (PID $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
+    log_message "INFO" "[monitor] Демон запущен (PID: $$), ENABLED=$ENABLED, INTERVAL=$INTERVAL, CPU_THRESHOLD=$INDIVIDUAL_CPU, TIME_THRESHOLD=$INDIVIDUAL_TIME, IGNORE_PS=$IGNORE_PS, MAX_PROCESSES=$MAX_PROCESSES"
 
     rm -rf "${COUNTER_DIR:?}"/* "${IGNORE_COUNTER_DIR:?}"/* "${CPU_DIR:?}"/*
 
-    trap 'log_message "INFO" "[monitor] Демон остановлен (PID $$)"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR"; exit 0' TERM
+    trap 'log_message "INFO" "[monitor] Демон остановлен"; rm -f "$PIDFILE"; rm -rf "$COUNTER_DIR" "$IGNORE_COUNTER_DIR" "$CPU_DIR"; exit 0' TERM
     trap 'read_config; log_message "INFO" "[monitor] Конфигурация перечитана (CPU=$INDIVIDUAL_CPU TIME=$INDIVIDUAL_TIME IGNORE_PS=$IGNORE_PS MAX_PROCESSES=$MAX_PROCESSES)"' HUP
 
     # Сохраняем начальные CPU тики (utime+stime из /proc/pid/stat)
@@ -190,8 +190,9 @@ case "$1" in
         daemon_start "monitor" "$PIDFILE" "$LOG_FILE" "(^|[/ ])watchdog\.sh daemon"
         ;;
     stop)
+        pid=$(cat "$PIDFILE" 2>/dev/null || true)
         daemon_stop "$PIDFILE" "(^|[/ ])watchdog\.sh daemon" 'rm -rf "$COUNTER_DIR"/* "$IGNORE_COUNTER_DIR"/*'
-        log_message "INFO" "[monitor] Демон защиты остановлен"
+        log_message "INFO" "[monitor] Демон защиты остановлен (PID: ${pid:-?})"
         echo "Stopped"
         ;;
     restart)

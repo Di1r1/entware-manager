@@ -60,10 +60,6 @@ func parseLogFile(tag string, limit int) []LogEvent {
 		}
 	}
 
-	for i, j := 0, len(matched)-1; i < j; i, j = i+1, j-1 {
-		matched[i], matched[j] = matched[j], matched[i]
-	}
-
 	events := make([]LogEvent, 0, len(matched))
 	for _, line := range matched {
 		events = append(events, parseLogLine(line, tag))

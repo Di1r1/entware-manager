@@ -77,7 +77,6 @@ daemon_start() {
     mkdir -p "$(dirname "$pidfile")" "$(dirname "$logfile")" 2>/dev/null
     "$0" daemon >> "$logfile" 2>&1 &
     echo $! > "$pidfile"
-    log_message "INFO" "[$name] Демон запущен (PID: $(cat "$pidfile"))"
     echo "Started with PID $(cat "$pidfile")"
 }
 

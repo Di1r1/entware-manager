@@ -46,14 +46,14 @@ func TestParseLogFile_ReturnsEvents(t *testing.T) {
 		t.Fatalf("expected 2 events, got %d", len(events))
 	}
 
-	if events[0].Event != "renew" {
-		t.Errorf("expected first event 'renew', got '%s'", events[0].Event)
+	if events[0].Event != "interface_down" {
+		t.Errorf("expected first event 'interface_down' (newest), got '%s'", events[0].Event)
 	}
-	if events[1].Event != "interface_down" {
-		t.Errorf("expected second event 'interface_down', got '%s'", events[1].Event)
+	if events[1].Event != "renew" {
+		t.Errorf("expected second event 'renew', got '%s'", events[1].Event)
 	}
-	if events[1].Level != "ERROR" {
-		t.Errorf("expected level ERROR, got '%s'", events[1].Level)
+	if events[0].Level != "ERROR" {
+		t.Errorf("expected level ERROR, got '%s'", events[0].Level)
 	}
 }
 

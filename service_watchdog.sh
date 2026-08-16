@@ -290,7 +290,7 @@ daemon_loop() {
 
     mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$PIDFILE")" 2>/dev/null
 
-    log_message "INFO" "[service] watchdog started (interval=${INTERVAL}s, mode=$MODE, auto_restart=$AUTO_RESTART, exclude=$EXCLUDE_LIST, pid=$$)"
+    log_message "INFO" "[service] watchdog started (interval=${INTERVAL}s, mode=$MODE, auto_restart=$AUTO_RESTART, exclude=$EXCLUDE_LIST)"
 
     trap 'log_message "INFO" "[service] watchdog stopped (pid=$$)"; rm -f "$PIDFILE"; exit 0' TERM
     trap 'log_message "INFO" "[service] watchdog config_reload_triggered (pid=$$)"; sleep 1; exec "$0" daemon' HUP

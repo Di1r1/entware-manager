@@ -72,6 +72,7 @@ func HandleView() {
 			fmt.Printf(`<div class="no-logs">Ошибка открытия: %s</div>`, htmlEscape(err.Error()))
 		} else {
 			defer f.Close()
+			var lines []string
 			scanner := bufio.NewScanner(f)
 			for scanner.Scan() {
 				line := scanner.Text()
@@ -84,6 +85,13 @@ func HandleView() {
 				if search != "" && !strings.Contains(line, search) {
 					continue
 				}
+				lines = append(lines, line)
+			}
+			// Новые сверху
+			for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+				lines[i], lines[j] = lines[j], lines[i]
+			}
+			for _, line := range lines {
 				fmt.Println(`<div class="log-line">` + htmlEscape(line) + `</div>`)
 			}
 		}

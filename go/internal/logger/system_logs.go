@@ -81,6 +81,11 @@ func HandleSystemLogs() {
 		start = len(lines) - 500
 	}
 
+	// Новые сверху
+	for i, j := start, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
+	}
+
 	for _, line := range lines[start:] {
 		fmt.Println(`<div class="log-line">` + htmlEscape(line) + `</div>`)
 	}

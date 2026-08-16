@@ -27,12 +27,18 @@ func HandleLog() {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(strings.ToLower(line), "[monitor]") {
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "[monitor]") || strings.Contains(lower, "[action]") {
 			lines = append(lines, line)
 		}
 	}
 
-	// Take last 200 lines
+	// Новые сверху
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+		lines[i], lines[j] = lines[j], lines[i]
+	}
+
+	// Last 200 lines
 	start := 0
 	if len(lines) > 200 {
 		start = len(lines) - 200

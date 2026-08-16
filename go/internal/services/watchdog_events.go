@@ -60,10 +60,6 @@ func parseWatchdogLog(limit int) []WatchdogEvent {
 		}
 	}
 
-	for i, j := 0, len(matched)-1; i < j; i, j = i+1, j-1 {
-		matched[i], matched[j] = matched[j], matched[i]
-	}
-
 	events := make([]WatchdogEvent, 0, len(matched))
 	for _, line := range matched {
 		events = append(events, parseWatchdogLine(line))

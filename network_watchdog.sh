@@ -110,7 +110,7 @@ daemon_loop() {
     
     mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")" 2>/dev/null
     
-    log_message "INFO" "[network] watchdog started (interval=${INTERVAL}s, ping=$PING_HOST, pid=$$)"
+    log_message "INFO" "[network] watchdog started (interval=${INTERVAL}s, ping=$PING_HOST)"
     
     trap 'log_message "INFO" "[network] watchdog stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
     trap 'load_config; log_message "INFO" "[network] watchdog config_reloaded (interval=$INTERVAL)"' HUP

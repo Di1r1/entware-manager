@@ -66,8 +66,8 @@ func handleDaemonAction(action string) {
 		pid, err2 := readPIDFile()
 		if err2 == nil && pidAlive(pid) {
 			verb := map[string]string{"start": "запущен", "restart": "перезапущен"}[action]
-			logMonitor("INFO", fmt.Sprintf("Демон %s (PID: %d)", verb, pid))
-			logAction("INFO", fmt.Sprintf("Демон защиты %s (PID: %d)", verb, pid))
+			// Полная строка с PID пишется самим демоном (watchdog.sh daemon_loop):
+			// «[monitor] Демон запущен (PID $$), ENABLED=…» — здесь дубли не пишем.
 			WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", verb), "pid": pid})
 		} else {
 			logMonitor("ERROR", "Демон не запустился: "+outStr)
@@ -111,23 +111,34 @@ func handleKill(pidStr string) {
 }
 
 func handleClearLog() {
-	logFilePath := getLogFilePath()
-	if logFilePath == "" {
-		logFilePath = "/tmp/entware/logs/monitor.log"
+	logFile := fmt.Sprintf("/tmp/entware/logs/%s.log", time.Now().Format("2006-01-02"))
+
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logMonitor("INFO", "Лог очищен")
+			WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
+			return
+		}
+		WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
+		return
 	}
-	os.Truncate(logFilePath, 0)
+
+	var kept []string
+	for _, line := range strings.Split(string(data), "\n") {
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "[monitor]") || strings.Contains(lower, "[action]") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+
+	if err := os.WriteFile(logFile, []byte(strings.Join(kept, "\n")), 0644); err != nil {
+		WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
+		return
+	}
 	logMonitor("INFO", "Лог очищен")
 	WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
-}
-
-func getLogFilePath() string {
-	cfg := readConfigFromFile()
-	if cfg != nil {
-		if path, ok := cfg["log_file"].(string); ok {
-			return path
-		}
-	}
-	return ""
 }
 
 func logMonitor(level, message string) {

@@ -32,8 +32,13 @@ func HandleSystemLog() {
 	if err != nil || len(data) == 0 {
 		fmt.Println(`<div class="empty">Системный лог пуст</div>`)
 	} else {
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		// Новые сверху
+		for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
+			lines[i], lines[j] = lines[j], lines[i]
+		}
 		fmt.Print("<pre>")
-		fmt.Print(htmlEscape(strings.TrimSpace(string(data))))
+		fmt.Print(htmlEscape(strings.Join(lines, "\n")))
 		fmt.Println("</pre>")
 	}
 
