@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 var (
@@ -14,6 +16,10 @@ var (
 func HandleWatchdogAction() {
 	if !IsGET() && !IsPOST() {
 		NotAllowed()
+		return
+	}
+	if IsPOST() && auth.IsCrossSiteOrigin() {
+		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 	action := getQueryParam("action")

@@ -6,11 +6,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleAction() {
 	if !IsGET() && !IsPOST() {
 		NotAllowed()
+		return
+	}
+	if IsPOST() && auth.IsCrossSiteOrigin() {
+		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 	action := GetParam("action")

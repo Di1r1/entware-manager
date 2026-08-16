@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"entware-manager/internal/auth"
 )
 
 // tmpfsProtected — каталоги демонов, которые нельзя предлагать к очистке,
@@ -45,6 +47,11 @@ func HandleTmpClean() {
 	case "GET":
 		scanTmpClean()
 	case "POST":
+		if auth.IsCrossSiteOrigin() {
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+			fmt.Println(`{"status":"error","message":"` + auth.CrossSiteDeny + `"}`)
+			return
+		}
 		deleteTmpClean()
 	default:
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")

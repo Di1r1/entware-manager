@@ -43,6 +43,11 @@ func handleAuthConfigGet() {
 }
 
 func handleAuthConfigPost() {
+	if auth.IsCrossSiteOrigin() {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"` + auth.CrossSiteDeny + `"}`)
+		return
+	}
 	body, _ := io.ReadAll(os.Stdin)
 	params := parsePostForm(string(body))
 

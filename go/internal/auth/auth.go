@@ -17,6 +17,9 @@ import (
 // ConfigPath — путь к конфигу авторизации (переменная для тестов).
 var ConfigPath = "/opt/web_entware/auth_config.json"
 
+// CrossSiteDeny — единое сообщение для отказа по Origin-чеку (CSRF).
+const CrossSiteDeny = "Запрос из недоверенного источника (CSRF)"
+
 type config struct {
 	Enabled      bool   `json:"enabled"`
 	PasswordHash string `json:"password_hash"`

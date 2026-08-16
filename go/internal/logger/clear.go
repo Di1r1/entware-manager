@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 const logDir = "/opt/var/log/entware"
@@ -12,6 +14,11 @@ const logDir = "/opt/var/log/entware"
 func HandleClear() {
 	if !IsPOST() {
 		NotAllowed()
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 

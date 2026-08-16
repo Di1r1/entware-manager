@@ -12,9 +12,17 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
-const webRoot = "/opt/web_entware"
+var webRoot = "/opt/web_entware"
+
+// Лимиты размера для распаковки бэкапа (защита от gzip-bomb и DoS).
+const (
+	maxEntrySize   = 16 << 20 // 16 MiB на запись
+	maxArchiveSize = 64 << 20 // 64 MiB на весь архив
+)
 
 type configFile struct {
 	Path    string                  // relative to webRoot
@@ -95,7 +103,13 @@ func HandleRestore() {
 		return
 	}
 
-	body, err := io.ReadAll(os.Stdin)
+	if auth.IsCrossSiteOrigin() {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Printf(`{"status":"error","message":%q}`+"\n", auth.CrossSiteDeny)
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(os.Stdin, maxArchiveSize+1))
 	if err != nil || len(body) < 100 {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Empty or too small file"}`)
@@ -131,12 +145,22 @@ func HandleRestore() {
 			return
 		}
 
-		data, err := io.ReadAll(tr)
-		if err != nil {
+		// Безопасность: только обычные файлы (не symlink/dir/hardlink/device),
+		// с плоским именем внутри tmpDir. Проверки ДО чтения данных.
+		if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeRegA {
+			continue
+		}
+		name := header.Name
+		if name != filepath.Base(name) || name == "." || name == ".." {
 			continue
 		}
 
-		os.WriteFile(filepath.Join(tmpDir, header.Name), data, 0644)
+		data, err := io.ReadAll(io.LimitReader(tr, maxEntrySize+1))
+		if err != nil || len(data) > maxEntrySize {
+			continue
+		}
+
+		os.WriteFile(filepath.Join(tmpDir, name), data, 0644)
 	}
 
 	restoreFile := func(tmpName, destRel string) error {

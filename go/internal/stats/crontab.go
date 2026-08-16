@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleCrontab() {
@@ -43,6 +45,12 @@ func HandleCrontabUpdate() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		json.NewEncoder(os.Stdout).Encode(map[string]string{"error": "POST required"})
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		json.NewEncoder(os.Stdout).Encode(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 

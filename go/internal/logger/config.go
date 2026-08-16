@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 const configFile = "/opt/web_entware/logger/config.json"
@@ -37,6 +39,10 @@ func HandleConfig() {
 	}
 
 	if IsPOST() {
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		body, err := io.ReadAll(os.Stdin)
 		if err != nil || len(body) == 0 {
 			WriteJSON(map[string]string{"status": "error", "message": "Empty request"})

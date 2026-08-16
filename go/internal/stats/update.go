@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"entware-manager/internal/auth"
 	"entware-manager/internal/cache"
 )
 
@@ -69,6 +70,11 @@ func HandleUpdateCheck() {
 func HandleUpdateRun() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
 		writeJSON(map[string]string{"error": "Method not allowed"})
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		writeJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 

@@ -7,12 +7,18 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleServiceAction() {
 	var name, action string
 
 	if IsPOST() {
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		body := readPOSTBody()
 		params := parseFormBody(body)
 		name = params["name"]

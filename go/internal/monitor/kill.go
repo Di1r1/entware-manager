@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleKillPID() {
@@ -13,6 +15,10 @@ func HandleKillPID() {
 
 	switch os.Getenv("REQUEST_METHOD") {
 	case "POST":
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		body, _ := io.ReadAll(os.Stdin)
 		params := parseFormBody(string(body))
 		pidStr = params["pid"]

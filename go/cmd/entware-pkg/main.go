@@ -4,6 +4,7 @@ package main
 import (
 	"os"
 
+	"entware-manager/internal/auth"
 	_ "entware-manager/internal/localtime"
 	"entware-manager/internal/packages"
 )
@@ -12,6 +13,11 @@ func main() {
 	ep := os.Getenv("ENDPOINT")
 	if ep == "" {
 		packages.WriteError("ENDPOINT not set")
+		return
+	}
+
+	if os.Getenv("REQUEST_METHOD") == "POST" && auth.IsCrossSiteOrigin() {
+		packages.WriteError(auth.CrossSiteDeny)
 		return
 	}
 

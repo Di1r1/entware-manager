@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 type ttydInstance struct {
@@ -34,6 +36,10 @@ func HandleTTYDControl() {
 	}
 
 	if IsPOST() {
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		body := readPOSTBody()
 		params := parseFormBody(body)
 		action := params["action"]

@@ -10,9 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 var (
@@ -30,12 +33,14 @@ type DiskInfo struct {
 	Size         string `json:"size"`
 	Type         string `json:"type"`
 	Health       string `json:"health"`
-	Temperature  any    `json:"temperature"`
-	PowerOnHours any    `json:"power_on_hours"`
+	Temperature  *int   `json:"temperature"`
+	PowerOnHours *int   `json:"power_on_hours"`
 	AttrHealth   string `json:"attr_health"`
 }
 
 var criticalAttrIDs = map[int]bool{5: true, 10: true, 187: true, 196: true, 197: true, 198: true}
+
+var deviceRe = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 type AttrInfo struct {
 	ID        int    `json:"id"`
@@ -264,7 +269,7 @@ func extractFieldAfter(output, pattern string) string {
 	return ""
 }
 
-func parseIntOrNull(s string) any {
+func parseIntPtr(s string) *int {
 	if s == "" || s == "-" {
 		return nil
 	}
@@ -275,7 +280,7 @@ func parseIntOrNull(s string) any {
 	if err != nil {
 		return nil
 	}
-	return n
+	return &n
 }
 
 func HandleSmart() {
@@ -303,6 +308,10 @@ func HandleSmart() {
 	}
 
 	device := strings.TrimPrefix(getParam("device"), "/dev/")
+	if device != "" && (!deviceRe.MatchString(device) || len(device) > 32) {
+		writeError("invalid device")
+		return
+	}
 
 	switch action {
 	case "list":
@@ -317,6 +326,10 @@ func HandleSmart() {
 		handleUsage(device)
 	case "selftest":
 		if isPOST() {
+			if auth.IsCrossSiteOrigin() {
+				writeError(auth.CrossSiteDeny)
+				return
+			}
 			testType := getParam("type")
 			if testType == "" {
 				testType = "short"
@@ -478,8 +491,8 @@ func diskInfo(name string) DiskInfo {
 		Size:         diskSize(name),
 		Type:         displayType,
 		Health:       health,
-		Temperature:  parseIntOrNull(temperature),
-		PowerOnHours: parseIntOrNull(powerOn),
+		Temperature:  parseIntPtr(temperature),
+		PowerOnHours: parseIntPtr(powerOn),
 		AttrHealth:   attrHealth,
 	}
 }
@@ -651,6 +664,12 @@ func handleUsage(device string) {
 func handleSelftestStart(device string, testType string) {
 	if device == "" {
 		writeError("device required")
+		return
+	}
+	switch testType {
+	case "short", "long", "conveyance", "offline":
+	default:
+		writeError("invalid test type")
 		return
 	}
 	devpath := "/dev/" + device

@@ -8,12 +8,20 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleLinksSave() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"POST required"}`)
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"` + auth.CrossSiteDeny + `"}`)
 		return
 	}
 

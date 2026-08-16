@@ -2,6 +2,25 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.09.11 (2026-08-16)
+
+### Новое
+
+- **Ротация логов: после нажатия кнопки «Ротация сейчас» панель показывает путь и размер каждого ротированного файла.** `rotate.sh` (v1.4) выводит строки `ROTATED|путь|размер` (размер через `wc -c`) для всех скопированных в архив файлов (вчерашний дневной лог, `service_events.log`, `network_events.log` и их `.old`); `logger/rotate.cgi` возвращает JSON `{"status":"ok","message":"...","rotated":[{path,size}]}`; во вкладке «Логи» Toast выводит список файлов с размером (формат `fmtBytesJS`). Кэш `entware.js?v=30` → `?v=31`.
+
+### Изменения
+
+- **Защита от CSRF для всех POST-мутаций** (Фаза 3 аудита безопасности): единый Origin-чек `auth.IsCrossSiteOrigin()` + сообщение `CrossSiteDeny` в начале 19 POST-обработчиков (пакеты install/remove/upgrade, SMART selftest, tmpfs_clean, delete_file, auth_config, crontab_update, links_save, update_run, monitor action/kill/config, network config/action POST, services ttyd/action/watchdog-action/config, logger config/rotate/clear). Панель шлёт same-origin запросы — работает без изменений; сторонние сайты отклоняются.
+- **backup_restore: устранён tar-path-traversal** — злонамеренный архив больше не может записать файл вне временной папки (отклоняются не-регулярные записи, пути с `..`/абсолютные, записи свыше 16 MiB, архив свыше 64 MiB).
+- **smart.cgi: валидация входов** — `device` принимается только `^[a-z0-9-]+$` (до 32 симв.), `type` самотеста — только short/long/conveyance/offline; инъекции (`sda;rm`, `../`) отклоняются.
+- **Фронтенд XSS**: inline `onclick` с серверными данными заменены на data-атрибуты + делегирование (SMART-тесты, службы, kill-процесс); неэкранированные `err.message`/серверные поля в `innerHTML` обёрнуты в `escapeHtml`; поллинг SMART-теста останавливается при закрытии модалки. Кэш `smart.js?v=1` → `?v=2`.
+
+### Проверено
+
+- `make ci` зелёный, gofmt/vet чисто, `node --check` OK; новые тесты: smart (device/testType/parseIntPtr), backup (tar-slip 5 шт), logger (parseRotated 3 шт).
+- Dev-роутер: cross-site Origin → deny во всех пакетах; same-origin/без Origin → ok; tar-slip-архив отклонён; `logger/rotate.cgi` возвращает `rotated:[{path,size}]`; HTTP: статика 200, CGI 401 (auth-gate).
+- Оркестратор ewm-approval: APPROVE (Фаза 3) и APPROVE (ротация, после поднятия кэша v=31).
+
 ## 1.09.10 (2026-08-16)
 
 ### Новое

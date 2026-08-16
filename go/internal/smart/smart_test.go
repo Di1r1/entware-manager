@@ -46,18 +46,90 @@ func TestIsDisk_NVMe(t *testing.T) {
 	}
 }
 
-func TestParseIntOrNull(t *testing.T) {
-	if v := parseIntOrNull("35"); v != 35 {
-		t.Errorf("expected 35, got %v", v)
+func TestParseIntPtr(t *testing.T) {
+	check := func(s string, expected int, wantNil bool) {
+		t.Helper()
+		v := parseIntPtr(s)
+		if wantNil {
+			if v != nil {
+				t.Errorf("parseIntPtr(%q): expected nil, got %d", s, *v)
+			}
+			return
+		}
+		if v == nil || *v != expected {
+			t.Errorf("parseIntPtr(%q): expected %d, got %v", s, expected, v)
+		}
 	}
-	if v := parseIntOrNull("+123"); v != 123 {
-		t.Errorf("expected 123, got %v", v)
+	check("35", 35, false)
+	check("+123", 123, false)
+	check(" 35 ", 35, false)
+	check("", 0, true)
+	check("-", 0, true)
+	check("abc", 0, true)
+}
+
+func TestValidateDevice(t *testing.T) {
+	valid := []string{"sda", "nvme0n1", "sda1", "mmcblk0", "nvme1n2", "dm-0"}
+	invalid := []string{"sda;rm", "/dev/sda", "../sda", "sda/..", "sda x", "SD-A", "sda\x00", strings.Repeat("a", 33)}
+
+	for _, d := range valid {
+		if !deviceRe.MatchString(d) || len(d) > 32 {
+			t.Errorf("device %q should be valid", d)
+		}
 	}
-	if v := parseIntOrNull(""); v != nil {
-		t.Errorf("expected nil, got %v", v)
+	for _, d := range invalid {
+		if deviceRe.MatchString(d) && len(d) <= 32 {
+			t.Errorf("device %q should be invalid", d)
+		}
 	}
-	if v := parseIntOrNull("-"); v != nil {
-		t.Errorf("expected nil for '-', got %v", v)
+}
+
+func TestHandleSmart_InvalidDeviceRejected(t *testing.T) {
+	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("QUERY_STRING", "action=info&device=%2Fdev%2Fsda%3Brm")
+	defer func() {
+		os.Unsetenv("REQUEST_METHOD")
+		os.Unsetenv("QUERY_STRING")
+	}()
+
+	body := captureStdout(t, HandleSmart)
+	if !strings.Contains(string(body), `"status":"error"`) {
+		t.Errorf("expected error for invalid device, got: %s", body)
+	}
+}
+
+func TestHandleSmart_ListWithEmptyDeviceOK(t *testing.T) {
+	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("QUERY_STRING", "action=list")
+	defer func() {
+		os.Unsetenv("REQUEST_METHOD")
+		os.Unsetenv("QUERY_STRING")
+	}()
+
+	body := captureStdout(t, HandleSmart)
+	if strings.Contains(string(body), `"status":"error"`) {
+		t.Errorf("action=list with empty device should not error, got: %s", body)
+	}
+}
+
+func TestSelftestStart_InvalidType(t *testing.T) {
+	body := captureStdout(t, func() { handleSelftestStart("sda", "quick") })
+	if !strings.Contains(string(body), `"status":"error"`) {
+		t.Errorf("expected error for invalid test type, got: %s", body)
+	}
+}
+
+func TestHandleSmart_EmptyDeviceForInfoRejected(t *testing.T) {
+	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("QUERY_STRING", "action=info")
+	defer func() {
+		os.Unsetenv("REQUEST_METHOD")
+		os.Unsetenv("QUERY_STRING")
+	}()
+
+	body := captureStdout(t, HandleSmart)
+	if !strings.Contains(string(body), `"status":"error"`) {
+		t.Errorf("expected error for empty device in info, got: %s", body)
 	}
 }
 

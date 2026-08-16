@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+
+	"entware-manager/internal/auth"
 )
 
 const defaultConfig = `{
@@ -21,6 +23,10 @@ func HandleConfig() {
 	case "GET":
 		handleConfigGet()
 	case "POST":
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		handleConfigPost()
 	default:
 		NotAllowed()

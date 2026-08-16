@@ -1072,7 +1072,12 @@ function loadLogsTab() {
     document.getElementById('rotateNowBtn').addEventListener('click', async () => {
         if (!confirm('Запустить ротацию логов сейчас?')) return;
         const data = await apiPost('/logger/rotate.cgi', '');
-        Toast.show(data.message);
+        if (data.rotated && data.rotated.length > 0) {
+            const lines = data.rotated.map(f => f.path + ' (' + fmtBytesJS(f.size) + ')');
+            Toast.show(data.message + '\n' + lines.join('\n'), false, 6000);
+        } else {
+            Toast.show(data.message);
+        }
         setTimeout(() => logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now(), 1000);
     });
 

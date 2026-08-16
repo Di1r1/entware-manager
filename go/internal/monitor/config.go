@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"entware-manager/internal/auth"
 )
 
 const monitorConfigFile = "/opt/web_entware/monitor_config.json"
@@ -29,6 +31,10 @@ func HandleConfig() {
 	}
 
 	if IsPOST() {
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		body, err := io.ReadAll(os.Stdin)
 		if err != nil || len(body) == 0 {
 			WriteJSON(map[string]string{"status": "error", "message": "Empty request"})

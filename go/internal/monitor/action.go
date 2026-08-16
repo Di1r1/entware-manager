@@ -8,6 +8,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 const (
@@ -17,6 +19,11 @@ const (
 func HandleAction() {
 	if !IsPOST() {
 		NotAllowed()
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 

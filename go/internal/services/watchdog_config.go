@@ -6,6 +6,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	"entware-manager/internal/auth"
 )
 
 func HandleWatchdogConfig() {
@@ -13,6 +15,10 @@ func HandleWatchdogConfig() {
 	case "GET":
 		handleWrapperConfigGet()
 	case "POST":
+		if auth.IsCrossSiteOrigin() {
+			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
 		handleWrapperConfigPost()
 	default:
 		NotAllowed()
