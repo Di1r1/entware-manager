@@ -13,9 +13,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/cache"
 )
 
 var (
@@ -61,9 +63,13 @@ type PartitionInfo struct {
 }
 
 func writeJSON(v any) {
+	fmt.Print(jsonBody(v))
+}
+
+// jsonBody сериализует v в JSON с Content-Type (без вывода в stdout).
+func jsonBody(v any) string {
 	out, _ := json.Marshal(v)
-	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
-	fmt.Print(string(out))
+	return "Content-type: application/json; charset=utf-8\n\n" + string(out)
 }
 
 func writeError(msg string) {
@@ -147,7 +153,7 @@ func parseFormBody(body string) map[string]string {
 }
 
 func smartctlRun(device string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 
 	allArgs := append([]string{}, args...)
@@ -390,16 +396,31 @@ func checkAttrHealth(output string) string {
 }
 
 func handleList() {
+	// Кэш 15с: повторные клики «Обновить» отвечают мгновенно,
+	// а медленный/зависший smartctl (спящий диск) не тянет каждый запрос.
+	if data, ok := cache.Get("smart_list", 15*time.Second); ok {
+		fmt.Print(string(data))
+		return
+	}
+
 	disks := discoverDisks()
-	var result []DiskInfo
-	for _, name := range disks {
-		d := diskInfo(name)
-		result = append(result, d)
+	result := make([]DiskInfo, len(disks))
+
+	// Опрос дисков параллельно: один зависший smartctl (например, спящий диск)
+	// не блокирует весь список. Каждый запрос уже ограничен timeout (см. smartctlRun).
+	var wg sync.WaitGroup
+	for i, name := range disks {
+		wg.Add(1)
+		go func(idx int, dev string) {
+			defer wg.Done()
+			result[idx] = diskInfo(dev)
+		}(i, name)
 	}
-	if result == nil {
-		result = []DiskInfo{}
-	}
-	writeJSON(map[string]any{"disks": result})
+	wg.Wait()
+
+	out := jsonBody(map[string]any{"disks": result})
+	cache.Put("smart_list", []byte(out))
+	fmt.Print(out)
 }
 
 func diskInfo(name string) DiskInfo {

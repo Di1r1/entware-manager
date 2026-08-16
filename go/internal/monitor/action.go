@@ -143,6 +143,10 @@ func handleClearLog() {
 
 func logMonitor(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "localhost"
+	}
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
 	logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
@@ -151,7 +155,7 @@ func logMonitor(level, message string) {
 		return
 	}
 	defer f.Close()
-	fmt.Fprintf(f, "[%s] [%s] [ACTION] %s\n", timestamp, level, message)
+	fmt.Fprintf(f, "[%s] [%s] [%s] [ACTION] %s\n", timestamp, level, ip, message)
 }
 
 func logAction(level, message string) {

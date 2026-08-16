@@ -40,9 +40,10 @@ log_message() {
     local level="$1" msg="$2"
     local log_dir="/tmp/entware/logs"
     mkdir -p "$log_dir" 2>/dev/null
-    local ts
+    local ts ip
     ts=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$ts] [$level] [$$] $msg" >> "$log_dir/$(date '+%Y-%m-%d').log"
+    ip="${REMOTE_ADDR:-localhost}"
+    echo "[$ts] [$level] [$ip] [$$] $msg" >> "$log_dir/$(date '+%Y-%m-%d').log"
 }
 
 # --- Проверка, запущен ли демон ---
