@@ -68,24 +68,8 @@ const SMART = {
                 </div>
                 <button id="refreshSmart" class="packages-delete-btn" style="background: #4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить</button>
             </div>
-            <div class="packages-table-wrapper">
-                <table class="packages-table" id="smartTable">
-                    <thead>
-                        <tr>
-                            <th>Устройство</th>
-                            <th>Модель</th>
-                            <th>Серийный №</th>
-                            <th>Размер</th>
-                            <th>Тип</th>
-                            <th>Health</th>
-                            <th>Temp</th>
-                            <th>Power-On</th>
-                        </tr>
-                    </thead>
-                    <tbody id="smartTableBody">
-                        <tr><td colspan="8">Загрузка...</td></tr>
-                    </tbody>
-                </table>
+            <div id="smart-table-container" class="packages-table-wrapper">
+                <div class="loading-spinner"></div>
             </div>
         `;
 
@@ -94,30 +78,45 @@ const SMART = {
     },
 
     async loadDisks() {
-        const tbody = document.getElementById('smartTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="8">Загрузка...</td></tr>';
+        const container = document.getElementById('smart-table-container');
+        if (!container) return;
+        container.innerHTML = '<div class="loading-spinner"></div>';
 
         try {
             const data = await apiGet('/smart.cgi?action=list');
             this.renderTable(data.disks || []);
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="8" class="error">Ошибка: ${escapeHtml(err.message)}</td></tr>`;
+            container.innerHTML = `<p class="error" style="padding:1rem;">Ошибка: ${escapeHtml(err.message)}</p>`;
         }
     },
 
     renderTable(disks) {
-        const tbody = document.getElementById('smartTableBody');
-        if (!tbody) return;
+        const container = document.getElementById('smart-table-container');
+        if (!container) return;
 
         if (disks.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8">Диски не найдены или smartmontools не установлен.</td></tr>';
+            container.innerHTML = '<p style="padding:1rem;">Диски не найдены или smartmontools не установлен.</p>';
             return;
         }
 
         const TYPE_CLASSES = { hdd: 'drive-hdd', ssd: 'drive-ssd', nvme: 'drive-nvme', sat: 'drive-hdd', usb: 'drive-usb' };
 
-        tbody.innerHTML = disks.map(disk => {
+        let html = `<table class="packages-table" id="smartTable">
+            <thead>
+                <tr>
+                    <th>Устройство</th>
+                    <th>Модель</th>
+                    <th>Серийный №</th>
+                    <th>Размер</th>
+                    <th>Тип</th>
+                    <th>Health</th>
+                    <th>Temp</th>
+                    <th>Power-On</th>
+                </tr>
+            </thead>
+            <tbody id="smartTableBody">`;
+
+        html += disks.map(disk => {
             const attrHealth = disk.attr_health || 'ok';
             let healthClass = 'status-running';
             let healthIcon = 'icon-check';
@@ -126,6 +125,10 @@ const SMART = {
                 healthClass = '';
                 healthIcon = '';
                 healthText = '—';
+            } else if (attrHealth === 'busy') {
+                healthClass = 'status-warning';
+                healthIcon = 'icon-alert';
+                healthText = 'Не отвечает';
             } else if (attrHealth === 'warning') {
                 healthClass = 'status-warning';
                 healthIcon = 'icon-alert';
@@ -155,7 +158,10 @@ const SMART = {
             `;
         }).join('');
 
+        html += '</tbody></table>';
+        container.innerHTML = html;
         this.bindClickZones();
+        initTableSearch('searchSmart', 'smartTable', -1);
     },
 
     bindClickZones() {

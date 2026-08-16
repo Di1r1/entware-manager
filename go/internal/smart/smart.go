@@ -3,8 +3,8 @@ package smart
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +26,7 @@ var (
 	sysBlockDir    = "/sys/block"
 	dfBin          = "df"
 	sudoBin        = "sudo"
+	procDir        = "/proc"
 )
 
 type DiskInfo struct {
@@ -152,33 +153,151 @@ func parseFormBody(body string) map[string]string {
 	return params
 }
 
+// errDeviceBusy — на устройстве уже висит незавершённый smartctl (состояние D).
+var errDeviceBusy = fmt.Errorf("smartctl busy on device")
+
+// smartctlBusy проверяет, есть ли живой процесс smartctl на устройстве device
+// (процессы в состоянии D от прошлых запросов). Сканирует /proc/<pid>/cmdline.
+func smartctlBusy(device string) bool {
+	entries, err := os.ReadDir(procDir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		pid := e.Name()
+		if pid[0] < '0' || pid[0] > '9' {
+			continue
+		}
+		cmdline, err := os.ReadFile(procDir + "/" + pid + "/cmdline")
+		if err != nil || len(cmdline) == 0 {
+			continue
+		}
+		// Токенизация по NUL (cmdline разделён \0), ищем smartctl и точный device.
+		tokens := strings.Split(string(cmdline), "\x00")
+		foundSmart := false
+		foundDev := false
+		for _, t := range tokens {
+			if t == "" {
+				continue
+			}
+			if filepath.Base(t) == "smartctl" {
+				foundSmart = true
+			}
+			if t == device {
+				foundDev = true
+			}
+		}
+		if foundSmart && foundDev {
+			return true
+		}
+	}
+	return false
+}
+
+// runBounded выполняет команду с жёстким дедлайном. Если процесс не завершился
+// вовремя (например, ушёл в D-состояние — непрерываемый сон на подвешенном диске),
+// убивает его (сигнал встаёт в очередь) и возвращает partial-вывод. Wait() не
+// вызывается для зависшего процесса — иначе заблокируемся навсегда.
+func runBounded(cmd *exec.Cmd, timeout time.Duration) (string, error) {
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	cmd.Stderr = cmd.Stdout
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+
+	buf := make([]byte, 0, 4096)
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		tmp := make([]byte, 4096)
+		for {
+			n, err := out.Read(tmp)
+			buf = append(buf, tmp[:n]...)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	select {
+	case <-done:
+		<-readDone
+		return string(buf), nil
+	case <-time.After(timeout):
+		// Процесс, вероятно, в D-состоянии. Kill() очередит SIGKILL —
+		// умрёт, когда диск придёт в себя. Wait() не вызываем.
+		cmd.Process.Kill()
+		<-readDone
+		return string(buf), fmt.Errorf("timeout after %v", timeout)
+	}
+}
+
 func smartctlRun(device string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
+	if smartctlBusy(device) {
+		return "", errDeviceBusy
+	}
 
 	allArgs := append([]string{}, args...)
 	allArgs = append(allArgs, device)
 
-	cmd := exec.CommandContext(ctx, smartctlBin, allArgs...)
-	out, err := cmd.CombinedOutput()
-	outStr := string(out)
-
-	// smartctl returns partial output even on error (exit code 4 = no SMART attrs)
-	// Never discard output — the info section is usually complete
+	out, err := runBounded(exec.Command(smartctlBin, allArgs...), 8*time.Second)
+	outStr := out
 	if err == nil {
 		return outStr, nil
 	}
 
 	// Try with sudo
 	sudoArgs := append([]string{smartctlBin}, allArgs...)
-	cmd2 := exec.CommandContext(ctx, sudoBin, sudoArgs...)
-	out2, err2 := cmd2.CombinedOutput()
+	out2, err2 := runBounded(exec.Command(sudoBin, sudoArgs...), 8*time.Second)
 	if err2 == nil {
 		return string(out2), nil
 	}
 
 	// Return partial output + error
 	return outStr, fmt.Errorf("smartctl failed: %w (sudo: %v)", err, err2)
+}
+
+// busyDiskInfo — карточка диска, на котором висит незавершённый smartctl.
+// Данные только из /sys (не блокируются), health «—», attr_health «busy».
+func busyDiskInfo(name, devpath, diskType string) DiskInfo {
+	displayType := diskType
+	if isRemovable(name) {
+		displayType = "usb"
+	}
+	model := ""
+	if data, err := os.ReadFile(filepath.Join(sysBlockDir, name, "device", "model")); err == nil {
+		model = strings.TrimSpace(string(data))
+	}
+	serial := ""
+	if data, err := os.ReadFile(filepath.Join(sysBlockDir, name, "device", "serial")); err == nil {
+		serial = strings.TrimSpace(string(data))
+	}
+	if model == "" {
+		model = "\u2014"
+	}
+	if serial == "" {
+		serial = "\u2014"
+	}
+	return DiskInfo{
+		Device:       devpath,
+		Model:        model,
+		Serial:       serial,
+		Size:         diskSize(name),
+		Type:         displayType,
+		Health:       "\u2014",
+		Temperature:  nil,
+		PowerOnHours: nil,
+		AttrHealth:   "busy",
+	}
 }
 
 func detectType(device string) string {
@@ -396,9 +515,9 @@ func checkAttrHealth(output string) string {
 }
 
 func handleList() {
-	// Кэш 15с: повторные клики «Обновить» отвечают мгновенно,
-	// а медленный/зависший smartctl (спящий диск) не тянет каждый запрос.
-	if data, ok := cache.Get("smart_list", 15*time.Second); ok {
+	// Кэш 60с: повторные клики «Обновить» отвечают мгновенно и не запускают
+	// smartctl на подвешенных дисках (процессы в D-состоянии).
+	if data, ok := cache.Get("smart_list", 60*time.Second); ok {
 		fmt.Print(string(data))
 		return
 	}
@@ -426,7 +545,12 @@ func handleList() {
 func diskInfo(name string) DiskInfo {
 	devpath := "/dev/" + name
 	diskType := detectType(name)
-	output, _ := smartctlRun(devpath, "-a", "-d", diskType)
+	output, err := smartctlRun(devpath, "-a", "-d", diskType)
+	if errors.Is(err, errDeviceBusy) {
+		// На диске висит незавершённый smartctl (подвешенное устройство) —
+		// отдаём базовые данные из /sys, чтобы не блокировать список.
+		return busyDiskInfo(name, devpath, diskType)
+	}
 
 	displayType := diskType
 	if isRemovable(name) {
@@ -663,19 +787,16 @@ func handleUsage(device string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, dfBin, "-h")
-	out, err := cmd.Output()
-	if err != nil {
+	out, err := runBounded(exec.Command(dfBin, "-h"), 5*time.Second)
+	if err != nil && out == "" {
 		writeJSON(map[string]any{"partitions": []PartitionInfo{}})
 		return
 	}
+	rawOut := []byte(out)
 
 	var parts []PartitionInfo
 	prefix := "/dev/" + device
-	scanner := bufio.NewScanner(bytes.NewReader(out))
+	scanner := bufio.NewScanner(bytes.NewReader(rawOut))
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.HasPrefix(line, prefix) || len(line) <= len(prefix) {
