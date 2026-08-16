@@ -1433,19 +1433,20 @@ function tmpfsClean(mount) {
         if (!dirs.length) {
             var th = document.getElementById('tmpfs-clean-threshold');
             var mb = th ? parseInt(th.value, 10) : (1 << 20);
-            res.innerHTML = '<p style="padding:0.5rem 0;">Папок размером от ' + fmtBytesJS(mb) + ' нет.</p>';
+            res.innerHTML = '<p style="padding:0.5rem 0;">Объектов размером от ' + fmtBytesJS(mb) + ' нет.</p>';
             return;
         }
         var rows = dirs.map(function(d) {
+            var icon = d.type === 'file' ? 'file' : 'folder';
             return '<tr>' +
                 '<td style="padding:4px 6px;width:30px;"><input type="checkbox" class="tmpfs-clean-cb" data-path="' + escapeHtml(d.path) + '"></td>' +
-                '<td><span class="file-icon folder"><svg class="icon" width="16" height="16"><use href="'+ICONS+'#icon-folder"/></svg></span> ' + escapeHtml(d.name) + '</td>' +
+                '<td><span class="file-icon ' + icon + '"><svg class="icon" width="16" height="16"><use href="'+ICONS+'#icon-' + icon + '"/></svg></span> ' + escapeHtml(d.name) + '</td>' +
                 '<td style="text-align:right;white-space:nowrap;">' + fmtBytesJS(d.bytes) + '</td>' +
-                '<td style="text-align:right;color:var(--muted, #999);white-space:nowrap;">' + d.files + ' файлов</td>' +
+                '<td style="text-align:right;color:var(--muted, #999);white-space:nowrap;">' + (d.type === 'file' ? 'файл' : d.files + ' файлов') + '</td>' +
                 '</tr>';
         }).join('');
         res.innerHTML =
-            '<p style="margin:0 0 6px;color:var(--muted,#999);font-size:13px;">Выбрано <span id="clean-count">0</span> из ' + dirs.length + ' · показываются закрытые/свободные папки</p>' +
+            '<p style="margin:0 0 6px;color:var(--muted,#999);font-size:13px;">Выбрано <span id="clean-count">0</span> из ' + dirs.length + ' · показываются файлы и папки</p>' +
             '<table class="file-table" style="width:100%;"><tbody>' + rows + '</tbody></table>' +
             '<label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;">' +
             '<input type="checkbox" id="clean-select-all"> Выбрать все</label>' +

@@ -22,12 +22,13 @@ var tmpfsProtected = map[string]bool{
 	"entware": true,
 }
 
-// CleanDir — найденная подпапка, кандидат на удаление.
+// CleanDir — найденный объект (подпапка или файл), кандидат на удаление.
 type CleanDir struct {
 	Name  string `json:"name"`
 	Path  string `json:"path"`
 	Bytes int64  `json:"bytes"`
 	Files int    `json:"files"`
+	Type  string `json:"type"` // "dir" | "file"
 }
 
 type cleanScanResponse struct {
@@ -100,21 +101,29 @@ func scanTmpClean() {
 		}
 		full := path + "/" + name
 		info, err := os.Lstat(full)
-		if err != nil || !info.IsDir() {
+		if err != nil {
 			continue
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			continue
 		}
-		// не уходим в другие точки монтирования
-		if devOf(info) != rootDev {
-			continue
+		if info.IsDir() {
+			// не уходим в другие точки монтирования
+			if devOf(info) != rootDev {
+				continue
+			}
+			bytes, files := dirSizePath(full)
+			if bytes < minBytes {
+				continue
+			}
+			dirs = append(dirs, CleanDir{Name: name, Path: full, Bytes: bytes, Files: files, Type: "dir"})
+		} else {
+			// крупный файл — тоже кандидат на очистку
+			if info.Size() < minBytes {
+				continue
+			}
+			dirs = append(dirs, CleanDir{Name: name, Path: full, Bytes: info.Size(), Files: 1, Type: "file"})
 		}
-		bytes, files := dirSizePath(full)
-		if bytes < minBytes {
-			continue
-		}
-		dirs = append(dirs, CleanDir{Name: name, Path: full, Bytes: bytes, Files: files})
 	}
 
 	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Bytes > dirs[j].Bytes })
@@ -170,9 +179,21 @@ func deleteTmpClean() {
 		if p == "/" {
 			continue
 		}
-		if err := os.RemoveAll(p); err != nil {
+		fi, err := os.Stat(p)
+		if err != nil {
 			logDeleteAction("WARN", fmt.Sprintf("Не удалось очистить: %s (%v)", p, err))
 			continue
+		}
+		if fi.IsDir() {
+			if err := os.RemoveAll(p); err != nil {
+				logDeleteAction("WARN", fmt.Sprintf("Не удалось очистить: %s (%v)", p, err))
+				continue
+			}
+		} else {
+			if err := os.Remove(p); err != nil {
+				logDeleteAction("WARN", fmt.Sprintf("Не удалось удалить файл: %s (%v)", p, err))
+				continue
+			}
 		}
 		logDeleteAction("INFO", fmt.Sprintf("Тmpfs-очистка: удалено %s", p))
 		deleted++
