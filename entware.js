@@ -665,6 +665,69 @@ function actionCell(row) {
     </form>`;
 }
 
+let pkgSortCol = -1;
+let pkgSortAsc = true;
+
+function pkgSortValue(text, col) {
+    text = (text || '').trim();
+    if (col === 1) { // версия: "1.0.3 → 1.0.4" — сортируем по текущей (до стрелки)
+        const nums = text.split('→')[0].split('.').map(s => parseFloat(s) || 0);
+        return nums;
+    }
+    if (col === 2) { // дата установки: «—» в конец
+        if (text === '—') return '~~~~';
+        return text.toLowerCase();
+    }
+    if (col === 3) { // статус: сначала требующие действия
+        if (text === 'есть обновление') return 0;
+        if (text === 'установлен') return 1;
+        return 2;
+    }
+    return text.toLowerCase();
+}
+
+function sortPkgTable(table) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const col = pkgSortCol;
+    rows.sort((a, b) => {
+        const av = pkgSortValue(a.cells[col]?.innerText || '', col);
+        const bv = pkgSortValue(b.cells[col]?.innerText || '', col);
+        let cmp;
+        if (Array.isArray(av)) {
+            const maxLen = Math.max(av.length, bv.length);
+            for (let i = 0; i < maxLen; i++) {
+                cmp = (av[i] || 0) - (bv[i] || 0);
+                if (cmp !== 0) break;
+            }
+        } else {
+            cmp = av > bv ? 1 : av < bv ? -1 : 0;
+        }
+        return pkgSortAsc ? cmp : -cmp;
+    });
+    rows.forEach(r => tbody.appendChild(r));
+    updateSortIndicators(table, col, pkgSortAsc ? 'asc' : 'desc');
+}
+
+function enablePkgTableSorting(table) {
+    if (table.dataset.pkgSortable) return;
+    table.dataset.pkgSortable = 'true';
+    table.querySelectorAll('thead th').forEach((th, idx) => {
+        if (idx === 4) return; // «Действие» — не сортируем
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            if (pkgSortCol === idx) {
+                pkgSortAsc = !pkgSortAsc;
+            } else {
+                pkgSortCol = idx;
+                pkgSortAsc = true;
+            }
+            sortPkgTable(table);
+        });
+    });
+    if (pkgSortCol >= 0) sortPkgTable(table);
+}
+
 function renderPkgTable(rows) {
     const container = document.getElementById('pkg-table-container');
     if (!container) return;
@@ -709,6 +772,7 @@ function renderPkgTable(rows) {
             showPackageInfo(pkgName);
         });
     }
+    enablePkgTableSorting(table);
 }
 
 async function loadPkgTable() {
