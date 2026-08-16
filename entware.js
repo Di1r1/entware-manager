@@ -668,64 +668,21 @@ function actionCell(row) {
 let pkgSortCol = -1;
 let pkgSortAsc = true;
 
-function pkgSortValue(text, col) {
-    text = (text || '').trim();
-    if (col === 1) { // версия: "1.0.3 → 1.0.4" — сортируем по текущей (до стрелки)
-        const nums = text.split('→')[0].split('.').map(s => parseFloat(s) || 0);
-        return nums;
-    }
-    if (col === 2) { // дата установки: «—» в конец
-        if (text === '—') return '~~~~';
-        return text.toLowerCase();
-    }
-    if (col === 3) { // статус: сначала требующие действия
-        if (text === 'есть обновление') return 0;
-        if (text === 'установлен') return 1;
-        return 2;
-    }
-    return text.toLowerCase();
-}
-
-function sortPkgTable(table) {
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    const col = pkgSortCol;
-    rows.sort((a, b) => {
-        const av = pkgSortValue(a.cells[col]?.innerText || '', col);
-        const bv = pkgSortValue(b.cells[col]?.innerText || '', col);
-        let cmp;
-        if (Array.isArray(av)) {
-            const maxLen = Math.max(av.length, bv.length);
-            for (let i = 0; i < maxLen; i++) {
-                cmp = (av[i] || 0) - (bv[i] || 0);
-                if (cmp !== 0) break;
-            }
-        } else {
-            cmp = av > bv ? 1 : av < bv ? -1 : 0;
-        }
-        return pkgSortAsc ? cmp : -cmp;
-    });
-    rows.forEach(r => tbody.appendChild(r));
-    updateSortIndicators(table, col, pkgSortAsc ? 'asc' : 'desc');
-}
-
 function enablePkgTableSorting(table) {
-    if (table.dataset.pkgSortable) return;
-    table.dataset.pkgSortable = 'true';
-    table.querySelectorAll('thead th').forEach((th, idx) => {
-        if (idx === 4) return; // «Действие» — не сортируем
-        th.style.cursor = 'pointer';
-        th.addEventListener('click', function() {
+    const dataTypes = ['string', 'version', 'date', 'status'];
+    initTableSorting(table, {
+        excludeCol: [4], // «Действие» — не сортируем
+        onSort: function(idx) {
             if (pkgSortCol === idx) {
                 pkgSortAsc = !pkgSortAsc;
             } else {
                 pkgSortCol = idx;
                 pkgSortAsc = true;
             }
-            sortPkgTable(table);
-        });
+            sortTableRows(table, idx, dataTypes[idx], pkgSortAsc ? 'asc' : 'desc');
+        }
     });
-    if (pkgSortCol >= 0) sortPkgTable(table);
+    if (pkgSortCol >= 0) sortTableRows(table, pkgSortCol, dataTypes[pkgSortCol], pkgSortAsc ? 'asc' : 'desc');
 }
 
 function renderPkgTable(rows) {
@@ -2368,43 +2325,66 @@ function sortTable(table, colIndex, dataType = 'string') {
     table.dataset.sortOrder = sortOrder;
 
     rows.sort((a, b) => {
-        let aVal = a.cells[colIndex]?.innerText.trim() || '';
-        let bVal = b.cells[colIndex]?.innerText.trim() || '';
-
-        if (dataType === 'size') {
-            aVal = parseSize(aVal);
-            bVal = parseSize(bVal);
-        } else if (dataType === 'percent' || dataType === 'number') {
-            aVal = parseFloat(aVal) || 0;
-            bVal = parseFloat(bVal) || 0;
-        } else if (dataType === 'speed') {
-            aVal = parseSpeed(aVal);
-            bVal = parseSpeed(bVal);
-        } else if (dataType === 'ip') {
-            const aIP = parseIP(aVal);
-            const bIP = parseIP(bVal);
-            if (sortOrder === 'asc') {
-                for (let i = 0; i < 4; i++) {
-                    if (aIP[i] !== bIP[i]) return (aIP[i] || 0) - (bIP[i] || 0);
-                }
-                return 0;
-            } else {
-                for (let i = 0; i < 4; i++) {
-                    if (aIP[i] !== bIP[i]) return (bIP[i] || 0) - (aIP[i] || 0);
-                }
-                return 0;
-            }
-        }
-
-        if (sortOrder === 'asc') {
-            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-        } else {
-            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-        }
+        const aVal = sortableValue(a.cells[colIndex]?.innerText || '', dataType);
+        const bVal = sortableValue(b.cells[colIndex]?.innerText || '', dataType);
+        const cmp = compareSortValues(aVal, bVal);
+        return sortOrder === 'asc' ? cmp : -cmp;
     });
 
     rows.forEach(row => tbody.appendChild(row));
     updateSortIndicators(table, colIndex, sortOrder);
+}
+
+// Сортирует строки таблицы с явным порядком (для повторного применения сохранённой сортировки).
+function sortTableRows(table, colIndex, dataType, sortOrder) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        const aVal = sortableValue(a.cells[colIndex]?.innerText || '', dataType);
+        const bVal = sortableValue(b.cells[colIndex]?.innerText || '', dataType);
+        const cmp = compareSortValues(aVal, bVal);
+        return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+    updateSortIndicators(table, colIndex, sortOrder);
+}
+
+// Конвертация значения ячейки для сравнения по типу колонки.
+function sortableValue(text, dataType) {
+    if (dataType === 'size') return parseSize(text);
+    if (dataType === 'percent' || dataType === 'number') return parseFloat(text) || 0;
+    if (dataType === 'speed') return parseSpeed(text);
+    if (dataType === 'ip') return parseIP(text);
+    if (dataType === 'version') { // "1.0.3 → 1.0.4" — сравниваем по текущей (до стрелки)
+        const cur = text.split('→')[0].trim();
+        return cur.split('.').map(s => parseFloat(s) || 0);
+    }
+    if (dataType === 'date') { // «—» всегда в конец
+        if (text.trim() === '—') return '~~~~';
+        return text.trim().toLowerCase();
+    }
+    if (dataType === 'status') { // сначала требующие действия
+        const t = text.trim();
+        if (t === 'есть обновление') return 0;
+        if (t === 'установлен') return 1;
+        return 2;
+    }
+    return text.trim().toLowerCase();
+}
+
+// Сравнение значений: числовые массивы (версии/IP) — посегментно, остальное — строкой.
+function compareSortValues(aVal, bVal) {
+    if (Array.isArray(aVal)) {
+        const maxLen = Math.max(aVal.length, bVal.length);
+        for (let i = 0; i < maxLen; i++) {
+            const diff = (aVal[i] || 0) - (bVal[i] || 0);
+            if (diff !== 0) return diff;
+        }
+        return 0;
+    }
+    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
 }
 
 function updateSortIndicators(table, activeCol, sortOrder) {
@@ -2417,28 +2397,38 @@ function updateSortIndicators(table, activeCol, sortOrder) {
     });
 }
 
+// Универсальное включение сортировки: навешивает click на thead th.
+// opts: { excludeCol: number[], onSort: function(idx, dataType) }.
+// onSort — кастомная логика (например, сохранение сортировки), по умолчанию sortTable.
+function initTableSorting(table, opts) {
+    opts = opts || {};
+    if (table.dataset.sortable) return;
+    table.dataset.sortable = 'true';
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach((th, idx) => {
+        if (opts.excludeCol && opts.excludeCol.indexOf(idx) !== -1) return;
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            let dataType = 'string';
+            const columnText = th.innerText.toLowerCase();
+            if (columnText.includes('размер')) {
+                dataType = 'size';
+            } else if (columnText.includes('загрузка')) {
+                dataType = 'percent';
+            }
+            if (opts.onSort) opts.onSort(idx, dataType);
+            else sortTable(table, idx, dataType);
+        });
+    });
+}
+
 function enableTableSorting() {
     const statTables = document.querySelectorAll('.stat-card.tmpfs table, .stat-card.storage table');
     const fileTables = document.querySelectorAll('.file-manager .file-table');
     const allTables = [...statTables, ...fileTables];
 
     allTables.forEach(table => {
-        if (table.dataset.sortable) return;
-        table.dataset.sortable = 'true';
-        const headers = table.querySelectorAll('thead th');
-        headers.forEach((th, idx) => {
-            th.style.cursor = 'pointer';
-            th.addEventListener('click', () => {
-                let dataType = 'string';
-                const columnText = th.innerText.toLowerCase();
-                if (columnText.includes('размер')) {
-                    dataType = 'size';
-                } else if (columnText.includes('загрузка')) {
-                    dataType = 'percent';
-                }
-                sortTable(table, idx, dataType);
-            });
-        });
+        initTableSorting(table);
     });
 }
 
