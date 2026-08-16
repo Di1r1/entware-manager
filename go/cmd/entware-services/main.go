@@ -34,8 +34,6 @@ func main() {
 		services.HandleCheckSyntax()
 	case "check_deps":
 		services.HandleCheckDeps()
-	case "debug":
-		services.HandleDebug()
 	default:
 		services.WriteError("unknown endpoint: " + ep)
 	}

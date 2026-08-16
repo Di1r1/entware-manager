@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -197,7 +199,7 @@ func TestProxyAuthGate(t *testing.T) {
 
 	// Временный конфиг авторизации: пароль включён.
 	auth.ConfigPath = t.TempDir() + "/auth_config.json"
-	os.WriteFile(auth.ConfigPath, []byte(`{"enabled":true,"password_hash":"`+auth.SHA256Hex("secret")+`"}`), 0600)
+	os.WriteFile(auth.ConfigPath, []byte(`{"enabled":true,"password_hash":"`+testHash("secret")+`"}`), 0600)
 	auth.SessionFile = t.TempDir() + "/panel_session"
 	defer func() {
 		auth.ConfigPath = "/opt/web_entware/auth_config.json"
@@ -237,4 +239,9 @@ func TestProxyAuthGate(t *testing.T) {
 			t.Errorf("GET %s с сессией = %d, want 502/503", p, resp.StatusCode)
 		}
 	}
+}
+
+func testHash(password string) string {
+	h := sha256.Sum256([]byte(password))
+	return fmt.Sprintf("%x", h)
 }

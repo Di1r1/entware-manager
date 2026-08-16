@@ -91,12 +91,6 @@ func Enabled() bool {
 	return cfg.Enabled && (cfg.PasswordHash != "" || cfg.Password != "")
 }
 
-// SHA256Hex — хеш для хранения в конфиге.
-func SHA256Hex(password string) string {
-	h := sha256.Sum256([]byte(password))
-	return fmt.Sprintf("%x", h)
-}
-
 // IsCrossSiteOrigin проверяет Origin/Sec-Fetch-Site заголовки.
 // Правило: пустой Origin → allow (старые клиенты, curl);
 // иначе host(и port) из Origin должны совпадать с HTTP_HOST;

@@ -82,11 +82,6 @@ const Menu = (() => {
         renderMenu(items);
     }
 
-    // Получить текущий список пунктов меню
-    function getMenuItems() {
-        return menuItems;
-    }
-
     // Установить активный пункт по имени вкладки
     function setActiveTab(tabName) {
         if (!menuContainer) return;
@@ -100,5 +95,5 @@ const Menu = (() => {
         });
     }
 
-    return { init, getMenuItems, setActiveTab };
+    return { init, setActiveTab };
 })();

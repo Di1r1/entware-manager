@@ -67,7 +67,7 @@ cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
 
 # Проверяем наличие ключевых файлов
 for file in modal.js entware.js monitor.js smart.js style.css index.html icons.svg theme.js \
-  lib/common.sh lib/utils.js lib/smart.sh menu/menu.js menu/menu.json \
+  lib/common.sh lib/utils.js menu/menu.js menu/menu.json \
   cgi-bin/go.cgi \
   cgi-bin/go/entware-pkg cgi-bin/go/entware-stats cgi-bin/go/entware-net \
   cgi-bin/go/entware-logger cgi-bin/go/entware-services \
@@ -101,7 +101,6 @@ cat >> "$BACKUP_DIR/CHANGELOG_$APP_VERSION.md" << 'CHANGELOG'
 | Файл | Версия | Описание |
 |------|--------|----------|
 | lib/common.sh | 2.5 | Чистая версия |
-| logger/lib/logging.sh | 1.7 | Исправлен jq |
 | logger/config.cgi | 1.5 | Исправлены пути |
 | cgi-bin/logger/system_log.cgi | 1.8 | Использованы /opt/bin |
 | cgi-bin/crontab_update.cgi | 2.6 | Использует common.sh |

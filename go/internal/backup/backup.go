@@ -25,9 +25,7 @@ const (
 )
 
 type configFile struct {
-	Path    string                  // relative to webRoot
-	AbsPath string                  // absolute path (empty = generate)
-	GenFn   func() (string, string) // returns (filename, content)
+	Path string // relative to webRoot
 }
 
 var configs = []configFile{

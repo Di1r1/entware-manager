@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -95,7 +97,7 @@ func TestCheckPassword(t *testing.T) {
 		}
 	})
 	t.Run("wrong hash denies", func(t *testing.T) {
-		h := SHA256Hex("correct")
+		h := testHash("correct")
 		os.WriteFile(ConfigPath, []byte(`{"enabled":true,"password_hash":"`+h+`"}`), 0644)
 		if CheckPassword("wrong") {
 			t.Errorf("wrong password accepted")
@@ -110,4 +112,10 @@ func TestCheckPassword(t *testing.T) {
 			t.Errorf("missing file: password accepted")
 		}
 	})
+}
+
+// testHash — SHA-256 hex (аналог удалённого SHA256Hex).
+func testHash(password string) string {
+	h := sha256.Sum256([]byte(password))
+	return fmt.Sprintf("%x", h)
 }

@@ -111,7 +111,7 @@ func TestEnabled(t *testing.T) {
 	}
 
 	// enabled=true с hash → защита включена
-	h := SHA256Hex("secret")
+	h := testHash("secret")
 	os.WriteFile(ConfigPath, []byte(`{"enabled":true,"password_hash":"`+h+`"}`), 0644)
 	if !Enabled() {
 		t.Error("Enabled() = false при enabled=true, want true")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -83,6 +84,15 @@ func HandleDeleteFile() {
 }
 
 func isAllowedDeletePath(p string) bool {
+	if p == "" {
+		return false
+	}
+	if strings.Contains(p, "..") {
+		return false
+	}
+	if filepath.Clean(p) != p {
+		return false
+	}
 	return p == "/tmp" || p == "/dev/shm" ||
 		strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
 }
