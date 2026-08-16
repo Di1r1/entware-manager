@@ -283,6 +283,20 @@ func parseIntPtr(s string) *int {
 	return &n
 }
 
+// parseNvmeValue извлекает числовое значение из NVMe-строки «ключ: значение»:
+// «Temperature: 36 Celsius» → "36"; «Power On Hours: 6,671» → "6671".
+func parseNvmeValue(output, key string) string {
+	v := extractFieldAfter(output, key)
+	if v == "" {
+		return ""
+	}
+	fields := strings.Fields(v)
+	if len(fields) == 0 {
+		return ""
+	}
+	return strings.ReplaceAll(fields[0], ",", "")
+}
+
 func HandleSmart() {
 	if !isGET() && !isPOST() {
 		notAllowed()
@@ -474,6 +488,17 @@ func diskInfo(name string) DiskInfo {
 		powerOn = extractField(output, "9", 9)
 	}
 	powerOn = strings.TrimLeft(powerOn, "+")
+
+	// NVMe: «Temperature: 36 Celsius» / «Power On Hours: 6,671» — формат «ключ: значение»,
+	// таблицы атрибутов SATA нет. SATA-приоритет сохранён: ветка только для nvme.
+	if displayType == "nvme" {
+		if temperature == "" {
+			temperature = parseNvmeValue(output, "Temperature")
+		}
+		if powerOn == "" {
+			powerOn = parseNvmeValue(output, "Power On Hours")
+		}
+	}
 
 	attrHealth := "ok"
 	if health == "\u2014" {
@@ -710,17 +735,32 @@ func handleSelftestStatus(device string) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if strings.HasPrefix(line, "#") {
-			fields := strings.Fields(line)
-			if len(fields) >= 5 {
-				status = fields[4]
-				last := fields[len(fields)-1]
-				if last != "-" {
-					progress, _ = strconv.Atoi(last)
-				}
-				break
-			}
+			status, progress = parseSelftestLine(line)
+			break
 		}
 	}
 
 	writeJSON(map[string]any{"status": status, "progress": progress})
+}
+
+// parseSelftestLine разбирает строку журнала самотеста:
+// «# 1  Short offline  Completed without error 00% …» → status="Completed", progress=100;
+// «# 1  Extended offline  Self-test routine in progress 90% …» → status="Self-test", progress=10.
+// Remaining — % оставшегося времени, индекс поля плавает (7 vs 8) — ищем токен с «%».
+func parseSelftestLine(line string) (string, int) {
+	fields := strings.Fields(line)
+	if len(fields) < 5 {
+		return "No tests logged", 100
+	}
+	status := fields[4]
+	progress := 100
+	for _, f := range fields {
+		if strings.HasSuffix(f, "%") {
+			if r, err := strconv.Atoi(strings.TrimSuffix(f, "%")); err == nil && r >= 0 && r <= 100 {
+				progress = 100 - r
+			}
+			break
+		}
+	}
+	return status, progress
 }

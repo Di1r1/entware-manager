@@ -276,3 +276,42 @@ func TestHandleSmart_POSTMethodNotAllowed(t *testing.T) {
 		t.Fatal("expected output")
 	}
 }
+
+func TestParseNvmeValue(t *testing.T) {
+	cases := []struct {
+		output string
+		key    string
+		want   string
+	}{
+		{"Temperature:                        36 Celsius", "Temperature", "36"},
+		{"Power On Hours:                     6,671", "Power On Hours", "6671"},
+		{"", "Temperature", ""},
+		// SATA-строка таблицы атрибутов: слово Temperature есть, но без «:» → пусто.
+		{"194 Temperature_Celsius 0x0032 048 048 045 - 45", "Temperature", ""},
+	}
+	for _, c := range cases {
+		if got := parseNvmeValue(c.output, c.key); got != c.want {
+			t.Errorf("parseNvmeValue(%q, %q): expected %q, got %q", c.output, c.key, c.want, got)
+		}
+	}
+}
+
+func TestParseSelftestLine(t *testing.T) {
+	cases := []struct {
+		line       string
+		wantStatus string
+		wantProg   int
+	}{
+		{"# 1  Short offline  Completed without error 00% 1592 1434139663 -", "Completed", 100},
+		{"# 1  Extended offline  Self-test routine in progress 90% 1000 123456789 -", "Self-test", 10},
+		{"# 2  Short offline  Completed: read failure 60% 5 123456789 -", "Completed:", 40},
+		{"# 1  Short offline  Completed without error 00% 1592 1434139663 5", "Completed", 100},
+		{"no hash prefix", "No tests logged", 100},
+	}
+	for _, c := range cases {
+		status, prog := parseSelftestLine(c.line)
+		if status != c.wantStatus || prog != c.wantProg {
+			t.Errorf("parseSelftestLine(%q): expected (%q,%d), got (%q,%d)", c.line, c.wantStatus, c.wantProg, status, prog)
+		}
+	}
+}
