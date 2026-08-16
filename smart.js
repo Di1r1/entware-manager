@@ -13,8 +13,6 @@ function formatSize(bytes) {
 }
 
 const SMART = {
-    intervalId: null,
-    currentTestDevice: null,
     testPollInterval: null,
 
     // Описания атрибутов для всплывающих подсказок
@@ -47,10 +45,6 @@ const SMART = {
     },
 
     stopUpdates() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
         if (this.testPollInterval) {
             clearInterval(this.testPollInterval);
             this.testPollInterval = null;
@@ -363,13 +357,13 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             <h3 style="margin-bottom: 12px;">Самодиагностика: ${escapeHtml(device)}</h3>
             <p>Выберите тип теста:</p>
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-                <button class="packages-delete-btn" onclick="SMART.runTest('${escapeHtml(device)}', 'short')" style="background: #3182ce;">
+                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="short" style="background: #3182ce;">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Короткий тест (~2 мин)
                 </button>
-                <button class="packages-delete-btn" onclick="SMART.runTest('${escapeHtml(device)}', 'long')" style="background: #2c7a7b;">
+                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="long" style="background: #2c7a7b;">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Полный тест (~60-120 мин)
                 </button>
-                <button class="packages-delete-btn" onclick="SMART.runTest('${escapeHtml(device)}', 'conveyance')" style="background: #c05621;">
+                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="conveyance" style="background: #c05621;">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Conveyance тест (~5 мин)
                 </button>
             </div>
@@ -378,12 +372,15 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             </div>
         `;
         Modal.show(html, false, `SMART тест — ${escapeHtml(device)}`);
+        document.querySelectorAll('#modalBody button[data-test-type]').forEach(btn => {
+            btn.addEventListener('click', () => this.runTest(btn.dataset.device, btn.dataset.testType));
+        });
     },
 
     async runTest(device, type) {
         const statusDiv = document.getElementById('smartTestStatus');
         if (!statusDiv) return;
-        statusDiv.innerHTML = `Запуск ${type} теста...`;
+        statusDiv.innerHTML = `Запуск ${escapeHtml(type)} теста...`;
 
         try {
             const data = await apiPost('/smart.cgi', `action=selftest&device=${encodeURIComponent(device)}&type=${type}`);
@@ -392,14 +389,18 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             statusDiv.innerHTML = `Тест запущен: ${escapeHtml(data.message || 'OK')}`;
 
             // Polling статуса
-            this.currentTestDevice = device;
             let attempts = 0;
             const maxAttempts = 240;
             const poll = async () => {
+                if (statusDiv.offsetParent === null) {
+                    clearInterval(this.testPollInterval);
+                    this.testPollInterval = null;
+                    return;
+                }
                 try {
                     const d = await apiGet(`/smart.cgi?action=selftest&device=${encodeURIComponent(device)}`);
                     if (d.status) {
-                        statusDiv.innerHTML = `Статус: ${escapeHtml(d.status)}<br>Прогресс: ${d.progress || '?'}%`;
+                        statusDiv.innerHTML = `Статус: ${escapeHtml(d.status)}<br>Прогресс: ${escapeHtml(d.progress || '?')}%`;
                         if (d.status.includes('Completed') || d.status.includes('Aborted') || d.status.includes('Interrupted')) {
                             clearInterval(this.testPollInterval);
                             this.testPollInterval = null;
@@ -412,7 +413,7 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             if (this.testPollInterval) clearInterval(this.testPollInterval);
             this.testPollInterval = setInterval(poll, 5000);
         } catch (err) {
-            statusDiv.innerHTML = `Ошибка: ${err.message}`;
+            statusDiv.innerHTML = `Ошибка: ${escapeHtml(err.message)}`;
         }
     }
 };

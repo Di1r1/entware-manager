@@ -362,14 +362,14 @@ async function loadTab(tabName) {
             initHelpSearch();
             Menu.setActiveTab(tabName);
         } catch (err) {
-            contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${err.message}</p>`;
+            contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${escapeHtml(err.message)}</p>`;
             Menu.setActiveTab(tabName);
         }
         return;
     }
     if (tabName === 'smart') {
         if (!window.SMART_LOADED) {
-            await loadScript('/entware-manager/smart.js?v=1');
+            await loadScript('/entware-manager/smart.js?v=2');
             window.SMART_LOADED = true;
         }
         SMART.init(); Menu.setActiveTab(tabName); return;
@@ -394,7 +394,7 @@ async function loadTab(tabName) {
         }
         Menu.setActiveTab(tabName);
     } catch (err) {
-        contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${err.message}</p>`;
+        contentDiv.innerHTML = `<p class="error">Ошибка загрузки: ${escapeHtml(err.message)}</p>`;
         Menu.setActiveTab(tabName);
     }
 }
@@ -1137,7 +1137,7 @@ async function fetchTtydStatus() {
         const data = await apiGet('/ttyd_control.cgi');
         updateTtydStatus(data);
     } catch (err) {
-        document.getElementById('ttyd-status').innerHTML = `<p class="error">Ошибка: ${err.message}</p>`;
+        document.getElementById('ttyd-status').innerHTML = `<p class="error">Ошибка: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -1682,12 +1682,12 @@ window.restoreBackup = async function(input) {
         });
         const result = await response.json();
         if (result.status === 'ok') {
-            statusEl.innerHTML = '<span style="color:#2ecc71;">✓ ' + (result.message || 'Восстановлено') + '</span>';
+            statusEl.innerHTML = '<span style="color:#2ecc71;">✓ ' + escapeHtml(result.message || 'Восстановлено') + '</span>';
         } else {
-            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (result.message || 'Неизвестная ошибка') + '</span>';
+            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(result.message || 'Неизвестная ошибка') + '</span>';
         }
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
     }
     input.value = '';
 };
@@ -1720,7 +1720,7 @@ window.prepareOffline = async function() {
             '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Перенесите его на целевой роутер в <b>/opt/tmp/</b> (через SMB или USB) и выполните:</p>' +
             '<pre style="margin-top:8px;background:var(--pre-bg);padding:0.5rem;font-size:0.85rem;white-space:pre-wrap;">tar xzf ' + filename + '\ncd ' + filename.replace('.tar.gz', '') + '\nsh install-offline.sh</pre>';
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
     }
 };
 
@@ -1731,9 +1731,9 @@ async function loadUpdateInfo() {
         if (data.has_update) {
             document.getElementById('update-version').textContent = data.latest;
             document.getElementById('update-run-btn').style.display = '';
-            document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + data.latest + '</span>';
+            document.getElementById('update-status').innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + escapeHtml(data.latest) + '</span>';
         } else if (data.error) {
-            document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">' + data.error + '</span>';
+            document.getElementById('update-status').innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(data.error) + '</span>';
         } else {
             document.getElementById('update-status').innerHTML = '<span style="color:var(--text-muted);">Установлена последняя версия</span>';
         }
@@ -1753,14 +1753,14 @@ async function checkUpdate() {
         if (data.has_update) {
             document.getElementById('update-version').textContent = data.latest;
             document.getElementById('update-run-btn').style.display = '';
-            statusEl.innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + data.latest + '</span>';
+            statusEl.innerHTML = '<span style="color:#2ecc71;">Доступна версия ' + escapeHtml(data.latest) + '</span>';
         } else if (data.error) {
-            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.error + '</span>';
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(data.error) + '</span>';
         } else {
             statusEl.innerHTML = '<span style="color:var(--text-muted);">Установлена последняя версия</span>';
         }
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
     }
     btn.disabled = false;
 }
@@ -1777,7 +1777,7 @@ async function runUpdate() {
     try {
         const data = await apiPost('/update_run.cgi', '');
         if (data.status === 'error') {
-            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.message + '</span>';
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(data.message) + '</span>';
             btn.disabled = false;
             return;
         }
@@ -1786,7 +1786,7 @@ async function runUpdate() {
         // Poll status every 2 seconds
         pollUpdateStatus();
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
         btn.disabled = false;
     }
 }
@@ -1808,7 +1808,7 @@ async function reinstallUpdate() {
     try {
         const data = await apiPost('/update_run.cgi', 'mode=reinstall');
         if (data.status === 'error') {
-            statusEl.innerHTML = '<span style="color:#e53e3e;">' + data.message + '</span>';
+            statusEl.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(data.message) + '</span>';
             btn.disabled = false;
             return;
         }
@@ -1816,7 +1816,7 @@ async function reinstallUpdate() {
 
         pollUpdateStatus();
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
         btn.disabled = false;
     }
 }
@@ -1945,7 +1945,7 @@ window.saveAuthConfig = async function() {
             statusEl.previousElementSibling.disabled = false;
         }
     } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + err.message + '</span>';
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
     }
 };
 
@@ -2151,7 +2151,7 @@ async function fetchServices() {
         const services = await apiGet('/services.cgi');
         renderServices(services);
     } catch (err) {
-        container.innerHTML = `<p class="error">Ошибка загрузки служб: ${err.message}</p>`;
+        container.innerHTML = `<p class="error">Ошибка загрузки служб: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -2164,9 +2164,9 @@ function renderServices(services) {
             const displayPid = escapeHtml(pids[0]);
             if (pids.length > 1) {
                 const extra = pids.length - 1;
-                pidHtml = `<span class="pid-link" onclick="showProcessList('${escapeHtml(s.name)}')">${displayPid} <span class="pid-badge">+${extra}</span></span>`;
+                pidHtml = `<span class="pid-link" data-service-name="${escapeHtml(s.name)}">${displayPid} <span class="pid-badge">+${extra}</span></span>`;
             } else {
-                pidHtml = `<span class="pid-link" onclick="showProcessList('${escapeHtml(s.name)}')">${displayPid}</span>`;
+                pidHtml = `<span class="pid-link" data-service-name="${escapeHtml(s.name)}">${displayPid}</span>`;
             }
         }
         html += `  <tr>
@@ -2179,15 +2179,26 @@ function renderServices(services) {
                 </svg>
               </td>
               <td>
-                <button class="packages-delete-btn" style="background:#4a5568;" onclick="serviceAction('${s.name}', 'start')" ${s.status === 'running' ? 'disabled' : ''}>Запустить</button>
-                <button class="packages-delete-btn" style="background:#e53e3e;" onclick="serviceAction('${s.name}', 'stop')" ${s.status !== 'running' ? 'disabled' : ''}>Остановить</button>
-                <button class="packages-delete-btn" style="background:#f59e0b;" onclick="serviceAction('${s.name}', 'restart')" ${s.status !== 'running' ? 'disabled' : ''}>Перезапустить</button>
-                <button class="packages-delete-btn" style="background:${s.enabled ? '#e53e3e' : '#27ae60'};" onclick="serviceAction('${s.name}', '${s.enabled ? 'disable' : 'enable'}')">Авто</button>
+                <button class="packages-delete-btn" style="background:#4a5568;" data-service-name="${escapeHtml(s.name)}" data-service-action="start" ${s.status === 'running' ? 'disabled' : ''}>Запустить</button>
+                <button class="packages-delete-btn" style="background:#e53e3e;" data-service-name="${escapeHtml(s.name)}" data-service-action="stop" ${s.status !== 'running' ? 'disabled' : ''}>Остановить</button>
+                <button class="packages-delete-btn" style="background:#f59e0b;" data-service-name="${escapeHtml(s.name)}" data-service-action="restart" ${s.status !== 'running' ? 'disabled' : ''}>Перезапустить</button>
+                <button class="packages-delete-btn" style="background:${s.enabled ? '#e53e3e' : '#27ae60'};" data-service-name="${escapeHtml(s.name)}" data-service-action="${s.enabled ? 'disable' : 'enable'}">Авто</button>
               </td>
           </tr>`;
     });
     html += '</tbody></table>';
-    document.getElementById('services-list').innerHTML = html;
+    const servicesContainer = document.getElementById('services-list');
+    servicesContainer.innerHTML = html;
+    servicesContainer.querySelectorAll('[data-service-name]').forEach(el => {
+        el.addEventListener('click', () => {
+            const name = el.dataset.serviceName;
+            if (el.dataset.serviceAction) {
+                serviceAction(name, el.dataset.serviceAction);
+            } else {
+                showProcessList(name);
+            }
+        });
+    });
 }
 
 window.showProcessList = function(serviceName) {
@@ -2205,13 +2216,16 @@ window.showProcessList = function(serviceName) {
             pids.forEach(pid => {
                 html += `<div class="process-item">
                     <span class="process-pid">PID: <b>${escapeHtml(pid)}</b></span>
-                    <button class="packages-delete-btn process-kill-btn" onclick="killProcess('${escapeHtml(pid)}', '${escapeHtml(serviceName)}')">
+                    <button class="packages-delete-btn process-kill-btn" data-pid="${escapeHtml(pid)}" data-service-name="${escapeHtml(serviceName)}">
                         <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Убить
                     </button>
                 </div>`;
             });
             html += '</div>';
             Modal.show(html, false, 'Процессы: ' + escapeHtml(serviceName));
+            document.querySelectorAll('#modalBody .process-kill-btn').forEach(btn => {
+                btn.addEventListener('click', () => killProcess(btn.dataset.pid, btn.dataset.serviceName));
+            });
         })
         .catch(err => Modal.error('Ошибка загрузки процессов: ' + err.message));
 };
