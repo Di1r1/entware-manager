@@ -1557,15 +1557,47 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
 /* Вложенная строка с заполненностью разделов (клик по «Размер») */
 #smartTable tbody tr.smart-usage-row { cursor: default; }
 #smartTable tbody tr.smart-usage-row > td {
-    background: var(--input-bg);
     padding: 0;
+    background: var(--content-bg);
 }
 .smart-usage-cell {
-    padding: 12px 14px;
+    margin: 8px 14px 12px;
+    padding: 4px 8px;
     font-size: 13px;
     color: var(--text-muted);
+    background: var(--content-bg);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.smart-usage-cell .packages-table { margin: 0; }
+.smart-usage-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--btn-hover-shadow), 0 0 15px var(--accent);
+}
+.smart-usage-cell .packages-table {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    background: transparent;
+}
+.smart-usage-cell .packages-table thead th { position: static; }
+.smart-usage-cell .packages-table th {
+    background: transparent;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    font-size: 11px;
+    backdrop-filter: none;
+}
+.smart-usage-cell .packages-table td {
+    padding: 10px 12px;
+    background: transparent;
+}
+.smart-usage-cell .packages-table tbody tr:last-child td { border-bottom: none; }
+#smartTable tbody tr.smart-usage-row:hover td { background-color: var(--content-bg) !important; }
+#smartTable tbody tr.usage-open:hover td { background-color: var(--table-row-even) !important; }
+.smart-usage-cell .packages-table tbody tr:hover td { background-color: transparent !important; }
 .smart-usage-row td .smart-usage-cell .packages-table tbody tr { cursor: default; }
 .usage-arrow {
     display: inline-flex;
