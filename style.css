@@ -1554,6 +1554,44 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
 .clickable-usage:hover { opacity: 0.7; }
 .clickable-device { font-weight: 600; text-decoration: underline dotted; text-underline-offset: 2px; }
 
+/* Вложенная строка с заполненностью разделов (клик по «Размер») */
+#smartTable tbody tr.smart-usage-row { cursor: default; }
+#smartTable tbody tr.smart-usage-row > td {
+    background: var(--input-bg);
+    padding: 0;
+}
+.smart-usage-cell {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.smart-usage-cell .packages-table { margin: 0; }
+.smart-usage-row td .smart-usage-cell .packages-table tbody tr { cursor: default; }
+.usage-arrow {
+    display: inline-flex;
+    vertical-align: middle;
+    color: var(--text-muted);
+    transition: transform 0.25s ease;
+    margin-right: 4px;
+}
+tr.usage-open .usage-arrow { transform: rotate(90deg); }
+.smart-usage-row { animation: smartUsageIn 0.25s ease; }
+@keyframes smartUsageIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.smart-usage-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--input-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    vertical-align: -2px;
+    margin-right: 8px;
+    animation: spin 0.8s linear infinite;
+}
+
 /* Кликабельное имя атрибута в модалке */
 .attr-name-clickable {
     cursor: pointer;

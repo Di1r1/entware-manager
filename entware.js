@@ -369,7 +369,7 @@ async function loadTab(tabName) {
     }
     if (tabName === 'smart') {
         if (!window.SMART_LOADED) {
-            await loadScript('/entware-manager/smart.js?v=2');
+            await loadScript('/entware-manager/smart.js?v=3');
             window.SMART_LOADED = true;
         }
         SMART.init(); Menu.setActiveTab(tabName); return;

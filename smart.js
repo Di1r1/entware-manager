@@ -146,7 +146,7 @@ const SMART = {
                     <td class="clickable-device">${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
-                    <td class="clickable-usage">${formatSize(disk.size)}</td>
+                    <td class="clickable-usage"><span class="usage-arrow"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#icon-arrow-right"/></svg></span> ${formatSize(disk.size)}</td>
                     <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
                     <td class="clickable-health">${healthClass ? `<span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#${healthIcon}"/></svg> ${escapeHtml(healthText)}</span>` : `<span style="color: var(--text-muted);">${escapeHtml(healthText)}</span>`}</td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
@@ -161,7 +161,10 @@ const SMART = {
     bindClickZones() {
         const tbody = document.getElementById('smartTableBody');
         if (!tbody) return;
+        if (tbody.dataset.clickBound) return;
+        tbody.dataset.clickBound = '1';
         tbody.addEventListener('click', (e) => {
+            if (e.target.closest('.smart-usage-row')) return;
             const row = e.target.closest('tr');
             if (!row || !row.dataset.device) return;
             const device = row.dataset.device;
@@ -172,7 +175,7 @@ const SMART = {
             } else if (e.target.closest('.clickable-device')) {
                 this.showInfo(device);
             } else if (e.target.closest('.clickable-usage')) {
-                this.showUsage(device);
+                this.toggleUsage(row, device);
             } else {
                 this.showAttributes(device);
             }
@@ -196,23 +199,42 @@ ${escapeHtml(data.info || 'Нет данных')}
         }
     },
 
-    async showUsage(device) {
-        Modal.loading('Загрузка разделов...');
+    async toggleUsage(row, device) {
+        const tbody = document.getElementById('smartTableBody');
+        if (!tbody) return;
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('smart-usage-hidden')) {
+            next.classList.remove('smart-usage-hidden');
+            next.style.display = '';
+            row.classList.add('usage-open');
+            return;
+        }
+        if (next && next.classList.contains('smart-usage-loaded')) {
+            next.classList.add('smart-usage-hidden');
+            next.style.display = 'none';
+            row.classList.remove('usage-open');
+            return;
+        }
+        if (next && next.classList.contains('smart-usage-row')) {
+            next.remove();
+            row.classList.remove('usage-open');
+            return;
+        }
+        row.classList.add('usage-open');
+        const usageRow = document.createElement('tr');
+        usageRow.className = 'smart-usage-row smart-usage-loading';
+        usageRow.innerHTML = '<td colspan="8"><div class="smart-usage-cell"><span class="smart-usage-spinner"></span> Загрузка разделов...</div></td>';
+        row.insertAdjacentElement('afterend', usageRow);
         try {
             const data = await apiGet(`/smart.cgi?action=usage&device=${encodeURIComponent(device)}`);
-            if (data.error) { Modal.error(data.error); return; }
+            if (this.rowRemoved(usageRow, row)) return;
             const parts = data.partitions || [];
             if (parts.length === 0) {
-                Modal.info('Разделы не найдены или df недоступен.', 'Разделы — ' + device);
+                usageRow.innerHTML = '<td colspan="8"><div class="smart-usage-cell">Разделы не найдены или df недоступен.</div></td>';
                 return;
             }
-            let html = `
-                <h3 style="margin-bottom: 12px;">Разделы: ${escapeHtml(device)}</h3>
-                <div style="overflow-x: auto;">
-                    <table class="packages-table" style="width: 100%;">
-                        <thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead>
-                        <tbody>
-            `;
+            let html = '<td colspan="8"><div class="smart-usage-cell"><div style="overflow-x:auto;"><table class="packages-table" style="width:100%;">';
+            html += '<thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
             parts.forEach(p => {
                 const pct = parseInt(p.pct) || 0;
                 const color = pct >= 90 ? '#e53e3e' : (pct >= 80 ? '#d69e2e' : '#38a169');
@@ -225,11 +247,18 @@ ${escapeHtml(data.info || 'Нет данных')}
                     <td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:var(--input-bg);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div></div><span style="font-weight:600;color:${color};">${pct}%</span></div></td>
                 </tr>`;
             });
-            html += `</tbody></table></div>`;
-            Modal.show(html, false, `Разделы — ${escapeHtml(device)}`);
+            html += '</tbody></table></div></div></td>';
+            usageRow.innerHTML = html;
+            usageRow.classList.remove('smart-usage-loading');
+            usageRow.classList.add('smart-usage-loaded');
         } catch (err) {
-            Modal.error('Ошибка: ' + err.message);
+            if (this.rowRemoved(usageRow, row)) return;
+            usageRow.innerHTML = `<td colspan="8"><div class="smart-usage-cell">Ошибка: ${escapeHtml(err.message)}</div></td>`;
         }
+    },
+
+    rowRemoved(usageRow, parentRow) {
+        return !usageRow.isConnected || parentRow.style.display === 'none';
     },
 
     async showAttributes(device) {

@@ -99,7 +99,7 @@ func showPrettyConfig() {
 <head>
 	<meta charset="UTF-8">
 	<title>Настройки логирования</title>
-	<link rel="stylesheet" href="/entware-manager/style.css?v=32">
+	<link rel="stylesheet" href="/entware-manager/style.css?v=33">
 	<script src="/entware-manager/theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();
