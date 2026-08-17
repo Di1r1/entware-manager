@@ -26,6 +26,7 @@ func HandleLogin() {
 		return
 	}
 	if auth.IsCrossSiteOrigin() {
+		logAuthAction("WARN", "Запрос из недоверенного источника (CSRF)")
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Запрос из недоверенного источника (CSRF)"})
 		return
 	}
@@ -35,18 +36,22 @@ func HandleLogin() {
 
 	allow, reason := auth.EnabledReports()
 	if !allow {
+		logAuthAction("WARN", "Вход отклонён: "+reason)
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": reason})
 		return
 	}
 	if !auth.CheckPassword(password) {
 		// антибрутфорс: задержка перед ответом
 		time.Sleep(1 * time.Second)
+		logAuthAction("WARN", "Неверный пароль при входе")
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Неверный пароль"})
 		return
 	}
 
+	logAuthAction("INFO", "Успешный вход")
 	token, err := auth.CreateSession()
 	if err != nil {
+		logAuthAction("WARN", "Не удалось создать сессию")
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Не удалось создать сессию"})
 		return
 	}
@@ -82,4 +87,22 @@ func HandleSession() {
 func writeAuthJSON(v interface{}) {
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	json.NewEncoder(os.Stdout).Encode(v)
+}
+
+// logAuthAction пишет запись о попытке входа в суточный лог защищённых действий
+// /tmp/entware/logs/<дата>.log. Формат строки единый для статистики:
+// [время] [уровень] [IP клиента] [pid] [login.cgi] сообщение.
+func logAuthAction(level, msg string) {
+	logFile := fmt.Sprintf("/tmp/entware/logs/%s.log", time.Now().Format("2006-01-02"))
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "0.0.0.0"
+	}
+	entry := fmt.Sprintf("[%s] [%s] [%s] [%d] [login.cgi] %s\n", ts, level, ip, os.Getpid(), msg)
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		f.WriteString(entry)
+		f.Close()
+	}
 }
