@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 )
+
+// serviceNameRe — допустимое имя службы (защита от path traversal в findScript).
+var serviceNameRe = regexp.MustCompile(`^[0-9A-Za-z_-]+$`)
 
 func WriteJSON(v any) {
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")

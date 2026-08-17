@@ -33,6 +33,13 @@ func HandleServiceAction() {
 		return
 	}
 
+	// Валидация имени службы: только буквы/цифры/"_"/"-" — защита от path traversal
+	// (name="../../bin/reboot" не должен приводить к выполнению произвольного файла).
+	if !serviceNameRe.MatchString(name) || len(name) > 64 {
+		WriteJSON(map[string]string{"error": "Недопустимое имя службы"})
+		return
+	}
+
 	switch action {
 	case "start", "stop", "restart", "enable", "disable":
 	default:

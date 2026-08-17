@@ -100,6 +100,12 @@ func isAllowedDeletePath(p string) bool {
 func checkFilemgrAuth(password string) bool {
 	data, err := os.ReadFile("/opt/web_entware/auth_config.json")
 	if err != nil {
+		// Конфига нет: если панель уже защищалась (marker) — fail-closed
+		// (битый/удалённый конфиг не снимает защиту). Первичная установка
+		// без пароля — панель открыта по умолчанию, разрешаем.
+		if _, serr := os.Stat(authMarkerPath); serr == nil {
+			return false
+		}
 		return true
 	}
 	var cfg struct {
@@ -108,7 +114,8 @@ func checkFilemgrAuth(password string) bool {
 		Password     string `json:"password"`
 	}
 	if json.Unmarshal(data, &cfg) != nil {
-		return true
+		// Битый конфиг — fail-closed, не открываем удаление без пароля.
+		return false
 	}
 	if !cfg.Enabled {
 		return true

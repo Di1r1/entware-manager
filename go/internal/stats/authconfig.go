@@ -11,6 +11,7 @@ import (
 )
 
 const authConfigPath = "/opt/web_entware/auth_config.json"
+const authMarkerPath = "/opt/web_entware/.auth_configured"
 
 func HandleAuthConfig() {
 	if os.Getenv("REQUEST_METHOD") == "POST" {
@@ -93,6 +94,15 @@ func handleAuthConfigPost() {
 				return
 			}
 		}
+	} else {
+		// Конфиг отсутствует или повреждён. Если панель уже настраивалась
+		// (marker от install.sh) — блокируем установку нового пароля: это
+		// защита от захвата панели после потери/повреждения конфига.
+		if _, err := os.Stat(authMarkerPath); err == nil {
+			fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+			fmt.Println(`{"status":"error","message":"Файл конфигурации авторизации повреждён или удалён. Восстановите его из бэкапа."}`)
+			return
+		}
 	}
 
 	var passwordHash string
@@ -132,6 +142,14 @@ func handleAuthConfigPost() {
 	// файл /opt/var/run/panel_session удаляется, старые cookie умирают
 	// (в обоих режимах гейт проверяет именно этот файл).
 	auth.DestroySession()
+
+	// Marker «панель защищалась» создаётся при первой установке пароля.
+	// Используется для fail-closed: если auth_config.json позже будет
+	// повреждён/удалён — установить новый пароль через UI станет нельзя
+	// (защита от захвата панели), потребуется восстановление конфига.
+	if enabled && password != "" {
+		os.WriteFile(authMarkerPath, []byte("1"), 0600)
+	}
 
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	fmt.Println(`{"status":"ok","message":"Настройки сохранены"}`)
