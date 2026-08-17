@@ -766,8 +766,9 @@ async function runPkgUpdate() {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'run=1'
         });
+        // Сервер сам экранирует opkg-вывод (htmlEscape на сервере) и отдаёт готовый HTML
         const text = await response.text();
-        resultDiv.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+        resultDiv.innerHTML = text;
         pkgCacheClearAll();
         await loadPkgTable();
     } catch (err) {
@@ -797,7 +798,7 @@ async function upgradeAll() {
             body: 'upgrade_all=1'
         });
         const text = await response.text();
-        resultDiv.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+        resultDiv.innerHTML = text;
         pkgCacheClearAll();
         await loadPkgTable();
     } catch (err) {
