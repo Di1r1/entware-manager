@@ -5,7 +5,7 @@
     <title>tmpfs: {TITLE_PATH}</title>
     <link rel="stylesheet" href="/entware-manager/style.css?v=34">
     <script src="/entware-manager/theme.js?v=2"></script>
-    <script src="/entware-manager/modal.js?v=2"></script>
+    <script src="/entware-manager/modal.js?v=3"></script>
 </head>
 <body class="packages-body">
 <script>if (window.Theme) Theme.init();</script>
@@ -127,38 +127,46 @@ var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pas
     function deleteFile(path, type, name) {
         if (!confirm('Удалить ' + (type === 'dir' ? 'папку' : 'файл') + ' "' + name + '"?')) return;
 
-        var body = 'path=' + encodeURIComponent(path);
-
-        if (AUTH_ENABLED) {
-            if (!FILEMGR_PASS) {
-                FILEMGR_PASS = prompt('Введите пароль для доступа к файловому менеджеру:');
-                if (!FILEMGR_PASS) return;
-                sessionStorage.setItem('filemgr_pass', FILEMGR_PASS);
+        function doDelete(password) {
+            var body = 'path=' + encodeURIComponent(path);
+            if (password) {
+                FILEMGR_PASS = password;
+                sessionStorage.setItem('filemgr_pass', password);
+                body += '&password=' + encodeURIComponent(password);
             }
-            body += '&password=' + encodeURIComponent(FILEMGR_PASS);
+
+            fetch('/entware-cgi/delete_file.cgi', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: body
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    Toast.show('Удаление выполнено', false);
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else if (data.status === 'error' && data.message === 'Неверный пароль') {
+                    FILEMGR_PASS = '';
+                    sessionStorage.removeItem('filemgr_pass');
+                    Toast.show('Неверный пароль', true);
+                } else {
+                    Toast.show('Ошибка: ' + data.message, true);
+                }
+            })
+            .catch(function(err) {
+                Toast.show('Ошибка запроса: ' + err.message, true);
+            });
         }
 
-        fetch('/entware-cgi/delete_file.cgi', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: body
-        })
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            if (data.status === 'ok') {
-                Toast.show('Удаление выполнено', false);
-                setTimeout(function() { location.reload(); }, 1500);
-            } else if (data.status === 'error' && data.message === 'Неверный пароль') {
-                FILEMGR_PASS = '';
-                sessionStorage.removeItem('filemgr_pass');
-                Toast.show('Неверный пароль', true);
+        if (AUTH_ENABLED) {
+            if (FILEMGR_PASS) {
+                doDelete(FILEMGR_PASS);
             } else {
-                Toast.show('Ошибка: ' + data.message, true);
+                Modal.promptPassword('Введите пароль для доступа к файловому менеджеру', doDelete);
             }
-        })
-        .catch(function(err) {
-            Toast.show('Ошибка запроса: ' + err.message, true);
-        });
+        } else {
+            doDelete('');
+        }
     }
 
     function escapeHtml(str) {

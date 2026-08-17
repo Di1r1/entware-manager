@@ -376,7 +376,7 @@ async function loadTab(tabName) {
     }
     if (tabName === 'rdp') {
         if (!window.RDP_LOADED) {
-            await loadScript('/entware-manager/rdp.js?v=10');
+            await loadScript('/entware-manager/rdp.js?v=11');
             window.RDP_LOADED = true;
         }
         RDP.init(); Menu.setActiveTab(tabName); return;
@@ -1485,31 +1485,41 @@ function tmpfsClean(mount) {
         var checked = res ? res.querySelectorAll('.tmpfs-clean-cb:checked') : [];
         for (var i = 0; i < checked.length; i++) { paths.push(checked[i].dataset.path); }
         if (!paths.length) { Toast.show('Ничего не выбрано', true); return; }
-        var password = '';
-        if (state.data.auth_required) {
-            password = getPass();
-            if (!password) {
-                password = prompt('Введите пароль для доступа к файлам:');
-                if (!password) return;
-                setPass(password);
-            }
+
+        function proceed(password) {
+            // Пустой пароль допустим только когда авторизация выключена
+            // (тогда POST уходит без password). Если требуется пароль и он
+            // пуст/отмена — молча выходим.
+            if (state.data.auth_required && !password) return;
+            if (password) setPass(password);
+            if (!confirm('Удалить выбранные папки (' + paths.length + ')?')) return;
+            apiPost('/tmpfs_clean.cgi', 'paths=' + encodeURIComponent(paths.join('\n')) + '&password=' + encodeURIComponent(password || ''))
+                .then(function(data) {
+                    if (data.status === 'ok') {
+                        Toast.show('Удалено: ' + data.deleted);
+                        scan(); // повторное сканирование
+                    } else if (data.message === 'Доступ запрещен') {
+                        Toast.show('Доступ запрещен', true);
+                    } else if (data.message === 'Неверный пароль') {
+                        setPass('');
+                        Toast.show('Неверный пароль', true);
+                    } else {
+                        Toast.show('Ошибка: ' + data.message, true);
+                    }
+                })
+                .catch(function(e) { Toast.show('Ошибка: ' + e.message, true); });
         }
-        if (!confirm('Удалить выбранные папки (' + paths.length + ')?')) return;
-        apiPost('/tmpfs_clean.cgi', 'paths=' + encodeURIComponent(paths.join('\n')) + '&password=' + encodeURIComponent(password))
-            .then(function(data) {
-                if (data.status === 'ok') {
-                    Toast.show('Удалено: ' + data.deleted);
-                    scan(); // повторное сканирование
-                } else if (data.message === 'Доступ запрещен') {
-                    Toast.show('Доступ запрещен', true);
-                } else if (data.message === 'Неверный пароль') {
-                    setPass('');
-                    Toast.show('Неверный пароль', true);
-                } else {
-                    Toast.show('Ошибка: ' + data.message, true);
-                }
-            })
-            .catch(function(e) { Toast.show('Ошибка: ' + e.message, true); });
+
+        if (state.data.auth_required) {
+            var cached = getPass();
+            if (cached) {
+                proceed(cached);
+            } else {
+                Modal.promptPassword('Введите пароль для доступа к файлам', proceed);
+            }
+        } else {
+            proceed('');
+        }
     }
 
     function scan() {
@@ -1916,7 +1926,6 @@ window.saveAuthConfig = async function() {
     const password = document.getElementById('filemgrPass').value;
     const confirm = document.getElementById('filemgrPassConfirm').value;
     const statusEl = document.getElementById('filemgrAuthStatus');
-    let currentPassword = '';
 
     if (enabled && password && password !== confirm) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Пароли не совпадают</span>';
@@ -1927,32 +1936,38 @@ window.saveAuthConfig = async function() {
         return;
     }
 
-    try {
+    async function doSave(currentPassword) {
         const formData = new URLSearchParams();
         formData.append('enabled', enabled ? 'true' : 'false');
         formData.append('password', password);
+        if (currentPassword) formData.append('current_password', currentPassword);
 
-        // Если авторизация уже включена (или был задан пароль) — запросить текущий.
-        if (window.AUTH_CURRENTLY_ENABLED) {
-            currentPassword = prompt('Введите текущий пароль:');
-            if (currentPassword === null) {
+        try {
+            const data = await apiPost('/auth_config.cgi', formData.toString());
+            statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Настройки сохранены</span>';
+            document.getElementById('filemgrPass').value = '';
+            document.getElementById('filemgrPassConfirm').value = '';
+            // после успешного сохранения обновить флаг
+            window.AUTH_CURRENTLY_ENABLED = enabled;
+            if (statusEl.previousElementSibling) {
+                statusEl.previousElementSibling.disabled = false;
+            }
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
+        }
+    }
+
+    // Если авторизация уже включена (или был задан пароль) — запросить текущий.
+    if (window.AUTH_CURRENTLY_ENABLED) {
+        Modal.promptPassword('Введите текущий пароль', function(val) {
+            if (!val) {
                 statusEl.innerHTML = '<span style="color:#e53e3e;">Отменено</span>';
                 return;
             }
-            formData.append('current_password', currentPassword);
-        }
-
-        const data = await apiPost('/auth_config.cgi', formData.toString());
-        statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Настройки сохранены</span>';
-        document.getElementById('filemgrPass').value = '';
-        document.getElementById('filemgrPassConfirm').value = '';
-        // после успешного сохранения обновить флаг
-        window.AUTH_CURRENTLY_ENABLED = enabled;
-        if (statusEl.previousElementSibling) {
-            statusEl.previousElementSibling.disabled = false;
-        }
-    } catch (err) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
+            doSave(val);
+        });
+    } else {
+        doSave('');
     }
 };
 

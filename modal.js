@@ -57,6 +57,49 @@ const Modal = {
 
     loading(title = 'Загрузка...') {
         this.show('<div class="loading-spinner"></div>', false, title);
+    },
+
+    // Запрос пароля в скрытом поле (type=password) через модалку.
+    // onConfirm(value) вызывается со введённым паролем; '' — отмена.
+    promptPassword(title, onConfirm) {
+        if (!this.element || !this.bodyElement) { onConfirm(''); return; }
+        if (this.titleElement) this.titleElement.textContent = title || 'Введите пароль';
+        this.element.classList.remove('error-modal');
+        this.bodyElement.innerHTML = `
+            <div style="padding:6px 0 4px;">
+                <input type="password" id="pwInput" placeholder="Пароль"
+                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-primary);font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+                <button id="pwCancel" class="packages-delete-btn" style="background:#4a5568;">Отмена</button>
+                <button id="pwOk" class="packages-delete-btn"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-check"/></svg> OK</button>
+            </div>`;
+        this.element.style.display = 'block';
+
+        var input = document.getElementById('pwInput');
+        var ok = document.getElementById('pwOk');
+        var cancel = document.getElementById('pwCancel');
+        var settled = false;
+        var done = function(val) {
+            if (settled) return;
+            settled = true;
+            Modal.hide();
+            onConfirm(val);
+        };
+        input.focus();
+        ok.onclick = function() { done(input.value); };
+        cancel.onclick = function() { done(''); };
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); done(input.value); }
+            if (e.key === 'Escape') { e.preventDefault(); done(''); }
+        });
+        // Закрытие через X или клик вне — тоже отмена (onConfirm('')).
+        var closeBtn = this.element.querySelector('.close');
+        if (closeBtn) closeBtn.onclick = function() { done(''); };
+        var outsideClick = function(event) {
+            if (event.target === Modal.element) done('');
+        };
+        this.element.addEventListener('click', outsideClick);
     }
 };
 

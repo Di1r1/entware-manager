@@ -188,31 +188,33 @@ const RDP = {
     async startProxy() {
         const startBtn = document.getElementById('rdpStartBtn');
         if (startBtn) startBtn.disabled = true;
-        let password = prompt('Введите пароль (раздел «Защита»):');
-        if (password === null) {
-            if (startBtn) startBtn.disabled = false;
-            return;
-        }
-        try {
-            const data = await apiPost('/rdp_start.cgi', 'port=' + encodeURIComponent((this.cfg && this.cfg.proxy_port) || 9099) + '&password=' + encodeURIComponent(password));
-            Toast.show(data.message || (data.status === 'ok' ? 'Прокси запущен' : 'Ошибка'), data.status !== 'ok');
-            this.loadStatus();
-        } catch (err) {
-            Toast.show('Ошибка: ' + err.message, true);
-            if (startBtn) startBtn.disabled = false;
-        }
+        Modal.promptPassword('Введите пароль (раздел «Защита»)', async (password) => {
+            if (!password) {
+                if (startBtn) startBtn.disabled = false;
+                return;
+            }
+            try {
+                const data = await apiPost('/rdp_start.cgi', 'port=' + encodeURIComponent((this.cfg && this.cfg.proxy_port) || 9099) + '&password=' + encodeURIComponent(password));
+                Toast.show(data.message || (data.status === 'ok' ? 'Прокси запущен' : 'Ошибка'), data.status !== 'ok');
+                this.loadStatus();
+            } catch (err) {
+                Toast.show('Ошибка: ' + err.message, true);
+                if (startBtn) startBtn.disabled = false;
+            }
+        });
     },
 
     async stopProxy() {
-        let password = prompt('Введите пароль (раздел «Защита»):');
-        if (password === null) return;
-        try {
-            const data = await apiPost('/rdp_stop.cgi', 'password=' + encodeURIComponent(password));
-            Toast.show(data.message || (data.status === 'ok' ? 'Прокси остановлен' : 'Ошибка'), data.status !== 'ok');
-            this.loadStatus();
-        } catch (err) {
-            Toast.show('Ошибка: ' + err.message, true);
-        }
+        Modal.promptPassword('Введите пароль (раздел «Защита»)', async (password) => {
+            if (!password) return;
+            try {
+                const data = await apiPost('/rdp_stop.cgi', 'password=' + encodeURIComponent(password));
+                Toast.show(data.message || (data.status === 'ok' ? 'Прокси остановлен' : 'Ошибка'), data.status !== 'ok');
+                this.loadStatus();
+            } catch (err) {
+                Toast.show('Ошибка: ' + err.message, true);
+            }
+        });
     }
 };
 
