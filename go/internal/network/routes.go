@@ -1,6 +1,7 @@
 package network
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os/exec"
 	"strings"
 )
@@ -13,14 +14,14 @@ type Route struct {
 }
 
 func HandleRoutes() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	data, err := exec.Command("ip", "route", "show").Output()
 	if err != nil {
-		WriteError(err.Error())
+		cgiutil.WriteError(err.Error())
 		return
 	}
 
@@ -56,5 +57,5 @@ func HandleRoutes() {
 		list = append(list, r)
 	}
 
-	WriteJSON(map[string][]Route{"routes": list})
+	cgiutil.WriteJSON(map[string][]Route{"routes": list})
 }

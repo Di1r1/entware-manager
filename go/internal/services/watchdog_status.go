@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"os"
 	"strconv"
 	"strings"
@@ -21,8 +22,8 @@ type WatchdogStatusResponse struct {
 }
 
 func HandleWatchdogStatus() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -45,7 +46,7 @@ func HandleWatchdogStatus() {
 		resp.PIDs = readWrapperPIDs()
 	}
 
-	WriteJSON(resp)
+	cgiutil.WriteJSON(resp)
 }
 
 func readWrapperPID() int {

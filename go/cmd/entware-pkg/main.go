@@ -2,6 +2,7 @@
 package main
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 
 	"entware-manager/internal/auth"
@@ -12,12 +13,12 @@ import (
 func main() {
 	ep := os.Getenv("ENDPOINT")
 	if ep == "" {
-		packages.WriteError("ENDPOINT not set")
+		cgiutil.WriteError("ENDPOINT not set")
 		return
 	}
 
 	if os.Getenv("REQUEST_METHOD") == "POST" && auth.IsCrossSiteOrigin() {
-		packages.WriteError(auth.CrossSiteDeny)
+		cgiutil.WriteError(auth.CrossSiteDeny)
 		return
 	}
 
@@ -41,6 +42,6 @@ func main() {
 	case "api":
 		packages.HandleAPI()
 	default:
-		packages.WriteError("unknown endpoint: " + ep)
+		cgiutil.WriteError("unknown endpoint: " + ep)
 	}
 }

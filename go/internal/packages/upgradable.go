@@ -1,6 +1,7 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"strings"
 )
 
@@ -11,14 +12,14 @@ type UpgradablePkg struct {
 }
 
 func Upgradable() {
-	if !isGET() {
-		methodNotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	out, code := runOpkg("list-upgradable")
 	if code != 0 {
-		writeJSON([]UpgradablePkg{})
+		cgiutil.WriteJSON([]UpgradablePkg{})
 		return
 	}
 
@@ -45,5 +46,5 @@ func Upgradable() {
 		}
 	}
 
-	writeJSON(pkgs)
+	cgiutil.WriteJSON(pkgs)
 }

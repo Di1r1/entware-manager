@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"io"
 	"net/http"
 	"os"
@@ -132,14 +133,14 @@ func isMAC(s string) bool {
 }
 
 func HandleInterfaces() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	data, err := exec.Command("ip", "-o", "link", "show").Output()
 	if err != nil {
-		WriteError(err.Error())
+		cgiutil.WriteError(err.Error())
 		return
 	}
 
@@ -212,5 +213,5 @@ func HandleInterfaces() {
 		})
 	}
 
-	WriteJSON(map[string][]Iface{"interfaces": list})
+	cgiutil.WriteJSON(map[string][]Iface{"interfaces": list})
 }

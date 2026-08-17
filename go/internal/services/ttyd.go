@@ -1,6 +1,7 @@
 package services
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,18 +31,18 @@ type ttydStatus struct {
 }
 
 func HandleTTYDControl() {
-	if IsGET() {
-		WriteJSON(getTTYDStatus())
+	if cgiutil.IsGET() {
+		cgiutil.WriteJSON(getTTYDStatus())
 		return
 	}
 
-	if IsPOST() {
+	if cgiutil.IsPOST() {
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
-		body := readPOSTBody()
-		params := parseFormBody(body)
+		body := cgiutil.ReadPOSTBody()
+		params := cgiutil.ParseFormBody(body)
 		action := params["action"]
 		portStr := params["port"]
 		pass := params["pass"]
@@ -49,24 +50,24 @@ func HandleTTYDControl() {
 
 		port, err := strconv.Atoi(portStr)
 		if err != nil || portStr == "" {
-			WriteJSON(map[string]string{"status": "error", "message": "Некорректный порт"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Некорректный порт"})
 			return
 		}
 
 		switch action {
 		case "start":
-			WriteJSON(startTTYD(port, pass, mode))
+			cgiutil.WriteJSON(startTTYD(port, pass, mode))
 		case "stop":
-			WriteJSON(stopTTYD(port))
+			cgiutil.WriteJSON(stopTTYD(port))
 		case "restart":
-			WriteJSON(restartTTYD(port, pass, mode))
+			cgiutil.WriteJSON(restartTTYD(port, pass, mode))
 		default:
-			WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие"})
 		}
 		return
 	}
 
-	NotAllowed()
+	cgiutil.NotAllowed()
 }
 
 func getTTYDStatus() ttydStatus {

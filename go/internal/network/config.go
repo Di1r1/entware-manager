@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"io"
 	"os"
 
@@ -25,12 +26,12 @@ func HandleConfig() {
 		handleConfigGet()
 	case "POST":
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
 		handleConfigPost()
 	default:
-		NotAllowed()
+		cgiutil.NotAllowed()
 	}
 }
 
@@ -56,20 +57,20 @@ func handleConfigGet() {
 func handleConfigPost() {
 	body, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to read request"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to read request"})
 		return
 	}
 
 	data := string(body)
 	if !json.Valid([]byte(data)) {
-		WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
 		return
 	}
 
 	if err := os.WriteFile(ConfigFile, []byte(data), 0644); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
 		return
 	}
 
-	WriteJSON(map[string]string{"status": "ok"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok"})
 }

@@ -3,6 +3,7 @@ package stats
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +28,7 @@ func HandleDeleteFile() {
 	}
 
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 	path := params["path"]
 	password := params["password"]
 
@@ -137,60 +138,6 @@ func checkFilemgrAuth(password string) bool {
 func sha256Hex(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return fmt.Sprintf("%x", h)
-}
-
-func readPOSTBody() string {
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
-
-func parsePostForm(body string) map[string]string {
-	params := make(map[string]string)
-	for _, part := range strings.Split(body, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 {
-			key := urlDecode(kv[0])
-			val := urlDecode(kv[1])
-			params[key] = val
-		}
-	}
-	return params
-}
-
-func urlDecode(s string) string {
-	var b strings.Builder
-	for i := 0; i < len(s); i++ {
-		if s[i] == '%' && i+2 < len(s) {
-			high := unhex(s[i+1])
-			low := unhex(s[i+2])
-			if high >= 0 && low >= 0 {
-				b.WriteByte(byte(high<<4 | low))
-				i += 2
-				continue
-			}
-		}
-		if s[i] == '+' {
-			b.WriteByte(' ')
-			continue
-		}
-		b.WriteByte(s[i])
-	}
-	return b.String()
-}
-
-func unhex(c byte) int {
-	switch {
-	case '0' <= c && c <= '9':
-		return int(c - '0')
-	case 'a' <= c && c <= 'f':
-		return int(c - 'a' + 10)
-	case 'A' <= c && c <= 'F':
-		return int(c - 'A' + 10)
-	}
-	return -1
 }
 
 func logDeleteAction(level, msg string) {

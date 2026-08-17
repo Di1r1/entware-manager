@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bufio"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strings"
@@ -14,14 +15,14 @@ const (
 )
 
 func HandleView() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
-	dateFilter := getQueryParam("date")
-	levelFilter := getQueryParam("level")
-	search := getQueryParam("search")
+	dateFilter := cgiutil.GetQueryParam("date")
+	levelFilter := cgiutil.GetQueryParam("level")
+	search := cgiutil.GetQueryParam("search")
 
 	if dateFilter == "" {
 		dateFilter = time.Now().Format("2006-01-02")

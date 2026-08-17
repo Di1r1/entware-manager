@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,18 +18,18 @@ const (
 )
 
 func HandleAction() {
-	if !IsPOST() {
-		NotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 
-	body := readPOSTBody()
-	params := parseFormBody(body)
+	body := cgiutil.ReadPOSTBody()
+	params := cgiutil.ParseFormBody(body)
 	action := params["action"]
 
 	switch action {
@@ -40,7 +41,7 @@ func HandleAction() {
 		handleClearLog()
 	default:
 		logMonitor("ERROR", "Неизвестное действие: "+action)
-		WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие"})
 	}
 }
 
@@ -55,10 +56,10 @@ func handleDaemonAction(action string) {
 			if strings.Contains(outStr, "Already running") {
 				pid, _ := readPIDFile()
 				logMonitor("INFO", "Демон уже запущен (PID: "+strconv.Itoa(pid)+")")
-				WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
+				cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
 			} else {
 				logMonitor("ERROR", "Не удалось "+action+" демон: "+outStr)
-				WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action + " демон"})
+				cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action + " демон"})
 			}
 			return
 		}
@@ -68,46 +69,46 @@ func handleDaemonAction(action string) {
 			verb := map[string]string{"start": "запущен", "restart": "перезапущен"}[action]
 			// Полная строка с PID пишется самим демоном (watchdog.sh daemon_loop):
 			// «[monitor] Демон запущен (PID $$), ENABLED=…» — здесь дубли не пишем.
-			WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", verb), "pid": pid})
+			cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": fmt.Sprintf("Демон %s", verb), "pid": pid})
 		} else {
 			logMonitor("ERROR", "Демон не запустился: "+outStr)
-			WriteJSON(map[string]string{"status": "error", "message": "Демон не запустился"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Демон не запустился"})
 		}
 		return
 	}
 
 	if err != nil {
 		logMonitor("ERROR", "Не удалось выполнить действие: "+action+": "+outStr)
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось " + action})
 		return
 	}
 
 	logMonitor("INFO", "Демон "+action)
 	logAction("INFO", "Демон защиты "+action)
-	WriteJSON(map[string]string{"status": "ok", "message": "Демон " + action})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Демон " + action})
 }
 
 func handleKill(pidStr string) {
 	pid, err := strconv.Atoi(strings.TrimSpace(pidStr))
 	if err != nil || !pidAlive(pid) {
 		logMonitor("WARN", "Попытка убить несуществующий процесс "+pidStr)
-		WriteJSON(map[string]string{"status": "error", "message": "Процесс не найден"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Процесс не найден"})
 		return
 	}
 
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Процесс не найден"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Процесс не найден"})
 		return
 	}
 
 	if err := proc.Signal(syscall.SIGKILL); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось убить процесс"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось убить процесс"})
 		return
 	}
 
 	logMonitor("INFO", fmt.Sprintf("Убит процесс %d по запросу пользователя", pid))
-	WriteJSON(map[string]string{"status": "ok", "message": "Процесс убит"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Процесс убит"})
 }
 
 func handleClearLog() {
@@ -117,10 +118,10 @@ func handleClearLog() {
 	if err != nil {
 		if os.IsNotExist(err) {
 			logMonitor("INFO", "Лог очищен")
-			WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
 			return
 		}
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
 		return
 	}
 
@@ -134,11 +135,11 @@ func handleClearLog() {
 	}
 
 	if err := os.WriteFile(logFile, []byte(strings.Join(kept, "\n")), 0644); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось очистить лог"})
 		return
 	}
 	logMonitor("INFO", "Лог очищен")
-	WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
 }
 
 func logMonitor(level, message string) {

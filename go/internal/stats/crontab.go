@@ -2,6 +2,7 @@ package stats
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -16,8 +17,7 @@ import (
 )
 
 func HandleCrontab() {
-	qs := os.Getenv("QUERY_STRING")
-	typ := getQueryParam(qs, "type")
+	typ := cgiutil.GetQueryParam("type")
 
 	content := ""
 	switch typ {
@@ -55,7 +55,7 @@ func HandleCrontabUpdate() {
 	}
 
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 	typ := params["type"]
 	crontab := params["crontab"]
 

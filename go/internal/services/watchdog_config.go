@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"io"
 	"os"
 	"syscall"
@@ -16,12 +17,12 @@ func HandleWatchdogConfig() {
 		handleWrapperConfigGet()
 	case "POST":
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
 		handleWrapperConfigPost()
 	default:
-		NotAllowed()
+		cgiutil.NotAllowed()
 	}
 }
 
@@ -53,18 +54,18 @@ func handleWrapperConfigGet() {
 func handleWrapperConfigPost() {
 	body, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to read request"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to read request"})
 		return
 	}
 
 	if !json.Valid(body) {
-		WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON configuration"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON configuration"})
 		return
 	}
 
 	var newCfg map[string]interface{}
 	if err := json.Unmarshal(body, &newCfg); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to parse JSON"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to parse JSON"})
 		return
 	}
 
@@ -112,20 +113,20 @@ func handleWrapperConfigPost() {
 
 	out, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to marshal config"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to marshal config"})
 		return
 	}
 
 	if err := os.WriteFile(wrapperConfig, out, 0644); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
 		return
 	}
 
 	if pid := readWrapperPID(); pid > 0 && pidAlive(pid) {
 		syscall.Kill(pid, syscall.SIGHUP)
 		time.Sleep(time.Second)
-		WriteJSON(map[string]string{"status": "ok", "message": "Конфигурация сохранена, демон перезагружен"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Конфигурация сохранена, демон перезагружен"})
 	} else {
-		WriteJSON(map[string]string{"status": "ok", "message": "Конфигурация сохранена (демон не запущен)"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Конфигурация сохранена (демон не запущен)"})
 	}
 }

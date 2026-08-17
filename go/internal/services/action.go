@@ -1,6 +1,7 @@
 package services
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,43 +15,43 @@ import (
 func HandleServiceAction() {
 	var name, action string
 
-	if IsPOST() {
+	if cgiutil.IsPOST() {
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
-		body := readPOSTBody()
-		params := parseFormBody(body)
+		body := cgiutil.ReadPOSTBody()
+		params := cgiutil.ParseFormBody(body)
 		name = params["name"]
 		action = params["action"]
 	} else {
-		NotAllowed()
+		cgiutil.NotAllowed()
 		return
 	}
 
 	if name == "" || action == "" {
-		WriteJSON(map[string]string{"error": "name and action required"})
+		cgiutil.WriteJSON(map[string]string{"error": "name and action required"})
 		return
 	}
 
 	// Валидация имени службы: только буквы/цифры/"_"/"-" — защита от path traversal
 	// (name="../../bin/reboot" не должен приводить к выполнению произвольного файла).
 	if !serviceNameRe.MatchString(name) || len(name) > 64 {
-		WriteJSON(map[string]string{"error": "Недопустимое имя службы"})
+		cgiutil.WriteJSON(map[string]string{"error": "Недопустимое имя службы"})
 		return
 	}
 
 	switch action {
 	case "start", "stop", "restart", "enable", "disable":
 	default:
-		WriteJSON(map[string]string{"error": "Недопустимое действие: " + action})
+		cgiutil.WriteJSON(map[string]string{"error": "Недопустимое действие: " + action})
 		return
 	}
 
 	// Find the service script
 	script := findScript(name)
 	if script == "" {
-		WriteJSON(map[string]string{"error": "Служба " + name + " не найдена или не исполняема"})
+		cgiutil.WriteJSON(map[string]string{"error": "Служба " + name + " не найдена или не исполняема"})
 		return
 	}
 
@@ -60,10 +61,10 @@ func HandleServiceAction() {
 		err := cmd.Run()
 		if err == nil {
 			logAction("INFO", fmt.Sprintf("Служба %s: %s", name, action))
-			WriteJSON(map[string]string{"status": "ok"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		} else {
 			logAction("ERROR", fmt.Sprintf("Ошибка при %s службы %s", action, name))
-			WriteJSON(map[string]string{"error": "Ошибка при выполнении " + action})
+			cgiutil.WriteJSON(map[string]string{"error": "Ошибка при выполнении " + action})
 		}
 
 	case "enable":
@@ -71,7 +72,7 @@ func HandleServiceAction() {
 		dir := filepath.Dir(script)
 		var newName string
 		if strings.HasPrefix(base, "S") {
-			WriteJSON(map[string]string{"status": "ok"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok"})
 			return
 		}
 		if strings.HasPrefix(base, "K") {
@@ -82,9 +83,9 @@ func HandleServiceAction() {
 		err := os.Rename(script, filepath.Join(dir, newName))
 		if err == nil {
 			logAction("INFO", fmt.Sprintf("Служба %s: включен автозапуск", name))
-			WriteJSON(map[string]string{"status": "ok"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		} else {
-			WriteJSON(map[string]string{"error": "Не удалось включить автозапуск"})
+			cgiutil.WriteJSON(map[string]string{"error": "Не удалось включить автозапуск"})
 		}
 
 	case "disable":
@@ -92,21 +93,21 @@ func HandleServiceAction() {
 		dir := filepath.Dir(script)
 		var newName string
 		if strings.HasPrefix(base, "K") {
-			WriteJSON(map[string]string{"status": "ok"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok"})
 			return
 		}
 		if strings.HasPrefix(base, "S") {
 			newName = "K" + base[1:]
 		} else {
-			WriteJSON(map[string]string{"error": "Не удалось отключить автозапуск"})
+			cgiutil.WriteJSON(map[string]string{"error": "Не удалось отключить автозапуск"})
 			return
 		}
 		err := os.Rename(script, filepath.Join(dir, newName))
 		if err == nil {
 			logAction("INFO", fmt.Sprintf("Служба %s: отключен автозапуск", name))
-			WriteJSON(map[string]string{"status": "ok"})
+			cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		} else {
-			WriteJSON(map[string]string{"error": "Не удалось отключить автозапуск"})
+			cgiutil.WriteJSON(map[string]string{"error": "Не удалось отключить автозапуск"})
 		}
 	}
 }

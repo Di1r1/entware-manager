@@ -1,6 +1,7 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 
 	"entware-manager/internal/cache"
@@ -11,13 +12,13 @@ func invalidateOpkgCache() {
 }
 
 func Install() {
-	if !isPOST() {
+	if !cgiutil.IsPOST() {
 		writeHTML(`<p class="error">Ошибка: требуется POST-запрос</p>`)
 		return
 	}
 
-	body := readBody()
-	pkgRaw := parsePostParam(body, "package")
+	body := cgiutil.ReadPOSTBody()
+	pkgRaw := cgiutil.ParseFormBody(body)["package"]
 	pkgClean := sanitizePkg(pkgRaw)
 
 	if pkgClean == "" {

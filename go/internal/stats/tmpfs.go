@@ -3,6 +3,7 @@ package stats
 import (
 	_ "embed"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"html"
 	"net/url"
@@ -18,8 +19,7 @@ import (
 var tmpfsTemplate string
 
 func HandleTmpfs() {
-	qs := os.Getenv("QUERY_STRING")
-	path := getQueryParam(qs, "path")
+	path := cgiutil.GetQueryParam("path")
 	if path == "" {
 		path = "/tmp"
 	}
@@ -72,23 +72,6 @@ func HandleTmpfs() {
 
 	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 	fmt.Print(html)
-}
-
-func getQueryParam(qs, key string) string {
-	for _, part := range strings.Split(qs, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 && kv[0] == key {
-			val, err := url.QueryUnescape(kv[1])
-			if err != nil {
-				return kv[1]
-			}
-			return val
-		}
-		if len(kv) == 1 && kv[0] == key {
-			return ""
-		}
-	}
-	return ""
 }
 
 func generateBreadcrumb(path string) string {

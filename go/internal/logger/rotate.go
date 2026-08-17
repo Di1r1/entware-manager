@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"entware-manager/internal/cgiutil"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -18,13 +19,13 @@ type RotatedFile struct {
 }
 
 func HandleRotate() {
-	if !IsPOST() {
-		NotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 
@@ -33,7 +34,7 @@ func HandleRotate() {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Ошибка при ротации"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Ошибка при ротации"})
 		return
 	}
 
@@ -48,7 +49,7 @@ func HandleRotate() {
 	if len(rotated) == 0 {
 		message = "Ротация выполнена (файлов для ротации нет)"
 	}
-	WriteJSON(map[string]any{
+	cgiutil.WriteJSON(map[string]any{
 		"status":  "ok",
 		"message": message,
 		"rotated": rotated,

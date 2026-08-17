@@ -2,6 +2,7 @@ package stats
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -63,8 +64,7 @@ func HandleTmpClean() {
 // scanTmpClean — GET: сканирует корень, возвращает JSON-список подпапок,
 // чей рекурсивный размер >= min_bytes.
 func scanTmpClean() {
-	qs := os.Getenv("QUERY_STRING")
-	path := getQueryParam(qs, "path")
+	path := cgiutil.GetQueryParam("path")
 	if path == "" {
 		path = "/tmp"
 	}
@@ -79,7 +79,7 @@ func scanTmpClean() {
 	}
 
 	minBytes := int64(1 << 20) // 1 МиБ
-	if mb := getQueryParam(qs, "min_bytes"); mb != "" {
+	if mb := cgiutil.GetQueryParam("min_bytes"); mb != "" {
 		if v, err := strconv.ParseInt(mb, 10, 64); err == nil && v > 0 {
 			minBytes = v
 		}
@@ -144,7 +144,7 @@ func scanTmpClean() {
 // deleteTmpClean — удаляет выбранные подпапки (POST paths=...&password=...).
 func deleteTmpClean() {
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 
 	pathStr := params["paths"]
 	if pathStr == "" {

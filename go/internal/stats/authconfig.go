@@ -3,6 +3,7 @@ package stats
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -50,7 +51,7 @@ func handleAuthConfigPost() {
 		return
 	}
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 
 	enabled := params["enabled"] == "true"
 	password := params["password"]

@@ -3,8 +3,6 @@ package rdp
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -133,68 +131,4 @@ func SaveConfig(cfg Config) error {
 		return err
 	}
 	return os.Rename(tmp, configPath())
-}
-
-// WriteJSON выводит JSON-ответ CGI.
-func WriteJSON(v any) {
-	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
-	json.NewEncoder(os.Stdout).Encode(v)
-}
-
-func WriteError(msg string) {
-	WriteJSON(map[string]string{"status": "error", "message": msg})
-}
-
-func IsGET() bool  { return os.Getenv("REQUEST_METHOD") == "GET" }
-func IsPOST() bool { return os.Getenv("REQUEST_METHOD") == "POST" }
-
-func readPOSTBody() string {
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
-
-// params из application/x-www-form-urlencoded (POST).
-func parseForm(body string) map[string]string {
-	params := make(map[string]string)
-	for _, part := range strings.Split(body, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 {
-			k := urlDecode(strings.ReplaceAll(kv[0], "+", " "))
-			v := urlDecode(strings.ReplaceAll(kv[1], "+", " "))
-			params[k] = v
-		}
-	}
-	return params
-}
-
-func urlDecode(s string) string {
-	var sb strings.Builder
-	for i := 0; i < len(s); i++ {
-		if s[i] == '%' && i+2 < len(s) {
-			hi := unhex(s[i+1])
-			lo := unhex(s[i+2])
-			if hi >= 0 && lo >= 0 {
-				sb.WriteByte(byte(hi<<4 | lo))
-				i += 2
-				continue
-			}
-		}
-		sb.WriteByte(s[i])
-	}
-	return sb.String()
-}
-
-func unhex(c byte) int {
-	switch {
-	case '0' <= c && c <= '9':
-		return int(c - '0')
-	case 'a' <= c && c <= 'f':
-		return int(c - 'a' + 10)
-	case 'A' <= c && c <= 'F':
-		return int(c - 'A' + 10)
-	}
-	return -1
 }

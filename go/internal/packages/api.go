@@ -1,37 +1,36 @@
 package packages
 
 import (
-	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"entware-manager/internal/cgiutil"
 )
 
 func HandleAPI() {
-	if !isGET() {
-		methodNotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
-	qs := os.Getenv("QUERY_STRING")
-	action := getQueryParam(qs, "action")
-	pkgRaw := getQueryParam(qs, "package")
+	action := cgiutil.GetQueryParam("action")
+	pkgRaw := cgiutil.GetQueryParam("package")
 
 	if action != "info" {
-		writeJSON(map[string]string{"error": "Invalid action"})
+		cgiutil.WriteJSON(map[string]string{"error": "Invalid action"})
 		return
 	}
 
 	pkg := sanitizePkg(pkgRaw)
 	if pkg == "" {
-		writeJSON(map[string]string{"error": "Invalid package name"})
+		cgiutil.WriteJSON(map[string]string{"error": "Invalid package name"})
 		return
 	}
 
 	info, _ := runOpkg("-f", "/opt/etc/opkg.conf", "info", pkg)
 	if info == "" {
-		writeJSON(map[string]string{"error": "No information returned by opkg"})
+		cgiutil.WriteJSON(map[string]string{"error": "No information returned by opkg"})
 		return
 	}
 
@@ -54,19 +53,5 @@ func HandleAPI() {
 	}
 	info = strings.Join(lines, "\n")
 
-	writeJSON(map[string]string{"info": info})
-}
-
-func getQueryParam(qs, key string) string {
-	for _, part := range strings.Split(qs, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 && kv[0] == key {
-			val, err := url.QueryUnescape(kv[1])
-			if err != nil {
-				return kv[1]
-			}
-			return val
-		}
-	}
-	return ""
+	cgiutil.WriteJSON(map[string]string{"info": info})
 }

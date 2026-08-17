@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"os/exec"
@@ -59,8 +60,8 @@ type statsResponse struct {
 const networkStatsCacheTTL = 5 * time.Second
 
 func HandleNetworkStats() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -90,7 +91,7 @@ func HandleNetworkStats() {
 		return
 	}
 
-	WriteJSON(resp)
+	cgiutil.WriteJSON(resp)
 }
 
 func getInterfacesWithIPs() []ifaceIP {

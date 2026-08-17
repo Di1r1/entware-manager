@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"errors"
 	"fmt"
 	"io"
@@ -63,94 +64,10 @@ type PartitionInfo struct {
 	Mnt   string `json:"mnt"`
 }
 
-func writeJSON(v any) {
-	fmt.Print(jsonBody(v))
-}
-
 // jsonBody сериализует v в JSON с Content-Type (без вывода в stdout).
 func jsonBody(v any) string {
 	out, _ := json.Marshal(v)
 	return "Content-type: application/json; charset=utf-8\n\n" + string(out)
-}
-
-func writeError(msg string) {
-	writeJSON(map[string]string{"status": "error", "message": msg})
-}
-
-func notAllowed() {
-	writeJSON(map[string]string{"error": "Method not allowed"})
-}
-
-func isGET() bool {
-	return os.Getenv("REQUEST_METHOD") == "GET"
-}
-
-func isPOST() bool {
-	return os.Getenv("REQUEST_METHOD") == "POST"
-}
-
-func getQueryParam(key string) string {
-	q := os.Getenv("QUERY_STRING")
-	for _, part := range strings.Split(q, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 && kv[0] == key {
-			val := kv[1]
-			val = strings.ReplaceAll(val, "+", " ")
-			val = urlDecode(val)
-			return val
-		}
-	}
-	return ""
-}
-
-func urlDecode(s string) string {
-	var sb strings.Builder
-	for i := 0; i < len(s); i++ {
-		if s[i] == '%' && i+2 < len(s) {
-			high := unhex(s[i+1])
-			low := unhex(s[i+2])
-			if high >= 0 && low >= 0 {
-				sb.WriteByte(byte(high<<4 | low))
-				i += 2
-				continue
-			}
-		}
-		sb.WriteByte(s[i])
-	}
-	return sb.String()
-}
-
-func unhex(c byte) int {
-	switch {
-	case '0' <= c && c <= '9':
-		return int(c - '0')
-	case 'a' <= c && c <= 'f':
-		return int(c - 'a' + 10)
-	case 'A' <= c && c <= 'F':
-		return int(c - 'A' + 10)
-	}
-	return -1
-}
-
-func readPOSTBody() string {
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
-
-func parseFormBody(body string) map[string]string {
-	params := make(map[string]string)
-	for _, part := range strings.Split(body, "&") {
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 {
-			key := urlDecode(strings.ReplaceAll(kv[0], "+", " "))
-			val := urlDecode(strings.ReplaceAll(kv[1], "+", " "))
-			params[key] = val
-		}
-	}
-	return params
 }
 
 // errDeviceBusy — на устройстве уже висит незавершённый smartctl (состояние D).
@@ -434,18 +351,18 @@ func parseNvmeValue(output, key string) string {
 }
 
 func HandleSmart() {
-	if !isGET() && !isPOST() {
-		notAllowed()
+	if !cgiutil.IsGET() && !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	var postParams map[string]string
-	if isPOST() {
-		postParams = parseFormBody(readPOSTBody())
+	if cgiutil.IsPOST() {
+		postParams = cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())
 	}
 
 	getParam := func(key string) string {
-		v := getQueryParam(key)
+		v := cgiutil.GetQueryParam(key)
 		if v == "" && postParams != nil {
 			v = postParams[key]
 		}
@@ -459,7 +376,7 @@ func HandleSmart() {
 
 	device := strings.TrimPrefix(getParam("device"), "/dev/")
 	if device != "" && (!deviceRe.MatchString(device) || len(device) > 32) {
-		writeError("invalid device")
+		cgiutil.WriteStatusError("invalid device")
 		return
 	}
 
@@ -475,9 +392,9 @@ func HandleSmart() {
 	case "usage":
 		handleUsage(device)
 	case "selftest":
-		if isPOST() {
+		if cgiutil.IsPOST() {
 			if auth.IsCrossSiteOrigin() {
-				writeError(auth.CrossSiteDeny)
+				cgiutil.WriteStatusError(auth.CrossSiteDeny)
 				return
 			}
 			testType := getParam("type")
@@ -489,7 +406,7 @@ func HandleSmart() {
 			handleSelftestStatus(device)
 		}
 	default:
-		writeError("Unknown action")
+		cgiutil.WriteStatusError("Unknown action")
 	}
 }
 
@@ -680,18 +597,18 @@ func diskInfo(name string) DiskInfo {
 
 func handleInfo(device string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
 	output, _ := smartctlRun(devpath, "-i", "-d", diskType)
-	writeJSON(map[string]string{"info": output})
+	cgiutil.WriteJSON(map[string]string{"info": output})
 }
 
 func handleAttributes(device string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 	devpath := "/dev/" + device
@@ -736,7 +653,7 @@ func handleAttributes(device string) {
 	if attrs == nil {
 		attrs = []AttrInfo{}
 	}
-	writeJSON(map[string]any{"attributes": attrs})
+	cgiutil.WriteJSON(map[string]any{"attributes": attrs})
 }
 
 func isAttrLine(s string) bool {
@@ -765,7 +682,7 @@ func atoiWithDefault(s string) int {
 
 func handleHealth(device string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 	devpath := "/dev/" + device
@@ -786,7 +703,7 @@ func handleHealth(device string) {
 		result = parts[len(parts)-1]
 	}
 
-	writeJSON(map[string]string{
+	cgiutil.WriteJSON(map[string]string{
 		"health":  result,
 		"message": healthLine,
 	})
@@ -794,13 +711,13 @@ func handleHealth(device string) {
 
 func handleUsage(device string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 
 	out, err := runBounded(exec.Command(dfBin, "-h"), 5*time.Second)
 	if err != nil && out == "" {
-		writeJSON(map[string]any{"partitions": []PartitionInfo{}})
+		cgiutil.WriteJSON(map[string]any{"partitions": []PartitionInfo{}})
 		return
 	}
 	rawOut := []byte(out)
@@ -836,18 +753,18 @@ func handleUsage(device string) {
 	if parts == nil {
 		parts = []PartitionInfo{}
 	}
-	writeJSON(map[string]any{"partitions": parts})
+	cgiutil.WriteJSON(map[string]any{"partitions": parts})
 }
 
 func handleSelftestStart(device string, testType string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 	switch testType {
 	case "short", "long", "conveyance", "offline":
 	default:
-		writeError("invalid test type")
+		cgiutil.WriteStatusError("invalid test type")
 		return
 	}
 	devpath := "/dev/" + device
@@ -869,12 +786,12 @@ func handleSelftestStart(device string, testType string) {
 		msg = strings.TrimSpace(msg)
 	}
 
-	writeJSON(map[string]string{"status": status, "message": msg})
+	cgiutil.WriteJSON(map[string]string{"status": status, "message": msg})
 }
 
 func handleSelftestStatus(device string) {
 	if device == "" {
-		writeError("device required")
+		cgiutil.WriteStatusError("device required")
 		return
 	}
 	devpath := "/dev/" + device
@@ -893,7 +810,7 @@ func handleSelftestStatus(device string) {
 		}
 	}
 
-	writeJSON(map[string]any{"status": status, "progress": progress})
+	cgiutil.WriteJSON(map[string]any{"status": status, "progress": progress})
 }
 
 // parseSelftestLine разбирает строку журнала самотеста:

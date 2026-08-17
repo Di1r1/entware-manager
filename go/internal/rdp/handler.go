@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/cgiutil"
 )
 
 // Handle dispatches подэндпоинты модуля RDP.
@@ -21,19 +22,19 @@ func Handle() {
 	case "rdp_stop":
 		HandleControl("stop")
 	default:
-		WriteError("unknown endpoint: " + ep)
+		cgiutil.WriteStatusError("unknown endpoint: " + ep)
 	}
 }
 
 // HandleStatus отдаёт статус прокси (GET, без пароля — только факт запуска).
 func HandleStatus() {
-	if !IsGET() {
-		WriteJSON(map[string]string{"status": "error", "message": "Метод не поддерживается"})
+	if !cgiutil.IsGET() {
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Метод не поддерживается"})
 		return
 	}
 	inst := Status()
 	cfg, _ := LoadConfig()
-	WriteJSON(map[string]interface{}{
+	cgiutil.WriteJSON(map[string]interface{}{
 		"status":     "ok",
 		"state":      inst.State,
 		"pid":        inst.PID,
@@ -46,16 +47,16 @@ func HandleStatus() {
 // HandleConfig: GET — чтение конфига (публично, без паролей в нём);
 // POST — обновление конфига (только пароль + Origin).
 func HandleConfig() {
-	if IsPOST() {
+	if cgiutil.IsPOST() {
 		handleConfigPost()
 		return
 	}
 	cfg, err := LoadConfig()
 	if err != nil {
-		WriteJSON(map[string]interface{}{"status": "error", "message": "Ошибка чтения конфига: " + err.Error()})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Ошибка чтения конфига: " + err.Error()})
 		return
 	}
-	WriteJSON(map[string]interface{}{
+	cgiutil.WriteJSON(map[string]interface{}{
 		"status":        "ok",
 		"proxy_port":    cfg.ProxyPort,
 		"proxy_host":    cfg.ProxyHost,
@@ -68,12 +69,12 @@ func HandleConfig() {
 
 func handleConfigPost() {
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]interface{}{"status": "error", "message": "Запрос из недоверенного источника (CSRF)"})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Запрос из недоверенного источника (CSRF)"})
 		return
 	}
-	params := parseForm(readPOSTBody())
+	params := cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())
 	if !auth.CheckPassword(params["password"]) {
-		WriteJSON(map[string]interface{}{"status": "error", "message": "Неверный пароль"})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Неверный пароль"})
 		return
 	}
 	cfg, _ := LoadConfig()
@@ -84,7 +85,7 @@ func handleConfigPost() {
 	if v := params["target_port"]; v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 || p > 65535 {
-			WriteJSON(map[string]interface{}{"status": "error", "message": "Некорректный порт цели"})
+			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Некорректный порт цели"})
 			return
 		}
 		cfg.TargetPort = p
@@ -92,7 +93,7 @@ func handleConfigPost() {
 	if v := params["proxy_port"]; v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 || p > 65535 {
-			WriteJSON(map[string]interface{}{"status": "error", "message": "Некорректный порт прокси"})
+			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Некорректный порт прокси"})
 			return
 		}
 		cfg.ProxyPort = p
@@ -110,8 +111,8 @@ func handleConfigPost() {
 	}
 
 	if err := SaveConfig(cfg); err != nil {
-		WriteJSON(map[string]interface{}{"status": "error", "message": "Не удалось сохранить конфиг: " + err.Error()})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Не удалось сохранить конфиг: " + err.Error()})
 		return
 	}
-	WriteJSON(map[string]interface{}{"status": "ok", "message": "Конфигурация сохранена"})
+	cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Конфигурация сохранена"})
 }

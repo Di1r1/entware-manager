@@ -1,6 +1,7 @@
 package network
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -11,12 +12,12 @@ import (
 )
 
 func HandleAction() {
-	if !IsPOST() {
-		NotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 	action := GetParam("action")
@@ -28,49 +29,49 @@ func HandleAction() {
 	case "restart":
 		handleRestart()
 	default:
-		WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие: " + action})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие: " + action})
 	}
 }
 
 func handleStart() {
 	if pid := readPID(); pid > 0 && pidAlive(pid) {
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
 		return
 	}
 	os.Remove(PidFile)
 
 	cmd := exec.Command(WatchdogScript, "start")
 	if err := cmd.Run(); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
 		return
 	}
 	time.Sleep(1 * time.Second)
 
 	if pid := readPID(); pid > 0 {
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон запущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон запущен", "pid": pid})
 	} else {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
 	}
 }
 
 func handleStop() {
 	cmd := exec.Command(WatchdogScript, "stop")
 	cmd.Run()
-	WriteJSON(map[string]string{"status": "ok", "message": "Демон остановлен"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Демон остановлен"})
 }
 
 func handleRestart() {
 	cmd := exec.Command(WatchdogScript, "restart")
 	if err := cmd.Run(); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
 		return
 	}
 	time.Sleep(1 * time.Second)
 
 	if pid := readPID(); pid > 0 {
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон перезапущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон перезапущен", "pid": pid})
 	} else {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
 	}
 }
 

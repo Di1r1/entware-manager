@@ -3,6 +3,7 @@ package logger
 import (
 	"bufio"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strings"
@@ -20,14 +21,14 @@ type Sources struct {
 }
 
 func HandleSystemLogs() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
-	sourceName := getQueryParam("source")
-	filePath := getQueryParam("file")
-	search := getQueryParam("search")
+	sourceName := cgiutil.GetQueryParam("source")
+	filePath := cgiutil.GetQueryParam("file")
+	search := cgiutil.GetQueryParam("search")
 
 	logFile := filePath
 	if logFile == "" && sourceName != "" {

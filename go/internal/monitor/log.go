@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"bufio"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strings"
@@ -9,8 +10,8 @@ import (
 )
 
 func HandleLog() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 

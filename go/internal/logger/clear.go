@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,13 +13,13 @@ import (
 const logDir = "/opt/var/log/entware"
 
 func HandleClear() {
-	if !IsPOST() {
-		NotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 
@@ -39,5 +40,5 @@ func HandleClear() {
 		return nil
 	})
 
-	WriteJSON(map[string]string{"status": "ok", "message": "Логи старше 30 дней удалены"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Логи старше 30 дней удалены"})
 }

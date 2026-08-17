@@ -1,20 +1,21 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 
 	"entware-manager/internal/cache"
 )
 
 func Upgrade() {
-	if !isPOST() {
+	if !cgiutil.IsPOST() {
 		writeHTML(`<p class="error">Ошибка: требуется POST-запрос</p>`)
 		return
 	}
 
-	body := readBody()
-	upgradeAll := parsePostParam(body, "upgrade_all")
-	pkgRaw := parsePostParam(body, "package")
+	body := cgiutil.ReadPOSTBody()
+	upgradeAll := cgiutil.ParseFormBody(body)["upgrade_all"]
+	pkgRaw := cgiutil.ParseFormBody(body)["package"]
 
 	if upgradeAll == "1" {
 		html := "<h2>Обновление всех пакетов...</h2>\n<pre>\n"

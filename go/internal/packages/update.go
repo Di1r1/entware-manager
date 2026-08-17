@@ -1,6 +1,7 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,8 +56,8 @@ func writePidFileAtomic(path string, pid int) error {
 }
 
 func Update() {
-	if !isPOST() {
-		methodNotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -64,11 +65,11 @@ func Update() {
 	// (auth.IsCrossSiteOrigin) — здесь не дублируем.
 
 	if opkgUpdateRunning() {
-		WriteError("Обновление списков пакетов уже выполняется")
+		cgiutil.WriteError("Обновление списков пакетов уже выполняется")
 		return
 	}
 	if err := writePidFileAtomic(opkgUpdatePidFile, os.Getpid()); err != nil {
-		WriteError("Не удалось создать файл блокировки: " + err.Error())
+		cgiutil.WriteError("Не удалось создать файл блокировки: " + err.Error())
 		return
 	}
 	defer os.Remove(opkgUpdatePidFile)

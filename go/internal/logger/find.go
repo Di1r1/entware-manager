@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,14 +13,14 @@ type FoundFile struct {
 }
 
 func HandleFind() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
-	q := strings.TrimSpace(getQueryParam("q"))
+	q := strings.TrimSpace(cgiutil.GetQueryParam("q"))
 	if q == "" {
-		WriteJSON([]FoundFile{})
+		cgiutil.WriteJSON([]FoundFile{})
 		return
 	}
 
@@ -50,5 +51,5 @@ func HandleFind() {
 	if result == nil {
 		result = []FoundFile{}
 	}
-	WriteJSON(result)
+	cgiutil.WriteJSON(result)
 }

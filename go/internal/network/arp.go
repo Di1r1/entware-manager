@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"io"
 	"net/http"
 	"os/exec"
@@ -63,14 +64,14 @@ func fetchRCIHostnames() map[string]string {
 }
 
 func HandleARP() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	data, err := exec.Command("ip", "neigh", "show").Output()
 	if err != nil {
-		WriteError(err.Error())
+		cgiutil.WriteError(err.Error())
 		return
 	}
 
@@ -117,5 +118,5 @@ func HandleARP() {
 		})
 	}
 
-	WriteJSON(map[string][]ARPEntry{"entries": list})
+	cgiutil.WriteJSON(map[string][]ARPEntry{"entries": list})
 }

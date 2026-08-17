@@ -9,47 +9,48 @@ import (
 	"time"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/cgiutil"
 )
 
 // HandleControl обрабатывает rdp_start / rdp_stop (только POST).
 func HandleControl(action string) {
-	if !IsPOST() {
-		WriteJSON(map[string]string{"status": "error", "message": "Метод не поддерживается — используйте POST"})
+	if !cgiutil.IsPOST() {
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Метод не поддерживается — используйте POST"})
 		return
 	}
 
 	// защита: пароль + Origin-чек (CSRF)
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": "Запрос из недоверенного источника (CSRF)"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Запрос из недоверенного источника (CSRF)"})
 		return
 	}
-	password := parseForm(readPOSTBody())["password"]
+	password := cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())["password"]
 	allow, reason := auth.EnabledReports()
 	if !allow {
-		WriteJSON(map[string]string{"status": "error", "message": reason})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": reason})
 		return
 	}
 	if !auth.CheckPassword(password) {
-		WriteJSON(map[string]string{"status": "error", "message": "Неверный пароль"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неверный пароль"})
 		return
 	}
 
 	cfg, err := LoadConfig()
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Ошибка чтения конфига: " + err.Error()})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Ошибка чтения конфига: " + err.Error()})
 		return
 	}
 
 	// Управление через init-скрипт S90grdp-proxy (идемпотентно, PID-файл).
 	// init-скрипт сам читает порт из rdp_config.json.
 	if _, statErr := os.Stat(ProxyInitScript); statErr != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "init-скрипт " + ProxyInitScript + " не найден — установите RDP-модуль"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "init-скрипт " + ProxyInitScript + " не найден — установите RDP-модуль"})
 		return
 	}
 
 	out, err := runInit(action)
 	if err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Ошибка: " + err.Error() + " " + strings.TrimSpace(out)})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Ошибка: " + err.Error() + " " + strings.TrimSpace(out)})
 		return
 	}
 
@@ -57,16 +58,16 @@ func HandleControl(action string) {
 	inst := Status()
 
 	if action == "start" && inst.State != "running" {
-		WriteJSON(map[string]string{"status": "error", "message": "Прокси не поднялся"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Прокси не поднялся"})
 		return
 	}
 	if action == "stop" && inst.State == "running" {
-		WriteJSON(map[string]string{"status": "error", "message": "Прокси не остановился"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Прокси не остановился"})
 		return
 	}
 
 	if action == "start" {
-		WriteJSON(map[string]string{
+		cgiutil.WriteJSON(map[string]string{
 			"status":  "ok",
 			"message": "Прокси запущен на порту " + fmt.Sprintf("%d", cfg.ProxyPort),
 			"port":    fmt.Sprintf("%d", cfg.ProxyPort),
@@ -74,7 +75,7 @@ func HandleControl(action string) {
 		})
 		return
 	}
-	WriteJSON(map[string]string{"status": "ok", "message": "Прокси остановлен"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Прокси остановлен"})
 }
 
 func runInit(cmd string) (string, error) {

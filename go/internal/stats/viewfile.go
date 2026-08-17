@@ -3,6 +3,7 @@ package stats
 import (
 	_ "embed"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"html"
 	"io"
@@ -37,7 +38,7 @@ func HandleViewFile() {
 	}
 
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 	path := params["path"]
 	password := params["password"]
 	isXHR := os.Getenv("HTTP_X_REQUESTED_WITH") != ""

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 
 	_ "entware-manager/internal/localtime"
@@ -11,7 +12,7 @@ import (
 func main() {
 	ep := os.Getenv("ENDPOINT")
 	if ep == "" {
-		logger.WriteError("ENDPOINT not set")
+		cgiutil.WriteError("ENDPOINT not set")
 		return
 	}
 
@@ -35,6 +36,6 @@ func main() {
 	case "logger_debug_path":
 		logger.HandleLoggerDebugPath()
 	default:
-		logger.WriteError("unknown endpoint: " + ep)
+		cgiutil.WriteError("unknown endpoint: " + ep)
 	}
 }

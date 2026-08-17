@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,14 +45,14 @@ var (
 
 func HandleUpdateCheck() {
 	if os.Getenv("REQUEST_METHOD") != "GET" {
-		writeJSON(map[string]string{"error": "Method not allowed"})
+		cgiutil.WriteJSON(map[string]string{"error": "Method not allowed"})
 		return
 	}
 
 	current := getLocalVersion()
 	latest, err := getLatestVersionCached()
 	if err != nil {
-		writeJSON(UpdateCheckResponse{
+		cgiutil.WriteJSON(UpdateCheckResponse{
 			Current:   current,
 			Latest:    current,
 			HasUpdate: false,
@@ -60,7 +61,7 @@ func HandleUpdateCheck() {
 		return
 	}
 
-	writeJSON(UpdateCheckResponse{
+	cgiutil.WriteJSON(UpdateCheckResponse{
 		Current:   current,
 		Latest:    latest,
 		HasUpdate: semverGreater(latest, current),
@@ -69,12 +70,12 @@ func HandleUpdateCheck() {
 
 func HandleUpdateRun() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
-		writeJSON(map[string]string{"error": "Method not allowed"})
+		cgiutil.WriteJSON(map[string]string{"error": "Method not allowed"})
 		return
 	}
 
 	if auth.IsCrossSiteOrigin() {
-		writeJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
 
@@ -83,37 +84,37 @@ func HandleUpdateRun() {
 	// воркер жив (например, пользователь обновил страницу и нажал снова) —
 	// отказываем. Иначе воркеры побежали бы параллельно на opkg-lock.
 	if updateWorkerRunning() {
-		writeJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
 		return
 	}
 	if !updateLock.TryLock() {
-		writeJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Обновление уже запущено"})
 		return
 	}
 	defer updateLock.Unlock()
 
 	arch := getRouterArch()
 	if arch == "" {
-		writeJSON(map[string]string{"status": "error", "message": "Архитектура не определена. Установите обновление через install.sh"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Архитектура не определена. Установите обновление через install.sh"})
 		return
 	}
 
-	body := readPOSTBody()
-	params := parsePostForm(body)
+	body := cgiutil.ReadPOSTBody()
+	params := cgiutil.ParseFormBody(body)
 	reinstall := params["mode"] == "reinstall"
 
 	version := ""
 	if reinstall {
 		version = getLocalVersion()
 		if version == "0.0.0" || version == "" {
-			writeJSON(map[string]string{"status": "error", "message": "Не удалось определить установленную версию. Переустановка невозможна."})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось определить установленную версию. Переустановка невозможна."})
 			return
 		}
 	} else {
 		var err error
 		version, err = getLatestVersion()
 		if err != nil {
-			writeJSON(map[string]string{"status": "error", "message": "Не удалось проверить версию: " + err.Error()})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось проверить версию: " + err.Error()})
 			return
 		}
 	}
@@ -132,7 +133,7 @@ func HandleUpdateRun() {
 	os.WriteFile("/tmp/entware/update.sh", []byte(script), 0755)
 	exec.Command("/bin/sh", "/tmp/entware/update.sh").Start()
 
-	writeJSON(map[string]string{"status": "ok", "message": label + " запущено", "version": version})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": label + " запущено", "version": version})
 }
 
 // updateWorkerRunning — жив ли процесс-воркер обновления (по pidfile).
@@ -182,7 +183,7 @@ func HandleUpdateWorker() {
 
 func HandleUpdateStatus() {
 	if os.Getenv("REQUEST_METHOD") != "GET" {
-		writeJSON(map[string]string{"error": "Method not allowed"})
+		cgiutil.WriteJSON(map[string]string{"error": "Method not allowed"})
 		return
 	}
 
@@ -192,7 +193,7 @@ func HandleUpdateStatus() {
 	if err != nil {
 		resp.Status = "error"
 		resp.Error = "Лог не найден"
-		writeJSON(resp)
+		cgiutil.WriteJSON(resp)
 		return
 	}
 
@@ -253,16 +254,10 @@ func HandleUpdateStatus() {
 		resp.Progress = last
 	}
 
-	writeJSON(resp)
+	cgiutil.WriteJSON(resp)
 }
 
 // --- helpers ---
-
-func writeJSON(v interface{}) {
-	data, _ := json.Marshal(v)
-	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
-	os.Stdout.Write(data)
-}
 
 func getLocalVersion() string {
 	data, err := os.ReadFile("/opt/web_entware/version.json")

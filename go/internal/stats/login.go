@@ -10,6 +10,7 @@ package stats
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +30,7 @@ func HandleLogin() {
 		return
 	}
 	body, _ := io.ReadAll(os.Stdin)
-	params := parsePostForm(string(body))
+	params := cgiutil.ParseFormBody(string(body))
 	password := params["password"]
 
 	allow, reason := auth.EnabledReports()

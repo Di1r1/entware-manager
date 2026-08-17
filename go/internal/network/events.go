@@ -1,6 +1,7 @@
 package network
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,8 +18,8 @@ type LogEvent struct {
 }
 
 func HandleEvents() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -33,7 +34,7 @@ func HandleEvents() {
 	if events == nil {
 		events = []LogEvent{}
 	}
-	WriteJSON(map[string][]LogEvent{"events": events})
+	cgiutil.WriteJSON(map[string][]LogEvent{"events": events})
 }
 
 func parseLogFile(tag string, limit int) []LogEvent {

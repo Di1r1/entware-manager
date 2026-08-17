@@ -3,6 +3,7 @@ package stats
 import (
 	"archive/tar"
 	"compress/gzip"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,19 +16,19 @@ import (
 
 func HandleOfflinePrepare() {
 	if os.Getenv("REQUEST_METHOD") != "GET" {
-		writeJSON(map[string]string{"status": "error", "message": "Method not allowed"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Method not allowed"})
 		return
 	}
 
 	arch := getRouterArch()
 	if arch == "" {
-		writeJSON(map[string]string{"status": "error", "message": "Архитектура не определена"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Архитектура не определена"})
 		return
 	}
 
 	version := getLocalVersion()
 	if version == "" || version == "unknown" {
-		writeJSON(map[string]string{"status": "error", "message": "Версия не определена"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Версия не определена"})
 		return
 	}
 
@@ -35,14 +36,14 @@ func HandleOfflinePrepare() {
 
 	tmpDir, err := os.MkdirTemp("", "entware-offline-")
 	if err != nil {
-		writeJSON(map[string]string{"status": "error", "message": "Не удалось создать временную папку"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось создать временную папку"})
 		return
 	}
 	defer os.RemoveAll(tmpDir)
 
 	err = buildOfflineBundle(tmpDir, arch, version)
 	if err != nil {
-		writeJSON(map[string]string{"status": "error", "message": err.Error()})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": err.Error()})
 		return
 	}
 
@@ -51,7 +52,7 @@ func HandleOfflinePrepare() {
 
 	fi, err := os.Stat(archivePath)
 	if err != nil {
-		writeJSON(map[string]string{"status": "error", "message": "Архив не найден"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Архив не найден"})
 		return
 	}
 

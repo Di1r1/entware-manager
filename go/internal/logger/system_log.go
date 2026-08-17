@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strings"
@@ -9,8 +10,8 @@ import (
 const systemLog = "/opt/var/log/entware/system.log"
 
 func HandleSystemLog() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 

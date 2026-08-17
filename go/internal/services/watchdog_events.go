@@ -1,6 +1,7 @@
 package services
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,13 +18,13 @@ type WatchdogEvent struct {
 }
 
 func HandleWatchdogEvents() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	limit := 20
-	if l := getQueryParam("limit"); l != "" {
+	if l := cgiutil.GetQueryParam("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 {
 			limit = v
 		}
@@ -33,7 +34,7 @@ func HandleWatchdogEvents() {
 	if events == nil {
 		events = []WatchdogEvent{}
 	}
-	WriteJSON(map[string][]WatchdogEvent{"events": events})
+	cgiutil.WriteJSON(map[string][]WatchdogEvent{"events": events})
 }
 
 func parseWatchdogLog(limit int) []WatchdogEvent {

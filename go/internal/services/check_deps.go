@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"bytes"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"os/exec"
@@ -60,8 +61,8 @@ type DepsResult struct {
 }
 
 func HandleCheckDeps() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -114,7 +115,7 @@ func HandleCheckDeps() {
 
 	r.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 
-	WriteJSON(r)
+	cgiutil.WriteJSON(r)
 }
 
 func lookPath(name string) bool {
@@ -198,8 +199,8 @@ var (
 )
 
 func HandleCheckSyntax() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -242,5 +243,5 @@ func HandleCheckSyntax() {
 	}
 	r.Timestamp = time.Now().Format("2006-01-02 15:04:05")
 
-	WriteJSON(r)
+	cgiutil.WriteJSON(r)
 }

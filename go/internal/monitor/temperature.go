@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"entware-manager/internal/cgiutil"
 	"io"
 	"net/http"
 	"os"
@@ -12,16 +13,16 @@ import (
 )
 
 func HandleTemperature() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	temp := readCPUTemp()
 	if temp != "" {
-		WriteJSON(map[string]interface{}{"temperature": temp})
+		cgiutil.WriteJSON(map[string]interface{}{"temperature": temp})
 	} else {
-		WriteJSON(map[string]interface{}{"temperature": nil})
+		cgiutil.WriteJSON(map[string]interface{}{"temperature": nil})
 	}
 }
 
@@ -54,8 +55,8 @@ func readCPUTemp() string {
 }
 
 func HandleWifiTemp() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -71,7 +72,7 @@ func HandleWifiTemp() {
 		combined = "WiFi0: " + temp0 + "°C / WiFi1: " + temp1 + "°C"
 	}
 
-	WriteJSON(map[string]string{
+	cgiutil.WriteJSON(map[string]string{
 		"temp0":    temp0,
 		"temp1":    temp1,
 		"combined": combined,
@@ -142,11 +143,11 @@ func HandleTempHistory() {
 		if isValidNum(temp) {
 			saveTempPoint("cpu", temp)
 		}
-		WriteJSON(map[string]string{"status": "ok"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok"})
 	default:
 		history := readTempHistory("cpu.*")
 		result := parseTempHistory(history)
-		WriteJSON(result)
+		cgiutil.WriteJSON(result)
 	}
 }
 
@@ -170,11 +171,11 @@ func HandleWifiTempHistory() {
 			temp1 = "-"
 		}
 		saveWifiTempPoint(temp0, temp1)
-		WriteJSON(map[string]string{"status": "ok"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok"})
 	default:
 		history := readTempHistory("wifi.*")
 		result := parseWifiTempHistory(history)
-		WriteJSON(result)
+		cgiutil.WriteJSON(result)
 	}
 }
 

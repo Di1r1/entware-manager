@@ -1,6 +1,7 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"strings"
 )
 
@@ -11,14 +12,14 @@ type PkgInfo struct {
 }
 
 func Available() {
-	if !isGET() {
-		methodNotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	out, code := runOpkg("list")
 	if code != 0 {
-		writeJSON([]PkgInfo{})
+		cgiutil.WriteJSON([]PkgInfo{})
 		return
 	}
 
@@ -46,5 +47,5 @@ func Available() {
 		pkgs = append(pkgs, PkgInfo{Package: pkg, Version: ver, Description: desc})
 	}
 
-	writeJSON(pkgs)
+	cgiutil.WriteJSON(pkgs)
 }

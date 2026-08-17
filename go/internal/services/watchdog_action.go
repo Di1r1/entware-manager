@@ -1,6 +1,7 @@
 package services
 
 import (
+	"entware-manager/internal/cgiutil"
 	"os"
 	"os/exec"
 	"time"
@@ -14,18 +15,18 @@ var (
 )
 
 func HandleWatchdogAction() {
-	if !IsPOST() {
-		NotAllowed()
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
 		return
 	}
 	if auth.IsCrossSiteOrigin() {
-		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}
-	action := getQueryParam("action")
+	action := cgiutil.GetQueryParam("action")
 	if action == "" {
-		body := readPOSTBody()
-		params := parseFormBody(body)
+		body := cgiutil.ReadPOSTBody()
+		params := cgiutil.ParseFormBody(body)
 		action = params["action"]
 	}
 
@@ -37,18 +38,18 @@ func HandleWatchdogAction() {
 	case "restart":
 		handleWrapperRestart()
 	default:
-		WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие: " + action})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неизвестное действие: " + action})
 	}
 }
 
 func handleWrapperStart() {
 	if pid := readWrapperPID(); pid > 0 && pidAlive(pid) {
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон уже запущен", "pid": pid})
 		return
 	}
 
 	if _, err := os.Stat(watchdogScript); os.IsNotExist(err) {
-		WriteJSON(map[string]string{"status": "error", "message": "Демон не найден: " + watchdogScript})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Демон не найден: " + watchdogScript})
 		return
 	}
 
@@ -65,17 +66,17 @@ func handleWrapperStart() {
 		cmd.Stderr = f
 	}
 	if err := cmd.Run(); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
 		return
 	}
 	time.Sleep(1 * time.Second)
 
 	if pid := readWrapperPID(); pid > 0 {
 		logAction("INFO", "Демон watchdog запущен вручную (PID: "+itoa(pid)+")")
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон запущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон запущен", "pid": pid})
 	} else {
 		logAction("ERROR", "Не удалось запустить демон watchdog")
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось запустить демон"})
 	}
 }
 
@@ -83,23 +84,23 @@ func handleWrapperStop() {
 	cmd := exec.Command(watchdogScript, "stop")
 	cmd.Run()
 	logAction("INFO", "Демон watchdog остановлен вручную")
-	WriteJSON(map[string]string{"status": "ok", "message": "Демон остановлен"})
+	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Демон остановлен"})
 }
 
 func handleWrapperRestart() {
 	cmd := exec.Command(watchdogScript, "restart")
 	if err := cmd.Run(); err != nil {
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
 		return
 	}
 	time.Sleep(1 * time.Second)
 
 	if pid := readWrapperPID(); pid > 0 {
 		logAction("INFO", "Демон watchdog перезапущен вручную (PID: "+itoa(pid)+")")
-		WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон перезапущен", "pid": pid})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Демон перезапущен", "pid": pid})
 	} else {
 		logAction("ERROR", "Не удалось перезапустить демон watchdog")
-		WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Не удалось перезапустить демон"})
 	}
 }
 

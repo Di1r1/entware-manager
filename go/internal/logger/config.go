@@ -2,6 +2,7 @@ package logger
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"io"
 	"os"
@@ -19,39 +20,39 @@ type LoggerConfig struct {
 }
 
 func HandleConfig() {
-	if IsGET() {
+	if cgiutil.IsGET() {
 		if hasQuery("pretty") {
 			showPrettyConfig()
 			return
 		}
 		data, err := os.ReadFile(configFile)
 		if err != nil {
-			WriteJSON(LoggerConfig{Enabled: true})
+			cgiutil.WriteJSON(LoggerConfig{Enabled: true})
 			return
 		}
 		var cfg LoggerConfig
 		if json.Unmarshal(data, &cfg) != nil {
-			WriteJSON(LoggerConfig{Enabled: true})
+			cgiutil.WriteJSON(LoggerConfig{Enabled: true})
 			return
 		}
-		WriteJSON(cfg)
+		cgiutil.WriteJSON(cfg)
 		return
 	}
 
-	if IsPOST() {
+	if cgiutil.IsPOST() {
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
 		body, err := io.ReadAll(os.Stdin)
 		if err != nil || len(body) == 0 {
-			WriteJSON(map[string]string{"status": "error", "message": "Empty request"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Empty request"})
 			return
 		}
 
 		var newCfg LoggerConfig
 		if err := json.Unmarshal(body, &newCfg); err != nil {
-			WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
 			return
 		}
 
@@ -69,11 +70,11 @@ func HandleConfig() {
 		}
 
 		os.WriteFile(configFile, body, 0644)
-		WriteJSON(map[string]string{"status": "ok"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		return
 	}
 
-	NotAllowed()
+	cgiutil.NotAllowed()
 }
 
 func showPrettyConfig() {

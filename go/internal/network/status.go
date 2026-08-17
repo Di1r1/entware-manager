@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strconv"
@@ -23,13 +24,13 @@ type WatchdogState struct {
 }
 
 func HandleStatus() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	st := getWatchdogStatus()
-	WriteJSON(st)
+	cgiutil.WriteJSON(st)
 }
 
 func getWatchdogStatus() WatchdogStatus {

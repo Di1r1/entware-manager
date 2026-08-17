@@ -1,6 +1,7 @@
 package packages
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"strconv"
@@ -35,8 +36,8 @@ func readInstalledTimes() map[string]int64 {
 }
 
 func Installed() {
-	if !isGET() {
-		methodNotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -114,14 +115,14 @@ type InstalledPkg struct {
 // [{package, version, installed_date}] — версии из opkg list-installed,
 // дата установки из /opt/lib/opkg/status.
 func InstalledJSON() {
-	if !isGET() {
-		methodNotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
 	out, code := runOpkg("list-installed")
 	if code != 0 {
-		writeJSON([]InstalledPkg{})
+		cgiutil.WriteJSON([]InstalledPkg{})
 		return
 	}
 
@@ -150,5 +151,5 @@ func InstalledJSON() {
 		pkgs = append(pkgs, InstalledPkg{Package: pkg, Version: ver, InstalledDate: instDate})
 	}
 
-	writeJSON(pkgs)
+	cgiutil.WriteJSON(pkgs)
 }

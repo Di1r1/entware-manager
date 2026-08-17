@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"encoding/json"
+	"entware-manager/internal/cgiutil"
 	"io"
 	"os"
 	"strconv"
@@ -15,7 +16,7 @@ const monitorConfigFile = "/opt/web_entware/monitor_config.json"
 const monitorPIDFile = "/tmp/entware/pid/watchdog.pid"
 
 func HandleConfig() {
-	if IsGET() {
+	if cgiutil.IsGET() {
 		data := readConfigFromFile()
 		if data == nil {
 			data = defaultConfig()
@@ -30,24 +31,24 @@ func HandleConfig() {
 				saveConfigToFile(data)
 			}
 		}
-		WriteJSON(data)
+		cgiutil.WriteJSON(data)
 		return
 	}
 
-	if IsPOST() {
+	if cgiutil.IsPOST() {
 		if auth.IsCrossSiteOrigin() {
-			WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 			return
 		}
 		body, err := io.ReadAll(os.Stdin)
 		if err != nil || len(body) == 0 {
-			WriteJSON(map[string]string{"status": "error", "message": "Empty request"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Empty request"})
 			return
 		}
 
 		var cfg map[string]interface{}
 		if err := json.Unmarshal(body, &cfg); err != nil {
-			WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
 			return
 		}
 
@@ -63,11 +64,11 @@ func HandleConfig() {
 		}
 
 		logAction("INFO", "Сохранены настройки защиты")
-		WriteJSON(map[string]string{"status": "ok"})
+		cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		return
 	}
 
-	NotAllowed()
+	cgiutil.NotAllowed()
 }
 
 func readConfigFromFile() map[string]interface{} {

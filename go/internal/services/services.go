@@ -1,6 +1,7 @@
 package services
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,8 +21,8 @@ type Service struct {
 const servicesDir = "/opt/etc/init.d"
 
 func HandleServices() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -82,7 +83,7 @@ func HandleServices() {
 	if list == nil {
 		list = []Service{}
 	}
-	WriteJSON(list)
+	cgiutil.WriteJSON(list)
 }
 
 type procInfo struct {

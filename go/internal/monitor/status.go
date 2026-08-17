@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
 	"sort"
@@ -28,8 +29,8 @@ const (
 )
 
 func HandleStatus() {
-	if !IsGET() {
-		NotAllowed()
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
 		return
 	}
 
@@ -50,7 +51,7 @@ func HandleStatus() {
 		topProcs = []Process{}
 	}
 
-	WriteJSON(StatusResponse{
+	cgiutil.WriteJSON(StatusResponse{
 		DaemonStatus: daemonStatus,
 		DaemonPID:    daemonPID,
 		Processes:    topProcs,
