@@ -22,7 +22,7 @@ func Remove() {
 	html := fmt.Sprintf("<h2>Удаление пакета: %s</h2>\n<pre>\n", htmlEscape(pkgClean))
 
 	out, code := runOpkg("remove", pkgClean)
-	html += out + "</pre>\n"
+	html += htmlEscape(out) + "</pre>\n"
 
 	if code == 0 {
 		html += `<p class="success">Пакет успешно удалён.</p>`

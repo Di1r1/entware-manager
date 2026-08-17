@@ -22,10 +22,6 @@ func HandleKillPID() {
 		body, _ := io.ReadAll(os.Stdin)
 		params := parseFormBody(string(body))
 		pidStr = params["pid"]
-	case "GET":
-		qs := os.Getenv("QUERY_STRING")
-		params := parseFormBody(qs)
-		pidStr = params["pid"]
 	default:
 		WriteJSON(map[string]string{"status": "error", "error": "Метод не поддерживается"})
 		return

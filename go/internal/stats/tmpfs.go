@@ -29,6 +29,14 @@ func HandleTmpfs() {
 	}
 	path = filepath.Clean(path)
 
+	// Листинг только из /tmp и /dev/shm (как delete_file/view_file/tmpfs_clean).
+	if !(path == "/tmp" || path == "/dev/shm" ||
+		strings.HasPrefix(path, "/tmp/") || strings.HasPrefix(path, "/dev/shm/")) {
+		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
+		fmt.Printf("<p class='error'>Доступ запрещен: %s</p>", html.EscapeString(path))
+		return
+	}
+
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
 		fmt.Print("Content-type: text/html; charset=utf-8\n\n")

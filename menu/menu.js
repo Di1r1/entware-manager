@@ -26,9 +26,13 @@ const Menu = (() => {
                 { tab: "processes", icon: "process", text: "Процессы" },
                 { tab: "terminal", icon: "terminal", text: "Терминал" },
                 { tab: "system-services", icon: "services", text: "Службы и Cron" },
+                { tab: "network", icon: "router", text: "Сеть" },
+                { tab: "smart", icon: "hdd", text: "SMART" },
+                { tab: "rdp", icon: "vpn", text: "RDP" },
                 { tab: "settings", icon: "settings", text: "Настройки" },
                 { tab: "monitor", icon: "shield", text: "Защита" },
-                { tab: "help", icon: "help", text: "Справка" }
+                { tab: "help", icon: "help", text: "Справка" },
+                { tab: "logs", icon: "list", text: "Логи" }
             ];
         }
     }

@@ -23,9 +23,6 @@ func HandleServiceAction() {
 		params := parseFormBody(body)
 		name = params["name"]
 		action = params["action"]
-	} else if IsGET() {
-		name = getQueryParam("name")
-		action = getQueryParam("action")
 	} else {
 		NotAllowed()
 		return

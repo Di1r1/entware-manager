@@ -442,7 +442,7 @@ async function showPackageInfo(pkg) {
     try {
         const data = await apiGet('/api.cgi?action=info&package=' + encodeURIComponent(pkg));
         if (data.error) Modal.error(data.error);
-        else Modal.info(`<pre>${data.info}</pre>`, `Пакет: ${pkg}`);
+        else Modal.info(`<pre>${escapeHtml(data.info)}</pre>`, `Пакет: ${pkg}`);
     } catch (err) {
         Modal.error('Ошибка запроса: ' + err.message);
     }
@@ -763,7 +763,7 @@ async function runPkgUpdate() {
     try {
         const response = await apiFetch('/update.cgi?run=1');
         const text = await response.text();
-        resultDiv.innerHTML = `<pre>${text}</pre>`;
+        resultDiv.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
         pkgCacheClearAll();
         await loadPkgTable();
     } catch (err) {
@@ -793,7 +793,7 @@ async function upgradeAll() {
             body: 'upgrade_all=1'
         });
         const text = await response.text();
-        resultDiv.innerHTML = `<pre>${text}</pre>`;
+        resultDiv.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
         pkgCacheClearAll();
         await loadPkgTable();
     } catch (err) {
@@ -927,7 +927,7 @@ function loadLogsTab() {
                     Настройки логирования
                 </button>
                 <button id="systemEventsBtn" class="packages-delete-btn" style="background:#2c5282;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-info"/></svg> Системные события
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-info"/></svg> Системные события
                 </button>
             </div>
             <div id="system-controls" style="margin-top: 16px; display: none; gap: 12px; flex-wrap: wrap; align-items: center;">
@@ -1154,8 +1154,8 @@ function updateTtydStatus(data) {
 
     let html = '<h3>Текущее состояние ttyd</h3>';
     html += '<table class="stat-table">';
-    html += `  <tr><td>htop (8089, доступ /htop/):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${htop.state}</span> ${htop.pid ? '(PID ' + htop.pid + ')' : ''}</td></tr>`;
-    html += `  <tr><td>Терминал (9089, доступ /terminal/):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${term.state}</span> ${term.pid ? '(PID ' + term.pid + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
+    html += `  <tr><td>htop (8089, доступ /htop/):</td><td><span class="${htop.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${escapeHtml(htop.state)}</span> ${htop.pid ? '(PID ' + escapeHtml(htop.pid) + ')' : ''}</td></tr>`;
+    html += `  <tr><td>Терминал (9089, доступ /terminal/):</td><td><span class="${term.state === 'running' ? 'stat-value-normal' : 'stat-value-critical'}">${escapeHtml(term.state)}</span> ${term.pid ? '(PID ' + escapeHtml(term.pid) + ')' : ''} ${term.state === 'running' ? '(' + modeLabel + ')' : ''}</td></tr>`;
     html += '</table>';
     statusDiv.innerHTML = html;
 
@@ -1595,7 +1595,7 @@ async function renderSettingsTab() {
                 <tbody id="linksTableBody">
     `;
     links.forEach((link, index) => {
-        const iconId = link.icon || 'link';
+        const iconId = link.icon && isSafeLinkIcon(link.icon) ? link.icon : 'link';
         html += `
             <tr data-index="${index}">
                 <td style="min-width: 150px;">
@@ -1721,10 +1721,11 @@ window.prepareOffline = async function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Офлайн-пакет готов: ' + filename + '</span>' +
+        const filenameEsc = escapeHtml(filename);
+        statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Офлайн-пакет готов: ' + filenameEsc + '</span>' +
             '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Файл сохранён в папку Загрузки браузера.</p>' +
             '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary);">Перенесите его на целевой роутер в <b>/opt/tmp/</b> (через SMB или USB) и выполните:</p>' +
-            '<pre style="margin-top:8px;background:var(--pre-bg);padding:0.5rem;font-size:0.85rem;white-space:pre-wrap;">tar xzf ' + filename + '\ncd ' + filename.replace('.tar.gz', '') + '\nsh install-offline.sh</pre>';
+            '<pre style="margin-top:8px;background:var(--pre-bg);padding:0.5rem;font-size:0.85rem;white-space:pre-wrap;">tar xzf ' + filenameEsc + '\ncd ' + filenameEsc.replace('.tar.gz', '') + '\nsh install-offline.sh</pre>';
     } catch (err) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
     }
@@ -2465,7 +2466,7 @@ function loadNetworkTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/network.js?v=3';
+    script.src = '/entware-manager/network.js?v=4';
     script.onload = () => {
         if (typeof initNetworkTab === 'function') initNetworkTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля сети</p>';
@@ -2480,7 +2481,7 @@ function loadMonitorTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/monitor.js?v=3';
+    script.src = '/entware-manager/monitor.js?v=4';
     script.onload = () => {
         if (typeof initMonitorTab === 'function') initMonitorTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля защиты</p>';
@@ -2647,8 +2648,7 @@ const SERVICE_WATCHDOG = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await apiFetch('/service_watchdog/action.cgi?action=' + action);
-            const data = await res.json();
+            const data = await apiPost('/service_watchdog/action.cgi', 'action=' + action);
             
             if (data.status === 'ok') {
                 Toast.show(data.message);

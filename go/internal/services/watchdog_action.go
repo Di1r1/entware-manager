@@ -14,11 +14,11 @@ var (
 )
 
 func HandleWatchdogAction() {
-	if !IsGET() && !IsPOST() {
+	if !IsPOST() {
 		NotAllowed()
 		return
 	}
-	if IsPOST() && auth.IsCrossSiteOrigin() {
+	if auth.IsCrossSiteOrigin() {
 		WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
 		return
 	}

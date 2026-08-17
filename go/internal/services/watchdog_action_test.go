@@ -29,7 +29,7 @@ func TestWatchdogAction_Start(t *testing.T) {
 echo "$$" > "`+wrapperPidFile+`"
 `)
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=start")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -57,7 +57,7 @@ func TestWatchdogAction_Stop(t *testing.T) {
 exit 0
 `)
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=stop")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -76,7 +76,7 @@ exit 0
 }
 
 func TestWatchdogAction_UnknownAction(t *testing.T) {
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=unknown")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -100,7 +100,7 @@ func TestWatchdogAction_ScriptNotFound(t *testing.T) {
 	watchdogScript = filepath.Join(tmp, "nonexistent.sh")
 	defer func() { watchdogScript = oldScript }()
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=start")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")

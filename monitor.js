@@ -128,11 +128,11 @@ const MONITOR = {
             if (data.processes && data.processes.length) {
                 tbody.innerHTML = data.processes.map(p => `
                     <tr>
-                        <td>${p.pid}</td>
-                        <td>${p.pcpu}</td>
-                        <td>${p.time}</td>
+                        <td>${escapeHtml(p.pid)}</td>
+                        <td>${escapeHtml(p.pcpu)}</td>
+                        <td>${escapeHtml(p.time)}</td>
                         <td title="${escapeHtml(p.command)}">${escapeHtml(p.command).substring(0, 50)}</td>
-                        <td><button class="packages-delete-btn" data-pid="${p.pid}">Убить</button></td>
+                        <td><button class="packages-delete-btn" data-pid="${escapeHtml(p.pid)}">Убить</button></td>
                     </tr>
                 `).join('');
                 document.querySelectorAll('#processes-tbody button[data-pid]').forEach(btn => {

@@ -241,4 +241,15 @@
   <line x1="8" y1="6" x2="8" y2="10" stroke="currentColor"/>
   <circle cx="8" cy="12" r="0.5" fill="currentColor"/>
 </symbol>
+  <symbol id="icon-info" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor"/>
+    <line x1="8" y1="7" x2="8" y2="12" stroke="currentColor"/>
+    <circle cx="8" cy="4.5" r="0.5" fill="currentColor"/>
+  </symbol>
+  <symbol id="icon-bell" viewBox="0 0 16 16">
+    <path d="M4 11l1-4a3 3 0 0 1 6 0l1 4H4z" fill="none" stroke="currentColor"/>
+    <line x1="8" y1="12" x2="8" y2="14" stroke="currentColor"/>
+    <path d="M6 12v-1" fill="none" stroke="currentColor"/>
+    <path d="M10 12v-1" fill="none" stroke="currentColor"/>
+  </symbol>
 </svg>

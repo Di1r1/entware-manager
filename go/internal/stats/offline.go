@@ -109,8 +109,17 @@ func buildOfflineBundle(tmpDir, arch, version string) error {
 		name := header.Name
 		if strings.HasPrefix(name, prefix) {
 			name = "deploy" + strings.TrimPrefix(name, prefix)
+		} else {
+			// Архив должен содержать только содержимое deploy-<arch>/.
+			continue
 		}
-		target := filepath.Join(tmpDir, name)
+
+		// Защита от tar-path-traversal: только чистые относительные пути внутри tmpDir.
+		rel := filepath.Clean(name)
+		if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
+			return fmt.Errorf("небезопасный путь в архиве: %s", header.Name)
+		}
+		target := filepath.Join(tmpDir, rel)
 
 		switch header.Typeflag {
 		case tar.TypeDir:

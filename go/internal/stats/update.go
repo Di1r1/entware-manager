@@ -586,7 +586,14 @@ func runUpdate(version, arch string) {
 			continue
 		}
 
-		target := filepath.Join(tmpDir, name)
+		// Защита от tar-path-traversal: только чистые относительные пути внутри tmpDir.
+		rel := filepath.Clean(name)
+		if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
+			log("[ERROR] Пропуск небезопасного пути в архиве: " + header.Name)
+			continue
+		}
+
+		target := filepath.Join(tmpDir, rel)
 		switch header.Typeflag {
 		case tar.TypeDir:
 			os.MkdirAll(target, 0755)

@@ -19,7 +19,7 @@ func Upgrade() {
 	if upgradeAll == "1" {
 		html := "<h2>Обновление всех пакетов...</h2>\n<pre>\n"
 		out, code := runOpkg("upgrade")
-		html += out + "</pre>\n"
+		html += htmlEscape(out) + "</pre>\n"
 		if code == 0 {
 			html += `<p class="success">Все пакеты обновлены.</p>`
 			logPackageChange("upgrade-all", "all-packages", "success")
@@ -40,7 +40,7 @@ func Upgrade() {
 
 	html := fmt.Sprintf("<h2>Обновление пакета: %s</h2>\n<pre>\n", htmlEscape(pkgClean))
 	out, code := runOpkg("upgrade", pkgClean)
-	html += out + "</pre>\n"
+	html += htmlEscape(out) + "</pre>\n"
 
 	if code == 0 {
 		html += `<p class="success">Пакет успешно обновлён.</p>`

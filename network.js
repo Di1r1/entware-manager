@@ -312,11 +312,7 @@ const NETWORK = {
         if (btn) btn.disabled = true;
         
         try {
-            const res = await apiFetch('/network/action.cgi?action=' + action);
-            
-            console.log('Response status:', res.status);
-            const data = await res.json();
-            console.log('Response data:', data);
+            const data = await apiPost('/network/action.cgi', 'action=' + action);
             
             if (data.status === 'ok') {
                 Toast.show(data.message);

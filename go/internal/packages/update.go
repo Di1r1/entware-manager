@@ -9,7 +9,7 @@ func Update() {
 	html := "<h2>Обновление списков пакетов</h2>\n<pre>\n"
 
 	out, code := runOpkg("update")
-	html += out + "</pre>\n"
+	html += htmlEscape(out) + "</pre>\n"
 
 	if code == 0 {
 		html += `<p class="success">Списки пакетов успешно обновлены.</p>`

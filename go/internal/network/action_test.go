@@ -29,7 +29,7 @@ func TestHandleAction_Start(t *testing.T) {
 echo "$$" > "`+PidFile+`"
 `)
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=start")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -61,7 +61,7 @@ func TestHandleAction_Stop(t *testing.T) {
 exit 0
 `)
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=stop")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -94,7 +94,7 @@ func TestHandleAction_Restart(t *testing.T) {
 echo "$$" > "`+PidFile+`"
 `)
 
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=restart")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")
@@ -113,7 +113,7 @@ echo "$$" > "`+PidFile+`"
 }
 
 func TestHandleAction_UnknownAction(t *testing.T) {
-	os.Setenv("REQUEST_METHOD", "GET")
+	os.Setenv("REQUEST_METHOD", "POST")
 	os.Setenv("QUERY_STRING", "action=unknown")
 	defer func() {
 		os.Unsetenv("REQUEST_METHOD")

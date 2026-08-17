@@ -28,6 +28,7 @@ var staticWhitelist = map[string]bool{
 	"/menu/menu.js":               true,
 	"/menu/menu.json":             true,
 	"/logger/system_sources.json": true,
+	"/logger/style.css":           true,
 }
 
 // handleStatic отдаёт файлы из белого списка под /entware-manager/.
