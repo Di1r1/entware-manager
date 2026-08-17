@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"entware-manager/internal/auth"
 )
 
 //go:embed viewfile.html
@@ -21,11 +24,30 @@ type ViewFileResponse struct {
 }
 
 func HandleViewFile() {
-	qs := os.Getenv("QUERY_STRING")
-	path := getQueryParam(qs, "path")
+	if os.Getenv("REQUEST_METHOD") != "POST" {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"Метод не поддерживается"}`)
+		return
+	}
+
+	if auth.IsCrossSiteOrigin() {
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		fmt.Println(`{"status":"error","message":"` + auth.CrossSiteDeny + `"}`)
+		return
+	}
+
+	body, _ := io.ReadAll(os.Stdin)
+	params := parsePostForm(string(body))
+	path := params["path"]
+	password := params["password"]
 	isXHR := os.Getenv("HTTP_X_REQUESTED_WITH") != ""
 
 	if path == "" || !isAllowedPath(path) {
+		viewFileError("Доступ запрещен", isXHR)
+		return
+	}
+
+	if !checkFilemgrAuth(password) {
 		viewFileError("Доступ запрещен", isXHR)
 		return
 	}

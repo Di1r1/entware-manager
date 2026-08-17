@@ -1,10 +1,12 @@
 package smart
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDetectType_NVMe(t *testing.T) {
@@ -116,6 +118,50 @@ func TestSelftestStart_InvalidType(t *testing.T) {
 	body := captureStdout(t, func() { handleSelftestStart("sda", "quick") })
 	if !strings.Contains(string(body), `"status":"error"`) {
 		t.Errorf("expected error for invalid test type, got: %s", body)
+	}
+}
+
+// TestWaitOutcome_TimeoutUnblocksRead проверяет, что ветка «Kill + Close»
+// разблокирует висящий Read() и waitOutcome возвращается по истечении timeout.
+// Процесс в D-состоянии в тесте не воспроизвести — моделируем его фиктивным
+// io.Pipe, у которого read-end закрывается, а done никогда не приходит.
+func TestWaitOutcome_TimeoutUnblocksRead(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	done := make(chan error, 1)
+
+	start := time.Now()
+	out, err := waitOutcome(pr, done, 50*time.Millisecond, func() {})
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(err.Error(), "timeout") {
+		t.Errorf("expected timeout error, got %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Errorf("waitOutcome should return promptly after pipe close, took %v", elapsed)
+	}
+	if out != "" {
+		t.Errorf("expected empty output, got %q", out)
+	}
+}
+
+// TestWaitOutcome_TimeoutKeepsPartialOutput проверяет, что в ветке timeout
+// сохраняется частичный вывод, записанный до зависания.
+func TestWaitOutcome_TimeoutKeepsPartialOutput(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	done := make(chan error, 1)
+	go func() {
+		pw.Write([]byte("partial output\n"))
+	}()
+
+	out, err := waitOutcome(pr, done, 50*time.Millisecond, func() {})
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if out != "partial output\n" {
+		t.Errorf("expected partial output, got %q", out)
 	}
 }
 

@@ -97,13 +97,16 @@ func isAllowedDeletePath(p string) bool {
 		strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
 }
 
+var authConfigFile = authConfigPath
+var authMarkerFile = authMarkerPath
+
 func checkFilemgrAuth(password string) bool {
-	data, err := os.ReadFile("/opt/web_entware/auth_config.json")
+	data, err := os.ReadFile(authConfigFile)
 	if err != nil {
 		// Конфига нет: если панель уже защищалась (marker) — fail-closed
 		// (битый/удалённый конфиг не снимает защиту). Первичная установка
 		// без пароля — панель открыта по умолчанию, разрешаем.
-		if _, serr := os.Stat(authMarkerPath); serr == nil {
+		if _, serr := os.Stat(authMarkerFile); serr == nil {
 			return false
 		}
 		return true
@@ -126,7 +129,9 @@ func checkFilemgrAuth(password string) bool {
 	if cfg.Password != "" {
 		return password == cfg.Password
 	}
-	return true
+	// enabled=true, но пароль не задан ни в виде hash, ни plain — панель
+	// настраивали, доступа без пароля быть не должно.
+	return false
 }
 
 func sha256Hex(s string) string {

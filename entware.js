@@ -761,7 +761,11 @@ async function runPkgUpdate() {
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
-        const response = await apiFetch('/update.cgi?run=1');
+        const response = await apiFetch('/update.cgi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'run=1'
+        });
         const text = await response.text();
         resultDiv.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
         pkgCacheClearAll();

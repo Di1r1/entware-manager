@@ -110,6 +110,17 @@ func runOpkg(args ...string) (string, int) {
 	return runCmd("/opt/bin/opkg", args...)
 }
 
+// runOpkgTimed выполняет opkg с таймаутом 60с через coreutils-timeout (если
+// доступен), иначе напрямую. Защита от зависания на недоступном/медленном
+// feed — аналог opkgWithTimeout() в stats/update.go.
+func runOpkgTimed(args ...string) (string, int) {
+	if _, err := exec.LookPath("timeout"); err == nil {
+		cmd := append([]string{"60", "/opt/bin/opkg"}, args...)
+		return runCmd("timeout", cmd...)
+	}
+	return runOpkg(args...)
+}
+
 func runCmd(cmd string, args ...string) (string, int) {
 	c := exec.Command(cmd, args...)
 	out, err := c.CombinedOutput()

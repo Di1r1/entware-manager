@@ -176,14 +176,27 @@ var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pas
     }
 
     function viewFile(path) {
-        fetch('/entware-cgi/view_file.cgi?path=' + encodeURIComponent(path), {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
+        function doView(password) {
+            var body = 'path=' + encodeURIComponent(path);
+            if (password) {
+                FILEMGR_PASS = password;
+                sessionStorage.setItem('filemgr_pass', password);
+                body += '&password=' + encodeURIComponent(password);
+            }
+            fetch('/entware-cgi/view_file.cgi', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+                body: body
+            })
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.status === 'ok') {
                     var html = '<pre style="max-height:70vh;overflow:auto;background:#1a1a2e;padding:16px;border-radius:8px;font-size:13px;line-height:1.4;color:#e0e0e0;white-space:pre-wrap;word-wrap:break-word;">' + escapeHtml(data.content) + '</pre>';
                     Modal.info(html, 'Файл: ' + data.name);
+                } else if (data.message === 'Доступ запрещен' || data.message === 'Неверный пароль') {
+                    FILEMGR_PASS = '';
+                    sessionStorage.removeItem('filemgr_pass');
+                    Toast.show('Доступ запрещен', true);
                 } else {
                     Toast.show('Ошибка: ' + data.message, true);
                 }
@@ -191,6 +204,17 @@ var FILEMGR_PASS = (function(){ try { return sessionStorage.getItem('filemgr_pas
             .catch(function(err) {
                 Toast.show('Ошибка запроса: ' + err.message, true);
             });
+        }
+
+        if (AUTH_ENABLED) {
+            if (FILEMGR_PASS) {
+                doView(FILEMGR_PASS);
+            } else {
+                Modal.promptPassword('Введите пароль для доступа к файловому менеджеру', doView);
+            }
+        } else {
+            doView('');
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function() {

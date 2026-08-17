@@ -526,7 +526,7 @@ func renderTable(b *strings.Builder, id, title, icon string, entries []DFEntry, 
 	} else {
 		for _, e := range entries {
 			action := ""
-			if cleanable {
+			if cleanable && cleanableRoot(e.Mount) {
 				q := url.QueryEscape(e.Mount)
 				action = fmt.Sprintf(` <button class="packages-delete-btn tmpfs-clean-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;" onclick="tmpfsClean('%s')">Очистка</button>`, q)
 			}

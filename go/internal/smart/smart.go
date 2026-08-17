@@ -199,8 +199,7 @@ func smartctlBusy(device string) bool {
 
 // runBounded выполняет команду с жёстким дедлайном. Если процесс не завершился
 // вовремя (например, ушёл в D-состояние — непрерываемый сон на подвешенном диске),
-// убивает его (сигнал встаёт в очередь) и возвращает partial-вывод. Wait() не
-// вызывается для зависшего процесса — иначе заблокируемся навсегда.
+// убивает его (сигнал встаёт в очередь) и возвращает partial-вывод.
 func runBounded(cmd *exec.Cmd, timeout time.Duration) (string, error) {
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -214,6 +213,19 @@ func runBounded(cmd *exec.Cmd, timeout time.Duration) (string, error) {
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 
+	outStr, err := waitOutcome(out, done, timeout, func() { cmd.Process.Kill() })
+	return outStr, err
+}
+
+// waitOutcome читает вывод из out до первого из двух событий: процесс завершился
+// (done) или истёк timeout. В ветке timeout вызывается kill() и закрывается
+// read-end пайпа (out.Close()) — это разблокирует висящий Read() горутины чтения
+// (процесс в D-состоянии не пишет и не умирает). Wait() в этой ветке НЕ
+// вызывается: для D-state процесса он заблокировал бы навсегда, поэтому ребёнок
+// остаётся зомби — приемлемо, т.к. CGI-процесс короткоживущий, зомби
+// переподхватится при его выходе. done — буферизованный канал ёмкости 1,
+// readDone закрывается ровно один раз (в горутине чтения).
+func waitOutcome(out io.ReadCloser, done <-chan error, timeout time.Duration, kill func()) (string, error) {
 	buf := make([]byte, 0, 4096)
 	readDone := make(chan struct{})
 	go func() {
@@ -233,9 +245,8 @@ func runBounded(cmd *exec.Cmd, timeout time.Duration) (string, error) {
 		<-readDone
 		return string(buf), nil
 	case <-time.After(timeout):
-		// Процесс, вероятно, в D-состоянии. Kill() очередит SIGKILL —
-		// умрёт, когда диск придёт в себя. Wait() не вызываем.
-		cmd.Process.Kill()
+		kill()
+		out.Close()
 		<-readDone
 		return string(buf), fmt.Errorf("timeout after %v", timeout)
 	}

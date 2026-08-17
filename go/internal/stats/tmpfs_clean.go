@@ -73,6 +73,11 @@ func scanTmpClean() {
 	}
 	path = filepath.Clean(path)
 
+	if !cleanableRoot(path) {
+		jsonClean("Доступ запрещен")
+		return
+	}
+
 	minBytes := int64(1 << 20) // 1 МиБ
 	if mb := getQueryParam(qs, "min_bytes"); mb != "" {
 		if v, err := strconv.ParseInt(mb, 10, 64); err == nil && v > 0 {
@@ -163,6 +168,11 @@ func deleteTmpClean() {
 			jsonClean("Доступ запрещен")
 			return
 		}
+		if tmpfsProtected[filepath.Base(p)] {
+			logDeleteAction("WARN", fmt.Sprintf("Попытка очистки защищённого каталога: %s", p))
+			jsonClean("Доступ запрещен")
+			return
+		}
 	}
 	if len(paths) == 0 {
 		jsonClean("Пути не указаны")
@@ -203,10 +213,17 @@ func deleteTmpClean() {
 	fmt.Printf(`{"status":"ok","deleted":%d}`+"\n", deleted)
 }
 
+// cleanableRoot — разрешён ли корень для сканирования/очистки tmpfs:
+// только /tmp и /dev/shm (включая подпути).
+func cleanableRoot(p string) bool {
+	return p == "/tmp" || p == "/dev/shm" ||
+		strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
+}
+
 // isCleanablePath — допустимость пути для удаления: только подпапки
 // /tmp и /dev/shm, без ".." и путей, меняющих смысл после Clean.
 func isCleanablePath(p string) bool {
-	if p == "" || p == "/" {
+	if p == "" || p == "/" || p == "/tmp" || p == "/dev/shm" {
 		return false
 	}
 	if strings.Contains(p, "..") {
@@ -215,7 +232,7 @@ func isCleanablePath(p string) bool {
 	if filepath.Clean(p) != p {
 		return false
 	}
-	return strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
+	return cleanableRoot(p)
 }
 
 // dirSizePath считает рекурсивный размер и число файлов, не пересекая
