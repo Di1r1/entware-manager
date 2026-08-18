@@ -50,22 +50,3 @@ func TestRotationSummary_Empty(t *testing.T) {
 		t.Errorf("expected empty message, got %q", got)
 	}
 }
-
-func TestSizeHuman(t *testing.T) {
-	cases := []struct {
-		size int64
-		want string
-	}{
-		{0, "0B"},
-		{512, "512B"},
-		{1024, "1K"},
-		{1536, "1K"},
-		{2097152, "2M"},
-		{3221225472, "3G"},
-	}
-	for _, c := range cases {
-		if got := sizeHuman(c.size); got != c.want {
-			t.Errorf("sizeHuman(%d): expected %q, got %q", c.size, c.want, got)
-		}
-	}
-}

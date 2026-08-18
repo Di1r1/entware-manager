@@ -185,6 +185,25 @@ func TestReadPOSTBody(t *testing.T) {
 	}
 }
 
+func TestHumanSize(t *testing.T) {
+	cases := []struct {
+		size int64
+		want string
+	}{
+		{0, "0B"},
+		{512, "512B"},
+		{1024, "1K"},
+		{1536, "1K"},
+		{2097152, "2M"},
+		{3221225472, "3G"},
+	}
+	for _, c := range cases {
+		if got := HumanSize(c.size); got != c.want {
+			t.Errorf("HumanSize(%d): expected %q, got %q", c.size, c.want, got)
+		}
+	}
+}
+
 func withFakeStdin(t *testing.T, content string) *os.File {
 	t.Helper()
 	f, err := os.CreateTemp("", "cgiutil-stdin-*")

@@ -138,7 +138,7 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 			escPath, escName, dtype,
 		)
 
-		hsize := humanSize(info.Size())
+		hsize := cgiutil.HumanSize(info.Size())
 		modTime := info.ModTime().Format("Jan _2 15:04")
 		perm := info.Mode().String()
 
@@ -155,17 +155,4 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 		))
 	}
 	return b.String()
-}
-
-func humanSize(size int64) string {
-	switch {
-	case size < 1024:
-		return strconv.FormatInt(size, 10) + "B"
-	case size < 1048576:
-		return strconv.FormatInt(size/1024, 10) + "K"
-	case size < 1073741824:
-		return strconv.FormatInt(size/1048576, 10) + "M"
-	default:
-		return strconv.FormatInt(size/1073741824, 10) + "G"
-	}
 }

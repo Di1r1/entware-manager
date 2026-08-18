@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -123,4 +124,18 @@ func unhex(c byte) int {
 		return int(c - 'A' + 10)
 	}
 	return -1
+}
+
+// HumanSize форматирует размер в человеко-читаемый вид (B/K/M/G), как в UI панели.
+func HumanSize(size int64) string {
+	switch {
+	case size < 1024:
+		return strconv.FormatInt(size, 10) + "B"
+	case size < 1048576:
+		return strconv.FormatInt(size/1024, 10) + "K"
+	case size < 1073741824:
+		return strconv.FormatInt(size/1048576, 10) + "M"
+	default:
+		return strconv.FormatInt(size/1073741824, 10) + "G"
+	}
 }

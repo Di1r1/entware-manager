@@ -64,23 +64,9 @@ func rotationSummary(files []RotatedFile) string {
 	}
 	var parts []string
 	for _, f := range files {
-		parts = append(parts, f.Path+" ("+sizeHuman(f.Size)+")")
+		parts = append(parts, f.Path+" ("+cgiutil.HumanSize(f.Size)+")")
 	}
 	return strings.Join(parts, ", ")
-}
-
-// sizeHuman — человеко-читаемый размер (B/K/M/G), как в UI панели.
-func sizeHuman(size int64) string {
-	switch {
-	case size < 1024:
-		return strconv.FormatInt(size, 10) + "B"
-	case size < 1048576:
-		return strconv.FormatInt(size/1024, 10) + "K"
-	case size < 1073741824:
-		return strconv.FormatInt(size/1048576, 10) + "M"
-	default:
-		return strconv.FormatInt(size/1073741824, 10) + "G"
-	}
 }
 
 // parseRotated разбирает вывод rotate.sh: строки "ROTATED|путь|размер".

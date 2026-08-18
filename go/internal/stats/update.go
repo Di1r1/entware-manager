@@ -486,7 +486,7 @@ func runUpdate(version, arch string) {
 		// Проверка целостности: ipk должен быть gzip-архивом >1КБ.
 		// Обрезанная загрузка приводила к «Malformed package file» у opkg.
 		if fi, perr := os.Stat(ipkPath); perr != nil || fi.Size() < 1024 || written < fi.Size() {
-			log("[ERROR] Загруженный файл повреждён или обрезан (" + humanSize(written) + ")")
+			log("[ERROR] Загруженный файл повреждён или обрезан (" + cgiutil.HumanSize(written) + ")")
 			os.RemoveAll(tmpDir)
 			return
 		}
