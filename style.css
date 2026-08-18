@@ -2510,9 +2510,10 @@ html.night #toast {
     gap: 6px;
     color: var(--text-secondary);
     font-size: 0.85rem;
-    margin-top: 10px;
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .rdp-cursor-opt input[type="checkbox"] {
     accent-color: var(--accent);

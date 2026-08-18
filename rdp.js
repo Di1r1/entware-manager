@@ -55,6 +55,11 @@ const RDP = {
                     <div class="rdp-status" id="rdpStatus">
                         <p class="rdp-meta">Загрузка конфигурации...</p>
                     </div>
+                    <label class="rdp-cursor-opt" title="Если курсор на удалённом ПК не виден (например, в Radmin), показывать локальную стрелку вместо скрытого системного курсора">
+                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-cursor"/></svg>
+                        <input type="checkbox" id="rdpAlwaysCursor" />
+                        Всегда показывать локальный курсор
+                    </label>
                     <div class="rdp-actions">
                         <button id="rdpStartBtn" class="packages-delete-btn rdp-btn-start" disabled>
                             <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить прокси
@@ -74,11 +79,6 @@ const RDP = {
                     <p class="rdp-hint">
                         Нажмите внутри окна, чтобы захватить клавиатуру и мышь. Раскладка: Windows + Space.
                     </p>
-                    <label class="rdp-cursor-opt" title="Если курсор на удалённом ПК не виден (например, в Radmin), показывать локальную стрелку вместо скрытого системного курсора">
-                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-cursor"/></svg>
-                        <input type="checkbox" id="rdpAlwaysCursor" />
-                        Всегда показывать локальный курсор
-                    </label>
                 </div>
             </div>
         `;
@@ -122,7 +122,7 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=7';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=8';
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
