@@ -1423,14 +1423,6 @@ function tmpfsClean(mount) {
     mount = decodeURIComponent(mount);
     var state = { mount: mount, data: null };
 
-    function getPass() {
-        try { return sessionStorage.getItem('filemgr_pass') || ''; }
-        catch (e) { return ''; }
-    }
-    function setPass(p) {
-        try { sessionStorage.setItem('filemgr_pass', p); } catch (e) {}
-    }
-
     function renderResults(data) {
         var res = document.getElementById('tmpfs-clean-results');
         if (!res) return;
@@ -1496,7 +1488,6 @@ function tmpfsClean(mount) {
             // (тогда POST уходит без password). Если требуется пароль и он
             // пуст/отмена — молча выходим.
             if (state.data.auth_required && !password) return;
-            if (password) setPass(password);
             if (!confirm('Удалить выбранные папки (' + paths.length + ')?')) return;
             apiPost('/tmpfs_clean.cgi', 'paths=' + encodeURIComponent(paths.join('\n')) + '&password=' + encodeURIComponent(password || ''))
                 .then(function(data) {
@@ -1506,7 +1497,6 @@ function tmpfsClean(mount) {
                     } else if (data.message === 'Доступ запрещен') {
                         Toast.show('Доступ запрещен', true);
                     } else if (data.message === 'Неверный пароль') {
-                        setPass('');
                         Toast.show('Неверный пароль', true);
                     } else {
                         Toast.show('Ошибка: ' + data.message, true);
@@ -1516,12 +1506,8 @@ function tmpfsClean(mount) {
         }
 
         if (state.data.auth_required) {
-            var cached = getPass();
-            if (cached) {
-                proceed(cached);
-            } else {
-                Modal.promptPassword('Введите пароль для доступа к файлам', proceed);
-            }
+            // Пароль запрашивается при каждом действии (политика C8 — без кэша).
+            Modal.promptPassword('Введите пароль для доступа к файлам', proceed);
         } else {
             proceed('');
         }
