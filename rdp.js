@@ -6,21 +6,6 @@
 // Интеграция через общие механизмы панели (lib/utils.js, CSS-переменные, меню).
 // Порт прокси и пути берутся ТОЛЬКО из rdp_config.json (единая точка).
 
-// Cookie-хелперы для чекбокса «Всегда показывать локальный курсор»
-// (клиент grdpwasm в iframe читает тот же cookie).
-function setCookie(name, value) {
-    document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) +
-        '; max-age=31536000; SameSite=Strict; path=/';
-}
-function getCookie(name) {
-    const key = encodeURIComponent(name) + '=';
-    for (const part of document.cookie.split(';')) {
-        const s = part.trim();
-        if (s.indexOf(key) === 0) return decodeURIComponent(s.slice(key.length));
-    }
-    return null;
-}
-
 const RDP = {
     intervalId: null,
     cfg: null,
@@ -55,11 +40,6 @@ const RDP = {
                     <div class="rdp-status" id="rdpStatus">
                         <p class="rdp-meta">Загрузка конфигурации...</p>
                     </div>
-                    <label class="rdp-cursor-opt" title="Если курсор на удалённом ПК не виден (например, в Radmin), показывать локальную стрелку вместо скрытого системного курсора">
-                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-cursor"/></svg>
-                        <input type="checkbox" id="rdpAlwaysCursor" />
-                        Всегда показывать локальный курсор
-                    </label>
                     <div class="rdp-actions">
                         <button id="rdpStartBtn" class="packages-delete-btn rdp-btn-start" disabled>
                             <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить прокси
@@ -89,34 +69,6 @@ const RDP = {
             this.href = RDP.frameUrl;
             this.setAttribute('target', '_blank');
         });
-        this.bindCursorOpt();
-    },
-
-    // Чекбокс «Всегда показывать локальный курсор»: состояние в cookie +
-    // query-параметр frameUrl. При переключении перезагружаем iframe, чтобы
-    // клиент grdpwasm подхватил новый режим сразу (он читает alwaysCursor при
-    // старте; cookie читается на лету, но для надёжности перезагружаем).
-    bindCursorOpt() {
-        const cb = document.getElementById('rdpAlwaysCursor');
-        if (!cb) return;
-        try { cb.checked = (getCookie('rdp_always_cursor') === '1'); } catch (e) {}
-        cb.addEventListener('change', () => {
-            try {
-                setCookie('rdp_always_cursor', cb.checked ? '1' : '0');
-            } catch (e) {}
-            this.buildFrameUrl();
-            this.reloadFrame();
-        });
-    },
-
-    reloadFrame() {
-        const frame = document.getElementById('rdpFrame');
-        const link = document.getElementById('rdpOpenLink');
-        if (frame && frame.getAttribute('data-src') !== this.frameUrl) {
-            frame.setAttribute('data-src', this.frameUrl);
-            frame.src = this.frameUrl;
-        }
-        if (link) link.href = this.frameUrl;
     },
 
     async loadConfig() {
@@ -136,12 +88,15 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        // alwaysCursor=1 передаётся в URL iframe — клиент сразу знает, что нужно
-        // показывать локальную стрелку, без ожидания cookie.
-        var cursor = '0';
-        var cb = document.getElementById('rdpAlwaysCursor');
-        if (cb && cb.checked) cursor = '1';
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=9&alwaysCursor=' + cursor;
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=10';
+    },
+
+    // Короткое отображение адреса клиента: без протокола и query-параметра v.
+    shortUrl() {
+        var u = String(this.frameUrl || '');
+        u = u.replace(/^https?:\/\//, '');
+        u = u.replace(/\?.*$/, '');
+        return u;
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
@@ -176,9 +131,22 @@ const RDP = {
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(proxyPort))}</b></span>
                     ${pid ? `<span class="rdp-meta" style="white-space: nowrap;">PID: ${escapeHtml(String(pid))}</span>` : ''}
-                    <span class="rdp-meta rdp-url">Клиент: ${escapeHtml(this.frameUrl)}</span>
+                    <span class="rdp-meta rdp-url" id="rdpClientUrl" style="cursor:pointer; white-space:nowrap;" title="Кликните, чтобы показать полный адрес клиента">Клиент: ${escapeHtml(RDP.shortUrl())}</span>
                 </div>
             `;
+            var urlEl = document.getElementById('rdpClientUrl');
+            if (urlEl) {
+                var full = RDP.frameUrl;
+                urlEl.addEventListener('click', function() {
+                    if (this.getAttribute('data-full') === '1') {
+                        this.textContent = 'Клиент: ' + RDP.shortUrl();
+                        this.setAttribute('data-full', '0');
+                    } else {
+                        this.textContent = 'Клиент: ' + full;
+                        this.setAttribute('data-full', '1');
+                    }
+                });
+            }
             this.showFrame(true);
         } else {
             st.innerHTML = `
