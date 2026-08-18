@@ -77,7 +77,9 @@ daemon_start() {
     }
     mkdir -p "$(dirname "$pidfile")" "$(dirname "$logfile")" 2>/dev/null
     "$0" daemon >> "$logfile" 2>&1 &
-    echo $! > "$pidfile"
+    # Атомарная запись pid-файла (temp + mv, RULES п.10): чтение никогда не
+    # увидит частично записанный файл.
+    echo $! > "$pidfile.tmp.$$" 2>/dev/null && mv -f "$pidfile.tmp.$$" "$pidfile" 2>/dev/null
     echo "Started with PID $(cat "$pidfile")"
 }
 
