@@ -79,10 +79,24 @@ const Modal = {
         var input = document.getElementById('pwInput');
         var ok = document.getElementById('pwOk');
         var cancel = document.getElementById('pwCancel');
+        var closeBtn = this.element.querySelector('.close');
         var settled = false;
+
+        // Временный обработчик клика по фону модалки (outsideClick) — снимается
+        // в done(), чтобы не ломать крестик у последующих модалок (напр. просмотра
+        // файла через Modal.info, где closeBtn.onclick из init() должен работать).
+        var outsideClick = function(event) {
+            if (event.target === Modal.element) done('');
+        };
+
         var done = function(val) {
             if (settled) return;
             settled = true;
+            // Восстанавливаем штатное поведение крестика (Modal.hide из init)
+            // и убираем временный слушатель фона — иначе крестик у следующих
+            // модалок остаётся привязанным к этому (уже завершённому) done.
+            if (closeBtn) closeBtn.onclick = function() { Modal.hide(); };
+            Modal.element.removeEventListener('click', outsideClick);
             Modal.hide();
             onConfirm(val);
         };
@@ -94,11 +108,7 @@ const Modal = {
             if (e.key === 'Escape') { e.preventDefault(); done(''); }
         });
         // Закрытие через X или клик вне — тоже отмена (onConfirm('')).
-        var closeBtn = this.element.querySelector('.close');
         if (closeBtn) closeBtn.onclick = function() { done(''); };
-        var outsideClick = function(event) {
-            if (event.target === Modal.element) done('');
-        };
         this.element.addEventListener('click', outsideClick);
     }
 };
