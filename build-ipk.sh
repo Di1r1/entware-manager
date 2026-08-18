@@ -104,7 +104,14 @@ rm -f /opt/etc/init.d/S80entware-server 2>/dev/null
 
 # Удаляем наши конфиги
 rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
-rm -f "$CGI_CONF" 2>/dev/null
+
+# 30-cgi.conf — общий файл lighttpd (может принадлежать web4static/nfqws2).
+# Удаляем ТОЛЬКО если это наш устаревший артефакт (ровно наш шаблон).
+if [ -f "$CGI_CONF" ] && ! grep -Eq 'perl|ruby|python|php|\.pl|\.rb|\.erb|\.py|\.php' "$CGI_CONF" 2>/dev/null \
+	&& [ "$(wc -l < "$CGI_CONF" 2>/dev/null || echo 0)" -le 3 ] \
+	&& grep -q 'cgi\.assign.*\.cgi.*/bin/sh' "$CGI_CONF" 2>/dev/null; then
+	rm -f "$CGI_CONF" 2>/dev/null
+fi
 
 # Чистим старые строки из lighttpd.conf
 [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true

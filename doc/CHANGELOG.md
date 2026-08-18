@@ -2,6 +2,26 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.09.20 (2026-08-18)
+
+### Исправление установки (важное)
+
+- **Больше не перезаписываем и не удаляем чужой конфиг lighttpd `30-cgi.conf`.** Раньше при установке/обновлении менеджер перезаписывал (install.sh) или безусловно удалял (uninstall.sh, prerm) общий файл `/opt/etc/lighttpd/conf.d/30-cgi.conf`, из-за чего ломались веб-приложения web4static и nfqws2 (у них там конфигурация `.cgi => perl/ruby/php`). Восстановление файла + restart lighttpd чинило.
+- **CGI-диспетчер менеджера переведён на локальный блок** в `90-entware-manager.conf`:
+  ```
+  $HTTP["url"] =~ "^/entware-cgi/" { cgi.assign = ( "" => "" ) }
+  ```
+  Это исполняет наши `.cgi` (go.cgi) только в `/entware-cgi/`, не трогая глобальный `30-cgi.conf` (тот же паттерн, что уже использует koffe). Сторонние приложения продолжают работать.
+- **Удаление по точному совпадению**: uninstall.sh/prerm удаляют `30-cgi.conf` только если это ровно наш шаблон (2 строки `.cgi => "/bin/sh"`), чужой (perl/ruby/python/php) — не трогают.
+- **Умный датированный бэкап**: перед установкой существующий `30-cgi.conf` копируется в `/opt/web_entware/backup/<YYYY-MM-DD>/etc/lighttpd/conf.d/30-cgi.conf` (идемпотентно — одна копия в сутки).
+- Убран глобальный `cgi.execute-x-only = "enable"` (не обязателен).
+
+### Проверено
+
+- `make ci` зелёный; sh -n install.sh/uninstall.sh/build-ipk.sh OK.
+- Dev-роутер (lighttpd-режим с koffe): `lighttpd -t` Syntax OK; `/entware-cgi/session.cgi` → 200 **без** глобального 30-cgi.conf (только локальный блок); koffe-cgi/api.cgi работает; panel → 200; после проверки конфиги восстановлены.
+- Логика `is_our_cgi_conf` (наш/чужой/php/пустой) и `backup_file_dated` (идемпотентность) проверены.
+
 ## 1.09.19 (2026-08-18)
 
 ### Файловый менеджер

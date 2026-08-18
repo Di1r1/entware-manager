@@ -110,6 +110,42 @@ backup_file() {
 	ok "  бэкап $label → $dst"
 }
 
+# --- Умный датированный бэкап (идемпотентный) ---
+# Копирует файл в /opt/web_entware/backup/<YYYY-MM-DD>/<путь>, но только
+# один раз в сутки (если копия за сегодня уже есть — пропускаем, чтобы не
+# копить дубли при повторных установках).
+backup_file_dated() {
+	local src="$1"
+	local label="$2"
+	[ ! -f "$src" ] && return
+	local today rel dst
+	today=$(date '+%Y-%m-%d' 2>/dev/null)
+	[ -z "$today" ] && today="unknown"
+	rel="${src#/}"
+	dst="$TARGET_DIR/backup/$today/$rel"
+	[ -f "$dst" ] && { ok "  бэкап $label уже есть за $today (пропуск)"; return; }
+	mkdir -p "$(dirname "$dst")" 2>/dev/null
+	cp -a "$src" "$dst"
+	ok "  бэкап $label → $dst"
+}
+
+# --- Наш ли это 30-cgi.conf (точное совпадение с нашим шаблоном)? ---
+# Наш файл — ровно 2 строки: cgi.assign = ( ".cgi" => "/bin/sh" )
+# и cgi.execute-x-only = "enable". Если там есть что-то ещё (perl/ruby/python/
+# php и т.п.) — это ЧУЖОЙ файл, трогать его нельзя.
+is_our_cgi_conf() {
+	[ ! -f "$1" ] && return 1
+	# любая чужая директива (другой интерпретатор или лишние строки) → не наш
+	if grep -Eq 'perl|ruby|python|php|\.pl|\.rb|\.erb|\.py|\.php' "$1" 2>/dev/null; then
+		return 1
+	fi
+	local lines
+	lines=$(wc -l < "$1" 2>/dev/null || echo 0)
+	[ "$lines" -le 3 ] || return 1
+	grep -q 'cgi\.assign.*\.cgi.*/bin/sh' "$1" 2>/dev/null || return 1
+	return 0
+}
+
 SELF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET_DIR="/opt/web_entware"
 BACKUP_DIR="$TARGET_DIR/backup"
@@ -297,7 +333,9 @@ if [ -f "$LIGHTTPD_CONF" ]; then
 	backup_file "$LIGHTTPD_CONF" "lighttpd.conf"
 fi
 if [ -f "$CGI_CONF" ]; then
-	backup_file "$CGI_CONF" "30-cgi.conf"
+	# 30-cgi.conf — общий файл lighttpd (может принадлежать web4static/nfqws2).
+	# Бэкапим с датой (идемпотентно), сам файл НЕ перезаписываем — см. ниже.
+	backup_file_dated "$CGI_CONF" "30-cgi.conf"
 fi
 
 if [ -d "$BACKUP_DIR/opt/etc" ]; then
@@ -438,6 +476,14 @@ $HTTP["url"] =~ "^/entware-cgi/go/" {
     url.access-deny = ( "" )
 }
 
+# CGI-диспетчер Entware Manager исполняется ТОЛЬКО в /entware-cgi/ через
+# ЛОКАЛЬНЫЙ cgi.assign (пустой extension = любой файл по shebang). Глобальный
+# файл /opt/etc/lighttpd/conf.d/30-cgi.conf не трогаем — он может принадлежать
+# web4static/nfqws2 (perl/ruby/py/php) и его перезапись их ломает.
+$HTTP["url"] =~ "^/entware-cgi/" {
+    cgi.assign = ( "" => "" )
+}
+
 # Встроенные сервисы через тот же origin (удалённый доступ + HTTPS)
 proxy.header = ( "upgrade" => "enable" )
 $HTTP["url"] =~ "^/terminal/" {
@@ -498,18 +544,15 @@ INDEXEOF
 	ok "корень $DOC_ROOT/index.html → редирект на панель"
 fi
 
-# 30-cgi.conf — cgi.assign
-CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
-mkdir -p "$(dirname "$CGI_CONF")" 2>/dev/null
-cat > "$CGI_CONF" <<'CGIEOF'
-cgi.assign = ( ".cgi" => "/bin/sh" )
-cgi.execute-x-only = "enable"
-CGIEOF
-if [ -f "$CGI_CONF" ]; then
-	ok "30-cgi.conf: .cgi → /bin/sh, execute-x-only"
+# CGI-диспетчер исполняется через локальный блок в 90-entware-manager.conf
+# ($HTTP["url"] =~ "^/entware-cgi/" { cgi.assign = ( "" => "" ) }).
+# Глобальный /opt/etc/lighttpd/conf.d/30-cgi.conf НЕ перезаписываем и НЕ удаляем —
+# это общий файл lighttpd, он может принадлежать web4static/nfqws2 (perl/ruby/py/php).
+if grep -q 'cgi\.assign = ( "" => "" )' "$CONF_FILE" 2>/dev/null; then
+	ok "локальный cgi.assign для /entware-cgi/ (30-cgi.conf не трогаем)"
 else
-	LIGHTTPD_ERR="$LIGHTTPD_ERR 30-cgi.conf"
-	fail "30-cgi.conf не создался"
+	LIGHTTPD_ERR="$LIGHTTPD_ERR 90-entware-manager.conf"
+	fail "не найден локальный cgi.assign в $CONF_FILE"
 fi
 
 # Добавляем .cgi в static-file.exclude-extensions в светеотдельный конфиг
@@ -543,9 +586,12 @@ else
 	else
 		ok "наших lighttpd-конфигов не найдено"
 	fi
-	if [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ] && grep -q '\.cgi.*=>.*"/bin/sh"' /opt/etc/lighttpd/conf.d/30-cgi.conf 2>/dev/null; then
+	if [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ] && is_our_cgi_conf /opt/etc/lighttpd/conf.d/30-cgi.conf; then
+		# это наш устаревший артефакт (ровно наш шаблон) — можно удалить
 		rm -f /opt/etc/lighttpd/conf.d/30-cgi.conf 2>/dev/null
-		ok "удалён наш 30-cgi.conf"
+		ok "удалён наш 30-cgi.conf (устаревший артефакт)"
+	elif [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ]; then
+		ok "30-cgi.conf — чужой (web4static/nfqws2), не трогаем"
 	fi
 
 	# Конфиг сервера: порт (создаём только если нет — не перетираем настройку пользователя)

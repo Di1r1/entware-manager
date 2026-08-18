@@ -3,7 +3,7 @@
 # Полное удаление Entware Manager с роутера
 # ==============================================
 
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC3043
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -16,6 +16,20 @@ LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 LOG_DIR="/tmp/entware"
 SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
+
+# Наш ли это 30-cgi.conf (ровно наш шаблон: cgi.assign .cgi=>/bin/sh + execute-x-only)?
+# Чужой файл (web4static/nfqws2: perl/ruby/py/php) не удаляем.
+is_our_cgi_conf() {
+	[ ! -f "$1" ] && return 1
+	if grep -Eq 'perl|ruby|python|php|\.pl|\.rb|\.erb|\.py|\.php' "$1" 2>/dev/null; then
+		return 1
+	fi
+	local lines
+	lines=$(wc -l < "$1" 2>/dev/null || echo 0)
+	[ "$lines" -le 3 ] || return 1
+	grep -q 'cgi\.assign.*\.cgi.*/bin/sh' "$1" 2>/dev/null || return 1
+	return 0
+}
 
 echo "${BOLD}========================================"
 echo " Удаление Entware Manager"
@@ -127,9 +141,14 @@ ok "S80entware-lighttpd удалён"
 rm -f "/opt/etc/init.d/S85entware-watchdogs" 2>/dev/null
 ok "S85entware-watchdogs удалён"
 
-# 30-cgi.conf — удаляем (восстанавливать нечего, это наш файл)
-rm -f "$CGI_CONF" 2>/dev/null
-ok "30-cgi.conf удалён"
+# 30-cgi.conf — удаляем ТОЛЬКО если это наш файл (точное совпадение с шаблоном).
+# Чужой (web4static/nfqws2) не трогаем.
+if [ -f "$CGI_CONF" ] && is_our_cgi_conf "$CGI_CONF"; then
+	rm -f "$CGI_CONF" 2>/dev/null
+	ok "30-cgi.conf (наш) удалён"
+elif [ -f "$CGI_CONF" ]; then
+	ok "30-cgi.conf — чужой (web4static/nfqws2), не трогаем"
+fi
 
 # Чистим старые строки из lighttpd.conf (на случай обновления с предыдущей версии)
 [ -f "$LIGHTTPD_CONF" ] && sed -i '\|"/entware-manager/"|d' "$LIGHTTPD_CONF" || true
