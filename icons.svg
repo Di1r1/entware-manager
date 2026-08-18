@@ -220,6 +220,12 @@
 <symbol id="icon-chevron-right" viewBox="0 0 16 16">
   <polyline points="6,4 10,8 6,12" fill="none" stroke="currentColor"/>
 </symbol>
+<symbol id="icon-chevron-up" viewBox="0 0 16 16">
+  <polyline points="4,10 8,6 12,10" fill="none" stroke="currentColor"/>
+</symbol>
+<symbol id="icon-chevron-down" viewBox="0 0 16 16">
+  <polyline points="4,6 8,10 12,6" fill="none" stroke="currentColor"/>
+</symbol>
 <symbol id="icon-close" viewBox="0 0 16 16">
   <line x1="4" y1="4" x2="12" y2="12" stroke="currentColor"/>
   <line x1="12" y1="4" x2="4" y2="12" stroke="currentColor"/>

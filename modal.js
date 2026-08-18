@@ -72,7 +72,7 @@ const Modal = {
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
                 <button id="pwCancel" class="packages-delete-btn" style="background:#4a5568;">Отмена</button>
-                <button id="pwOk" class="packages-delete-btn"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-check"/></svg> OK</button>
+                <button id="pwOk" class="packages-delete-btn"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-check"/></svg> OK</button>
             </div>`;
         this.element.style.display = 'block';
 

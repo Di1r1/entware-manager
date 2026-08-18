@@ -79,17 +79,17 @@ function handleResponsive() {
     if (isMobile) {
         if (sidebar.classList.contains('collapsed')) {
             sidebar.classList.remove('collapsed');
-            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-left"/></svg>';
+            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-left"/></svg>';
         }
         localStorage.removeItem('sidebar_collapsed');
     } else {
         const savedCollapsed = localStorage.getItem('sidebar_collapsed');
         if (savedCollapsed === 'true' && !sidebar.classList.contains('collapsed')) {
             sidebar.classList.add('collapsed');
-            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-right"/></svg>';
+            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-right"/></svg>';
         } else if (savedCollapsed === 'false' && sidebar.classList.contains('collapsed')) {
             sidebar.classList.remove('collapsed');
-            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-left"/></svg>';
+            if (collapseToggle) collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-left"/></svg>';
         }
     }
 }
@@ -183,17 +183,17 @@ function initPanel() {
         const collapsedState = localStorage.getItem('sidebar_collapsed');
         if (collapsedState === 'true') {
             sidebar.classList.add('collapsed');
-            collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-right"/></svg>';
+            collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-right"/></svg>';
         } else {
-            collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-left"/></svg>';
+            collapseToggle.innerHTML = '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-left"/></svg>';
         }
         collapseToggle.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
             const isCollapsed = sidebar.classList.contains('collapsed');
             localStorage.setItem('sidebar_collapsed', isCollapsed);
             collapseToggle.innerHTML = isCollapsed
-                ? '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-right"/></svg>'
-                : '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-chevron-left"/></svg>';
+                ? '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-right"/></svg>'
+                : '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-chevron-left"/></svg>';
             if (!isCollapsed) {
                 sidebar.classList.add('menu-animate');
                 setTimeout(() => sidebar.classList.remove('menu-animate'), 1400);
@@ -278,7 +278,7 @@ function updateThemeIcon() {
     const themeToggle = document.getElementById('themeToggle');
     if (!themeToggle) return;
     const isNight = document.documentElement.classList.contains('night');
-    themeToggle.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=3#' + (isNight ? 'icon-moon' : 'icon-sun'));
+    themeToggle.querySelector('use')?.setAttribute('href', '/entware-manager/icons.svg?v=4#' + (isNight ? 'icon-moon' : 'icon-sun'));
 }
 
 function buildThemePopup() {
@@ -468,13 +468,13 @@ function renderPackagesTab(initialFilter) {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-package"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-package"/></svg>
             </span>
             <span id="pkg-title">Пакеты</span>
         </h2>
         <div class="pkg-actions">
-            <button id="runUpdateBtn" class="packages-delete-btn pkg-action-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить списки пакетов</button>
-            <button id="upgradeAllBtn" class="packages-delete-btn pkg-action-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-update"/></svg> Обновить все пакеты</button>
+            <button id="runUpdateBtn" class="packages-delete-btn pkg-action-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновить списки пакетов</button>
+            <button id="upgradeAllBtn" class="packages-delete-btn pkg-action-btn" style="background:#e67e22;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-update"/></svg> Обновить все пакеты</button>
         </div>
         <div id="update-result" style="margin-bottom: 20px;"></div>
         <div class="pkg-tabs" id="pkg-tabs">
@@ -482,7 +482,7 @@ function renderPackagesTab(initialFilter) {
         </div>
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 24px;">
             <div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
-                <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg>
+                <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=4#icon-search"/></svg>
                 <input type="text" id="searchPkg" placeholder="Поиск по названию..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
             </div>
         </div>
@@ -757,7 +757,7 @@ async function runPkgUpdate() {
     const updateBtn = document.getElementById('runUpdateBtn');
     const resultDiv = document.getElementById('update-result');
     updateBtn.disabled = true;
-    updateBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновление...';
+    updateBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновление...';
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
@@ -775,7 +775,7 @@ async function runPkgUpdate() {
         resultDiv.innerHTML = `<p class="error">Ошибка: ${escapeHtml(err.message)}</p>`;
     } finally {
         updateBtn.disabled = false;
-        updateBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить списки пакетов';
+        updateBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновить списки пакетов';
     }
 }
 
@@ -788,7 +788,7 @@ async function upgradeAll() {
     }
     
     upgradeAllBtn.disabled = true;
-    upgradeAllBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновление...';
+    upgradeAllBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновление...';
     resultDiv.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
@@ -805,7 +805,7 @@ async function upgradeAll() {
         resultDiv.innerHTML = `<p class="error">Ошибка: ${escapeHtml(err.message)}</p>`;
     } finally {
         upgradeAllBtn.disabled = false;
-        upgradeAllBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-update"/></svg> Обновить все пакеты';
+        upgradeAllBtn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-update"/></svg> Обновить все пакеты';
     }
 }
 
@@ -813,7 +813,7 @@ function renderProcessesTab() {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-process"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-process"/></svg>
             </span>
             <span id="htop-title">Процессы (htop)</span>
         </h2>
@@ -831,7 +831,7 @@ async function loadHtopContent() {
         if (htop.state === 'running') {
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe id="htopFrame" src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay"></iframe>
             `;
@@ -849,7 +849,7 @@ function renderTerminalTab() {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-terminal"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-terminal"/></svg>
             </span>
             <span id="terminal-title">Терминал</span>
         </h2>
@@ -870,7 +870,7 @@ async function loadTerminalContent() {
             title.textContent = 'Терминал (' + modeLabel + ')';
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe id="terminalFrame" src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
             `;
@@ -911,7 +911,7 @@ function loadLogsTab() {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-list"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-list"/></svg>
             </span>
             Логи
         </h2>
@@ -922,17 +922,17 @@ function loadLogsTab() {
             </div>
             <div id="manager-controls" style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
                 <button id="clearOldLogsBtn" class="packages-delete-btn" style="background:#e53e3e;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-trash"/></svg> Очистить логи старше 30 дней
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-trash"/></svg> Очистить логи старше 30 дней
                 </button>
                 <button id="rotateNowBtn" class="packages-delete-btn" style="background:#f59e0b;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Ротация сейчас
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Ротация сейчас
                 </button>
                 <button id="toggleLoggingBtn" class="packages-delete-btn" style="background:#4a5568; display: flex; align-items: center; gap: 8px;">
                     <span id="loggingStatusIndicator" style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: gray;"></span>
                     Настройки логирования
                 </button>
                 <button id="systemEventsBtn" class="packages-delete-btn" style="background:#2c5282;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-info"/></svg> Системные события
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-info"/></svg> Системные события
                 </button>
             </div>
             <div id="system-controls" style="margin-top: 16px; display: none; gap: 12px; flex-wrap: wrap; align-items: center;">
@@ -940,13 +940,13 @@ function loadLogsTab() {
                     <option value="">Выберите источник</option>
                 </select>
                 <button id="refreshSystemLogs" class="packages-delete-btn" style="background:#4a5568;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновить
                 </button>
                 <button id="searchByNameBtn" class="packages-delete-btn" style="background:#4a5568;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg> Поиск по имени
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-search"/></svg> Поиск по имени
                 </button>
                 <button id="clearDynamicSourcesBtn" class="packages-delete-btn" style="background:#e53e3e;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-trash"/></svg> Очистить источники
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-trash"/></svg> Очистить источники
                 </button>
             </div>
         </div>
@@ -1379,13 +1379,13 @@ async function renderLinksOnStats() {
     if (links.length === 0) return;
     if (document.querySelector('.links-grid')) return;
 
-    let html = '<h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Полезные ссылки</h3><div class="links-grid">';
+    let html = '<h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-link"/></svg> Полезные ссылки</h3><div class="links-grid">';
     links.forEach(link => {
         if (!isSafeLinkUrl(link.url)) return;
         const iconId = 'icon-' + (link.icon && isSafeLinkIcon(link.icon) ? link.icon : 'link');
         html += `
             <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-card">
-                <span class="link-icon"><svg class="icon" width="32" height="32"><use href="/entware-manager/icons.svg?v=3#${escapeHtml(iconId)}"/></svg></span>
+                <span class="link-icon"><svg class="icon" width="32" height="32"><use href="/entware-manager/icons.svg?v=4#${escapeHtml(iconId)}"/></svg></span>
                 <span class="link-name">${escapeHtml(link.name)}</span>
             </a>
         `;
@@ -1557,11 +1557,11 @@ async function renderSettingsTab() {
     let html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-settings"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-settings"/></svg>
             </span>
             Настройки
         </h2>
-        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-terminal"/></svg> Управление ttyd</h3>
+        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-terminal"/></svg> Управление ttyd</h3>
         <div id="ttyd-status"><div class="loading-spinner"></div></div>
         <div id="ttyd-controls" style="display: flex; gap: 20px; margin-top: 20px;">
           <div style="flex:1;"><h4>htop (порт 8089)</h4>
@@ -1585,10 +1585,10 @@ async function renderSettingsTab() {
             Управление веб-терминалами ttyd. <strong>Пароль обязателен</strong> для обоих сервисов — терминал доступен извне через панель, без пароля запуск запрещён.<br>
             Доступ: панель → <code>/terminal/</code> и <code>/htop/</code> (тот же origin, порты 9089/8089 слушают только loopback).
         </p>
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Управление ссылками на главной (общие для всех устройств)</h3>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-link"/></svg> Управление ссылками на главной (общие для всех устройств)</h3>
         <p>Здесь можно добавлять, редактировать и удалять ссылки. Изменения сразу видны на всех устройствах.</p>
         <div style="margin-bottom: 15px;">
-            <button id="addLinkBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-list"/></svg> Добавить ссылку</button>
+            <button id="addLinkBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-list"/></svg> Добавить ссылку</button>
         </div>
         <div class="packages-table-wrapper">
             <table class="packages-table" id="linksTable">
@@ -1601,15 +1601,19 @@ async function renderSettingsTab() {
             <tr data-index="${index}">
                 <td style="min-width: 150px;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-${iconId}"/></svg>
+                        <svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=4#icon-${iconId}"/></svg>
                         ${renderIconSelect(iconId)}
                     </div>
                  </td>
                  <td><input type="text" class="link-name settings-input" value="${escapeHtml(link.name)}"></td>
                  <td><input type="url" class="link-url settings-input" value="${escapeHtml(link.url)}"></td>
                  <td>
-                    <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg></button>
-                    <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-default"/></svg></button>
+                    <div style="display:flex; gap:4px; align-items:center;">
+                    <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg></button>
+                    <button class="packages-delete-btn" style="background:#4a5568;" onclick="moveLink(this,-1)" title="Выше"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-chevron-up"/></svg></button>
+                    <button class="packages-delete-btn" style="background:#4a5568;" onclick="moveLink(this,1)" title="Ниже"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-chevron-down"/></svg></button>
+                    <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-default"/></svg></button>
+                    </div>
                  </td>
               </tr>
         `;
@@ -1619,46 +1623,46 @@ async function renderSettingsTab() {
             </table>
         </div>
         <div style="margin-top: 15px;">
-            <button id="saveAllLinksBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg> Сохранить все на сервер</button>
-            <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Сбросить по умолчанию</button>
+            <button id="saveAllLinksBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg> Сохранить все на сервер</button>
+            <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Сбросить по умолчанию</button>
         </div>
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-lock"/></svg> Защита панели</h3>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-lock"/></svg> Защита панели</h3>
         <p>Пароль используется для входа в панель и для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs). Если пароль задан — при открытии панели будет показан экран входа.</p>
         <div id="filemgr-auth-settings">
             <div class="loading-spinner"></div>
         </div>
     `;
     html += `
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg> Бэкап и восстановление</h3>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg> Бэкап и восстановление</h3>
         <p>Скачайте бэкап настроек перед сбросом роутера или для переноса на новое устройство.</p>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога.</p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
             <a href="/entware-cgi/backup.cgi" class="packages-delete-btn" style="background:#4a5568;" download="entware-manager-backup.tar.gz">
-                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-download"/></svg> Скачать бэкап
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-download"/></svg> Скачать бэкап
             </a>
             <label class="packages-delete-btn" style="background:#4a5568; cursor: pointer;">
-                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Восстановить
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Восстановить
                 <input type="file" id="restoreBackupFile" accept=".tar.gz" style="display: none;" onchange="restoreBackup(this)">
             </label>
             <button class="packages-delete-btn" style="background:#e67e22;" onclick="prepareOffline()">
-                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-download"/></svg> Подготовить офлайн-пакет
+                <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-download"/></svg> Подготовить офлайн-пакет
             </button>
             <span id="backupStatus"></span>
         </div>
 
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновление</h3>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновление</h3>
         <p>Проверьте и установите новую версию Entware Manager.</p>
         <div id="update-section" style="margin-top: 10px;">
             <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
                 <span><strong>Текущая версия:</strong> <span id="update-current">загрузка...</span></span>
                 <button id="update-check-btn" class="packages-delete-btn" style="background:#4a5568;" onclick="checkUpdate()">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg> Проверить
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-search"/></svg> Проверить
                 </button>
                 <button id="update-run-btn" class="packages-delete-btn" style="background:#2ecc71; display:none;" onclick="runUpdate()">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить до <span id="update-version"></span>
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновить до <span id="update-version"></span>
                 </button>
                 <button id="update-reinstall-btn" class="packages-delete-btn" style="background:#e67e22;" onclick="reinstallUpdate()">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-update"/></svg> Переустановить
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-update"/></svg> Переустановить
                 </button>
             </div>
             <div id="update-status" style="margin-top: 8px;"></div>
@@ -1968,15 +1972,19 @@ function addLinkRow() {
     newRow.innerHTML = `
           <td>
             <div style="display:flex; align-items:center; gap:8px;">
-                <svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg>
+                <svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=4#icon-link"/></svg>
                 ${renderIconSelect('link')}
             </div>
           </td>
           <td><input type="text" class="link-name settings-input" value="Новая ссылка"></td>
           <td><input type="url" class="link-url settings-input" value="http://"></td>
           <td>
-            <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg></button>
-            <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-default"/></svg></button>
+            <div style="display:flex; gap:4px; align-items:center;">
+            <button class="packages-delete-btn" style="background:#27ae60;" onclick="saveLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg></button>
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="moveLink(this,-1)" title="Выше"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-chevron-up"/></svg></button>
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="moveLink(this,1)" title="Ниже"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-chevron-down"/></svg></button>
+            <button class="packages-delete-btn" style="background:#e53e3e;" onclick="deleteLink(this)"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-default"/></svg></button>
+            </div>
           </td>
     `;
     tbody.appendChild(newRow);
@@ -2013,6 +2021,37 @@ window.deleteLink = async function(btn) {
         }
     } else {
         row.remove();
+    }
+};
+
+// Перемещение ссылки вверх/вниз: меняет строки местами в таблице (DOM-порядок
+// = порядок сохранения на сервере), затем сохраняет. Порядок на главной
+// (статистика) следует порядку массива links.json.
+window.moveLink = async function(btn, delta) {
+    const row = btn.closest('tr');
+    const tbody = row.parentNode;
+    if (delta < 0) {
+        if (row.previousElementSibling) tbody.insertBefore(row, row.previousElementSibling);
+        else return;
+    } else {
+        if (row.nextElementSibling) tbody.insertBefore(row.nextElementSibling, row);
+        else return;
+    }
+    // переиндексировать data-index всех строк (порядок = позиция в tbody)
+    const rows = tbody.querySelectorAll('tr');
+    for (let i = 0; i < rows.length; i++) rows[i].dataset.index = i;
+    // сохранить все ссылки из таблицы (как saveAllLinks)
+    const links = [];
+    rows.forEach(r => {
+        const iconSelect = r.querySelector('.link-icon-select');
+        const icon = iconSelect ? iconSelect.value : 'link';
+        const name = r.querySelector('.link-name').value;
+        const url = r.querySelector('.link-url').value;
+        if (name && url) links.push({ name, url, icon });
+    });
+    if (await saveLinks(links)) {
+        Toast.show('Порядок обновлён');
+        renderSettingsTab();
     }
 };
 
@@ -2076,16 +2115,16 @@ async function loadSystemServicesTab() {
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
-                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-services"/></svg>
+                <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=4#icon-services"/></svg>
             </span>
             Системные службы и планировщик
         </h2>
         <div id="service-monitor-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                 <span><strong>Мониторинг:</strong> <span id="service-watchdog-status" class="stat-value-normal">загрузка...</span></span>
-                <button id="service-watchdog-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить</button>
-                <button id="service-watchdog-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-stop"/></svg> Остановить</button>
-                <button id="service-watchdog-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Перезапустить</button>
+                <button id="service-watchdog-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-play"/></svg> Запустить</button>
+                <button id="service-watchdog-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-stop"/></svg> Остановить</button>
+                <button id="service-watchdog-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Перезапустить</button>
                 <label class="service-watch-toggle" title="Запускать демон мониторинга при загрузке роутера">
                     <input type="checkbox" id="service-autostart" style="display: none;">
                     <span class="toggle-slider"></span>
@@ -2126,21 +2165,21 @@ async function loadSystemServicesTab() {
                 <p style="color: var(--text-muted);">Загрузка...</p>
             </div>
         </div>
-        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-services"/></svg> Службы (init.d)</h3>
+        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-services"/></svg> Службы (init.d)</h3>
         <div id="services-list" class="packages-table-wrapper"><div class="loading-spinner"></div></div>
-        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-list"/></svg> Системный crontab (crontab -l)</h3>
+        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-list"/></svg> Системный crontab (crontab -l)</h3>
         <div class="cron-editor">
             <textarea id="cron-system" rows="6" style="width:100%; font-family:monospace; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-primary);"></textarea>
             <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button id="save-cron-system" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg> Сохранить системный crontab</button>
+                <button id="save-cron-system" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg> Сохранить системный crontab</button>
                 <span id="cron-system-message" style="margin-left:10px; align-self:center;"></span>
             </div>
         </div>
-        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-list"/></svg> Entware crontab (/opt/etc/crontab)</h3>
+        <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=4#icon-list"/></svg> Entware crontab (/opt/etc/crontab)</h3>
         <div class="cron-editor">
             <textarea id="cron-opt" rows="6" style="width:100%; font-family:monospace; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-primary);"></textarea>
             <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button id="save-cron-opt" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg> Сохранить Entware crontab</button>
+                <button id="save-cron-opt" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-disk"/></svg> Сохранить Entware crontab</button>
                 <span id="cron-opt-message" style="margin-left:10px; align-self:center;"></span>
             </div>
         </div>
@@ -2193,7 +2232,7 @@ function renderServices(services) {
               <td>${pidHtml}</td>
               <td style="text-align: center;">
                 <svg class="icon" width="20" height="20" style="display: inline-block; vertical-align: middle;">
-                    <use href="/entware-manager/icons.svg?v=3#icon-${s.enabled ? 'check' : 'cross'}"/>
+                    <use href="/entware-manager/icons.svg?v=4#icon-${s.enabled ? 'check' : 'cross'}"/>
                 </svg>
               </td>
               <td>
@@ -2235,7 +2274,7 @@ window.showProcessList = function(serviceName) {
                 html += `<div class="process-item">
                     <span class="process-pid">PID: <b>${escapeHtml(pid)}</b></span>
                     <button class="packages-delete-btn process-kill-btn" data-pid="${escapeHtml(pid)}" data-service-name="${escapeHtml(serviceName)}">
-                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-stop"/></svg> Убить
+                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=4#icon-stop"/></svg> Убить
                     </button>
                 </div>`;
             });

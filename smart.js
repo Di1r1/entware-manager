@@ -56,17 +56,17 @@ const SMART = {
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
                     <svg class="icon" width="28" height="28">
-                        <use href="/entware-manager/icons.svg?v=3#icon-hdd"/>
+                        <use href="/entware-manager/icons.svg?v=4#icon-hdd"/>
                     </svg>
                 </span>
                 SMART дисков
             </h2>
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 20px;">
                 <div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
-                    <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg>
+                    <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=4#icon-search"/></svg>
                     <input type="text" id="searchSmart" placeholder="Поиск по модели/серийнику..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
                 </div>
-                <button id="refreshSmart" class="packages-delete-btn" style="background: #4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить</button>
+                <button id="refreshSmart" class="packages-delete-btn" style="background: #4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-refresh"/></svg> Обновить</button>
             </div>
             <div id="smart-table-container" class="packages-table-wrapper">
                 <div class="loading-spinner"></div>
@@ -149,9 +149,9 @@ const SMART = {
                     <td class="clickable-device">${escapeHtml(disk.device)}</td>
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
-                    <td class="clickable-usage"><span class="usage-arrow"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=3#icon-arrow-right"/></svg></span> ${formatSize(disk.size)}</td>
+                    <td class="clickable-usage"><span class="usage-arrow"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=4#icon-arrow-right"/></svg></span> ${formatSize(disk.size)}</td>
                     <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
-                    <td class="clickable-health">${healthClass ? `<span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=3#${healthIcon}"/></svg> ${escapeHtml(healthText)}</span>` : `<span style="color: var(--text-muted);">${escapeHtml(healthText)}</span>`}</td>
+                    <td class="clickable-health">${healthClass ? `<span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=4#${healthIcon}"/></svg> ${escapeHtml(healthText)}</span>` : `<span style="color: var(--text-muted);">${escapeHtml(healthText)}</span>`}</td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
                     <td>${powerOn}</td>
                 </tr>
@@ -325,7 +325,7 @@ ${escapeHtml(data.info || 'Нет данных')}
                         <td>${parseInt(attr.worst) || 0}</td>
                         <td>${threshold}</td>
                         <td>${escapeHtml(attr.raw)}</td>
-                        <td><span class="status-badge ${statusClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=3#${statusIcon}"/></svg> ${statusText}</span></td>
+                        <td><span class="status-badge ${statusClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=4#${statusIcon}"/></svg> ${statusText}</span></td>
                     </tr>
                 `;
             });
@@ -393,13 +393,13 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             <p>Выберите тип теста:</p>
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
                 <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="short" style="background: #3182ce;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Короткий тест (~2 мин)
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-play"/></svg> Короткий тест (~2 мин)
                 </button>
                 <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="long" style="background: #2c7a7b;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Полный тест (~60-120 мин)
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-play"/></svg> Полный тест (~60-120 мин)
                 </button>
                 <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="conveyance" style="background: #c05621;">
-                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Conveyance тест (~5 мин)
+                    <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=4#icon-play"/></svg> Conveyance тест (~5 мин)
                 </button>
             </div>
             <div id="smartTestStatus" style="font-family: monospace; background: var(--input-bg); padding: 12px; border-radius: 6px; min-height: 60px;">
