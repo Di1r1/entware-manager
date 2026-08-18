@@ -92,8 +92,10 @@ const RDP = {
         this.bindCursorOpt();
     },
 
-    // Чекбокс «Всегда показывать локальный курсор»: состояние в cookie,
-    // клиент grdpwasm (iframe) читает его при pointer hide.
+    // Чекбокс «Всегда показывать локальный курсор»: состояние в cookie +
+    // query-параметр frameUrl. При переключении перезагружаем iframe, чтобы
+    // клиент grdpwasm подхватил новый режим сразу (он читает alwaysCursor при
+    // старте; cookie читается на лету, но для надёжности перезагружаем).
     bindCursorOpt() {
         const cb = document.getElementById('rdpAlwaysCursor');
         if (!cb) return;
@@ -102,7 +104,19 @@ const RDP = {
             try {
                 setCookie('rdp_always_cursor', cb.checked ? '1' : '0');
             } catch (e) {}
+            this.buildFrameUrl();
+            this.reloadFrame();
         });
+    },
+
+    reloadFrame() {
+        const frame = document.getElementById('rdpFrame');
+        const link = document.getElementById('rdpOpenLink');
+        if (frame && frame.getAttribute('data-src') !== this.frameUrl) {
+            frame.setAttribute('data-src', this.frameUrl);
+            frame.src = this.frameUrl;
+        }
+        if (link) link.href = this.frameUrl;
     },
 
     async loadConfig() {
@@ -122,7 +136,12 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=8';
+        // alwaysCursor=1 передаётся в URL iframe — клиент сразу знает, что нужно
+        // показывать локальную стрелку, без ожидания cookie.
+        var cursor = '0';
+        var cb = document.getElementById('rdpAlwaysCursor');
+        if (cb && cb.checked) cursor = '1';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=9&alwaysCursor=' + cursor;
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
