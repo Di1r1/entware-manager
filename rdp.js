@@ -88,7 +88,7 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=12';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=14';
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
