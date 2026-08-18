@@ -135,8 +135,12 @@ func buildOfflineBundle(tmpDir, arch, version string) error {
 			f.Close()
 			os.Chmod(target, os.FileMode(header.Mode))
 		case tar.TypeSymlink:
-			os.MkdirAll(filepath.Dir(target), 0755)
-			os.Symlink(header.Linkname, target)
+			// Симлинки создаём только с безопасной (относительной, внутри дерева)
+			// целью — защита от tar-traversal через Linkname.
+			if linkTarget, ok := safeSymlinkTarget(tmpDir, rel, header.Linkname); ok {
+				os.MkdirAll(filepath.Dir(linkTarget), 0755)
+				os.Symlink(header.Linkname, linkTarget)
+			}
 		}
 	}
 

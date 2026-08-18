@@ -42,17 +42,29 @@ func opkgUpdateRunningIn(procDir, pidFile string) bool {
 	return strings.Contains(string(cmdline), "entware-pkg")
 }
 
-// writePidFileAtomic пишет pid-файл атомарно (temp + rename, RULES п.10).
-func writePidFileAtomic(path string, pid int) error {
+// acquireUpdateLock берёт блокировку обновления атомарно через O_EXCL
+// (TOCTOU-мутекс): создаёт pidfile только если его нет. При существующем
+// файле проверяет жив ли процесс — если протух, убирает и пробует ещё раз.
+// Возвращает true, если блокировка получена.
+func acquireUpdateLock(path string, pid int) bool {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
+		return false
 	}
-	tmp := fmt.Sprintf("%s.tmp.%d", path, os.Getpid())
-	if err := os.WriteFile(tmp, []byte(strconv.Itoa(pid)), 0644); err != nil {
-		return err
+	for attempt := 0; attempt < 2; attempt++ {
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+		if err == nil {
+			_, werr := f.WriteString(strconv.Itoa(pid))
+			f.Close()
+			return werr == nil
+		}
+		// файл уже существует — жив ли владелец?
+		if opkgUpdateRunning() {
+			return false // уже выполняется
+		}
+		os.Remove(path) // протухший — убрать и повторить
 	}
-	return os.Rename(tmp, path)
+	return false
 }
 
 func Update() {
@@ -64,12 +76,8 @@ func Update() {
 	// Origin-чек для POST уже есть в cmd/entware-pkg/main.go:19-22
 	// (auth.IsCrossSiteOrigin) — здесь не дублируем.
 
-	if opkgUpdateRunning() {
+	if !acquireUpdateLock(opkgUpdatePidFile, os.Getpid()) {
 		cgiutil.WriteError("Обновление списков пакетов уже выполняется")
-		return
-	}
-	if err := writePidFileAtomic(opkgUpdatePidFile, os.Getpid()); err != nil {
-		cgiutil.WriteError("Не удалось создать файл блокировки: " + err.Error())
 		return
 	}
 	defer os.Remove(opkgUpdatePidFile)

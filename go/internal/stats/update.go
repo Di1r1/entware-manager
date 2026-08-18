@@ -603,8 +603,15 @@ func runUpdate(version, arch string) {
 			f.Close()
 			os.Chmod(target, os.FileMode(header.Mode))
 		case tar.TypeSymlink:
-			os.MkdirAll(filepath.Dir(target), 0755)
-			os.Symlink(header.Linkname, target)
+			// Симлинки создаём только с безопасной (относительной, внутри дерева)
+			// целью — защита от tar-traversal через Linkname, но сохраняем
+			// легитимные cgi-bin/*.cgi → go.cgi и т.п.
+			if target, ok := safeSymlinkTarget(tmpDir, rel, header.Linkname); ok {
+				os.MkdirAll(filepath.Dir(target), 0755)
+				os.Symlink(header.Linkname, target)
+			} else {
+				log("[ERROR] Пропуск небезопасного симлинка: " + header.Name + " → " + header.Linkname)
+			}
 		}
 	}
 
@@ -681,4 +688,26 @@ func restartWebServer(log func(string)) {
 			}
 		}
 	}
+}
+
+// safeSymlinkTarget проверяет цель симлинка из tar-архива: она должна быть
+// относительной и вести ВНУТРЬ извлекаемого дерева (tmpDir). Возвращает полный
+// путь самого симлинка, если цель безопасна, иначе (ok=false).
+// Разрешены относительные цели («go.cgi», «../go.cgi») — это легитимные
+// симлинки релизных архивов (cgi-bin/*.cgi → go.cgi). Запрещены абсолютные
+// пути и любой выход за пределы tmpDir через «..».
+func safeSymlinkTarget(tmpDir, linkRel, linkname string) (string, bool) {
+	if linkname == "" || filepath.IsAbs(linkname) {
+		return "", false
+	}
+	// Полный путь самого симлинка.
+	linkPath := filepath.Join(tmpDir, linkRel)
+	// Резолвим цель относительно директории симлинка и проверяем, что она
+	// не выходит за пределы tmpDir.
+	dir := filepath.Dir(linkPath)
+	resolved := filepath.Join(dir, linkname)
+	if resolved != tmpDir && !strings.HasPrefix(resolved, tmpDir+string(filepath.Separator)) {
+		return "", false
+	}
+	return linkPath, true
 }

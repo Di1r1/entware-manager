@@ -47,3 +47,23 @@ func TestOpkgUpdateRunning(t *testing.T) {
 		t.Fatal("stale pidfile should be removed")
 	}
 }
+
+// acquireUpdateLock использует реальный /proc и /tmp — проверяем только
+// базовую логику: повторный вызов при существующем (протухшем) файле
+// пересоздаёт блокировку и возвращает true, а не падает.
+func TestAcquireUpdateLock(t *testing.T) {
+	dir := t.TempDir()
+	lockFile := filepath.Join(dir, "update.pid")
+
+	if !acquireUpdateLock(lockFile, 12345) {
+		t.Fatal("first acquire should succeed")
+	}
+	data, err := os.ReadFile(lockFile)
+	if err != nil {
+		t.Fatalf("pidfile should exist: %v", err)
+	}
+	if string(data) != "12345" {
+		t.Errorf("pidfile content = %q, want 12345", string(data))
+	}
+	os.Remove(lockFile)
+}

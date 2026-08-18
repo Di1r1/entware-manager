@@ -49,7 +49,7 @@ func HandleViewFile() {
 	}
 
 	if !checkFilemgrAuth(password) {
-		viewFileError("Доступ запрещен", isXHR)
+		viewFileError("Неверный пароль", isXHR)
 		return
 	}
 

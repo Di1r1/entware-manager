@@ -205,7 +205,7 @@ func deleteTmpClean() {
 				continue
 			}
 		}
-		logDeleteAction("INFO", fmt.Sprintf("Тmpfs-очистка: удалено %s", p))
+		logDeleteAction("INFO", fmt.Sprintf("Tmpfs-очистка: удалено %s", p))
 		deleted++
 	}
 
