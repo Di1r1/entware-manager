@@ -19,16 +19,16 @@ const NETWORK = {
         content.innerHTML = `
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
-                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-router"/></svg>
+                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-router"/></svg>
                 </span>
                 Сеть
             </h2>
             <div id="network-status-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <span><strong>Демон:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
-                    <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
-                    <button id="network-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
-                    <button id="network-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
+                    <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить</button>
+                    <button id="network-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-stop"/></svg> Остановить</button>
+                    <button id="network-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Перезапустить</button>
                     <label class="service-watch-toggle" title="Запускать демон при загрузке роутера">
                         <input type="checkbox" id="network-autostart" style="display: none;">
                         <span class="toggle-slider"></span>
@@ -87,7 +87,7 @@ const NETWORK = {
                     <div id="events-list" style="background: var(--pre-bg); padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto;">
                         <p>Загрузка событий...</p>
                     </div>
-                    <button id="refresh-events" class="packages-delete-btn" style="margin-top: 1rem;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Обновить</button>
+                    <button id="refresh-events" class="packages-delete-btn" style="margin-top: 1rem;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Обновить</button>
                 </div>
             </div>
         `;

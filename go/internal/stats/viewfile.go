@@ -158,5 +158,5 @@ func viewFileResult(path, content string, isXHR bool) {
 }
 
 func backButton() string {
-	return `<p style="margin-top:1rem;"><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> Назад</a></p>`
+	return `<p style="margin-top:1rem;"><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-arrow-left"/></svg> Назад</a></p>`
 }

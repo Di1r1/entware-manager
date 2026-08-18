@@ -61,7 +61,7 @@ func HandleView() {
 
 	fmt.Print(`</select></div>
 	<div><label>Поиск</label><input type="text" name="search" value="` + htmlEscape(search) + `" placeholder="текст для поиска"></div>
-	<div><button type="submit"><svg class="icon" width="14" height="14" style="fill: none; stroke: currentColor;"><use href="/entware-manager/icons.svg?v=2#icon-search"/></svg> Фильтровать</button></div>
+	<div><button type="submit"><svg class="icon" width="14" height="14" style="fill: none; stroke: currentColor;"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg> Фильтровать</button></div>
 </form>
 <div class="logs-container">`)
 

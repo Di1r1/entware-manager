@@ -6,6 +6,21 @@
 // Интеграция через общие механизмы панели (lib/utils.js, CSS-переменные, меню).
 // Порт прокси и пути берутся ТОЛЬКО из rdp_config.json (единая точка).
 
+// Cookie-хелперы для чекбокса «Всегда показывать локальный курсор»
+// (клиент grdpwasm в iframe читает тот же cookie).
+function setCookie(name, value) {
+    document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) +
+        '; max-age=31536000; SameSite=Strict; path=/';
+}
+function getCookie(name) {
+    const key = encodeURIComponent(name) + '=';
+    for (const part of document.cookie.split(';')) {
+        const s = part.trim();
+        if (s.indexOf(key) === 0) return decodeURIComponent(s.slice(key.length));
+    }
+    return null;
+}
+
 const RDP = {
     intervalId: null,
     cfg: null,
@@ -30,7 +45,7 @@ const RDP = {
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
                     <svg class="icon" width="28" height="28">
-                        <use href="/entware-manager/icons.svg?v=2#icon-vpn"/>
+                        <use href="/entware-manager/icons.svg?v=3#icon-vpn"/>
                     </svg>
                 </span>
                 RDP
@@ -42,13 +57,13 @@ const RDP = {
                     </div>
                     <div class="rdp-actions">
                         <button id="rdpStartBtn" class="packages-delete-btn rdp-btn-start" disabled>
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить прокси
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить прокси
                         </button>
                         <button id="rdpStopBtn" class="packages-delete-btn rdp-btn-stop" disabled>
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-stop"/></svg> Остановить
                         </button>
                         <a id="rdpOpenLink" href="#" target="_blank" rel="noopener noreferrer" class="packages-delete-btn rdp-btn-open" style="display:none;">
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-link"/></svg> Открыть в новой вкладке
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Открыть в новой вкладке
                         </a>
                     </div>
                 </div>
@@ -59,6 +74,11 @@ const RDP = {
                     <p class="rdp-hint">
                         Нажмите внутри окна, чтобы захватить клавиатуру и мышь. Раскладка: Windows + Space.
                     </p>
+                    <label class="rdp-cursor-opt" title="Если курсор на удалённом ПК не виден (например, в Radmin), показывать локальную стрелку вместо скрытого системного курсора">
+                        <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-cursor"/></svg>
+                        <input type="checkbox" id="rdpAlwaysCursor" />
+                        Всегда показывать локальный курсор
+                    </label>
                 </div>
             </div>
         `;
@@ -68,6 +88,20 @@ const RDP = {
         document.getElementById('rdpOpenLink').addEventListener('click', function() {
             this.href = RDP.frameUrl;
             this.setAttribute('target', '_blank');
+        });
+        this.bindCursorOpt();
+    },
+
+    // Чекбокс «Всегда показывать локальный курсор»: состояние в cookie,
+    // клиент grdpwasm (iframe) читает его при pointer hide.
+    bindCursorOpt() {
+        const cb = document.getElementById('rdpAlwaysCursor');
+        if (!cb) return;
+        try { cb.checked = (getCookie('rdp_always_cursor') === '1'); } catch (e) {}
+        cb.addEventListener('change', () => {
+            try {
+                setCookie('rdp_always_cursor', cb.checked ? '1' : '0');
+            } catch (e) {}
         });
     },
 
@@ -88,7 +122,7 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=6';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=7';
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
@@ -118,7 +152,7 @@ const RDP = {
             st.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <span class="status-badge status-running">
-                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#icon-check"/></svg>
+                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=3#icon-check"/></svg>
                         Прокси запущен
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(proxyPort))}</b></span>
@@ -131,7 +165,7 @@ const RDP = {
             st.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
                     <span class="status-badge status-stopped">
-                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=2#icon-cross"/></svg>
+                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=3#icon-cross"/></svg>
                         Прокси не запущен
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(port))}</b></span>

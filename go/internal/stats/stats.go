@@ -392,7 +392,7 @@ func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgA
 	b.WriteString(`<div class="stats-hero">
     <div class="stats-hero-title">
         <span class="stat-icon"><svg class="icon" width="30" height="30">
-            <use href="/entware-manager/icons.svg?v=2#icon-stats"/>
+            <use href="/entware-manager/icons.svg?v=3#icon-stats"/>
         </svg></span>
         <div>
             <h1>Статистика системы</h1>
@@ -400,7 +400,7 @@ func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgA
         </div>
     </div>
     <button class="packages-delete-btn stats-hero-refresh" onclick="window.location.reload()">
-        <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg>
+        <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg>
         Обновить
     </button>
 </div>
@@ -423,7 +423,7 @@ func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgA
 func renderSysCard(b *strings.Builder, sys SysInfo) {
 	b.WriteString(fmt.Sprintf(`
     <div class="stat-card system">
-        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-stats"/></svg></span>Система</h3>
+        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-stats"/></svg></span>Система</h3>
         <table class="stat-table">
             <tr><td>Модель:</td><td>%s</td></tr>
             <tr><td>Имя хоста:</td><td>%s</td></tr>
@@ -452,7 +452,7 @@ func renderMemCard(b *strings.Builder, mem MemInfo, topProcs []TopProc) {
 
 	b.WriteString(fmt.Sprintf(`
     <div class="stat-card memory">
-        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-memory"/></svg></span>Память (RAM)</h3>
+        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-memory"/></svg></span>Память (RAM)</h3>
         <table class="stat-table">
             <tr><td>Использовано / Всего:</td><td>%s</td></tr>
             <tr><td>Загрузка:</td><td><span class="%s">%d%%</span></td></tr>
@@ -483,7 +483,7 @@ func renderPkgCard(b *strings.Builder, installed, avail int, changes []PkgChange
 
 	b.WriteString(fmt.Sprintf(`
     <div class="stat-card packages">
-        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-package"/></svg></span>Пакеты Entware</h3>
+        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-package"/></svg></span>Пакеты Entware</h3>
         <table class="stat-table">
             <tr><td>Установлено:</td><td>%s</td></tr>
             <tr><td>Доступно:</td><td>%s</td></tr>
@@ -495,7 +495,7 @@ func renderPkgCard(b *strings.Builder, installed, avail int, changes []PkgChange
 func renderDiskCard(b *strings.Builder, disk DiskInfo) {
 	b.WriteString(fmt.Sprintf(`
     <div class="stat-card disk">
-        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg></span>Диск (/opt)</h3>
+        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg></span>Диск (/opt)</h3>
         <table class="stat-table">
             <tr><td>Размер:</td><td>%s</td></tr>
             <tr><td>Использовано:</td><td>%s</td></tr>
@@ -509,11 +509,11 @@ func renderDiskCard(b *strings.Builder, disk DiskInfo) {
 func renderNetworkPlaceholder(b *strings.Builder) {
 	b.WriteString(`
 <div class="stat-card network" id="networkCard">
-    <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-router"/></svg></span>Сеть</h3>
+    <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-router"/></svg></span>Сеть</h3>
     <div id="networkTable"><div style="padding: 0.5rem 1rem;">Загрузка...</div></div>
     <div style="margin-top: 8px; display: flex; gap: 8px;">
         <button id="network-refresh" class="packages-delete-btn" style="padding: 4px 8px; font-size: 12px;">
-            <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg>
+            <svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg>
         </button>
     </div>
 </div>`)
@@ -538,7 +538,7 @@ func renderTable(b *strings.Builder, id, title, icon string, entries []DFEntry, 
 
 	b.WriteString(fmt.Sprintf(`
 <div class="stat-card %s">
-    <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=2#icon-%s"/></svg></span>%s</h3>
+    <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-%s"/></svg></span>%s</h3>
     <div class="table-wrapper">
         <table>
             <thead><tr><th>ФС</th><th>Размер</th><th>Использовано</th><th>Доступно</th><th>Загрузка</th><th>Точка монтирования</th></tr></thead>

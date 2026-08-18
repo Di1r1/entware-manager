@@ -2504,6 +2504,24 @@ html.night #toast {
 .rdp-panel p {
     margin: 0;
 }
+.rdp-cursor-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.rdp-cursor-opt input[type="checkbox"] {
+    accent-color: var(--accent);
+    margin: 0;
+}
+.rdp-cursor-opt .icon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
 
 /* Экран входа в панель */
 .login-overlay {

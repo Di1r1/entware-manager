@@ -7,8 +7,8 @@
     <title>Entware Manager</title>
     <meta name="theme-color" content="#8b5cf6" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#1a202c" media="(prefers-color-scheme: dark)">
-    <link rel="icon" href="/entware-manager/icons.svg?v=2" type="image/svg+xml">
-    <link rel="stylesheet" href="/entware-manager/style.css?v=34">
+    <link rel="icon" href="/entware-manager/icons.svg?v=3" type="image/svg+xml">
+    <link rel="stylesheet" href="/entware-manager/style.css?v=35">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script>if (window.Theme) Theme.init();</script>
     <script src="/entware-manager/modal.js?v=3"></script>
@@ -24,31 +24,31 @@
                 <div class="temp-widget-sidebar" id="tempWidget" style="cursor:pointer;">
                     <span>
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                            <use href="/entware-manager/icons.svg?v=2#icon-thermometer"/>
+                            <use href="/entware-manager/icons.svg?v=3#icon-thermometer"/>
                         </svg>
                         CPU: <span id="tempValue">--</span><span id="tempUnit">°C</span>
                         &nbsp;&nbsp;
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                            <use href="/entware-manager/icons.svg?v=2#icon-wifi"/>
+                            <use href="/entware-manager/icons.svg?v=3#icon-wifi"/>
                         </svg>
                         WiFi: <span id="wifiTempValue">--</span>
                     </span>
                 </div>
                 <div class="sidebar-icon">
                     <svg class="icon" width="40" height="40">
-                        <use href="/entware-manager/icons.svg?v=2#icon-logo"/>
+                        <use href="/entware-manager/icons.svg?v=3#icon-logo"/>
                     </svg>
                 </div>
             </div>
 
             <button class="collapse-btn" id="collapseToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=2#icon-chevron-left"/>
+                    <use href="/entware-manager/icons.svg?v=3#icon-chevron-left"/>
                 </svg>
             </button>
             <button class="theme-toggle-edge" id="themeToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=2#icon-sun"/>
+                    <use href="/entware-manager/icons.svg?v=3#icon-sun"/>
                 </svg>
             </button>
             <div class="theme-popup" id="themePopup"></div>
@@ -70,7 +70,7 @@
                 </a>
                 <a href="javascript:void(0)" onclick="doLogout()" id="logoutBtn" class="sidebar-btn" style="margin-bottom:8px; display:none; text-align:center;">
                     <svg class="icon" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
-                        <use href="/entware-manager/icons.svg?v=2#icon-lock"/>
+                        <use href="/entware-manager/icons.svg?v=3#icon-lock"/>
                     </svg>
                     Выйти
                 </a>
@@ -94,7 +94,7 @@
     </div>
 
     <script src="/entware-manager/menu/menu.js?v=3"></script>
-    <script src="/entware-manager/entware.js?v=39"></script>
+    <script src="/entware-manager/entware.js?v=40"></script>
     <script>
         function updateTemp() {
             fetch('/entware-cgi/temperature.cgi?_=' + Date.now())
@@ -486,7 +486,7 @@
     <div id="loginOverlay" class="login-overlay">
         <div class="login-card">
             <div class="login-logo">
-                <svg class="icon" width="40" height="40"><use href="/entware-manager/icons.svg?v=2#icon-lock"/></svg>
+                <svg class="icon" width="40" height="40"><use href="/entware-manager/icons.svg?v=3#icon-lock"/></svg>
             </div>
             <h2>Entware Manager</h2>
             <p class="login-sub">Введите пароль панели (задаётся в Настройки → Защита)</p>

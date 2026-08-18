@@ -86,7 +86,7 @@ func generateBreadcrumb(path string) string {
 			continue
 		}
 		tempPath += "/" + seg
-		b.WriteString(`<svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-chevron-right"/></svg>`)
+		b.WriteString(`<svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-chevron-right"/></svg>`)
 		if tempPath != path {
 			b.WriteString(fmt.Sprintf(` <a href="?path=%s">%s</a> `,
 				url.QueryEscape(tempPath), html.EscapeString(seg)))
@@ -102,7 +102,7 @@ func generateUpLink(path string) string {
 		return ""
 	}
 	parent := filepath.Dir(path)
-	return fmt.Sprintf(`<tr class="row-nav"><td colspan="6"><a href="?path=%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-arrow-left"/></svg> .. (наверх)</a></td></tr>`,
+	return fmt.Sprintf(`<tr class="row-nav"><td colspan="6"><a href="?path=%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-arrow-left"/></svg> .. (наверх)</a></td></tr>`,
 		url.QueryEscape(parent))
 }
 
@@ -134,7 +134,7 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 		}
 
 		action := fmt.Sprintf(
-			`<button class="delete-file-btn" data-path="%s" data-name="%s" data-type="%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=2#icon-trash"/></svg></button>`,
+			`<button class="delete-file-btn" data-path="%s" data-name="%s" data-type="%s"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-trash"/></svg></button>`,
 			escPath, escName, dtype,
 		)
 
@@ -150,7 +150,7 @@ func generateFileRows(dir string, entries []os.DirEntry) string {
 		}
 
 		b.WriteString(fmt.Sprintf(
-			`<tr><td><span class="file-icon %s"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-%s"/></svg></span> %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s:%s</td><td>%s</td></tr>`,
+			`<tr><td><span class="file-icon %s"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-%s"/></svg></span> %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s:%s</td><td>%s</td></tr>`,
 			iconClass, icon, link, hsize, modTime, perm, owner, group, action,
 		))
 	}

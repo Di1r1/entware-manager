@@ -2,6 +2,23 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.09.17 (2026-08-18)
+
+### RDP
+
+- **Опция «Всегда показывать локальный курсор».** В панели RDP добавлена галочка с иконкой курсора «Всегда показывать локальный курсор» (`rdp.js`, иконка `icon-cursor`). Состояние сохраняется в cookie `rdp_always_cursor` (SameSite=Strict, path=/). Клиент grdpwasm (`static/rdp/index.html`, форк и deploy-копия синхронны) при получении pointer hide от RDP-сервера вместо скрытия курсора (`cursor: none`) показывает локальную системную стрелку (`cursor: default`). Решает проблему пропадания мыши, когда удалённое приложение (например, Radmin) рисует собственный аппаратный курсор, который RDP не передаёт ни в кадр, ни как pointer shape. По умолчанию выключено — поведение не меняется.
+- Кэш-версии: `style.css?v=35`, `icons.svg?v=3` (новая иконка `icon-cursor`), `rdp.js?v=12`, `/rdp/?v=7`, `entware.js?v=40`. Версии `icons.svg?v=2 → v=3` обновлены во всех страницах панели и во встроенных страницах Go (help/tmpfs/viewfile/installed/logger).
+
+### Рефакторинг (Очередь 2, B2)
+
+- Единая `cgiutil.HumanSize` вместо идентичных дублей `humanSize` (stats/tmpfs.go) и `sizeHuman` (logger/rotate.go); тест перенесён в `cgiutil_test.go` (`TestHumanSize`). Поведение не изменено.
+
+### Проверено
+
+- `make ci` зелёный; `go test` stats/logger/packages чисто; `node --check` всех изменённых JS OK.
+- Dev-роутер: задеплоены rdp.js, icons.svg, style.css, entware.js, index.html, lib/utils.js, menu/menu.js, modal.js, monitor.js, network.js, smart.js, static/rdp/index.html и бинарники entware-stats/entware-logger/entware-pkg (пересборка embed-страниц); md5 совпали; HTTP всех путей 200; маркеры в бинарниках подтверждены (style.css?v=35, icons.svg?v=3, без v=2/v=34).
+- Логика cookie→курсор проверена: без cookie → `none` (старое поведение), `cookie=1` → `default`, `cookie=0` → `none`.
+
 ## 1.09.16 (2026-08-18)
 
 ### Рефакторинг (Очередь 2, B1)

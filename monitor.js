@@ -29,16 +29,16 @@ const MONITOR = {
         content.innerHTML = `
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
-                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=2#icon-shield"/></svg>
+                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=3#icon-shield"/></svg>
                 </span>
                 Защита от зависших процессов
             </h2>
             <div id="monitor-status-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <span><strong>Статус демона:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
-                    <button id="monitor-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-play"/></svg> Запустить</button>
-                    <button id="monitor-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-stop"/></svg> Остановить</button>
-                    <button id="monitor-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-refresh"/></svg> Перезапустить</button>
+                    <button id="monitor-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-play"/></svg> Запустить</button>
+                    <button id="monitor-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-stop"/></svg> Остановить</button>
+                    <button id="monitor-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-refresh"/></svg> Перезапустить</button>
                     <label class="monitor-toggle" title="Запускать демон при загрузке роутера">
                         <input type="checkbox" id="monitor-autostart" style="display: none;">
                         <span class="toggle-slider"></span>
@@ -87,13 +87,13 @@ const MONITOR = {
                     <hr>
                     <h4>Дополнительные настройки</h4>
                     <div><label>Максимум процессов для сканирования: <input type="number" id="settings-max-processes" min="10" max="1000" value="200" class="settings-input" style="width:80px;"> (10-1000)</label></div>
-                    <button type="submit" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-disk"/></svg> Сохранить настройки</button>
+                    <button type="submit" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-disk"/></svg> Сохранить настройки</button>
                 </form>
             </div>
             <div id="monitor-log">
                 <h3>Лог событий</h3>
                 <pre id="log-content" style="background: var(--pre-bg); padding: 0.5rem; height: 200px; overflow-y: auto;">Загрузка...</pre>
-                <button id="clear-log" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=2#icon-trash"/></svg> Очистить лог</button>
+                <button id="clear-log" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-trash"/></svg> Очистить лог</button>
             </div>
         `;
     },
