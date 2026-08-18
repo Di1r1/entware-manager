@@ -91,14 +91,6 @@ const RDP = {
         this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=10';
     },
 
-    // Короткое отображение адреса клиента: без протокола и query-параметра v.
-    shortUrl() {
-        var u = String(this.frameUrl || '');
-        u = u.replace(/^https?:\/\//, '');
-        u = u.replace(/\?.*$/, '');
-        return u;
-    },
-
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled).
     async loadStatus() {
         try {
@@ -131,7 +123,7 @@ const RDP = {
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(proxyPort))}</b></span>
                     ${pid ? `<span class="rdp-meta" style="white-space: nowrap;">PID: ${escapeHtml(String(pid))}</span>` : ''}
-                    <span class="rdp-meta rdp-url" id="rdpClientUrl" style="cursor:pointer; white-space:nowrap;" title="Кликните, чтобы показать полный адрес клиента">Клиент: ${escapeHtml(RDP.shortUrl())}</span>
+                    <span class="rdp-meta rdp-url" id="rdpClientUrl" style="cursor:pointer; white-space:nowrap;" title="Кликните, чтобы показать полный адрес клиента">Клиент: показать</span>
                 </div>
             `;
             var urlEl = document.getElementById('rdpClientUrl');
@@ -139,7 +131,7 @@ const RDP = {
                 var full = RDP.frameUrl;
                 urlEl.addEventListener('click', function() {
                     if (this.getAttribute('data-full') === '1') {
-                        this.textContent = 'Клиент: ' + RDP.shortUrl();
+                        this.textContent = 'Клиент: показать';
                         this.setAttribute('data-full', '0');
                     } else {
                         this.textContent = 'Клиент: ' + full;
