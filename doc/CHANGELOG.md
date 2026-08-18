@@ -2,6 +2,23 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.09.16 (2026-08-18)
+
+### Рефакторинг (Очередь 2, B1)
+
+- **Единый CGI-пламбинг в пакете `cgiutil`.** Вывод JSON (`WriteJSON`, `WriteError`, `WriteStatusError`, `NotAllowed`), гейты методов (`IsGET`/`IsPOST`), чтение тела POST и разбор query-строки (`ReadPOSTBody`, `ParseFormBody`, `URLDecode`, `GetQueryParam`, `GetParam`) собраны в общий пакет `go/internal/cgiutil`. Переведены 8 пакетов и 5 `cmd/main.go`: rdp, logger, monitor, network, packages, services, smart, stats. Удалено ~975 строк дублей. Поведение и JSON-контракты сохранены (проверено на роутере: md5 бинарников, HTTP 200/401, метод-гейты `{"error":"Method not allowed"}`/`{"status":"error","message":...}`, CSRF-отказы).
+- **Unit-тесты `cgiutil_test.go`**: URLDecode (10 кейсов: `+`/`%2B`/кириллица/битый `%XX`), ParseFormBody, GetQueryParam, GetParam (query + POST-body через stdin), WriteJSON/WriteError/WriteStatusError/NotAllowed, IsGET/IsPOST, ReadPOSTBody.
+
+### Логирование входа в панель
+
+- `login.cgi` пишет попытки входа в суточный лог защищённых действий `/tmp/entware/logs/<дата>.log` с IP клиента (`REMOTE_ADDR`, пусто → `0.0.0.0`): неверный пароль (WARN), CSRF-отказ «Запрос из недоверенного источника» (WARN), отклонение входа (WARN), успешный вход (INFO), ошибка создания сессии (WARN). Формат единый со статистикой: `[время] [уровень] [IP] [pid] [login.cgi] сообщение`. Неверный метод (GET) не логируется — это не попытка входа.
+
+### Проверено
+
+- `make ci` зелёный (go vet, go test, shellcheck, checkbashisms, gofmt).
+- Dev-роутер: пересобран `entware-stats` (arm64, md5 совпал), логирование подтверждено вживую — `[WARN] [192.168.99.77] [login.cgi] Неверный пароль при входе`, `[WARN] [192.168.99.88] [login.cgi] Запрос из недоверенного источника (CSRF)`, `[INFO] [192.168.99.101] [login.cgi] Успешный вход`; конфиг авторизации восстановлен (md5 совпал с бэкапом).
+- HTTP всех затронутых путей 200; маркеры cgiutil в бинарниках подтверждены `strings`.
+
 ## 1.09.15 (2026-08-17)
 
 ### Безопасность
