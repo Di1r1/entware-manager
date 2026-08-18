@@ -261,4 +261,13 @@
     <path d="M6 12v-1" fill="none" stroke="currentColor"/>
     <path d="M10 12v-1" fill="none" stroke="currentColor"/>
   </symbol>
+
+  <symbol id="icon-grip-dots" viewBox="0 0 16 16">
+    <circle cx="4" cy="5" r="1.2" fill="currentColor"/>
+    <circle cx="8" cy="5" r="1.2" fill="currentColor"/>
+    <circle cx="12" cy="5" r="1.2" fill="currentColor"/>
+    <circle cx="4" cy="11" r="1.2" fill="currentColor"/>
+    <circle cx="8" cy="11" r="1.2" fill="currentColor"/>
+    <circle cx="12" cy="11" r="1.2" fill="currentColor"/>
+  </symbol>
 </svg>

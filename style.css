@@ -963,6 +963,23 @@ input[type="submit"]:disabled,
     font-size: 1rem;
 }
 
+/* Зона захвата для перетаскивания строк ссылок (SVG 6 точек 3x2) */
+.link-drag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+.link-drag:hover { cursor: grabbing; }
+.link-drag:hover .icon { color: var(--accent); }
+tr.link-dragging {
+    opacity: 0.5;
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+}
+
 .settings-input {
     width: 100%;
     padding: 8px;
