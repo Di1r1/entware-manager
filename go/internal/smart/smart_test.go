@@ -344,13 +344,13 @@ func TestAttrCacheWriteRead(t *testing.T) {
 		t.Errorf("expected attribute line in cache, got %q", out)
 	}
 
-	// Один файл на диск, дубликатов нет.
+	// Один файл на диск, дубликатов и остатков tmp нет.
 	entries, err := os.ReadDir(attrCacheDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".tmp") {
+		if strings.HasPrefix(e.Name(), "sda.tmp-") {
 			t.Errorf("leftover temp file: %s", e.Name())
 		}
 	}

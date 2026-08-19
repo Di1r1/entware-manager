@@ -469,6 +469,11 @@ const listReloadDeadline = 65 * time.Second
 // shortSmartctlTimeout — для точечных действий (info/attributes/health).
 const shortSmartctlTimeout = 8 * time.Second
 
+// shortListTimeout — таймаут опроса диска при первичной загрузке списка:
+// чуть меньше listDeadline, чтобы спящий диск не порождал долгий осиротевший
+// smartctl (в D-состоянии), блокирующий последующие запросы как busy.
+const shortListTimeout = 4 * time.Second
+
 // diskSmartctlTimeout — таймаут опроса диска в diskInfo: спящий диск может
 // «просыпаться» до 60 сек, прежде чем smartctl вернёт полные данные.
 const diskSmartctlTimeout = 60 * time.Second
@@ -496,10 +501,17 @@ func handleList(refresh bool) {
 		idx  int
 		info DiskInfo
 	}
+	// Таймаут опроса диска: первичная загрузка — короткий (спящий диск не
+	// должен порождать долгий осиротевший smartctl, блокирующий последующие
+	// запросы), дозагрузка (refresh) — длинный, чтобы диск успел проснуться.
+	probeTimeout := diskSmartctlTimeout
+	if !refresh {
+		probeTimeout = shortListTimeout
+	}
 	ch := make(chan diskResult, len(disks))
 	for i, name := range disks {
 		go func(idx int, dev string) {
-			ch <- diskResult{idx, diskInfo(dev)}
+			ch <- diskResult{idx, diskInfo(dev, probeTimeout)}
 		}(i, name)
 	}
 
@@ -551,10 +563,10 @@ func loadingDiskInfo(name, devpath, diskType string) DiskInfo {
 	return info
 }
 
-func diskInfo(name string) DiskInfo {
+func diskInfo(name string, probeTimeout time.Duration) DiskInfo {
 	devpath := "/dev/" + name
 	diskType := detectType(name)
-	output, err := smartctlRunTimeout(devpath, diskSmartctlTimeout, "-a", "-d", diskType)
+	output, err := smartctlRunTimeout(devpath, probeTimeout, "-a", "-d", diskType)
 	if errors.Is(err, errDeviceBusy) {
 		// На диске висит незавершённый smartctl (подвешенное устройство) —
 		// отдаём базовые данные из /sys, чтобы не блокировать список.
@@ -570,7 +582,7 @@ func diskInfo(name string) DiskInfo {
 	if displayType == "usb" && (output == "" || strings.Contains(strings.ToLower(output), "unknown usb bridge") ||
 		strings.Contains(strings.ToLower(output), "unsupported scsi opcode") ||
 		strings.Contains(strings.ToLower(output), "device lacks smart")) {
-		out2, err2 := smartctlRunTimeout(devpath, diskSmartctlTimeout, "-a", "-d", "scsi")
+		out2, err2 := smartctlRunTimeout(devpath, probeTimeout, "-a", "-d", "scsi")
 		if err2 == nil {
 			output = out2
 		}
@@ -693,25 +705,34 @@ func handleInfo(device string) {
 
 // readAttrCache возвращает закешированный вывод smartctl -A для device,
 // если кеш свежий (< attrCacheTTL). Файл один на диск (имя = device),
-// дубликаты не создаются.
+// дубликаты не создаются. Stat и чтение идут через один дескриптор —
+// без TOCTOU между проверкой mtime и чтением содержимого.
 func readAttrCache(device string) (string, bool) {
 	path := filepath.Join(attrCacheDir, device)
-	fi, err := os.Stat(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
 	if err != nil {
 		return "", false
 	}
 	if time.Since(fi.ModTime()) > attrCacheTTL {
 		return "", false
 	}
-	data, err := os.ReadFile(path)
+	data, err := io.ReadAll(f)
 	if err != nil || len(data) == 0 {
 		return "", false
 	}
 	return string(data), true
 }
 
-// writeAttrCache атомарно (temp+rename) записывает вывод smartctl -A в кеш.
-// Каталог создаётся при необходимости; файл перезаписывается, не дублируется.
+// writeAttrCache атомарно (уникальный tmp + rename) записывает вывод smartctl -A
+// в кеш. Каталог создаётся при необходимости; файл перезаписывается, не
+// дублируется. Уникальное имя tmp (os.CreateTemp) исключает гонку между
+// параллельными запросами одного диска.
 func writeAttrCache(device, output string) {
 	if output == "" {
 		return
@@ -719,11 +740,26 @@ func writeAttrCache(device, output string) {
 	if err := os.MkdirAll(attrCacheDir, 0755); err != nil {
 		return
 	}
-	tmp := filepath.Join(attrCacheDir, device+".tmp")
-	if err := os.WriteFile(tmp, []byte(output), 0600); err != nil {
+	tmp, err := os.CreateTemp(attrCacheDir, device+".tmp-*")
+	if err != nil {
 		return
 	}
-	os.Rename(tmp, filepath.Join(attrCacheDir, device))
+	tmpName := tmp.Name()
+	if _, err := tmp.WriteString(output); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return
+	}
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return
+	}
+	os.Rename(tmpName, filepath.Join(attrCacheDir, device))
 }
 
 func handleAttributes(device string) {

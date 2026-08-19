@@ -85,6 +85,11 @@ const SMART = {
     async loadDisks(forceRefresh, silent) {
         const container = document.getElementById('smart-table-container');
         if (!container) return;
+        // Guard от наложения: пока идёт запрос (особенно долгий refresh до 65с
+        // на спящем диске), не запускаем параллельный. По завершении сброс.
+        if (this.reloading) return;
+        this.reloading = true;
+        this.setRefreshing(true);
         // При фоновой дозагрузке не прячем таблицу за спиннером — только
         // перерисовываем содержимое, когда пришли данные.
         if (!silent) container.innerHTML = '<div class="loading-spinner"></div>';
@@ -96,7 +101,21 @@ const SMART = {
             this.scheduleReload(data.disks || []);
         } catch (err) {
             if (!silent) container.innerHTML = `<p class="error" style="padding:1rem;">Ошибка: ${escapeHtml(err.message)}</p>`;
+        } finally {
+            this.reloading = false;
+            this.setRefreshing(false);
         }
+    },
+
+    // Индикация состояния кнопки «Обновить»: дизейбл + подпись во время запроса,
+    // чтобы клик во время in-flight не выглядел «пропавшим».
+    setRefreshing(on) {
+        const btn = document.getElementById('refreshSmart');
+        if (!btn) return;
+        btn.disabled = on;
+        btn.innerHTML = on
+            ? '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Обновление…'
+            : '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Обновить';
     },
 
     // Асинхронная дозагрузка: если в ответе есть диски со статусом loading или

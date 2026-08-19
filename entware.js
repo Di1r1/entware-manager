@@ -369,7 +369,7 @@ async function loadTab(tabName) {
     }
     if (tabName === 'smart') {
         if (!window.SMART_LOADED) {
-            await loadScript('/entware-manager/smart.js?v=7');
+            await loadScript('/entware-manager/smart.js?v=9');
             window.SMART_LOADED = true;
         }
         SMART.init(); Menu.setActiveTab(tabName); return;
@@ -1116,12 +1116,12 @@ function loadLogsTab() {
         modal.id = 'systemEventsModal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
         modal.innerHTML = `
-            <div style="background:var(--card-bg,#16213e);border-radius:12px;padding:0;max-width:900px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="background:var(--modal-bg);border-radius:12px;padding:0;max-width:900px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border-color,#333);">
-                    <span style="font-size:16px;font-weight:500;color:#e0e0e0;">Системные события</span>
-                    <button id="closeSystemModal" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;">&times;</button>
+                    <span style="font-size:16px;font-weight:500;color:var(--text-primary);">Системные события</span>
+                    <button id="closeSystemModal" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">&times;</button>
                 </div>
-                <div id="systemLogContent" style="flex:1;overflow:auto;padding:16px;color:#e0e0e0;"></div>
+                <div id="systemLogContent" style="flex:1;overflow:auto;padding:16px;color:var(--text-primary);"></div>
             </div>
         `;
         document.body.appendChild(modal);
