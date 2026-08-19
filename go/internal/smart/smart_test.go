@@ -329,6 +329,69 @@ func TestAttrHealthUnknownIsLoading(t *testing.T) {
 	}
 }
 
+func TestAttrCacheWriteRead(t *testing.T) {
+	orig := attrCacheDir
+	attrCacheDir = t.TempDir()
+	defer func() { attrCacheDir = orig }()
+
+	// Запись → чтение в пределах TTL.
+	writeAttrCache("sda", "SMART Attributes\n  1 Raw_Read 100 100 062 - 0\n")
+	out, ok := readAttrCache("sda")
+	if !ok {
+		t.Fatal("expected cached attributes after write")
+	}
+	if !strings.Contains(out, "Raw_Read") {
+		t.Errorf("expected attribute line in cache, got %q", out)
+	}
+
+	// Один файл на диск, дубликатов нет.
+	entries, err := os.ReadDir(attrCacheDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".tmp") {
+			t.Errorf("leftover temp file: %s", e.Name())
+		}
+	}
+	if len(entries) != 1 {
+		t.Errorf("expected 1 cache file for sda, got %d", len(entries))
+	}
+}
+
+func TestAttrCacheExpires(t *testing.T) {
+	orig := attrCacheDir
+	attrCacheDir = t.TempDir()
+	defer func() { attrCacheDir = orig }()
+
+	writeAttrCache("sdb", "SMART Attributes\n  5 Reallocated 100 100 005 - 0\n")
+
+	// Старим файл за пределы TTL.
+	path := filepath.Join(attrCacheDir, "sdb")
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := fi.ModTime().Add(-attrCacheTTL - time.Minute)
+	os.Chtimes(path, old, old)
+
+	if _, ok := readAttrCache("sdb"); ok {
+		t.Error("expected cache to expire after TTL")
+	}
+}
+
+func TestAttrCacheEmptyOutputNotWritten(t *testing.T) {
+	orig := attrCacheDir
+	attrCacheDir = t.TempDir()
+	defer func() { attrCacheDir = orig }()
+
+	writeAttrCache("sdc", "")
+	entries, _ := os.ReadDir(attrCacheDir)
+	if len(entries) != 0 {
+		t.Errorf("empty output must not create cache files, got %d", len(entries))
+	}
+}
+
 func TestAtoiWithDefault(t *testing.T) {
 	if v := atoiWithDefault("100"); v != 100 {
 		t.Errorf("expected 100, got %d", v)

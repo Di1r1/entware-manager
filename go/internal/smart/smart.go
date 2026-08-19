@@ -27,7 +27,13 @@ var (
 	dfBin          = "df"
 	sudoBin        = "sudo"
 	procDir        = "/proc"
+	attrCacheDir   = "/tmp/entware/cache/disk"
 )
+
+// attrCacheTTL — срок жизни кеша атрибутов SMART. Снимает повторные долгие
+// опросы спящих дисков (SPINUP 13–60 сек): после первого запроса атрибуты
+// отдаются из файла до 5 минут, затем перезаписываются при следующем запросе.
+const attrCacheTTL = 5 * time.Minute
 
 type DiskInfo struct {
 	Device       string `json:"device"`
@@ -685,6 +691,41 @@ func handleInfo(device string) {
 	cgiutil.WriteJSON(map[string]string{"info": output})
 }
 
+// readAttrCache возвращает закешированный вывод smartctl -A для device,
+// если кеш свежий (< attrCacheTTL). Файл один на диск (имя = device),
+// дубликаты не создаются.
+func readAttrCache(device string) (string, bool) {
+	path := filepath.Join(attrCacheDir, device)
+	fi, err := os.Stat(path)
+	if err != nil {
+		return "", false
+	}
+	if time.Since(fi.ModTime()) > attrCacheTTL {
+		return "", false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) == 0 {
+		return "", false
+	}
+	return string(data), true
+}
+
+// writeAttrCache атомарно (temp+rename) записывает вывод smartctl -A в кеш.
+// Каталог создаётся при необходимости; файл перезаписывается, не дублируется.
+func writeAttrCache(device, output string) {
+	if output == "" {
+		return
+	}
+	if err := os.MkdirAll(attrCacheDir, 0755); err != nil {
+		return
+	}
+	tmp := filepath.Join(attrCacheDir, device+".tmp")
+	if err := os.WriteFile(tmp, []byte(output), 0600); err != nil {
+		return
+	}
+	os.Rename(tmp, filepath.Join(attrCacheDir, device))
+}
+
 func handleAttributes(device string) {
 	if device == "" {
 		cgiutil.WriteStatusError("device required")
@@ -692,7 +733,16 @@ func handleAttributes(device string) {
 	}
 	devpath := "/dev/" + device
 	diskType := detectType(device)
-	output, _ := smartctlRun(devpath, "-A", "-d", diskType)
+
+	// Сначала свежий кеш (5 мин) — не дёргаем smartctl на спящем диске.
+	output, ok := readAttrCache(device)
+	if !ok {
+		// Длинный таймаут (60 сек): спящий диск может «просыпаться».
+		output, _ = smartctlRunTimeout(devpath, diskSmartctlTimeout, "-A", "-d", diskType)
+		if output != "" {
+			writeAttrCache(device, output)
+		}
+	}
 
 	var attrs []AttrInfo
 	scanner := bufio.NewScanner(strings.NewReader(output))
