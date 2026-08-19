@@ -54,7 +54,7 @@ func DefaultConfig() Config {
 	return Config{
 		Enabled:  false,
 		Level:    "ERROR",
-		Sources:  []string{"system", "monitor"},
+		Sources:  []string{"system", "monitor", "packages"},
 		ProxyURL: defaultProxyURL,
 		Thresholds: Thresholds{
 			CPUTemp:   Threshold{Enabled: true, Value: 90},
@@ -136,7 +136,7 @@ func (c *Config) fillDefaults() {
 		c.Level = "ERROR"
 	}
 	if len(c.Sources) == 0 {
-		c.Sources = []string{"system", "monitor"}
+		c.Sources = []string{"system", "monitor", "packages"}
 	}
 	if c.ProxyURL == "" {
 		c.ProxyURL = defaultProxyURL

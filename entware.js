@@ -1702,6 +1702,7 @@ async function renderSettingsTab() {
                     <label><input type="checkbox" id="tg-src-monitor" value="monitor"> Монитор</label>
                     <label><input type="checkbox" id="tg-src-network" value="network"> Сеть</label>
                     <label><input type="checkbox" id="tg-src-service" value="service"> Службы</label>
+                    <label><input type="checkbox" id="tg-src-packages" value="packages"> Пакеты</label>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -1794,7 +1795,7 @@ function loadTelegramConfig() {
         var proxy = document.getElementById('tg-proxy');
         if (proxy) proxy.value = data.proxy_url || '';
         var srcs = data.sources || [];
-        ['system','monitor','network','service'].forEach(function(s) {
+        ['system','monitor','network','service','packages'].forEach(function(s) {
             var el = document.getElementById('tg-src-' + s);
             if (el) el.checked = srcs.indexOf(s) !== -1;
         });
@@ -1870,7 +1871,7 @@ function saveThresholds() {
 
 function tgSources() {
     var out = [];
-    ['system','monitor','network','service'].forEach(function(s) {
+    ['system','monitor','network','service','packages'].forEach(function(s) {
         var el = document.getElementById('tg-src-' + s);
         if (el && el.checked) out.push(s);
     });

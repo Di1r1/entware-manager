@@ -54,7 +54,7 @@ load_config() {
                 19) T_DISK_VAL=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor" end), (.autostart // false), (.proxy_url // ""),
+$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor|packages" end), (.autostart // false), (.proxy_url // ""),
   (.thresholds.cpu_temp.enabled // false), (.thresholds.cpu_temp.value // 90),
   (.thresholds.wifi0_temp.enabled // false), (.thresholds.wifi0_temp.value // 100),
   (.thresholds.wifi1_temp.enabled // false), (.thresholds.wifi1_temp.value // 100),
@@ -67,7 +67,7 @@ EOF
         BOT_TOKEN=""
         CHAT_ID=""
         LEVEL="ERROR"
-        SOURCES="system|monitor"
+        SOURCES="system|monitor|packages"
         AUTOSTART=false
         PROXY_URL=""
         T_CPU_TEMP_EN=false; T_CPU_TEMP_VAL=90
@@ -78,7 +78,7 @@ EOF
         T_DISK_EN=false;     T_DISK_VAL=60
     fi
     [ -z "$LEVEL" ] && LEVEL="ERROR"
-    [ -z "$SOURCES" ] && SOURCES="system|monitor"
+    [ -z "$SOURCES" ] && SOURCES="system|monitor|packages"
     [ -z "$T_CPU_TEMP_VAL" ] && T_CPU_TEMP_VAL=90
     [ -z "$T_WIFI0_VAL" ] && T_WIFI0_VAL=100
     [ -z "$T_WIFI1_VAL" ] && T_WIFI1_VAL=100
@@ -114,6 +114,7 @@ source_emoji() {
         service) echo "⚙️" ;;
         monitor) echo "📊" ;;
         smart)   echo "💾" ;;
+        packages) echo "📦" ;;
         *)       echo "🖥️" ;;
     esac
 }
@@ -188,6 +189,7 @@ detect_source() {
         *"[monitor]"*|*"[watchdog]"*) echo "monitor" ;;
         *"[smart]"*) echo "monitor" ;;
         *"[network]"*) echo "network" ;;
+        *"[packages]"*) echo "packages" ;;
         *"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac

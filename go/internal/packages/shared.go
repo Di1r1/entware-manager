@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -37,6 +38,39 @@ func logPackageChange(action, pkg, status string) {
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "%s | %s | %s | %s\n", ts, action, pkg, status)
+
+	// Дублируем в суточный лог (источник «packages» для Telegram-шлюза),
+	// чтобы установка/удаление/обновление пакетов уходили в уведомления.
+	logPkgToDaily(ts, action, pkg, status)
+}
+
+// logPkgToDaily пишет событие в суточный лог /tmp/entware/logs/YYYY-MM-DD.log
+// с тегом [packages] — его читает telegram_gateway.sh (detect_source → packages).
+func logPkgToDaily(ts, action, pkg, status string) {
+	logDir := "/tmp/entware/logs"
+	os.MkdirAll(logDir, 0755)
+	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+	df, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer df.Close()
+
+	actRu := map[string]string{"install": "установлен", "remove": "удалён", "upgrade": "обновлён", "upgrade-all": "обновлены все"}[action]
+	if actRu == "" {
+		actRu = action
+	}
+	statusRu := "OK"
+	statusLevel := "INFO"
+	if status == "error" {
+		statusRu = "ОШИБКА"
+		statusLevel = "ERROR"
+	}
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "localhost"
+	}
+	fmt.Fprintf(df, "[%s] [%s] [%s] [packages] Пакет %s: %s (%s)\n", ts, statusLevel, ip, pkg, actRu, statusRu)
 }
 
 func runOpkg(args ...string) (string, int) {

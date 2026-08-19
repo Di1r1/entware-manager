@@ -74,7 +74,7 @@ func handleConfigPost() {
 	}
 	if v, ok := params["sources"]; ok {
 		if v == "" {
-			cfg.Sources = []string{"system", "monitor"}
+			cfg.Sources = []string{"system", "monitor", "packages"}
 		} else {
 			cfg.Sources = splitComma(v)
 		}
