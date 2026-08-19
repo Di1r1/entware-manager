@@ -2,6 +2,7 @@
 package telegram
 
 import (
+	"encoding/json"
 	"entware-manager/internal/auth"
 	"entware-manager/internal/cgiutil"
 	"os"
@@ -37,6 +38,7 @@ func HandleConfig() {
 		"bot_enabled": cfg.BotEnabled,
 		"autostart":   cfg.Autostart,
 		"proxy_url":   cfg.ProxyURL,
+		"thresholds":  cfg.Thresholds,
 	})
 }
 
@@ -95,6 +97,19 @@ func handleConfigPost() {
 			return
 		}
 		cfg.ProxyURL = v
+	}
+	// thresholds: JSON-блок критических порогов ({"cpu_temp":{"enabled":true,"value":90},...}).
+	if v, ok := params["thresholds"]; ok && v != "" {
+		var th Thresholds
+		if err := json.Unmarshal([]byte(v), &th); err != nil {
+			cgiutil.WriteStatusError("Некорректный JSON порогов: " + err.Error())
+			return
+		}
+		if !ValidateThresholds(th) {
+			cgiutil.WriteStatusError("Значения порогов вне допустимых пределов")
+			return
+		}
+		cfg.Thresholds = th
 	}
 	cfg.Configured = cfg.BotToken != ""
 

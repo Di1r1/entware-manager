@@ -206,6 +206,23 @@
   - Назначение: удаление старых логов.
   - Ответ: JSON.
 
+## 7.1 Модуль Telegram-уведомлений
+
+- `GET /entware-cgi/telegram_config.cgi`
+  - Назначение: чтение конфигурации Telegram (без токена бота).
+  - Ответ: JSON `{status, enabled, configured, level, sources, bot_enabled, autostart, proxy_url, thresholds}`.
+  - `configured` — настроен ли токен; сам токен не возвращается.
+
+- `POST /entware-cgi/telegram_config.cgi`
+  - Назначение: сохранение конфигурации (Origin-чек).
+  - Параметры (form-urlencoded): `enabled`, `bot_enabled`, `autostart`, `level`, `chat_id`, `sources`, `proxy_url`, `bot_token`, `thresholds` (JSON).
+  - `thresholds` — JSON вида `{"cpu_temp":{"enabled":true,"value":90},...}` (метрики: cpu_temp, wifi0_temp, wifi1_temp, cpu_load, ram_used, disk_temp).
+  - Ответ: JSON `{status, message}`.
+
+- `POST /entware-cgi/telegram_test.cgi`
+  - Назначение: отправка тестового сообщения (Origin-чек, только POST).
+  - Ответ: JSON `{status, message}`.
+
 ## 8. Примечания по совместимости
 
 - На слабых устройствах избегается тяжелая обработка и неиспользуемые зависимости в CGI.

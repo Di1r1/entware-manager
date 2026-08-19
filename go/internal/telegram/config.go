@@ -15,15 +15,33 @@ const (
 
 // Config — конфигурация Telegram-шлюза. bot_token не отдаётся наружу.
 type Config struct {
-	Enabled    bool     `json:"enabled"`
-	BotToken   string   `json:"bot_token,omitempty"`
-	ChatID     string   `json:"chat_id,omitempty"`
-	Level      string   `json:"level,omitempty"`
-	Sources    []string `json:"sources,omitempty"`
-	BotEnabled bool     `json:"bot_enabled,omitempty"`
-	Autostart  bool     `json:"autostart,omitempty"`
-	ProxyURL   string   `json:"proxy_url,omitempty"`
-	Configured bool     `json:"-"`
+	Enabled    bool       `json:"enabled"`
+	BotToken   string     `json:"bot_token,omitempty"`
+	ChatID     string     `json:"chat_id,omitempty"`
+	Level      string     `json:"level,omitempty"`
+	Sources    []string   `json:"sources,omitempty"`
+	BotEnabled bool       `json:"bot_enabled,omitempty"`
+	Autostart  bool       `json:"autostart,omitempty"`
+	ProxyURL   string     `json:"proxy_url,omitempty"`
+	Thresholds Thresholds `json:"thresholds,omitempty"`
+	Configured bool       `json:"-"`
+}
+
+// Threshold — порог для одной метрики (вкл/выкл + значение).
+type Threshold struct {
+	Enabled bool `json:"enabled"`
+	Value   int  `json:"value"`
+}
+
+// Thresholds — набор критических порогов для Telegram-уведомлений.
+// Отдельный блок, не смешивается с полями бота (token/chat_id/level/sources).
+type Thresholds struct {
+	CPUTemp   Threshold `json:"cpu_temp"`
+	WiFi0Temp Threshold `json:"wifi0_temp"`
+	WiFi1Temp Threshold `json:"wifi1_temp"`
+	CPULoad   Threshold `json:"cpu_load"`
+	RAMUsed   Threshold `json:"ram_used"`
+	DiskTemp  Threshold `json:"disk_temp"`
 }
 
 // defaultProxyURL — HTTP/SOCKS-прокси для доступа к api.telegram.org.
@@ -38,6 +56,14 @@ func DefaultConfig() Config {
 		Level:    "ERROR",
 		Sources:  []string{"system", "monitor"},
 		ProxyURL: defaultProxyURL,
+		Thresholds: Thresholds{
+			CPUTemp:   Threshold{Enabled: true, Value: 90},
+			WiFi0Temp: Threshold{Enabled: true, Value: 100},
+			WiFi1Temp: Threshold{Enabled: true, Value: 100},
+			CPULoad:   Threshold{Enabled: true, Value: 95},
+			RAMUsed:   Threshold{Enabled: true, Value: 90},
+			DiskTemp:  Threshold{Enabled: false, Value: 60},
+		},
 	}
 }
 
@@ -115,6 +141,40 @@ func (c *Config) fillDefaults() {
 	if c.ProxyURL == "" {
 		c.ProxyURL = defaultProxyURL
 	}
+	// Пороги: дефолт применяется по-метрично, когда value==0 (0 невалиден и для
+	// °C, и для %). Это сохраняет и обратную совместимость со старым конфигом
+	// (нет поля thresholds → value=0 → дефолт), и осознанный выбор пользователя
+	// «выключил метрику» (value!=0 + enabled=false не перезаписывается).
+	th := &c.Thresholds
+	if th.CPUTemp.Value == 0 {
+		th.CPUTemp = Threshold{Enabled: true, Value: 90}
+	}
+	if th.WiFi0Temp.Value == 0 {
+		th.WiFi0Temp = Threshold{Enabled: true, Value: 100}
+	}
+	if th.WiFi1Temp.Value == 0 {
+		th.WiFi1Temp = Threshold{Enabled: true, Value: 100}
+	}
+	if th.CPULoad.Value == 0 {
+		th.CPULoad = Threshold{Enabled: true, Value: 95}
+	}
+	if th.RAMUsed.Value == 0 {
+		th.RAMUsed = Threshold{Enabled: true, Value: 90}
+	}
+	if th.DiskTemp.Value == 0 {
+		th.DiskTemp = Threshold{Enabled: false, Value: 60}
+	}
+}
+
+// ValidateThresholds проверяет пороги: значение в разумных пределах
+// (°C: 0-150, %: 0-100). Возвращает false при невалидном.
+func ValidateThresholds(th Thresholds) bool {
+	return th.CPUTemp.Value >= 0 && th.CPUTemp.Value <= 150 &&
+		th.WiFi0Temp.Value >= 0 && th.WiFi0Temp.Value <= 150 &&
+		th.WiFi1Temp.Value >= 0 && th.WiFi1Temp.Value <= 150 &&
+		th.CPULoad.Value >= 0 && th.CPULoad.Value <= 100 &&
+		th.RAMUsed.Value >= 0 && th.RAMUsed.Value <= 100 &&
+		th.DiskTemp.Value >= 0 && th.DiskTemp.Value <= 150
 }
 
 // IsValidProxyURL возвращает true для http:// или socks5:// URL прокси.

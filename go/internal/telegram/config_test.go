@@ -103,3 +103,62 @@ func TestSaveLoadConfigSecretNotLeaked(t *testing.T) {
 		t.Errorf("chat_id mismatch: %q", loaded.ChatID)
 	}
 }
+
+func TestDefaultThresholds(t *testing.T) {
+	cfg := DefaultConfig()
+	th := cfg.Thresholds
+	if !th.CPUTemp.Enabled || th.CPUTemp.Value != 90 {
+		t.Errorf("cpu_temp default wrong: %+v", th.CPUTemp)
+	}
+	if !th.CPULoad.Enabled || th.CPULoad.Value != 95 {
+		t.Errorf("cpu_load default wrong: %+v", th.CPULoad)
+	}
+	if th.DiskTemp.Enabled || th.DiskTemp.Value != 60 {
+		t.Errorf("disk_temp default wrong: %+v", th.DiskTemp)
+	}
+}
+
+func TestFillDefaultsOldConfigCompat(t *testing.T) {
+	// Старый конфиг без поля thresholds → после загрузки дефолты применятся.
+	orig := os.Getenv(WebRootEnv)
+	dir := t.TempDir()
+	os.Setenv(WebRootEnv, dir)
+	defer os.Setenv(WebRootEnv, orig)
+
+	os.WriteFile(filepath.Join(dir, ConfigName), []byte(`{"enabled":true,"bot_token":"T","chat_id":"1","level":"INFO","sources":["system"],"proxy_url":"http://127.0.0.1:10871"}`), 0600)
+
+	cfg := LoadConfig()
+	if !cfg.Thresholds.CPUTemp.Enabled || cfg.Thresholds.CPUTemp.Value != 90 {
+		t.Errorf("old config should get default cpu_temp, got %+v", cfg.Thresholds.CPUTemp)
+	}
+}
+
+func TestFillDefaultsPreservesUserChoice(t *testing.T) {
+	// Пользователь отключил метрику (value!=0, enabled=false) — не перезаписывать дефолтом.
+	cfg := DefaultConfig()
+	cfg.Thresholds.CPUTemp = Threshold{Enabled: false, Value: 88}
+	cfg.fillDefaults()
+	if cfg.Thresholds.CPUTemp.Enabled {
+		t.Error("user-disabled metric should stay disabled")
+	}
+	if cfg.Thresholds.CPUTemp.Value != 88 {
+		t.Errorf("user-set value should stay, got %d", cfg.Thresholds.CPUTemp.Value)
+	}
+}
+
+func TestValidateThresholds(t *testing.T) {
+	th := DefaultConfig().Thresholds
+	if !ValidateThresholds(th) {
+		t.Error("default thresholds should be valid")
+	}
+	bad := th
+	bad.CPUTemp.Value = 999
+	if ValidateThresholds(bad) {
+		t.Error("cpu_temp 999 should be invalid")
+	}
+	bad2 := th
+	bad2.RAMUsed.Value = 101
+	if ValidateThresholds(bad2) {
+		t.Error("ram_used 101 should be invalid")
+	}
+}

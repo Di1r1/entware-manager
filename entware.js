@@ -1718,6 +1718,50 @@ async function renderSettingsTab() {
             </div>
             <div id="tg-status" style="margin-top: 10px; font-size: 0.9rem;"></div>
         </div>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-alert"/></svg> Критические пороги</h3>
+        <p>При превышении порога бот пришлёт уведомление, при возврате в норму — сообщение о восстановлении.</p>
+        <div id="tg-thresholds" style="margin-top: 10px; max-width: 520px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">🔥 Температура CPU</label>
+                <input type="checkbox" id="th-cpu_temp" style="transform:scale(1.2);">
+                <input type="number" id="th-cpu_temp-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="150">
+                <span style="color:var(--text-muted);">°C</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">📶 Температура WiFi0</label>
+                <input type="checkbox" id="th-wifi0_temp" style="transform:scale(1.2);">
+                <input type="number" id="th-wifi0_temp-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="150">
+                <span style="color:var(--text-muted);">°C</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">📶 Температура WiFi1</label>
+                <input type="checkbox" id="th-wifi1_temp" style="transform:scale(1.2);">
+                <input type="number" id="th-wifi1_temp-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="150">
+                <span style="color:var(--text-muted);">°C</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">⚡ Нагрузка CPU</label>
+                <input type="checkbox" id="th-cpu_load" style="transform:scale(1.2);">
+                <input type="number" id="th-cpu_load-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="100">
+                <span style="color:var(--text-muted);">%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">🧠 Занятость памяти</label>
+                <input type="checkbox" id="th-ram_used" style="transform:scale(1.2);">
+                <input type="number" id="th-ram_used-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="100">
+                <span style="color:var(--text-muted);">%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <label style="flex:0 0 180px;">💾 Температура дисков</label>
+                <input type="checkbox" id="th-disk_temp" style="transform:scale(1.2);">
+                <input type="number" id="th-disk_temp-val" class="settings-input" style="flex:1;max-width:90px;" min="0" max="150">
+                <span style="color:var(--text-muted);">°C</span>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+                <button class="packages-delete-btn" style="background:#4a5568;" id="th-save">Сохранить пороги</button>
+            </div>
+            <div id="th-status" style="margin-top:10px;font-size:0.9rem;"></div>
+        </div>
     `;
     contentDiv.innerHTML = html;
     fetchTtydStatus();
@@ -1757,6 +1801,7 @@ function loadTelegramConfig() {
         showTgStatus(data.configured ? 'Telegram настроен (токен скрыт).' : 'Telegram не настроен — укажите токен и chat_id.', false);
         var testBtn = document.getElementById('tg-test');
         if (testBtn) testBtn.disabled = !data.configured;
+        fillThresholds(data.thresholds);
     }).catch(function(err) {
         showTgStatus('Ошибка загрузки: ' + escapeHtml(err.message), true);
     });
@@ -1770,6 +1815,52 @@ function loadTelegramConfig() {
         testBtn2.dataset.bound = '1';
         testBtn2.addEventListener('click', testTelegram);
     }
+    var thSave = document.getElementById('th-save');
+    if (thSave && !thSave.dataset.bound) {
+        thSave.dataset.bound = '1';
+        thSave.addEventListener('click', saveThresholds);
+    }
+}
+
+// Заполнение полей критических порогов из конфига.
+function fillThresholds(th) {
+    th = th || {};
+    var keys = ['cpu_temp','wifi0_temp','wifi1_temp','cpu_load','ram_used','disk_temp'];
+    keys.forEach(function(k) {
+        var cb = document.getElementById('th-' + k);
+        var val = document.getElementById('th-' + k + '-val');
+        if (cb) cb.checked = !!(th[k] && th[k].enabled);
+        if (val) val.value = (th[k] && th[k].value) || 0;
+    });
+}
+
+// Сборка JSON-объекта порогов из полей формы.
+function collectThresholds() {
+    var th = {};
+    var keys = ['cpu_temp','wifi0_temp','wifi1_temp','cpu_load','ram_used','disk_temp'];
+    keys.forEach(function(k) {
+        var cb = document.getElementById('th-' + k);
+        var val = document.getElementById('th-' + k + '-val');
+        var value = parseInt(val ? val.value : 0) || 0;
+        th[k] = { enabled: !!(cb && cb.checked), value: value };
+    });
+    return th;
+}
+
+// Сохранение критических порогов (POST с JSON-блоком thresholds).
+function saveThresholds() {
+    var th = collectThresholds();
+    var statusEl = document.getElementById('th-status');
+    statusEl.innerHTML = 'Сохранение...';
+    apiPost('/telegram_config.cgi', 'thresholds=' + encodeURIComponent(JSON.stringify(th))).then(function(res) {
+        if (res.status === 'ok') {
+            statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Пороги сохранены</span>';
+        } else {
+            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(res.message || res.status) + '</span>';
+        }
+    }).catch(function(err) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
+    });
 }
 
 function tgSources() {
