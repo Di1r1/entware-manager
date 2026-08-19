@@ -137,7 +137,7 @@ format_message() {
     body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] \[[^]]*\]( \[[0-9]+\])? //')
     [ -z "$body" ] && body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] //')
     # Чистим повторные [тег источника] в начале тела.
-    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart)\] //')
+    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart|packages)\] //')
     printf '%s %s <b>%s</b>\n%s' "$(level_emoji "$lvl")" "$(source_emoji "$src")" "$(html_escape_tg "$src")" "$(html_escape_tg "$body")"
 }
 
