@@ -49,6 +49,11 @@ const SMART = {
             clearInterval(this.testPollInterval);
             this.testPollInterval = null;
         }
+        if (this.reloadTimer) {
+            clearTimeout(this.reloadTimer);
+            this.reloadTimer = null;
+        }
+        this.reloadAttempts = 0;
     },
 
     renderHTML() {
@@ -73,21 +78,39 @@ const SMART = {
             </div>
         `;
 
-        document.getElementById('refreshSmart').addEventListener('click', () => this.loadDisks());
+        document.getElementById('refreshSmart').addEventListener('click', () => this.loadDisks(true));
         initTableSearch('searchSmart', 'smartTable', -1);
     },
 
-    async loadDisks() {
+    async loadDisks(forceRefresh, silent) {
         const container = document.getElementById('smart-table-container');
         if (!container) return;
-        container.innerHTML = '<div class="loading-spinner"></div>';
+        // При фоновой дозагрузке не прячем таблицу за спиннером — только
+        // перерисовываем содержимое, когда пришли данные.
+        if (!silent) container.innerHTML = '<div class="loading-spinner"></div>';
 
         try {
-            const data = await apiGet('/smart.cgi?action=list');
+            const url = forceRefresh ? '/smart.cgi?action=list&refresh=1' : '/smart.cgi?action=list';
+            const data = await apiGet(url);
             this.renderTable(data.disks || []);
+            this.scheduleReload(data.disks || []);
         } catch (err) {
-            container.innerHTML = `<p class="error" style="padding:1rem;">Ошибка: ${escapeHtml(err.message)}</p>`;
+            if (!silent) container.innerHTML = `<p class="error" style="padding:1rem;">Ошибка: ${escapeHtml(err.message)}</p>`;
         }
+    },
+
+    // Асинхронная дозагрузка: если в ответе есть диски со статусом loading или
+    // busy (ещё «просыпаются»/на диске висит незавершённый smartctl), повторяем
+    // запрос с паузой, пока все не ответят полными данными.
+    scheduleReload(disks) {
+        const hasPending = (disks || []).some(d => d.attr_health === 'loading' || d.attr_health === 'busy');
+        if (!hasPending) { this.reloadAttempts = 0; return; }
+        if (this.reloadTimer) return;
+        if (++this.reloadAttempts > 30) { this.reloadAttempts = 0; return; }
+        this.reloadTimer = setTimeout(() => {
+            this.reloadTimer = null;
+            this.loadDisks(true, true);
+        }, 5000);
     },
 
     renderTable(disks) {
@@ -125,6 +148,10 @@ const SMART = {
                 healthClass = '';
                 healthIcon = '';
                 healthText = '—';
+            } else if (attrHealth === 'loading') {
+                healthClass = 'status-warning';
+                healthIcon = 'icon-refresh';
+                healthText = 'Загрузка…';
             } else if (attrHealth === 'busy') {
                 healthClass = 'status-warning';
                 healthIcon = 'icon-alert';

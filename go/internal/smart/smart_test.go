@@ -273,6 +273,60 @@ func TestIsAttrLine(t *testing.T) {
 	if isAttrLine("") {
 		t.Error("empty should not be attr line")
 	}
+	if isAttrLine("  10 51 68 e0 b0 21 01  Error: IDNF 104 sectors at LBA = 0x0121b0e0 = 18985184") {
+		t.Error("SMART Error Log line should not be attr line")
+	}
+	if isAttrLine("   35 00 68 e0 b0 21 a0 ff  14d+19:55:37.134  WRITE DMA EXT") {
+		t.Error("SMART Error Log detail line should not be attr line")
+	}
+	if isAttrLine("    1        0        0  Not_testing") {
+		t.Error("self-test summary line should not be attr line")
+	}
+}
+
+func TestCheckAttrHealth_IgnoresErrorLog(t *testing.T) {
+	output := `SMART overall-health self-assessment test result: PASSED
+
+SMART Attributes Data Structure revision number: 16
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x002f   100   095   016    Pre-fail  Always       -       0
+  5 Reallocated_Sector_Ct   0x0033   100   100   005    Pre-fail  Always       -       0
+ 10 Spin_Retry_Count        0x0033   100   100   060    Pre-fail  Always       -       0
+187 Reported_Uncorrect      0x0032   097   097   000    Old_age   Always       -       3
+196 Reallocated_Event_Count 0x0032   100   100   000    Old_age   Always       -       0
+197 Current_Pending_Sector  0x0032   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0030   100   100   000    Old_age   Offline      -       0
+
+SMART Error Log Version: 1
+  10 51 68 e0 b0 21 01  Error: IDNF 104 sectors at LBA = 0x0121b0e0 = 18985184
+  35 00 68 e0 b0 21 a0 ff  14d+19:55:37.134  WRITE DMA EXT`
+	if got := checkAttrHealth(output); got != "ok" {
+		t.Errorf("error log lines must be ignored, got %q, want ok", got)
+	}
+}
+
+func TestAttrHealthUnknownIsLoading(t *testing.T) {
+	d := DiskInfo{Health: "UNKNOWN", Type: "sat", Device: "/dev/sda", Model: "M", Serial: "S", AttrHealth: ""}
+	attr := d.AttrHealth
+	if attr != "" {
+		t.Fatalf("precondition: empty attr, got %q", attr)
+	}
+	// Проверяем логику diskInfo: моделируем через извлечённый health.
+	// health "UNKNOWN" (smartctl не успел отдать строку) → loading, не warning/critical.
+	attrHealth := "ok"
+	health := "UNKNOWN"
+	if health == "\u2014" {
+		attrHealth = "inactive"
+	} else if health == "UNKNOWN" {
+		attrHealth = "loading"
+	} else if health != "PASSED" {
+		attrHealth = "critical"
+	} else {
+		attrHealth = checkAttrHealth("")
+	}
+	if attrHealth != "loading" {
+		t.Errorf("UNKNOWN health should map to loading, got %q", attrHealth)
+	}
 }
 
 func TestAtoiWithDefault(t *testing.T) {

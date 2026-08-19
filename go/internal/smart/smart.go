@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"entware-manager/internal/auth"
@@ -169,7 +168,16 @@ func waitOutcome(out io.ReadCloser, done <-chan error, timeout time.Duration, ki
 	}
 }
 
+// smartctlRun вызывает smartctl с коротким таймаутом (8 сек) — для точечных
+// действий (info/attributes/health), где ждать пробуждение диска не нужно.
 func smartctlRun(device string, args ...string) (string, error) {
+	return smartctlRunTimeout(device, shortSmartctlTimeout, args...)
+}
+
+// smartctlRunTimeout запускает smartctl с указанным таймаутом. Длинный таймаут
+// (diskSmartctlTimeout) используется в diskInfo: спящий диск «просыпается»
+// за 13–60 сек, и первый же вызов должен успеть вернуть полные данные.
+func smartctlRunTimeout(device string, timeout time.Duration, args ...string) (string, error) {
 	if smartctlBusy(device) {
 		return "", errDeviceBusy
 	}
@@ -177,7 +185,7 @@ func smartctlRun(device string, args ...string) (string, error) {
 	allArgs := append([]string{}, args...)
 	allArgs = append(allArgs, device)
 
-	out, err := runBounded(exec.Command(smartctlBin, allArgs...), 8*time.Second)
+	out, err := runBounded(exec.Command(smartctlBin, allArgs...), timeout)
 	outStr := out
 	if err == nil {
 		return outStr, nil
@@ -185,7 +193,7 @@ func smartctlRun(device string, args ...string) (string, error) {
 
 	// Try with sudo
 	sudoArgs := append([]string{smartctlBin}, allArgs...)
-	out2, err2 := runBounded(exec.Command(sudoBin, sudoArgs...), 8*time.Second)
+	out2, err2 := runBounded(exec.Command(sudoBin, sudoArgs...), timeout)
 	if err2 == nil {
 		return string(out2), nil
 	}
@@ -382,7 +390,7 @@ func HandleSmart() {
 
 	switch action {
 	case "list":
-		handleList()
+		handleList(getParam("refresh") == "1")
 	case "info":
 		handleInfo(device)
 	case "attributes":
@@ -442,7 +450,32 @@ func checkAttrHealth(output string) string {
 	return worst
 }
 
-func handleList() {
+// listDeadline — сколько ждём ответы бодрых дисков при формировании списка.
+// Диски, отвечающие быстро (~1 сек), попадают в первый ответ сразу. Диски,
+// которые «просыпаются» (SPINUP за 13–60 сек), помечаются attr_health=loading,
+// и фронт дозагружает их повторными запросами (см. smart.js loadDisks).
+const listDeadline = 5 * time.Second
+
+// listReloadDeadline — дедлайн дозагрузки (refresh=1): ждём проснувшийся диск
+// до diskSmartctlTimeout, чтобы полные данные вернулись за один повторный запрос.
+const listReloadDeadline = 65 * time.Second
+
+// shortSmartctlTimeout — для точечных действий (info/attributes/health).
+const shortSmartctlTimeout = 8 * time.Second
+
+// diskSmartctlTimeout — таймаут опроса диска в diskInfo: спящий диск может
+// «просыпаться» до 60 сек, прежде чем smartctl вернёт полные данные.
+const diskSmartctlTimeout = 60 * time.Second
+
+// handleList отдаёт результат асинхронно: бодрые диски — сразу в первом ответе,
+// не успевшие проснуться — со статусом loading. Ответ НЕ кэшируется, пока в
+// списке есть loading-диски, чтобы повторные запросы фронта дозагружали их.
+func handleList(refresh bool) {
+	// Кнопка «Обновить» (refresh=1) сбрасывает кэш и опрашивает диски напрямую,
+	// чтобы подхватить диск, который только что «проснулся».
+	if refresh {
+		cache.Invalidate("smart_list")
+	}
 	// Кэш 60с: повторные клики «Обновить» отвечают мгновенно и не запускают
 	// smartctl на подвешенных дисках (процессы в D-состоянии).
 	if data, ok := cache.Get("smart_list", 60*time.Second); ok {
@@ -451,29 +484,71 @@ func handleList() {
 	}
 
 	disks := discoverDisks()
-	result := make([]DiskInfo, len(disks))
-
-	// Опрос дисков параллельно: один зависший smartctl (например, спящий диск)
-	// не блокирует весь список. Каждый запрос уже ограничен timeout (см. smartctlRun).
-	var wg sync.WaitGroup
+	// Канал буферизован на все диски: горутины, не успевшие к дедлайну,
+	// не блокируются и завершаются вместе с выходом CGI-процесса.
+	type diskResult struct {
+		idx  int
+		info DiskInfo
+	}
+	ch := make(chan diskResult, len(disks))
 	for i, name := range disks {
-		wg.Add(1)
 		go func(idx int, dev string) {
-			defer wg.Done()
-			result[idx] = diskInfo(dev)
+			ch <- diskResult{idx, diskInfo(dev)}
 		}(i, name)
 	}
-	wg.Wait()
+
+	// Дозагрузка (refresh=1) ждёт проснувшийся диск дольше, чем первичная
+	// загрузка, чтобы полные данные вернулись за один повторный запрос.
+	deadlineDur := listDeadline
+	if refresh {
+		deadlineDur = listReloadDeadline
+	}
+	deadline := time.After(deadlineDur)
+	done := make(map[int]DiskInfo)
+	for len(done) < len(disks) {
+		select {
+		case r := <-ch:
+			done[r.idx] = r.info
+		case <-deadline:
+			goto collect
+		}
+	}
+collect:
+
+	result := make([]DiskInfo, len(disks))
+	hasLoading := false
+	for i, name := range disks {
+		if info, ok := done[i]; ok {
+			result[i] = info
+		} else {
+			// Диск не ответил за дедлайн — он «просыпается» или подвешен.
+			result[i] = loadingDiskInfo(name, "/dev/"+name, detectType(name))
+			hasLoading = true
+		}
+	}
 
 	out := jsonBody(map[string]any{"disks": result})
-	cache.Put("smart_list", []byte(out))
+	// Не кэшируем список с loading-дисками: повторный запрос фронта (refresh=1)
+	// должен дозагрузить проснувшиеся диски, а не получить застрявший снимок.
+	if !hasLoading {
+		cache.Put("smart_list", []byte(out))
+	}
 	fmt.Print(out)
+}
+
+// loadingDiskInfo — карточка диска, который не успел ответить за дедлайн
+// (просыпается). Данные только из /sys (не блокируются), health «Загрузка…».
+func loadingDiskInfo(name, devpath, diskType string) DiskInfo {
+	info := busyDiskInfo(name, devpath, diskType)
+	info.Health = "Загрузка…"
+	info.AttrHealth = "loading"
+	return info
 }
 
 func diskInfo(name string) DiskInfo {
 	devpath := "/dev/" + name
 	diskType := detectType(name)
-	output, err := smartctlRun(devpath, "-a", "-d", diskType)
+	output, err := smartctlRunTimeout(devpath, diskSmartctlTimeout, "-a", "-d", diskType)
 	if errors.Is(err, errDeviceBusy) {
 		// На диске висит незавершённый smartctl (подвешенное устройство) —
 		// отдаём базовые данные из /sys, чтобы не блокировать список.
@@ -489,7 +564,7 @@ func diskInfo(name string) DiskInfo {
 	if displayType == "usb" && (output == "" || strings.Contains(strings.ToLower(output), "unknown usb bridge") ||
 		strings.Contains(strings.ToLower(output), "unsupported scsi opcode") ||
 		strings.Contains(strings.ToLower(output), "device lacks smart")) {
-		out2, err2 := smartctlRun(devpath, "-a", "-d", "scsi")
+		out2, err2 := smartctlRunTimeout(devpath, diskSmartctlTimeout, "-a", "-d", "scsi")
 		if err2 == nil {
 			output = out2
 		}
@@ -576,6 +651,10 @@ func diskInfo(name string) DiskInfo {
 	attrHealth := "ok"
 	if health == "\u2014" {
 		attrHealth = "inactive"
+	} else if health == "UNKNOWN" {
+		// SMART-строка не получена (диск просыпается/не успел ответить) —
+		// помечаем как loading: фронт дозагрузит, когда диск ответит.
+		attrHealth = "loading"
 	} else if health != "PASSED" {
 		attrHealth = "critical"
 	} else {
@@ -657,15 +736,19 @@ func handleAttributes(device string) {
 }
 
 func isAttrLine(s string) bool {
-	if len(s) == 0 {
+	fields := strings.Fields(s)
+	if len(fields) < 2 {
 		return false
 	}
-	first := strings.Fields(s)
-	if len(first) == 0 {
+	if _, err := strconv.Atoi(fields[0]); err != nil {
 		return false
 	}
-	_, err := strconv.Atoi(first[0])
-	return err == nil
+	// Второй токен — имя атрибута (буквы/подчёркивания). Если это число/hex,
+	// строка относится к SMART Error Log или self-test, а не к таблице атрибутов.
+	if _, err := strconv.Atoi(fields[1]); err == nil {
+		return false
+	}
+	return true
 }
 
 func atoiWithDefault(s string) int {
