@@ -66,22 +66,65 @@ level_rank() {
     esac
 }
 
-# --- Отправка в Telegram. Возвращает 0 при успехе. ---
+# --- Эмодзи уровня ---
+level_emoji() {
+    case "$1" in
+        ERROR) echo "🔴" ;;
+        WARN)  echo "🟠" ;;
+        INFO)  echo "🔵" ;;
+        *)     echo "⚪" ;;
+    esac
+}
+
+# --- Эмодзи источника ---
+source_emoji() {
+    case "$1" in
+        network) echo "🌐" ;;
+        service) echo "⚙️" ;;
+        monitor) echo "📊" ;;
+        smart)   echo "💾" ;;
+        *)       echo "🖥️" ;;
+    esac
+}
+
+# --- Эскейп HTML-спецсимволов для parse_mode=HTML (безопасно для <,>,&) ---
+html_escape_tg() {
+    local s="$1"
+    s=$(printf '%s' "$s" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+    printf '%s' "$s"
+}
+
+# --- Форматирование строки лога в эстетичное Telegram-сообщение ---
+format_message() {
+    local line="$1"
+    local lvl src
+    lvl=$(detect_level "$line")
+    src=$(detect_source "$line")
+    # Убираем [тег] [уровень] [ip] из начала, оставляем суть.
+    local body
+    body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] \[[^]]*\]( \[[0-9]+\])? //')
+    [ -z "$body" ] && body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] //')
+    # Чистим повторные [тег источника] в начале тела.
+    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart)\] //')
+    printf '%s %s <b>%s</b>\n%s' "$(level_emoji "$lvl")" "$(source_emoji "$src")" "$(html_escape_tg "$src")" "$(html_escape_tg "$body")"
+}
+
+# --- Отправка в Telegram (parse_mode=HTML). Возвращает 0 при успехе. ---
 send_tg() {
     local text="$1"
     [ -z "$text" ] && return 1
     [ -n "$BOT_TOKEN" ] || return 1
     [ -n "$CHAT_ID" ] || return 1
-    # Текст передаём через --data-urlencode (безопасно для спецсимволов).
-    # -f: возвращает ненулевой код при HTTP >= 400 (неверный токен/chat_id) —
-    # иначе curl вернул бы 0 и ошибка была бы залогирована как «sent».
+    local msg
+    msg=$(format_message "$text")
     # Прокси (http/socks5) — если провайдер блокирует Telegram напрямую.
     local proxy_args=""
     [ -n "$PROXY_URL" ] && proxy_args="-x $PROXY_URL"
     # shellcheck disable=SC2086
     "$CURL" -s -f -o /dev/null -m "$CURL_TIMEOUT" $proxy_args \
         --data-urlencode "chat_id=$CHAT_ID" \
-        --data-urlencode "text=$text" \
+        --data-urlencode "text=$msg" \
+        --data-urlencode "parse_mode=HTML" \
         --data-urlencode "disable_web_page_preview=true" \
         "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" 2>/dev/null
 }
@@ -111,6 +154,11 @@ detect_level() {
 passes_filter() {
     local line="$1"
     local lvl src
+    # Не обрабатываем собственные записи демона — иначе бесконечный цикл
+    # (демон пишет в суточный лог, который сам же читает, и шлёт себе же).
+    case "$line" in
+        *"[telegram]"*) return 1 ;;
+    esac
     lvl=$(detect_level "$line")
     src=$(detect_source "$line")
     [ "$LEVEL" = "OFF" ] && return 1
