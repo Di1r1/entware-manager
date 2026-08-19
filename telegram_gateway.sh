@@ -190,7 +190,7 @@ detect_source() {
         *"[smart]"*) echo "monitor" ;;
         *"[network]"*) echo "network" ;;
         *"[packages]"*) echo "packages" ;;
-        *"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
+        *"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac
 }

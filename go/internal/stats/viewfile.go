@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"entware-manager/internal/auth"
 )
@@ -49,6 +50,7 @@ func HandleViewFile() {
 	}
 
 	if !checkFilemgrAuth(password) {
+		logViewFileAction("WARN", "Неверный пароль при просмотре файла: "+path)
 		viewFileError("Неверный пароль", isXHR)
 		return
 	}
@@ -159,4 +161,21 @@ func viewFileResult(path, content string, isXHR bool) {
 
 func backButton() string {
 	return `<p style="margin-top:1rem;"><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=3#icon-arrow-left"/></svg> Назад</a></p>`
+}
+
+// logViewFileAction пишет событие (например, неверный пароль) в суточный лог
+// с тегом [view_file.cgi] — его читает Telegram-шлюз (source=system).
+func logViewFileAction(level, msg string) {
+	logFile := fmt.Sprintf("/tmp/entware/logs/%s.log", time.Now().Format("2006-01-02"))
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "0.0.0.0"
+	}
+	entry := fmt.Sprintf("[%s] [%s] [%s] [%d] [view_file.cgi] %s\n", ts, level, ip, os.Getpid(), msg)
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		f.WriteString(entry)
+		f.Close()
+	}
 }
