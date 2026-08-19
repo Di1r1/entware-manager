@@ -18,6 +18,8 @@ export HOME=/tmp
 CONFIG_FILE="/opt/web_entware/telegram_config.json"
 PID_FILE="/tmp/entware/pid/telegram_gateway.pid"
 LOG_FILE="/tmp/entware/logs/telegram.log"
+# Отдельный файл логов отправки Telegram (системный лог, не общий суточный).
+TG_LOG_FILE="/opt/var/log/entware/telegram.log"
 STATE_DIR="/tmp/entware/telegram"
 OFFSET_FILE="$STATE_DIR/offsets"
 THRESHOLD_STATE="$STATE_DIR/thresholds.state"
@@ -85,6 +87,18 @@ EOF
     [ -z "$T_CPU_LOAD_VAL" ] && T_CPU_LOAD_VAL=95
     [ -z "$T_RAM_VAL" ] && T_RAM_VAL=90
     [ -z "$T_DISK_VAL" ] && T_DISK_VAL=60
+}
+
+# --- Логирование отправки Telegram в отдельный файл (системный лог) ---
+# Пишет в TG_LOG_FILE, а не в общий суточный лог — чтобы записи о отправке
+# не засоряли суточный лог и отображались отдельным источником системных логов.
+tg_log() {
+    local level="$1" msg="$2"
+    mkdir -p "$(dirname "$TG_LOG_FILE")" 2>/dev/null
+    local ts ip
+    ts=$(date '+%Y-%m-%d %H:%M:%S')
+    ip="${REMOTE_ADDR:-localhost}"
+    echo "[$ts] [$level] [$ip] [$$] $msg" >> "$TG_LOG_FILE"
 }
 
 # --- Числовой ранг уровня (ERROR=3, WARN=2, INFO=1, OFF=0) ---
@@ -273,9 +287,9 @@ process_file() {
         [ -z "$l" ] && continue
         if passes_filter "$l"; then
             if send_tg "$l"; then
-                log_message "INFO" "[telegram] sent: $l"
+                tg_log "INFO" "[telegram] sent: $l"
             else
-                log_message "WARN" "[telegram] failed to send: $l"
+                tg_log "WARN" "[telegram] failed to send: $l"
             fi
         fi
     done
@@ -398,13 +412,13 @@ check_one_threshold() {
     if [ "$cur" -gt "$val" ] 2>/dev/null; then
         if [ "$state" != "alarm" ]; then
             send_raw "$(printf '🔴 📊 <b>%s</b>\nПревышен порог: %s%s &gt; %s%s' "$(html_escape_tg "$name")" "$cur" "$unit" "$val" "$unit")"
-            log_message "WARN" "[telegram] threshold $metric alarm (${cur}${unit} > ${val}${unit})"
+            tg_log "WARN" "[telegram] threshold $metric alarm (${cur}${unit} > ${val}${unit})"
             write_state "$metric" "alarm"
         fi
     else
         if [ "$state" = "alarm" ]; then
             send_raw "$(printf '✅ 📊 <b>%s</b>\nВернулась в норму: %s%s &lt; %s%s' "$(html_escape_tg "$name")" "$cur" "$unit" "$val" "$unit")"
-            log_message "INFO" "[telegram] threshold $metric normal (${cur}${unit} < ${val}${unit})"
+            tg_log "INFO" "[telegram] threshold $metric normal (${cur}${unit} < ${val}${unit})"
             write_state "$metric" "normal"
         fi
     fi
@@ -434,10 +448,10 @@ daemon_loop() {
     # date -r +%s — BusyBox-совместимо (stat -c %Y на роутере недоступен).
     CFG_MTIME=$(date -r "$CONFIG_FILE" +%s 2>/dev/null || echo 0)
 
-    trap 'log_message "INFO" "[telegram] gateway stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
-    trap 'load_config; log_message "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"' HUP
+    trap 'tg_log "INFO" "[telegram] gateway stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
+    trap 'load_config; tg_log "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"' HUP
 
-    log_message "INFO" "[telegram] gateway started (level=$LEVEL, sources=$SOURCES)"
+    tg_log "INFO" "[telegram] gateway started (level=$LEVEL, sources=$SOURCES)"
 
     local it=0
     while true; do
@@ -448,7 +462,7 @@ daemon_loop() {
             if [ -n "$NEW_MTIME" ] && [ "$NEW_MTIME" != "$CFG_MTIME" ]; then
                 CFG_MTIME=$NEW_MTIME
                 load_config
-                log_message "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"
+                tg_log "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"
             fi
         fi
         if [ "$ENABLED" = "true" ] && [ -n "$BOT_TOKEN" ] && [ -n "$CHAT_ID" ]; then
@@ -469,7 +483,7 @@ case "$1" in
         ;;
     stop)
         daemon_stop "$PID_FILE" "(^|[/ ])telegram_gateway\.sh daemon"
-        log_message "INFO" "[telegram] gateway stopped"
+        tg_log "INFO" "[telegram] gateway stopped"
         ;;
     restart)
         "$0" stop

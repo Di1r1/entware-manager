@@ -1,6 +1,7 @@
 {
   "sources": [
     { "name": "Lighttpd ошибки", "file": "/opt/var/log/lighttpd/error.log" },
-    { "name": "Демон защиты", "file": "/opt/temp/logs/monitor.log" }
+    { "name": "Демон защиты", "file": "/opt/temp/logs/monitor.log" },
+    { "name": "Telegram отправки", "file": "/opt/var/log/entware/telegram.log" }
   ]
 }
