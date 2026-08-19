@@ -38,9 +38,10 @@ load_config() {
                 4) LEVEL=$_v ;;
                 5) SOURCES=$_v ;;
                 6) AUTOSTART=$_v ;;
+                7) PROXY_URL=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor" end), (.autostart // false)' "$CONFIG_FILE" 2>/dev/null)
+$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor" end), (.autostart // false), (.proxy_url // "")' "$CONFIG_FILE" 2>/dev/null)
 EOF
     else
         ENABLED=false
@@ -49,6 +50,7 @@ EOF
         LEVEL="ERROR"
         SOURCES="system|monitor"
         AUTOSTART=false
+        PROXY_URL=""
     fi
     [ -z "$LEVEL" ] && LEVEL="ERROR"
     [ -z "$SOURCES" ] && SOURCES="system|monitor"
@@ -73,7 +75,11 @@ send_tg() {
     # Текст передаём через --data-urlencode (безопасно для спецсимволов).
     # -f: возвращает ненулевой код при HTTP >= 400 (неверный токен/chat_id) —
     # иначе curl вернул бы 0 и ошибка была бы залогирована как «sent».
-    "$CURL" -s -f -o /dev/null -m "$CURL_TIMEOUT" \
+    # Прокси (http/socks5) — если провайдер блокирует Telegram напрямую.
+    local proxy_args=""
+    [ -n "$PROXY_URL" ] && proxy_args="-x $PROXY_URL"
+    # shellcheck disable=SC2086
+    "$CURL" -s -f -o /dev/null -m "$CURL_TIMEOUT" $proxy_args \
         --data-urlencode "chat_id=$CHAT_ID" \
         --data-urlencode "text=$text" \
         --data-urlencode "disable_web_page_preview=true" \

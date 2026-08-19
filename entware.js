@@ -1683,6 +1683,10 @@ async function renderSettingsTab() {
                 <input type="text" id="tg-chat" class="settings-input" placeholder="123456789" style="flex:1;">
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Прокси</label>
+                <input type="text" id="tg-proxy" class="settings-input" placeholder="http://127.0.0.1:10871" style="flex:1;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Уровень</label>
                 <select id="tg-level" class="settings-input" style="flex:1;">
                     <option value="ERROR">ERROR (только ошибки)</option>
@@ -1743,6 +1747,8 @@ function loadTelegramConfig() {
         if (level) level.value = data.level || 'ERROR';
         var chat = document.getElementById('tg-chat');
         if (chat) chat.value = data.chat_id || '';
+        var proxy = document.getElementById('tg-proxy');
+        if (proxy) proxy.value = data.proxy_url || '';
         var srcs = data.sources || [];
         ['system','monitor','network','service'].forEach(function(s) {
             var el = document.getElementById('tg-src-' + s);
@@ -1782,6 +1788,8 @@ function saveTelegramConfig() {
     data += '&level=' + encodeURIComponent(document.getElementById('tg-level').value);
     data += '&chat_id=' + encodeURIComponent(document.getElementById('tg-chat').value);
     data += '&sources=' + encodeURIComponent(tgSources());
+    var proxy = document.getElementById('tg-proxy').value;
+    if (proxy) data += '&proxy_url=' + encodeURIComponent(proxy);
     var token = document.getElementById('tg-token').value;
     if (token) data += '&bot_token=' + encodeURIComponent(token);
     showTgStatus('Сохранение...', false);

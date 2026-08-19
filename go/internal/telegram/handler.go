@@ -36,6 +36,7 @@ func HandleConfig() {
 		"sources":     cfg.Sources,
 		"bot_enabled": cfg.BotEnabled,
 		"autostart":   cfg.Autostart,
+		"proxy_url":   cfg.ProxyURL,
 	})
 }
 
@@ -86,6 +87,14 @@ func handleConfigPost() {
 	// bot_token: пустое значение сохраняет прежний токен (поле скрыто на фронте).
 	if v, ok := params["bot_token"]; ok && v != "" {
 		cfg.BotToken = v
+	}
+	// proxy_url: http:// или socks5:// (пустое — прямое соединение).
+	if v, ok := params["proxy_url"]; ok {
+		if !IsValidProxyURL(v) {
+			cgiutil.WriteStatusError("Некорректный прокси (допустимо http:// или socks5://)")
+			return
+		}
+		cfg.ProxyURL = v
 	}
 	cfg.Configured = cfg.BotToken != ""
 

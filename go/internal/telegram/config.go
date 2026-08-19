@@ -22,15 +22,22 @@ type Config struct {
 	Sources    []string `json:"sources,omitempty"`
 	BotEnabled bool     `json:"bot_enabled,omitempty"`
 	Autostart  bool     `json:"autostart,omitempty"`
+	ProxyURL   string   `json:"proxy_url,omitempty"`
 	Configured bool     `json:"-"`
 }
+
+// defaultProxyURL — HTTP/SOCKS-прокси для доступа к api.telegram.org.
+// Используется, когда провайдер блокирует Telegram (DPI) напрямую, но
+// локальный прокси (например, xray/hysteria) обходит блокировку.
+const defaultProxyURL = "http://127.0.0.1:10871"
 
 // DefaultConfig возвращает конфиг по умолчанию.
 func DefaultConfig() Config {
 	return Config{
-		Enabled: false,
-		Level:   "ERROR",
-		Sources: []string{"system", "monitor"},
+		Enabled:  false,
+		Level:    "ERROR",
+		Sources:  []string{"system", "monitor"},
+		ProxyURL: defaultProxyURL,
 	}
 }
 
@@ -105,6 +112,17 @@ func (c *Config) fillDefaults() {
 	if len(c.Sources) == 0 {
 		c.Sources = []string{"system", "monitor"}
 	}
+	if c.ProxyURL == "" {
+		c.ProxyURL = defaultProxyURL
+	}
+}
+
+// IsValidProxyURL возвращает true для http:// или socks5:// URL прокси.
+func IsValidProxyURL(u string) bool {
+	if u == "" {
+		return true // пусто = без прокси (прямое соединение)
+	}
+	return len(u) >= 7 && (u[:7] == "http://" || u[:7] == "socks5:")
 }
 
 // SaveConfig атомарно пишет конфиг (temp+mv), права 0600.

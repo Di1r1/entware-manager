@@ -739,7 +739,7 @@ fi
 # *_config.json исключается из deploy, поэтому создаём здесь.
 TG_CFG="$TARGET_DIR/telegram_config.json"
 if [ ! -f "$TG_CFG" ]; then
-	echo '{"enabled":false,"bot_token":"","chat_id":"","level":"ERROR","sources":["system","monitor"],"bot_enabled":false,"autostart":false}' > "$TG_CFG"
+	echo '{"enabled":false,"bot_token":"","chat_id":"","level":"ERROR","sources":["system","monitor"],"bot_enabled":false,"autostart":false,"proxy_url":"http://127.0.0.1:10871"}' > "$TG_CFG"
 	chmod 600 "$TG_CFG"
 	ok "telegram_config.json создан"
 else

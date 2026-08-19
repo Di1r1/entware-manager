@@ -14,6 +14,21 @@ import (
 // sendTimeout — таймаут HTTP-запроса к Telegram (не вешать роутер).
 const sendTimeout = 10 * time.Second
 
+// httpClient возвращает HTTP-клиент, маршрутизирующий трафик через прокси
+// (если задан), иначе — прямое соединение. HTTP-прокси поддерживается
+// нативно net/http; socks5:// — через ProxyURL с socks5-схемой (Go понимает
+// только http/https, поэтому для socks5 используем прокси как http-конверт —
+// большинство локальных прокси (xray) принимают оба).
+func httpClient(cfg Config) *http.Client {
+	transport := &http.Transport{}
+	if cfg.ProxyURL != "" {
+		if pu, err := url.Parse(cfg.ProxyURL); err == nil {
+			transport.Proxy = http.ProxyURL(pu)
+		}
+	}
+	return &http.Client{Timeout: sendTimeout, Transport: transport}
+}
+
 // SendMessage отправляет текст в chat_id через Bot API.
 // Возвращает false при ошибке. Токен не логируется.
 func SendMessage(cfg Config, text string) bool {
@@ -26,7 +41,7 @@ func SendMessage(cfg Config, text string) bool {
 	form.Set("text", text)
 	form.Set("disable_web_page_preview", "true")
 
-	client := &http.Client{Timeout: sendTimeout}
+	client := httpClient(cfg)
 	resp, err := client.Post(apiURL, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
 	if err != nil {
 		// *url.Error включает полный URL с токеном — маскируем перед логированием.
