@@ -57,6 +57,5 @@ func HandleKillPID() {
 	}
 
 	logMonitor("INFO", fmt.Sprintf("Принудительно завершён процесс PID=%d", pid))
-	logAction("INFO", fmt.Sprintf("Принудительно завершён процесс PID=%d", pid))
 	cgiutil.WriteJSON(map[string]string{"status": "ok"})
 }

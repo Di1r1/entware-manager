@@ -182,10 +182,13 @@ send_raw() {
 detect_source() {
     local line="$1"
     case "$line" in
-        *"[network]"*) echo "network" ;;
+        *"[service_action]"*) echo "service" ;;
         *"[service]"*) echo "service" ;;
+        *"[monitor_action]"*|*"[ACTION]"*) echo "monitor" ;;
         *"[monitor]"*|*"[watchdog]"*) echo "monitor" ;;
         *"[smart]"*) echo "monitor" ;;
+        *"[network]"*) echo "network" ;;
+        *"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac
 }

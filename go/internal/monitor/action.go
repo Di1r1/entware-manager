@@ -83,8 +83,7 @@ func handleDaemonAction(action string) {
 		return
 	}
 
-	logMonitor("INFO", "Демон "+action)
-	logAction("INFO", "Демон защиты "+action)
+	logMonitor("INFO", "Демон защиты "+action)
 	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Демон " + action})
 }
 
