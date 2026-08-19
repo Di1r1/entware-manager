@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Справка Entware Manager</title>
-    <link rel="stylesheet" href="/entware-manager/style.css?v=35">
+    <link rel="stylesheet" href="/entware-manager/style.css?v=38">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script src="/entware-manager/modal.js?v=4"></script>
 </head>
@@ -13,7 +13,7 @@
     <h2 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 32px; height: 32px; margin-right: 10px;">
             <svg class="icon" width="32" height="32">
-                <use href="/entware-manager/icons.svg?v=3#icon-help"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-help"/>
             </svg>
         </span>
         Справка по Entware Manager
@@ -22,12 +22,12 @@
     <p>Ниже описаны все доступные вкладки, примеры команд и инструкции по настройке.</p>
 
     <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 12px; margin: 16px 0; border-radius: 4px;">
-        <strong>🧬 Архитектура:</strong> Все 76 CGI-эндпоинтов — Go-бинарники (9 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart, entware-server, entware-rdp). Отдельно собирается <code>grdp-proxy</code> — прокси-сервер RDP (не CGI: раздаёт веб-клиент и ретранслирует WebSocket-трафик).<br>
-        Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (76 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
+        <strong>🧬 Архитектура:</strong> Все 77 CGI-эндпоинтов — Go-бинарники (9 шт: entware-pkg, entware-stats, entware-net, entware-logger, entware-services, entware-monitor, entware-smart, entware-server, entware-rdp). Отдельно собирается <code>grdp-proxy</code> — прокси-сервер RDP (не CGI: раздаёт веб-клиент и ретранслирует WebSocket-трафик).<br>
+        Бинарники лежат в <code>/opt/web_entware/cgi-bin/go/</code>. Диспетчер <code>go.cgi</code> (77 симлинков → на него) определяет какой бинарник и ENDPOINT запустить по имени файла и каталогу.
     </div>
 
     <div class="search-container" style="display: flex; gap: 8px; align-items: center; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; margin-bottom: 24px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
-        <svg class="icon" width="18" height="18" style="color: var(--text-muted); flex-shrink: 0;"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg>
+        <svg class="icon" width="18" height="18" style="color: var(--text-muted); flex-shrink: 0;"><use href="/entware-manager/icons.svg?v=5#icon-search"/></svg>
         <input type="text" id="helpSearch" placeholder="Поиск по справке..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
     </div>
 
@@ -36,7 +36,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-stats"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-stats"/>
             </svg>
         </span>
         Статистика
@@ -51,13 +51,13 @@
         <li>Список смонтированных блочных устройств.</li>
     </ul>
     <p>Таблицы tmpfs и блочных устройств сортируются кликом по заголовку столбца. Повторный клик меняет порядок сортировки (▲/▼).</p>
-    <p>В нижней части страницы отображается блок <strong><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Полезные ссылки</strong>, который можно редактировать во вкладке «Настройки».</p>
+    <p>В нижней части страницы отображается блок <strong><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-link"/></svg> Полезные ссылки</strong>, который можно редактировать во вкладке «Настройки».</p>
 
     <!-- История температур -->
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-thermometer"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-thermometer"/>
             </svg>
         </span>
         История температур
@@ -76,7 +76,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-package"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-package"/>
             </svg>
         </span>
         Установленные пакеты
@@ -92,7 +92,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-package"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-package"/>
             </svg>
         </span>
         Доступные пакеты
@@ -108,7 +108,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-update"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-update"/>
             </svg>
         </span>
         Обновления и списки
@@ -124,7 +124,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-process"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-process"/>
             </svg>
         </span>
         Процессы (htop)
@@ -143,7 +143,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-terminal"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-terminal"/>
             </svg>
         </span>
         Терминал (bash)
@@ -154,7 +154,7 @@
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-router"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-router"/>
             </svg>
         </span>
         Сеть
@@ -164,7 +164,7 @@
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-router"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-router"/>
             </svg>
         </span>
         Карточка сети на статистике
@@ -174,7 +174,7 @@
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-list"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-list"/>
             </svg>
         </span>
         Вкладка "Сеть"
@@ -209,7 +209,7 @@ curl -s 'http://localhost:8087/entware-cgi/network/events.cgi?limit=5' | jq .
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-services"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-services"/>
             </svg>
         </span>
         Демон мониторинга сети
@@ -270,7 +270,7 @@ ip neigh
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-hdd"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-hdd"/>
             </svg>
         </span>
         SMART мониторинг дисков
@@ -343,7 +343,7 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-vpn"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-vpn"/>
             </svg>
         </span>
         RDP (веб-клиент)
@@ -373,6 +373,10 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
 
     <h4>История последних 5 ПК</h4>
     <p>Поле <strong>Host</strong> в клиенте — комбобокс со стрелкой ▾: сохранённые адреса доступны для повторного выбора. Адрес запоминается при клике <strong>Connect</strong> в cookie (<code>rdp_host_history</code>, до 5 записей, без дубликатов, свежие сверху).</p>
+    <p>Клавиша <kbd>Enter</kbd> в поле пароля клиента запускает подключение — эквивалентна клику по <strong>Connect</strong>.</p>
+
+    <h4>Панель RDP (вкладка «RDP»)</h4>
+    <p>Вкладка показывает состояние прокси (запущен/остановлен, порт, PID). Полный адрес клиента скрыт за элементом <strong>«Клиент: показать»</strong> — клик по нему показывает/прячет URL; он открывается в отдельной вкладке кнопкой <strong>«Открыть в новой вкладке»</strong>.</p>
 
     <h4>Клипборд</h4>
     <p>Направление «локальный → удалённый» работает. Механика зависит от протокола:</p>
@@ -396,6 +400,33 @@ curl -s 'http://localhost:8087/entware-cgi/smart.cgi?action=usage&amp;device=sda
     <p>В статус-баре клиента отображается счётчик кадров. Если браузер не поддерживает декодирование H.264 (WebCodecs), клиент автоматически переключается на поток сжатых изображений (RemoteFX/NSCodec).</p>
     <p>Селект выбора пресета и чекбоксы темизированы в стиль панели (селект — как инпуты <code>--input-*</code> с фокус-подсветкой, галки — <code>accent-color: var(--accent)</code>): цвет меняется вместе с пресетом темы и день/ночью.</p>
 
+    <h4>Дополнительные настройки клиента (чекбоксы)</h4>
+    <ul>
+        <li><strong>Swap Alt/Meta</strong> (<code>rdp_swapAltMeta</code>) — меняет местами клавиши Alt и Meta (Super/Win). Полезно на macOS, где Cmd должна работать как Alt в Windows.</li>
+        <li><strong>Битмапы (без H.264)</strong> (<code>rdp_noH264</code>) — отключает H.264: сервер шлёт RemoteFX/NSCodec (битмапы). Стабильнее через медленные/буферизующие каналы (например, Keenetic Remote), но больше трафика.</li>
+        <li><strong>Курсор всегда</strong> (<code>rdp_always_cursor</code>) — если курсор на удалённом ПК не виден (например, в Radmin), показывает локальную стрелку вместо скрытого системного курсора. При включении опции серверные формы курсора игнорируются.</li>
+    </ul>
+
+    <h4>Сворачивание панели в островок</h4>
+    <p>Стрелка в правом верхнем углу клиента (с <strong>пульсацией в цвет темы</strong>) сворачивает панель управления в плавающий мини-островок — чтобы не мешал просмотру рабочего стола. Островок показывает <strong>FPS</strong> и задержки, его можно перетаскивать мышкой за зону захвата <code>#miniGrip</code>; позиция запоминается в cookie <code>rdp_mini_pos</code>. Стрелка <strong>▼</strong> разворачивает панель обратно.</p>
+
+    <h4>Пинг задержек в островке</h4>
+    <ul>
+        <li><strong>панель: N мс</strong> — RTT браузер → роутер (GET к самому клиенту с таймингом).</li>
+        <li><strong>RDP: N мс</strong> — TCP RTT до RDP-хоста через эндпоинт прокси <code>/rdp/ping?target=хост:порт</code> (и <code>/ping</code> напрямую).</li>
+        <li>Обновляются каждые 2 секунды в свёрнутом режиме.</li>
+    </ul>
+
+    <h4>Cookie-контракты панель ↔ клиент</h4>
+    <p>Панель и iframe-клиент обмениваются настройками через cookie (SameSite=Strict, максимум 1 год):</p>
+    <ul>
+        <li><code>rdp_host</code>, <code>rdp_port</code>, <code>rdp_domain</code> — цель подключения (адрес, порт, домен).</li>
+        <li><code>rdp_preset</code>, <code>rdp_width</code>, <code>rdp_height</code>, <code>rdp_queueDepth</code> — пресет потока и его параметры.</li>
+        <li><code>rdp_host_history</code> — история последних 5 ПК (адрес запоминается при Connect).</li>
+        <li><code>rdp_always_cursor</code>, <code>rdp_swapAltMeta</code>, <code>rdp_noH264</code> — чекбоксы клиента.</li>
+        <li><code>rdp_collapsed</code> — состояние панели (развёрнута/свёрнута в островок), <code>rdp_mini_pos</code> — позиция островка.</li>
+    </ul>
+
     <h5>CGI-эндпоинты модуля</h5>
     <div class="command-block">
 /opt/web_entware/cgi-bin/rdp_status.cgi   # статус (GET, публичный): state running/stopped, PID, порт<br>
@@ -411,7 +442,7 @@ curl -s http://localhost:8087/entware-cgi/rdp_status.cgi | jq .
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-services"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-services"/>
             </svg>
         </span>
         Службы и Cron
@@ -420,7 +451,7 @@ curl -s http://localhost:8087/entware-cgi/rdp_status.cgi | jq .
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-services"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-services"/>
             </svg>
         </span>
         Службы (init.d)
@@ -448,7 +479,7 @@ curl -s http://localhost:8087/entware-cgi/rdp_status.cgi | jq .
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-shield"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-shield"/>
             </svg>
         </span>
         Мониторинг служб (service watchdog)
@@ -588,7 +619,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h4 style="display: flex; align-items: center;">
         <span class="stat-icon" style="width: 20px; height: 20px;">
             <svg class="icon" width="20" height="20">
-                <use href="/entware-manager/icons.svg?v=3#icon-list"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-list"/>
             </svg>
         </span>
         Планировщик задач (crontab)
@@ -610,23 +641,24 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-settings"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-settings"/>
             </svg>
         </span>
         Настройки
     </h3>
     <p>Объединяет управление ttyd и редактирование ссылок на главной странице.</p>
-    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-terminal"/></svg> Управление ttyd</h4>
+    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-terminal"/></svg> Управление ttyd</h4>
     <ul>
         <li>Показывает состояние процессов htop (порт 8089, только loopback) и терминала (порт 9089, только loopback).</li>
         <li>Запуск htop/терминала требует пароль; сервисы доступны через панель по путям <code>/htop/</code> и <code>/terminal/</code> (тот же origin — работают в LAN и через Keenetic Remote).</li>
         <li>Кнопки «Запустить», «Остановить», «Перезапустить» для каждого экземпляра.</li>
         <li>Для терминала можно задать пароль (поле ввода скрыто звёздочками). Пароль не сохраняется в бэкапах, его нужно вводить при каждом запуске.</li>
     </ul>
-    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=3#icon-link"/></svg> Управление ссылками</h4>
+    <h4><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-link"/></svg> Управление ссылками</h4>
     <ul>
         <li>Список ссылок, отображаемых на главной странице. Можно добавлять, редактировать, удалять.</li>
         <li>Для каждой ссылки указывается иконка (выбор из списка), название и URL.</li>
+        <li><strong>Порядок меняется перетаскиванием</strong> — потяните строку за ручку из 6 точек (SVG) слева от иконки, чтобы изменить порядок. Изменения сохраняются сразу и видны на странице статистики.</li>
         <li>Изменения сохраняются в файле <code>/opt/web_entware/links.json</code> и видны всем устройствам.</li>
     </ul>
 
@@ -634,7 +666,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-shield"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-shield"/>
             </svg>
         </span>
         Защита панели (вход по паролю)
@@ -646,6 +678,7 @@ cat /tmp/entware/logs/service_events.log<br>
         <li><strong>Выход</strong> — кнопка «Выйти» в сайдбаре. При истечении сессии интерфейс сам возвращает к экрану входа (обработка 401).</li>
         <li><strong>Инвалидация</strong> — смена или отключение пароля удаляет <code>panel_session</code>: все активные сессии перестают действовать, нужно войти заново.</li>
         <li><strong>Эндпоинты</strong> — <code>login.cgi</code> (POST пароль → Set-Cookie), <code>logout.cgi</code>, <code>session.cgi</code> (статус сессии для фронтенда).</li>
+        <li><strong>Логирование попыток входа</strong> — успешные и неуспешные входы пишутся в суточный лог <code>/tmp/entware/logs/&lt;дата&gt;.log</code> в формате <code>[время] [уровень] [IP клиента] [pid] [login.cgi] сообщение</code>: «Неверный пароль при входе», «Успешный вход», отклонения по CSRF и т.п.</li>
     </ul>
     <div class="note" style="background: var(--command-block-bg); border-left: 4px solid #10b981; padding: 10px; margin: 10px 0; border-radius: 4px;">
         <strong>📌 Рекомендация:</strong> внешний барьер — панельный логин; авторизацию Keenetic (двойной Basic) рекомендуется отключить.
@@ -655,7 +688,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-shield"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-shield"/>
             </svg>
         </span>
         Защита от зависших процессов
@@ -691,7 +724,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-folder"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-folder"/>
             </svg>
         </span>
         Файловый менеджер (tmpfs)
@@ -714,7 +747,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-list"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-list"/>
             </svg>
         </span>
         Логирование
@@ -775,7 +808,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-help"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-help"/>
             </svg>
         </span>
         Справка
@@ -783,7 +816,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <p>Эта страница.</p>
 
     <!-- Пресеты тем -->
-    <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=3#icon-moon"/></svg> Темы (пресеты) и ночной режим</h3>
+    <h3><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=5#icon-moon"/></svg> Темы (пресеты) и ночной режим</h3>
     <p>Оформление интерфейса настраивается через кнопку темы в правом верхнем углу. Доступны <strong>семь цветовых пресетов</strong>, выбор которых открывается попапом с цветными кружками у кнопки темы:</p>
     <ul>
         <li><strong>Фиолетовый (violet)</strong> – пресет по умолчанию, фиолетовый акцент.</li>
@@ -800,7 +833,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-bell"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-bell"/>
             </svg>
         </span>
         Уведомления
@@ -816,7 +849,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-shield"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-shield"/>
             </svg>
         </span>
         Проверка системы
@@ -841,7 +874,7 @@ cat /tmp/entware/logs/service_events.log<br>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-download"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-download"/>
             </svg>
         </span>
         Офлайн-установка
@@ -862,7 +895,7 @@ sh install-offline.sh            # автономная установка
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-update"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-update"/>
             </svg>
         </span>
         Кеширование тяжёлых ответов (оптимизация v1.07.4)
@@ -885,7 +918,7 @@ curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-trash"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-trash"/>
             </svg>
         </span>
         Очистка мусора (RAM + flash, v1.07.4)
@@ -902,7 +935,7 @@ curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-disk"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-disk"/>
             </svg>
         </span>
         Резервное копирование
@@ -919,7 +952,7 @@ curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
-                <use href="/entware-manager/icons.svg?v=3#icon-list"/>
+                <use href="/entware-manager/icons.svg?v=5#icon-list"/>
             </svg>
         </span>
         Полный список команд (для терминала)
@@ -991,7 +1024,7 @@ curl -s "http://localhost:8087/entware-cgi/network_stats.cgi?fresh=1" | jq .
         <strong>⚠️ Важно:</strong> Команды, требующие прав root, выполняются от имени root. Будьте осторожны при удалении и обновлении пакетов. Для терминала рекомендуется использовать пароль.
     </div>
 
-    <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=3#icon-arrow-left"/></svg> Назад</a></p>
+    <p><a href="javascript:history.back()" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-arrow-left"/></svg> Назад</a></p>
 </div>
 </body>
 </html>
