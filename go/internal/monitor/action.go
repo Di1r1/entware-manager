@@ -141,6 +141,11 @@ func handleClearLog() {
 	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
 }
 
+// monitorActionsLog — профильный лог действий панели (Запрос на START/STOP,
+// убийство процесса, очистка лога и т.п.). Дневной суточный лог остаётся
+// только для фактических событий демонов (log_message).
+const monitorActionsLog = "/tmp/entware/logs/monitor_actions.log"
+
 func logMonitor(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	ip := os.Getenv("REMOTE_ADDR")
@@ -149,8 +154,7 @@ func logMonitor(level, message string) {
 	}
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
-	logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(monitorActionsLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
@@ -166,8 +170,7 @@ func logAction(level, message string) {
 	}
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
-	logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(monitorActionsLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}

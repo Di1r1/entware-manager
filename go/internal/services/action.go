@@ -126,6 +126,10 @@ func findScript(name string) string {
 	return ""
 }
 
+// serviceActionsLog — профильный лог действий панели со службами (запуск/
+// остановка, автозапуск, ttyd). Дневной суточный лог остаётся для фактов демонов.
+const serviceActionsLog = "/tmp/entware/logs/service_actions.log"
+
 func logAction(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	ip := os.Getenv("REMOTE_ADDR")
@@ -136,8 +140,7 @@ func logAction(level, message string) {
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
 
-	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(serviceActionsLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
