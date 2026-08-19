@@ -44,14 +44,6 @@ func HandleTTYDControl() {
 		body := cgiutil.ReadPOSTBody()
 		params := cgiutil.ParseFormBody(body)
 		action := params["action"]
-
-		// log_access не требует порта — логируем открытие вкладки сразу.
-		if action == "log_access" {
-			logAccess(params["tab"])
-			cgiutil.WriteJSON(map[string]string{"status": "ok"})
-			return
-		}
-
 		portStr := params["port"]
 		pass := params["pass"]
 		mode := params["mode"]
@@ -76,29 +68,6 @@ func HandleTTYDControl() {
 	}
 
 	cgiutil.NotAllowed()
-}
-
-// logAccess пишет событие «открыта вкладка» в суточный лог с тегом [monitor].
-// Вызывается фронтом при переходе на вкладки Терминал/Процессы.
-func logAccess(tab string) {
-	label := "терминал"
-	if tab == "processes" {
-		label = "процессы"
-	}
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	ip := os.Getenv("REMOTE_ADDR")
-	if ip == "" {
-		ip = "localhost"
-	}
-	logDir := "/tmp/entware/logs"
-	os.MkdirAll(logDir, 0755)
-	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "[%s] [INFO] [%s] [%d] [monitor] Открыта вкладка: %s\n", timestamp, ip, os.Getpid(), label)
 }
 
 func getTTYDStatus() ttydStatus {

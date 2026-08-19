@@ -833,7 +833,7 @@ async function loadHtopContent() {
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe id="htopFrame" src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay" onload="logTerminalAccess('processes')"></iframe>
+                <iframe id="htopFrame" src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay"></iframe>
             `;
             focusTtydFrame('htopFrame');
         } else {
@@ -872,7 +872,7 @@ async function loadTerminalContent() {
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
-                <iframe id="terminalFrame" src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay; clipboard-read; clipboard-write" onload="logTerminalAccess('terminal')"></iframe>
+                <iframe id="terminalFrame" src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
             `;
             focusTtydFrame('terminalFrame');
         } else {
@@ -883,13 +883,6 @@ async function loadTerminalContent() {
         const container = document.getElementById('terminal-content');
         if (container) container.innerHTML = '<p class="error">Ошибка: ' + escapeHtml(err.message) + '</p>';
     }
-}
-
-// Логирует реальный вход в терминал/процессы — вызывается onload iframe,
-// когда ttyd/htop реально загрузился (терминал запущен и пароль верный).
-// Открытие вкладки без запущенного терминала не логируется.
-function logTerminalAccess(tab) {
-    apiPost('/ttyd_control.cgi', 'action=log_access&tab=' + encodeURIComponent(tab));
 }
 
 function focusTtydFrame(id) {
