@@ -18,9 +18,11 @@ DESC="entware watchdogs autostart"
 MONITOR_CFG="/opt/web_entware/monitor_config.json"
 NETWORK_CFG="/opt/web_entware/network_config.json"
 SERVICE_CFG="/opt/web_entware/service_config.json"
+TG_CFG="/opt/web_entware/telegram_config.json"
 MONITOR_SH="/opt/web_entware/watchdog.sh"
 NETWORK_SH="/opt/web_entware/network_watchdog.sh"
 SERVICE_SH="/opt/web_entware/service_watchdog.sh"
+TG_SH="/opt/web_entware/telegram_gateway.sh"
 
 ansi_green="\033[1;32m"
 ansi_red="\033[1;31m"
@@ -74,17 +76,18 @@ start() {
 	start_daemon "$MONITOR_SH" "$MONITOR_CFG" "monitor watchdog"
 	start_daemon "$NETWORK_SH" "$NETWORK_CFG" "network watchdog"
 	start_daemon "$SERVICE_SH" "$SERVICE_CFG" "service watchdog"
+	start_daemon "$TG_SH" "$TG_CFG" "telegram gateway"
 }
 
 stop() {
 	# Останавливаем демоны, даже если autostart выключен (полный stop).
-	for s in "$MONITOR_SH" "$NETWORK_SH" "$SERVICE_SH"; do
+	for s in "$MONITOR_SH" "$NETWORK_SH" "$SERVICE_SH" "$TG_SH"; do
 		[ -x "$s" ] && "$s" stop >/dev/null 2>&1
 	done
 }
 
 check() {
-	for pair in "$MONITOR_SH|monitor watchdog" "$NETWORK_SH|network watchdog" "$SERVICE_SH|service watchdog"; do
+	for pair in "$MONITOR_SH|monitor watchdog" "$NETWORK_SH|network watchdog" "$SERVICE_SH|service watchdog" "$TG_SH|telegram gateway"; do
 		script="${pair%%|*}"
 		name="${pair##*|}"
 		if [ -x "$script" ] && "$script" status >/dev/null 2>&1; then

@@ -71,7 +71,7 @@ for i in "${!ARCH_NAMES[@]}"; do
     echo ""
     echo "  [$arch_name] (GOARCH=$goarch${goflags:+ $goflags})"
 
-    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server entware-rdp; do
+    for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server entware-rdp entware-telegram; do
         echo -n "    $cmd... "
         out="$DEPLOY_DIR/cgi-bin/go/$dir_name/$cmd"
         env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" "./cmd/$cmd/" 2>&1
@@ -174,7 +174,7 @@ echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 
 cd "$DEPLOY_DIR/cgi-bin"
-for ep in api auth_config available backup backup_restore check_deps check_syntax crontab crontab_update delete_file help install installed kill_pid links_load links_save login logout network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline rdp_config rdp_start rdp_status rdp_stop remove service_action services session smart stats temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
+for ep in api auth_config available backup backup_restore check_deps check_syntax crontab crontab_update delete_file help install installed kill_pid links_load links_save login logout network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline rdp_config rdp_start rdp_status rdp_stop remove service_action services session smart stats telegram_config telegram_test temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
     ln -sf go.cgi "$ep.cgi"
     echo "  $ep.cgi -> go.cgi"
 done

@@ -1667,10 +1667,58 @@ async function renderSettingsTab() {
             <div id="update-status" style="margin-top: 8px;"></div>
             <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
         </div>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-email"/></svg> Telegram-уведомления</h3>
+        <p>Отправка событий в Telegram через независимый шлюз. Токен бота хранится скрыто и не отображается.</p>
+        <div id="telegram-form" style="margin-top: 10px; max-width: 520px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Включить</label>
+                <input type="checkbox" id="tg-enabled" style="transform: scale(1.3);">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Bot Token</label>
+                <input type="password" id="tg-token" class="settings-input" placeholder="123456:ABC-DEF..." style="flex:1;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Chat ID</label>
+                <input type="text" id="tg-chat" class="settings-input" placeholder="123456789" style="flex:1;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Уровень</label>
+                <select id="tg-level" class="settings-input" style="flex:1;">
+                    <option value="ERROR">ERROR (только ошибки)</option>
+                    <option value="WARN">WARN (ошибки и предупреждения)</option>
+                    <option value="INFO">INFO (все)</option>
+                    <option value="OFF">OFF (выключено)</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Источники</label>
+                <div style="display:flex; gap:14px; flex-wrap:wrap;">
+                    <label><input type="checkbox" id="tg-src-system" value="system"> Система</label>
+                    <label><input type="checkbox" id="tg-src-monitor" value="monitor"> Монитор</label>
+                    <label><input type="checkbox" id="tg-src-network" value="network"> Сеть</label>
+                    <label><input type="checkbox" id="tg-src-service" value="service"> Службы</label>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Чат-бот</label>
+                <input type="checkbox" id="tg-bot" style="transform: scale(1.3);">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Автозапуск</label>
+                <input type="checkbox" id="tg-autostart" style="transform: scale(1.3);">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 12px;">
+                <button class="packages-delete-btn" style="background:#4a5568;" id="tg-save">Сохранить</button>
+                <button class="packages-delete-btn" style="background:#27ae60;" id="tg-test">Отправить тест</button>
+            </div>
+            <div id="tg-status" style="margin-top: 10px; font-size: 0.9rem;"></div>
+        </div>
     `;
     contentDiv.innerHTML = html;
     fetchTtydStatus();
     loadUpdateInfo();
+    loadTelegramConfig();
     if (settingsInterval) clearInterval(settingsInterval);
     settingsInterval = setInterval(fetchTtydStatus, 5000);
     document.getElementById('addLinkBtn').addEventListener('click', addLinkRow);
@@ -1678,6 +1726,91 @@ async function renderSettingsTab() {
     document.getElementById('resetDefaultLinksBtn').addEventListener('click', resetDefaultLinks);
     initLinksDrag();
     loadAuthConfig();
+}
+
+// ===== Telegram-уведомления =====
+function loadTelegramConfig() {
+    apiGet('/telegram_config.cgi').then(function(data) {
+        if (data.status === 'error') { showTgStatus('Ошибка: ' + escapeHtml(data.message), true); return; }
+        var enabled = document.getElementById('tg-enabled');
+        if (!enabled) return;
+        enabled.checked = !!data.enabled;
+        var bot = document.getElementById('tg-bot');
+        if (bot) bot.checked = !!data.bot_enabled;
+        var auto = document.getElementById('tg-autostart');
+        if (auto) auto.checked = !!data.autostart;
+        var level = document.getElementById('tg-level');
+        if (level) level.value = data.level || 'ERROR';
+        var chat = document.getElementById('tg-chat');
+        if (chat) chat.value = data.chat_id || '';
+        var srcs = data.sources || [];
+        ['system','monitor','network','service'].forEach(function(s) {
+            var el = document.getElementById('tg-src-' + s);
+            if (el) el.checked = srcs.indexOf(s) !== -1;
+        });
+        showTgStatus(data.configured ? 'Telegram настроен (токен скрыт).' : 'Telegram не настроен — укажите токен и chat_id.', false);
+        var testBtn = document.getElementById('tg-test');
+        if (testBtn) testBtn.disabled = !data.configured;
+    }).catch(function(err) {
+        showTgStatus('Ошибка загрузки: ' + escapeHtml(err.message), true);
+    });
+    var saveBtn = document.getElementById('tg-save');
+    if (saveBtn && !saveBtn.dataset.bound) {
+        saveBtn.dataset.bound = '1';
+        saveBtn.addEventListener('click', saveTelegramConfig);
+    }
+    var testBtn2 = document.getElementById('tg-test');
+    if (testBtn2 && !testBtn2.dataset.bound) {
+        testBtn2.dataset.bound = '1';
+        testBtn2.addEventListener('click', testTelegram);
+    }
+}
+
+function tgSources() {
+    var out = [];
+    ['system','monitor','network','service'].forEach(function(s) {
+        var el = document.getElementById('tg-src-' + s);
+        if (el && el.checked) out.push(s);
+    });
+    return out.join(',');
+}
+
+function saveTelegramConfig() {
+    var data = 'enabled=' + (document.getElementById('tg-enabled').checked ? 'true' : 'false');
+    data += '&bot_enabled=' + (document.getElementById('tg-bot').checked ? 'true' : 'false');
+    data += '&autostart=' + (document.getElementById('tg-autostart').checked ? 'true' : 'false');
+    data += '&level=' + encodeURIComponent(document.getElementById('tg-level').value);
+    data += '&chat_id=' + encodeURIComponent(document.getElementById('tg-chat').value);
+    data += '&sources=' + encodeURIComponent(tgSources());
+    var token = document.getElementById('tg-token').value;
+    if (token) data += '&bot_token=' + encodeURIComponent(token);
+    showTgStatus('Сохранение...', false);
+    apiPost('/telegram_config.cgi', data).then(function(res) {
+        if (res.status === 'ok') {
+            showTgStatus('✓ Настройки сохранены', false);
+            document.getElementById('tg-token').value = '';
+            loadTelegramConfig();
+        } else {
+            showTgStatus('Ошибка: ' + escapeHtml(res.message || res.status), true);
+        }
+    }).catch(function(err) {
+        showTgStatus('Ошибка: ' + escapeHtml(err.message), true);
+    });
+}
+
+function testTelegram() {
+    showTgStatus('Отправка теста...', false);
+    apiPost('/telegram_test.cgi', '').then(function(res) {
+        showTgStatus(res.status === 'ok' ? '✓ Тестовое сообщение отправлено' : 'Ошибка: ' + escapeHtml(res.message || res.status), res.status !== 'ok');
+    }).catch(function(err) {
+        showTgStatus('Ошибка: ' + escapeHtml(err.message), true);
+    });
+}
+
+function showTgStatus(msg, isError) {
+    var el = document.getElementById('tg-status');
+    if (!el) return;
+    el.innerHTML = '<span style="color:' + (isError ? '#e53e3e' : 'var(--text-primary)') + ';">' + msg + '</span>';
 }
 
 window.restoreBackup = async function(input) {

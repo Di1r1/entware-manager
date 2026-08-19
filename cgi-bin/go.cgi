@@ -107,6 +107,8 @@ cgi-bin)
 		exec "$(go_bin smart)" ;;
 	rdp_status|rdp_start|rdp_stop|rdp_config)
 		ENDPOINT="$name" exec "$(go_bin rdp)" ;;
+	telegram_config|telegram_test)
+		ENDPOINT="$name" exec "$(go_bin telegram)" ;;
 	*)
 		echo "Content-type: text/plain"
 		echo ""

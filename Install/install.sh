@@ -735,6 +735,17 @@ else
 	ok "rdp_config.json уже есть"
 fi
 
+# Конфиг Telegram-шлюза (дефолт, без токена; 0600 ставит Go при сохранении).
+# *_config.json исключается из deploy, поэтому создаём здесь.
+TG_CFG="$TARGET_DIR/telegram_config.json"
+if [ ! -f "$TG_CFG" ]; then
+	echo '{"enabled":false,"bot_token":"","chat_id":"","level":"ERROR","sources":["system","monitor"],"bot_enabled":false,"autostart":false}' > "$TG_CFG"
+	chmod 600 "$TG_CFG"
+	ok "telegram_config.json создан"
+else
+	ok "telegram_config.json уже есть"
+fi
+
 # ========== 6. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
 step "Настройка архитектуры"
 
@@ -974,7 +985,7 @@ fi
 
 # Проверка Go-бинарников
 echo "  ${BOLD}Go-бинарники:${NC}"
-GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats"
+GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats entware-telegram"
 GO_OK=0
 for bin in $GO_BINS; do
 	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
@@ -986,10 +997,10 @@ for bin in $GO_BINS; do
 		fail "  $bin не найден в cgi-bin/go/"
 	fi
 done
-if [ $GO_OK -eq 9 ]; then
-	ok "  Все 9 бинарников ($GO_OK)"
+if [ $GO_OK -eq 10 ]; then
+	ok "  Все 10 бинарников ($GO_OK)"
 else
-	fail "  Найдено $GO_OK из 9 бинарников"
+	fail "  Найдено $GO_OK из 10 бинарников"
 fi
 
 # Проверка веб-файлов
