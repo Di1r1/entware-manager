@@ -1852,7 +1852,12 @@ function saveThresholds() {
     var th = collectThresholds();
     var statusEl = document.getElementById('th-status');
     statusEl.innerHTML = 'Сохранение...';
-    apiPost('/telegram_config.cgi', 'thresholds=' + encodeURIComponent(JSON.stringify(th))).then(function(res) {
+    // Включаем chat_id из формы, чтобы сохранение порогов не теряло введённый
+    // (но ещё не сохранённый основной кнопкой) chat_id.
+    var body = 'thresholds=' + encodeURIComponent(JSON.stringify(th));
+    var chat = document.getElementById('tg-chat');
+    if (chat && chat.value) body += '&chat_id=' + encodeURIComponent(chat.value);
+    apiPost('/telegram_config.cgi', body).then(function(res) {
         if (res.status === 'ok') {
             statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Пороги сохранены</span>';
         } else {
