@@ -810,6 +810,7 @@ async function upgradeAll() {
 }
 
 function renderProcessesTab() {
+    apiPost('/ttyd_control.cgi', 'action=log_access&tab=processes');
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">
@@ -846,6 +847,7 @@ async function loadHtopContent() {
 }
 
 function renderTerminalTab() {
+    apiPost('/ttyd_control.cgi', 'action=log_access&tab=terminal');
     const html = `
         <h2 style="display: flex; align-items: center; gap: 8px;">
             <span class="stat-icon" style="width: 28px; height: 28px;">

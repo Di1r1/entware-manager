@@ -19,7 +19,8 @@ CONFIG_FILE="/opt/web_entware/telegram_config.json"
 PID_FILE="/tmp/entware/pid/telegram_gateway.pid"
 LOG_FILE="/tmp/entware/logs/telegram.log"
 # Отдельный файл логов отправки Telegram (системный лог, не общий суточный).
-TG_LOG_FILE="/opt/var/log/entware/telegram.log"
+# Хранится в RAM (/tmp — tmpfs): не изнашивает флеш-память при высоком потоке.
+TG_LOG_FILE="/tmp/entware/logs/telegram_sent.log"
 STATE_DIR="/tmp/entware/telegram"
 OFFSET_FILE="$STATE_DIR/offsets"
 THRESHOLD_STATE="$STATE_DIR/thresholds.state"
@@ -151,7 +152,7 @@ format_message() {
     body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] \[[^]]*\]( \[[0-9]+\])? //')
     [ -z "$body" ] && body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] //')
     # Чистим повторные [тег источника] в начале тела.
-    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart|packages)\] //')
+    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart|packages|service_action|monitor_action|ACTION|login\.cgi|links_save\.cgi|delete_file\.cgi|view_file\.cgi|crontab_update\.cgi)\] //')
     printf '%s %s <b>%s</b>\n%s' "$(level_emoji "$lvl")" "$(source_emoji "$src")" "$(html_escape_tg "$src")" "$(html_escape_tg "$body")"
 }
 

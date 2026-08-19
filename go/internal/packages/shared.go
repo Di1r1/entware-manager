@@ -44,19 +44,28 @@ func logPackageChange(action, pkg, status string) {
 	logPkgToDaily(ts, action, pkg, status)
 }
 
+// actRuMap — русские названия действий пакета (package-level, не строится на вызов).
+var actRuMap = map[string]string{
+	"install":     "установлен",
+	"remove":      "удалён",
+	"upgrade":     "обновлён",
+	"upgrade-all": "обновлены все",
+}
+
 // logPkgToDaily пишет событие в суточный лог /tmp/entware/logs/YYYY-MM-DD.log
 // с тегом [packages] — его читает telegram_gateway.sh (detect_source → packages).
 func logPkgToDaily(ts, action, pkg, status string) {
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
-	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+	// Имя файла по ts (а не time.Now()) — корректно на границе полуночи.
+	logFile := filepath.Join(logDir, ts[:10]+".log")
 	df, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
 	defer df.Close()
 
-	actRu := map[string]string{"install": "установлен", "remove": "удалён", "upgrade": "обновлён", "upgrade-all": "обновлены все"}[action]
+	actRu := actRuMap[action]
 	if actRu == "" {
 		actRu = action
 	}
