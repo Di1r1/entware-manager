@@ -75,3 +75,21 @@ func TestParseWatchdogLine_WarnLevel(t *testing.T) {
 		t.Errorf("expected details '120MB', got '%s'", evt.Details)
 	}
 }
+
+func TestParseWatchdogLine_ServiceAction(t *testing.T) {
+	line := `[2026-04-02 10:02:00] [INFO] [1.2.3.4] [123] [service_action] Служба ttyd: запущена`
+	evt := parseWatchdogLine(line)
+
+	if evt.Timestamp != "2026-04-02 10:02:00" {
+		t.Errorf("expected timestamp, got '%s'", evt.Timestamp)
+	}
+	if evt.Level != "INFO" {
+		t.Errorf("expected level INFO, got '%s'", evt.Level)
+	}
+	if evt.Service != "Служба" {
+		t.Errorf("expected service 'Служба', got '%s'", evt.Service)
+	}
+	if evt.Event != "ttyd:" {
+		t.Errorf("expected event 'ttyd:', got '%s'", evt.Event)
+	}
+}
