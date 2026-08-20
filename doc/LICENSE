@@ -1,3 +1,62 @@
+========================================================================
+Entware Manager — Author's License Notice / Лицензионное уведомление автора
+
+Author and copyright holder / Автор и правообладатель: Di1r1
+Repository / Репозиторий: https://github.com/Di1r1/entware-manager
+
+The software is distributed under the GNU GPL v3 license (text below) /
+Программа распространяется под лицензией GNU GPL v3 (текст ниже).
+
+Additional permissions (allowed by GPL v3 section 7) /
+Дополнительные условия (допускаются п.7 GPL v3):
+
+1. ATTRIBUTION / АТРИБУЦИЯ.
+   Any use, copy, modification or redistribution of this software
+   (whole or in parts: code, documentation, build artifacts) in any
+   project, publication or product must credit the author (Di1r1) and
+   link the original repository https://github.com/Di1r1/entware-manager.
+   Preserving attribution complies with GPL v3 section 7(b).
+   / При использовании, копировании, изменении или распространении этой
+   программы (целиком или фрагментами: код, документация, артефакты
+   сборки) в любом проекте, публикации или продукте обязательно
+   указывать имя автора (Di1r1) и ссылку на исходный репозиторий
+   https://github.com/Di1r1/entware-manager. Требование сохранения
+   атрибуции соответствует разрешению п.7(b) GPL v3.
+
+2. DISCLAIMER OF RESPONSIBILITY FOR USE / ОТКАЗ ОТ ОТВЕТСТВЕННОСТИ ЗА ИСПОЛЬЗОВАНИЕ.
+   The author is not responsible for any use of this software for
+   malicious, unlawful, illegal or unintended purposes. The software is
+   intended for the legitimate administration of one's own equipment.
+   Any such use is at the discretion and responsibility of the person
+   applying the software.
+   / Автор не несёт ответственности за использование данной программы
+   в вредоносных, противоправных, незаконных или не предусмотренных
+   целях. Программа предназначена для легитимного администрирования
+   собственного оборудования. Любое такое использование осуществляется
+   на усмотрение и под ответственность лица, применяющего программу.
+
+3. WARRANTY / ГАРАНТИИ.
+   The software is provided "AS IS" without warranty of any kind,
+   including implied warranties of merchantability and fitness for a
+   particular purpose (see GPL v3 section 15). The author is not liable
+   for damages, data loss, failures or any other consequences arising
+   from its use (see GPL v3 section 16).
+   / Программа предоставляется «как есть» (AS IS), без каких-либо
+   гарантий, включая гарантии пригодности для конкретной цели
+   (см. п.15 GPL v3). Автор не отвечает за ущерб, потери данных, сбои
+   или иные последствия, возникшие при её использовании (см. п.16 GPL v3).
+
+4. INTENDED PURPOSE / НАЗНАЧЕНИЕ ПРОГРАММЫ.
+   The software is intended for administering Keenetic routers (Entware)
+   and managing them. Use for purposes other than intended is permitted
+   only in accordance with applicable law.
+   / Программа предназначена для администрирования роутеров Keenetic
+   (Entware) и управления ими. Использование программы для целей, не
+   соответствующих её назначению, допускается только в соответствии с
+   применимым законодательством.
+
+========================================================================
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
