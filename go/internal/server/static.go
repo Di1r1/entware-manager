@@ -25,6 +25,7 @@ var staticWhitelist = map[string]bool{
 	"/icons.svg":                  true,
 	"/favicon.png":                true,
 	"/favicon.ico":                true,
+	"/login-logo.png":             true,
 	"/version.json":               true,
 	"/lib/utils.js":               true,
 	"/menu/menu.js":               true,
