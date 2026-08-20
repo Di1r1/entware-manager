@@ -4,6 +4,7 @@
 package main
 
 import (
+	_ "entware-manager/internal/buildinfo"
 	_ "entware-manager/internal/localtime"
 	"entware-manager/internal/telegram"
 )

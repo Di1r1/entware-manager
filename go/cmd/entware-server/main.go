@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	_ "entware-manager/internal/buildinfo"
 	"errors"
 	"log"
 	"net/http"

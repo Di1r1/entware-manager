@@ -2,6 +2,7 @@
 package main
 
 import (
+	_ "entware-manager/internal/buildinfo"
 	"fmt"
 	"os"
 
