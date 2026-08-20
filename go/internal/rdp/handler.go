@@ -78,6 +78,7 @@ func handleConfigPost() {
 		return
 	}
 	cfg, _ := LoadConfig()
+	loadedPort := cfg.ProxyPort
 
 	if v := params["target_host"]; v != "" {
 		cfg.TargetHost = v
@@ -96,6 +97,10 @@ func handleConfigPost() {
 			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Некорректный порт прокси"})
 			return
 		}
+		if p != loadedPort && portIsBusy(p) {
+			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Порт " + strconv.Itoa(p) + " занят другим процессом — выберите другой"})
+			return
+		}
 		cfg.ProxyPort = p
 	}
 	if v := params["proxy_host"]; len(v) < 64 {
@@ -110,9 +115,13 @@ func handleConfigPost() {
 		cfg.Enabled = v == "true"
 	}
 
+	portChanged := cfg.ProxyPort != loadedPort
 	if err := SaveConfig(cfg); err != nil {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Не удалось сохранить конфиг: " + err.Error()})
 		return
+	}
+	if portChanged {
+		applyProxyPortChange(cfg.ProxyPort)
 	}
 	cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Конфигурация сохранена"})
 }

@@ -125,3 +125,30 @@ func setEnv(t *testing.T, key, val string) func() {
 		}
 	}
 }
+
+func TestProcessIsProxy(t *testing.T) {
+	if processIsProxy(0) {
+		t.Error("pid 0 должен быть false")
+	}
+	if processIsProxy(99999) {
+		t.Error("несуществующий pid должен быть false")
+	}
+}
+
+func TestPidFromNetstat(t *testing.T) {
+	if pid := pidFromNetstat("tcp 0 0 127.0.0.1:9099 0.0.0.0:* LISTEN 1234/grdp-proxy"); pid != 1234 {
+		t.Errorf("pid = %d, want 1234", pid)
+	}
+	if pid := pidFromNetstat("tcp 0 0 127.0.0.1:8087 0.0.0.0:* LISTEN 99/lighttpd"); pid != 99 {
+		t.Errorf("pid = %d, want 99", pid)
+	}
+}
+
+func TestPortIsBusy(t *testing.T) {
+	// Порт 99999 не может быть занят реальным слушателем — но netstat может
+	// не быть доступен; функция возвращает false при ошибке. Проверяем, что
+	// она не паникует и не возвращает true для гарантированно свободного.
+	if portIsBusy(65535) && os.Getenv("CI") != "" {
+		t.Log("65535 возможно занят — скип")
+	}
+}

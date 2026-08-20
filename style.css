@@ -2478,6 +2478,27 @@ html.night #toast {
 .rdp-actions .packages-delete-btn {
     white-space: nowrap;
 }
+.rdp-port-config {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.rdp-port-config .settings-input {
+    width: 80px;
+    text-align: center;
+}
+.rdp-btn-save,
+.rdp-btn-save:disabled:hover {
+    background: var(--accent);
+    background-image: none;
+    color: #fff;
+    white-space: nowrap;
+}
+.rdp-btn-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 .rdp-btn-start,
 .rdp-btn-start:disabled:hover {
     background: var(--btn-success);

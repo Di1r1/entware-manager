@@ -420,7 +420,7 @@ async function loadTab(tabName) {
     }
     if (tabName === 'rdp') {
         if (!window.RDP_LOADED) {
-            await loadScript('/entware-manager/rdp.js?v=24');
+            await loadScript('/entware-manager/rdp.js?v=26');
             window.RDP_LOADED = true;
         }
         RDP.init(); Menu.setActiveTab(tabName); return;

@@ -485,6 +485,8 @@ $HTTP["url"] =~ "^/entware-cgi/" {
 }
 
 # Встроенные сервисы через тот же origin (удалённый доступ + HTTPS)
+# Порт RDP-прокси берём из rdp_config.json (плейсхолдер заменяется sed ниже),
+# чтобы не конфликтовать с другими сервисами (например, AWG на 9099).
 proxy.header = ( "upgrade" => "enable" )
 $HTTP["url"] =~ "^/terminal/" {
     proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9089 ) ) )
@@ -493,10 +495,10 @@ $HTTP["url"] =~ "^/htop/" {
     proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 8089 ) ) )
 }
 $HTTP["url"] =~ "^/rdp/" {
-    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9099 ) ) )
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => __RDP_PORT__ ) ) )
 }
 $HTTP["url"] =~ "^/ws" {
-    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => 9099 ) ) )
+    proxy.server = ( "" => ( ( "host" => "127.0.0.1", "port" => __RDP_PORT__ ) ) )
 }
 EOF
 if [ -f "$CONF_FILE" ]; then
@@ -733,6 +735,14 @@ if [ ! -f "$RDP_CFG" ]; then
 	ok "rdp_config.json создан (порт 9099)"
 else
 	ok "rdp_config.json уже есть"
+fi
+
+# Подставить фактический порт RDP-прокси в lighttpd-conf (плейсхолдер __RDP_PORT__).
+if [ -f "$CONF_FILE" ]; then
+	RP=$(jq -r '.proxy_port // 9099' "$RDP_CFG" 2>/dev/null || echo 9099)
+	case "$RP" in ''|*[!0-9]*) RP=9099 ;; esac
+	sed -i "s/__RDP_PORT__/$RP/g" "$CONF_FILE" 2>/dev/null
+	ok "lighttpd-conf: RDP-порт $RP подставлен в proxy.server"
 fi
 
 # Конфиг Telegram-шлюза (дефолт, без токена; 0600 ставит Go при сохранении).

@@ -51,6 +51,12 @@ const RDP = {
                             <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-link"/></svg> Открыть в новой вкладке
                         </a>
                     </div>
+                    <div class="rdp-port-config" id="rdpPortConfig" style="display:none;">
+                        <input type="number" id="rdpPortInput" class="settings-input" min="1" max="65535" style="width: 80px;" title="Порт прокси (измените, если 9099 занят, например AWG)">
+                        <button id="rdpPortSaveBtn" class="packages-delete-btn rdp-btn-save">
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-check"/></svg> Порт
+                        </button>
+                    </div>
                 </div>
                 <div id="rdpFrameWrap" style="display:none;">
                     <iframe id="rdpFrame" width="100%"
@@ -69,6 +75,7 @@ const RDP = {
             this.href = RDP.frameUrl;
             this.setAttribute('target', '_blank');
         });
+        document.getElementById('rdpPortSaveBtn').addEventListener('click', () => this.savePort());
     },
 
     async loadConfig() {
@@ -77,11 +84,61 @@ const RDP = {
             if (!resp.ok) throw new Error(resp.statusText);
             this.cfg = await resp.json();
             this.buildFrameUrl();
+            this.showPortConfig();
             this.loadStatus();
         } catch (err) {
             const st = document.getElementById('rdpStatus');
             if (st) st.innerHTML = '<p class="error">Не удалось прочитать rdp_config.json: ' + escapeHtml(err.message) + '</p>';
         }
+    },
+
+    showPortConfig() {
+        const wrap = document.getElementById('rdpPortConfig');
+        const input = document.getElementById('rdpPortInput');
+        if (!wrap || !input) return;
+        const port = (this.cfg && this.cfg.proxy_port) || 9099;
+        input.value = String(port);
+        wrap.style.display = 'flex';
+    },
+
+    // Сохранить новый порт прокси через rdp_config.cgi (POST, пароль + Origin-чек).
+    async savePort() {
+        const input = document.getElementById('rdpPortInput');
+        const btn = document.getElementById('rdpPortSaveBtn');
+        if (!input || !btn) return;
+        const raw = String(input.value || '').trim();
+        if (!/^\d+$/.test(raw)) {
+            Toast.show('Введите номер порта цифрами (1-65535)', true);
+            return;
+        }
+        const port = parseInt(raw, 10);
+        if (port < 1 || port > 65535) {
+            Toast.show('Порт должен быть в диапазоне 1-65535', true);
+            return;
+        }
+        if ((this.cfg && this.cfg.proxy_port) === port) {
+            Toast.show('Этот порт уже используется');
+            return;
+        }
+        Modal.promptPassword('Введите пароль (раздел «Защита»)', async (password) => {
+            if (!password) return;
+            btn.disabled = true;
+            try {
+                const data = await apiPost('/rdp_config.cgi', 'proxy_port=' + encodeURIComponent(String(port)) + '&password=' + encodeURIComponent(password));
+                if (data.status === 'ok') {
+                    Toast.show('Порт прокси изменён на ' + port);
+                    this.cfg.proxy_port = port;
+                    await new Promise(r => setTimeout(r, 1500));
+                    this.loadConfig();
+                } else {
+                    Toast.show(data.message || 'Ошибка сохранения порта', true);
+                }
+            } catch (err) {
+                Toast.show('Ошибка: ' + err.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        });
     },
 
     buildFrameUrl() {
