@@ -1,4 +1,5 @@
 // Entware Manager - модуль Сеть
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Версия: 1.5
 // Дата: 2026-04-04
 

@@ -1,5 +1,6 @@
 #!/bin/sh
 # shellcheck disable=SC3037,SC2034,SC2086,SC2155,SC3043
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # ==============================================
 # Entware Manager: RDP-прокси (grdp-proxy)
 #

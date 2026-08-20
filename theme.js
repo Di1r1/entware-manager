@@ -1,4 +1,5 @@
 // Entware Manager — единый механизм тем (пресеты + день/ночь)
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Ставит data-theme="violet|ocean|forest|teal|amber|ruby|rose" и класс night на <html>.
 
 (function() {

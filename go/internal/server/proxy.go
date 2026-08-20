@@ -1,4 +1,4 @@
-// Di1r1
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 //
 // Обратное проксирование встроенных сервисов (ttyd, grdp-proxy)
 // на едином origin панели (порт 8087).

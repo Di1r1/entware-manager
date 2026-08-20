@@ -1,4 +1,4 @@
-// Di1r1
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 //
 // Файл-сессия панели: единый токен на роутер в /opt/var/run/panel_session.
 //

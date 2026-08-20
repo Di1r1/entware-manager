@@ -1,6 +1,6 @@
 #!/bin/sh
 # shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2034
-# Di1r1
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # ==============================================
 # Полная установка Entware Manager на роутер
 # ==============================================

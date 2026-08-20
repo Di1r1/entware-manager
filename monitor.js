@@ -1,4 +1,5 @@
 // Entware Manager - модуль защиты (мониторинг процессов)
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Версия: 0.12 (убран group, используется utils.js)
 // Дата: 2026-04-01
 

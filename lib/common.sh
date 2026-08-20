@@ -1,6 +1,7 @@
 #!/bin/sh
 # shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2155,SC2034
 # ==============================================
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # Entware Manager - общие функции для демонов
 # Версия: 3.0 (удалены мёртвые функции shell-CGI эпохи)
 # Дата: 2026-08-16

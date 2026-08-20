@@ -1,4 +1,5 @@
 // Entware Manager - RDP-модуль (веб-RDP-клиент grdpwasm)
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Версия: 1.0 (интеграция UI, единый конфиг rdp_config.json)
 // Дата: 2026-08-10
 //

@@ -1,4 +1,4 @@
-// Di1r1
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Общий пакет авторизации Entware Manager.
 //
 // Единая, fail-closed проверка пароля из /opt/web_entware/auth_config.json

@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <!-- Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager -->
   <!-- === Основные иконки (были ранее) === -->
   <symbol id="icon-stats" viewBox="0 0 16 16">
     <rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor"/>

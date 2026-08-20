@@ -1,5 +1,6 @@
 #!/bin/sh
 # ==============================================
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # Entware Manager - скрипт резервного копирования
 # Версия: 2.7 (multi-arch compatibility)
 # Дата: 2026-05-04

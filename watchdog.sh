@@ -1,5 +1,6 @@
 #!/bin/sh
 # shellcheck disable=SC2034
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # ==============================================
 # Entware Manager - демон защиты от зависших процессов
 # Версия: 3.0 (единый интерфейс start/stop/restart/status/daemon)

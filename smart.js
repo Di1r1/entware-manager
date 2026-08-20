@@ -1,4 +1,5 @@
 // Entware Manager - SMART мониторинг дисков
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Версия: 1.1 (кликабельные зоны, цветные типы, подсветка здоровья)
 // Дата: 2026-07-17
 
