@@ -23,6 +23,8 @@ var staticWhitelist = map[string]bool{
 	"/modal.js":                   true,
 	"/theme.js":                   true,
 	"/icons.svg":                  true,
+	"/favicon.png":                true,
+	"/favicon.ico":                true,
 	"/version.json":               true,
 	"/lib/utils.js":               true,
 	"/menu/menu.js":               true,
