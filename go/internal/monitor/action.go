@@ -143,17 +143,16 @@ func handleClearLog() {
 
 // logMonitor и logAction пишут действия панели (Запрос на START/STOP, убийство
 // процесса, очистка лога и т.п.) в единый дневной суточный лог с тегом
-// [monitor] — тот же, что у фактов демона. Так все события защиты (и факты,
-// и действия кнопок) попадают в один лог и доходят до Telegram.
+// [monitor] — тот же, что у фактов демона. Единый формат: всегда с PID процесса.
 func logMonitor(level, message string) {
-	writeMonitorLog(level, message, nil)
+	writeMonitorLog(level, message)
 }
 
 func logAction(level, message string) {
-	writeMonitorLog(level, message, os.Getpid())
+	writeMonitorLog(level, message)
 }
 
-func writeMonitorLog(level, message string, pid interface{}) {
+func writeMonitorLog(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	ip := os.Getenv("REMOTE_ADDR")
 	if ip == "" {
@@ -167,9 +166,5 @@ func writeMonitorLog(level, message string, pid interface{}) {
 		return
 	}
 	defer f.Close()
-	if pid == nil {
-		fmt.Fprintf(f, "[%s] [%s] [%s] [monitor] %s\n", timestamp, level, ip, message)
-	} else {
-		fmt.Fprintf(f, "[%s] [%s] [%s] [%v] [monitor] %s\n", timestamp, level, ip, pid, message)
-	}
+	fmt.Fprintf(f, "[%s] [%s] [%s] [%d] [monitor] %s\n", timestamp, level, ip, os.Getpid(), message)
 }
