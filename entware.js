@@ -1,4 +1,5 @@
 // Entware Manager — разработчик Di1r1
+// Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 // Версия: 0.82 (исправления XSS, безопасность)
 // Дата: 2026-04-06
 
