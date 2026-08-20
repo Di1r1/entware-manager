@@ -310,7 +310,7 @@ function initTheme() {
     updateThemeIcon();
     buildThemePopup();
 
-    // Показ выбора цвета при удержании мыши на иконке >2 сек
+    // Показ выбора цвета при удержании мыши на иконке >1 сек
     // (переключение день/ночь кликом — мгновенное, без задержки).
     let themeHoverTimer = null;
     let themeHideTimer = null;
@@ -338,10 +338,10 @@ function initTheme() {
         themeToggle.addEventListener('mouseenter', () => {
             clearThemeHideTimer();
             clearThemeHoverTimer();
-            themeHoverTimer = setTimeout(showThemePopup, 2000);
+            themeHoverTimer = setTimeout(showThemePopup, 1000);
         });
         themeToggle.addEventListener('mouseleave', () => {
-            // Если попап ещё не показан (убрали до 2 сек) — просто отменить таймер.
+            // Если попап ещё не показан (убрали до 1 сек) — просто отменить таймер.
             if (!popup || !popup.classList.contains('show')) {
                 clearThemeHoverTimer();
                 return;

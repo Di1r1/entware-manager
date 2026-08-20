@@ -2151,9 +2151,13 @@ html.night .theme-toggle-edge:hover {
     border: 2px solid rgba(255, 255, 255, 0.5);
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
 }
+@keyframes swatchPulse {
+    0%, 100% { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 8px rgba(var(--accent-rgb), 0.5); }
+    50%      { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 20px rgba(var(--accent-rgb), 0.95); }
+}
 .theme-swatch.active .swatch-dot {
-    border-color: var(--text-primary);
-    box-shadow: 0 0 0 2px var(--accent-soft), 0 0 8px rgba(var(--accent-rgb), 0.5);
+    border-color: var(--accent);
+    animation: swatchPulse 1.6s ease-in-out infinite;
 }
 
  th.sort-asc::after {
