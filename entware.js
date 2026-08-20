@@ -305,13 +305,15 @@ function buildThemePopup() {
 function initTheme() {
     const themeToggle = document.getElementById('themeToggle');
     const popup = document.getElementById('themePopup');
-    let themeHoverTimer = null;
     if (window.Theme) window.Theme.init();
     updateThemeIcon();
     buildThemePopup();
 
     // Показ выбора цвета при удержании мыши на иконке >2 сек
     // (переключение день/ночь кликом — мгновенное, без задержки).
+    let themeHoverTimer = null;
+    let themeHideTimer = null;
+
     function showThemePopup() {
         buildThemePopup();
         if (popup) popup.classList.add('show');
@@ -319,18 +321,36 @@ function initTheme() {
     function clearThemeHoverTimer() {
         if (themeHoverTimer) { clearTimeout(themeHoverTimer); themeHoverTimer = null; }
     }
+    function clearThemeHideTimer() {
+        if (themeHideTimer) { clearTimeout(themeHideTimer); themeHideTimer = null; }
+    }
+    // Скрытие с задержкой: даёт мыши перейти с иконки на попап, не пряча его.
+    function scheduleThemeHide() {
+        clearThemeHoverTimer();
+        clearThemeHideTimer();
+        themeHideTimer = setTimeout(() => {
+            if (popup) popup.classList.remove('show');
+        }, 300);
+    }
 
     if (themeToggle) {
         themeToggle.addEventListener('mouseenter', () => {
+            clearThemeHideTimer();
             clearThemeHoverTimer();
             themeHoverTimer = setTimeout(showThemePopup, 2000);
         });
         themeToggle.addEventListener('mouseleave', () => {
-            clearThemeHoverTimer();
-            if (popup) popup.classList.remove('show');
+            // Если попап ещё не показан (убрали до 2 сек) — просто отменить таймер.
+            if (!popup || !popup.classList.contains('show')) {
+                clearThemeHoverTimer();
+                return;
+            }
+            // Попап показан — скрываем с задержкой, чтобы успеть перейти на него.
+            scheduleThemeHide();
         });
         themeToggle.addEventListener('click', () => {
             clearThemeHoverTimer();
+            clearThemeHideTimer();
             if (window.Theme) {
                 window.Theme.set(window.Theme.current(), !window.Theme.isNight());
             }
@@ -339,9 +359,15 @@ function initTheme() {
         });
     }
     if (popup) {
-        // При переходе мыши с иконки на попап — не скрывать и не отменять показ.
-        popup.addEventListener('mouseenter', () => clearThemeHoverTimer());
-        popup.addEventListener('mouseleave', () => popup.classList.remove('show'));
+        // При переходе мыши с иконки на попап — не скрывать.
+        popup.addEventListener('mouseenter', () => {
+            clearThemeHoverTimer();
+            clearThemeHideTimer();
+        });
+        popup.addEventListener('mouseleave', () => {
+            clearThemeHideTimer();
+            popup.classList.remove('show');
+        });
         popup.addEventListener('click', (e) => {
             if (e.target.closest('.theme-swatch')) popup.classList.remove('show');
         });
