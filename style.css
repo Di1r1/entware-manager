@@ -1859,8 +1859,10 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
 	 .sidebar-header .sidebar-description {
         display: none;
     }
-	
-	
+	 /* Мобильный режим: отступ сверху, чтобы заголовок страницы не наезжал на время */
+	 .sidebar-header .datetime {
+        margin-top: 5px !important;
+    }
     .menu-container {
         padding: 0;
         margin-top: 10px;
