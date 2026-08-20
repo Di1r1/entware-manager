@@ -1844,7 +1844,7 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
         width: 100%;
         border-right: none;
         border-bottom: 1px solid var(--sidebar-border);
-        max-height: 70px;
+        max-height: 100px;
         overflow: hidden;
         transition: max-height 0.3s;
     }
@@ -1858,10 +1858,6 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
     }
 	 .sidebar-header .sidebar-description {
         display: none;
-    }
-	 /* Мобильный режим: отступ сверху, чтобы заголовок страницы не наезжал на время */
-	 .sidebar-header .datetime {
-        margin-top: 5px !important;
     }
     .menu-container {
         padding: 0;
