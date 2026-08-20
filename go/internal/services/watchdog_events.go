@@ -38,27 +38,29 @@ func HandleWatchdogEvents() {
 }
 
 func parseWatchdogLog(limit int) []WatchdogEvent {
-	// Читаем дневной лог (факты демона service_watchdog: [service]) +
-	// профильный лог действий панели (service_actions.log: [service_action]).
-	// Объединяем и сортируем по времени — полная картина по службам.
-	var matched []string
-	matched = append(matched, readServiceLines(dailyLogFile(), "[service]", limit)...)
-	matched = append(matched, readServiceLines(serviceActionsLog, "[service_action]", limit)...)
-
-	// Сортировка по timestamp (первые 20 символов "[YYYY-MM-DD HH:MM:SS]"),
-	// новые сверху. Сортировка вставками (без внешних зависимостей).
-	for i := 1; i < len(matched); i++ {
-		key := matched[i]
-		keyTs := tsPrefix(key)
-		j := i - 1
-		for j >= 0 && tsPrefix(matched[j]) < keyTs {
-			matched[j+1] = matched[j]
-			j--
-		}
-		matched[j+1] = key
+	// Единый дневной суточный лог: и факты демона service_watchdog ([service]),
+	// и действия кнопок панели ([service]) пишутся сюда — полная картина.
+	logPath := filepath.Join("/tmp/entware/logs", time.Now().Format("2006-01-02")+".log")
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
 	}
-	if len(matched) > limit {
-		matched = matched[:limit]
+
+	lines := strings.Split(string(data), "\n")
+	tagPattern := "[service]"
+
+	var matched []string
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if strings.Contains(strings.ToLower(line), tagPattern) {
+			matched = append(matched, line)
+			if len(matched) >= limit {
+				break
+			}
+		}
 	}
 
 	events := make([]WatchdogEvent, 0, len(matched))
@@ -66,44 +68,6 @@ func parseWatchdogLog(limit int) []WatchdogEvent {
 		events = append(events, parseWatchdogLine(line))
 	}
 	return events
-}
-
-// dailyLogFile возвращает путь к дневному суточному логу.
-func dailyLogFile() string {
-	return filepath.Join("/tmp/entware/logs", time.Now().Format("2006-01-02")+".log")
-}
-
-// tsPrefix извлекает префикс "[YYYY-MM-DD HH:MM:SS]" для сортировки.
-func tsPrefix(line string) string {
-	if len(line) < 20 {
-		return line
-	}
-	return line[:20]
-}
-
-// readServiceLines читает файл и возвращает последние строки (до limit),
-// содержащие tagPattern, в порядке файла (снизу вверх по файлу не важно —
-// сортировка по времени будет ниже).
-func readServiceLines(file, tagPattern string, limit int) []string {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil
-	}
-	lines := strings.Split(string(data), "\n")
-	var matched []string
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-		if strings.Contains(strings.ToLower(line), strings.ToLower(tagPattern)) {
-			matched = append(matched, line)
-			if len(matched) >= limit {
-				break
-			}
-		}
-	}
-	return matched
 }
 
 func parseWatchdogLine(line string) WatchdogEvent {
@@ -114,15 +78,10 @@ func parseWatchdogLine(line string) WatchdogEvent {
 		}
 	}
 
-	// Тег может быть [service] (факт демона) или [service_action] (действие панели).
-	var tagBracket string
+	// Тег [service] — факты демона и действия панели (единый дневной лог).
+	tagBracket := "[service]"
 	lower := strings.ToLower(line)
-	if strings.Contains(lower, "[service_action]") {
-		tagBracket = "[service_action]"
-	} else if strings.Contains(lower, "[service]") {
-		tagBracket = "[service]"
-	}
-	if tagBracket == "" {
+	if !strings.Contains(lower, tagBracket) {
 		return WatchdogEvent{Timestamp: ts, Level: "INFO"}
 	}
 

@@ -57,7 +57,7 @@ load_config() {
                 19) T_DISK_VAL=$_v ;;
             esac
         done << EOF
-$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor|packages" end), (.autostart // false), (.proxy_url // ""),
+$(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor|service|network|packages" end), (.autostart // false), (.proxy_url // ""),
   (.thresholds.cpu_temp.enabled // false), (.thresholds.cpu_temp.value // 90),
   (.thresholds.wifi0_temp.enabled // false), (.thresholds.wifi0_temp.value // 100),
   (.thresholds.wifi1_temp.enabled // false), (.thresholds.wifi1_temp.value // 100),
@@ -70,7 +70,7 @@ EOF
         BOT_TOKEN=""
         CHAT_ID=""
         LEVEL="ERROR"
-        SOURCES="system|monitor|packages"
+        SOURCES="system|monitor|service|network|packages"
         AUTOSTART=false
         PROXY_URL=""
         T_CPU_TEMP_EN=false; T_CPU_TEMP_VAL=90
@@ -81,7 +81,7 @@ EOF
         T_DISK_EN=false;     T_DISK_VAL=60
     fi
     [ -z "$LEVEL" ] && LEVEL="ERROR"
-    [ -z "$SOURCES" ] && SOURCES="system|monitor|packages"
+    [ -z "$SOURCES" ] && SOURCES="system|monitor|service|network|packages"
     [ -z "$T_CPU_TEMP_VAL" ] && T_CPU_TEMP_VAL=90
     [ -z "$T_WIFI0_VAL" ] && T_WIFI0_VAL=100
     [ -z "$T_WIFI1_VAL" ] && T_WIFI1_VAL=100
@@ -287,14 +287,69 @@ process_file() {
     echo "$lines" | while IFS= read -r l; do
         [ -z "$l" ] && continue
         if passes_filter "$l"; then
+            # Дедуп «кнопка + демон»: если это подтверждение демона, совпадающее
+            # с недавним действием кнопки (в течение DEDUP_SECONDS), — пропускаем.
+            if is_duplicate "$l"; then
+                continue
+            fi
             if send_tg "$l"; then
                 tg_log "INFO" "[telegram] sent: $l"
+                remember_action "$l"
             else
                 tg_log "WARN" "[telegram] failed to send: $l"
             fi
         fi
     done
     update_offset "$file" "$key"
+}
+
+# --- Секунды между действием кнопки и подтверждением демона (для дедупа). ---
+DEDUP_SECONDS=10
+DEDUP_FILE="$STATE_DIR/last_action"
+
+# --- Сущность строки для дедупа (monitor/service/ttyd). ---
+dedup_entity() {
+    local line="$1"
+    case "$line" in
+        *"ttyd"*|*"htop"*) echo "ttyd" ;;
+        *"Демон"*|*"[monitor]"*|*"Запрос на"*) echo "monitor" ;;
+        *"[service]"*|*"Служба"*) echo "service" ;;
+        *) echo "" ;;
+    esac
+}
+
+# --- Проверка: является ли строка подтверждением демона уже отправленного действия. ---
+# Действие кнопки («Запрос на START/STOP/RESTART», «вручную») всегда шлётся.
+# Подтверждение демона («Демон запущен (PID:...)», «ttyd запущен/остановлен»)
+# пропускается, если в течение DEDUP_SECONDS было действие кнопки ТОЙ ЖЕ сущности.
+is_duplicate() {
+    local line="$1" now last_ts last_kind ent
+    case "$line" in
+        *"Запрос на"*|*"вручную"*) return 1 ;;
+    esac
+    # Подтверждение демона — только такие строки дедуплицируем.
+    case "$line" in
+        *"(PID:"*|*"ttyd запущен"*|*"ttyd остановлен"*|*"Демон запущен"*|*"Демон остановлен"*) ;;
+        *) return 1 ;;
+    esac
+    ent=$(dedup_entity "$line")
+    [ -z "$ent" ] && return 1
+    now=$(date +%s)
+    last_ts=0
+    last_kind=""
+    [ -f "$DEDUP_FILE" ] && { read -r last_ts last_kind < "$DEDUP_FILE" 2>/dev/null; }
+    if [ "$last_kind" = "$ent" ] && [ -n "$last_ts" ] && [ $((now - last_ts)) -le "$DEDUP_SECONDS" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# --- Запоминаем время и сущность последнего действия кнопки. ---
+remember_action() {
+    local line="$1" now ent
+    case "$line" in
+        *"Запрос на"*|*"вручную"*) ent=$(dedup_entity "$line"); [ -z "$ent" ] && return; now=$(date +%s); mkdir -p "$STATE_DIR" 2>/dev/null; printf '%s %s\n' "$now" "$ent" > "$DEDUP_FILE.tmp" && mv -f "$DEDUP_FILE.tmp" "$DEDUP_FILE" ;;
+    esac
 }
 
 # --- Обработка всех источников. ---

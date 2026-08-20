@@ -1187,6 +1187,12 @@ window.controlTtyd = async function(action, port, pass, mode) {
     try {
         const data = await apiPost('/ttyd_control.cgi', formData.toString());
         Toast.show(data.message);
+        // Очищаем поле пароля после запуска/остановки, чтобы не оставался в DOM.
+        if (action === 'start' || action === 'stop' || action === 'restart') {
+            const passId = port === 8089 ? 'htopPass' : 'termPass';
+            const passEl = document.getElementById(passId);
+            if (passEl) passEl.value = '';
+        }
         fetchTtydStatus();
     } catch (err) {
         Toast.show('Ошибка: ' + err.message, true);

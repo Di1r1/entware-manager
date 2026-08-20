@@ -77,7 +77,7 @@ func TestParseWatchdogLine_WarnLevel(t *testing.T) {
 }
 
 func TestParseWatchdogLine_ServiceAction(t *testing.T) {
-	line := `[2026-04-02 10:02:00] [INFO] [1.2.3.4] [123] [service_action] Служба ttyd: запущена`
+	line := `[2026-04-02 10:02:00] [INFO] [1.2.3.4] [123] [service] Служба ttyd: запущена`
 	evt := parseWatchdogLine(line)
 
 	if evt.Timestamp != "2026-04-02 10:02:00" {

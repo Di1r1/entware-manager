@@ -141,28 +141,19 @@ func handleClearLog() {
 	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Лог очищен"})
 }
 
-// monitorActionsLog — профильный лог действий панели (Запрос на START/STOP,
-// убийство процесса, очистка лога и т.п.). Дневной суточный лог остаётся
-// только для фактических событий демонов (log_message).
-const monitorActionsLog = "/tmp/entware/logs/monitor_actions.log"
-
+// logMonitor и logAction пишут действия панели (Запрос на START/STOP, убийство
+// процесса, очистка лога и т.п.) в единый дневной суточный лог с тегом
+// [monitor] — тот же, что у фактов демона. Так все события защиты (и факты,
+// и действия кнопок) попадают в один лог и доходят до Telegram.
 func logMonitor(level, message string) {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	ip := os.Getenv("REMOTE_ADDR")
-	if ip == "" {
-		ip = "localhost"
-	}
-	logDir := "/tmp/entware/logs"
-	os.MkdirAll(logDir, 0755)
-	f, err := os.OpenFile(monitorActionsLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "[%s] [%s] [%s] [ACTION] %s\n", timestamp, level, ip, message)
+	writeMonitorLog(level, message, nil)
 }
 
 func logAction(level, message string) {
+	writeMonitorLog(level, message, os.Getpid())
+}
+
+func writeMonitorLog(level, message string, pid interface{}) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	ip := os.Getenv("REMOTE_ADDR")
 	if ip == "" {
@@ -170,10 +161,15 @@ func logAction(level, message string) {
 	}
 	logDir := "/tmp/entware/logs"
 	os.MkdirAll(logDir, 0755)
-	f, err := os.OpenFile(monitorActionsLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
 	defer f.Close()
-	fmt.Fprintf(f, "[%s] [%s] [%s] [%d] [monitor_action] %s\n", timestamp, level, ip, os.Getpid(), message)
+	if pid == nil {
+		fmt.Fprintf(f, "[%s] [%s] [%s] [monitor] %s\n", timestamp, level, ip, message)
+	} else {
+		fmt.Fprintf(f, "[%s] [%s] [%s] [%v] [monitor] %s\n", timestamp, level, ip, pid, message)
+	}
 }
