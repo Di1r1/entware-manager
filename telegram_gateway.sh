@@ -152,7 +152,7 @@ format_message() {
     body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] \[[^]]*\]( \[[0-9]+\])? //')
     [ -z "$body" ] && body=$(printf '%s' "$line" | sed -E 's/^\[[^]]*\] \[(ERROR|WARN|INFO|FATAL)\] //')
     # Чистим повторные [тег источника] в начале тела.
-    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|smart|packages|service_action|monitor_action|ACTION|login\.cgi|links_save\.cgi|delete_file\.cgi|view_file\.cgi|crontab_update\.cgi)\] //')
+    body=$(printf '%s' "$body" | sed -E 's/^\[(network|service|monitor|packages|update|backup|rdp|login\.cgi|links_save\.cgi|delete_file\.cgi|view_file\.cgi|crontab_update\.cgi)\] //')
     printf '%s %s <b>%s</b>\n%s' "$(level_emoji "$lvl")" "$(source_emoji "$src")" "$(html_escape_tg "$src")" "$(html_escape_tg "$body")"
 }
 
@@ -198,14 +198,11 @@ send_raw() {
 detect_source() {
     local line="$1"
     case "$line" in
-        *"[service_action]"*) echo "service" ;;
         *"[service]"*) echo "service" ;;
-        *"[monitor_action]"*|*"[ACTION]"*) echo "monitor" ;;
-        *"[monitor]"*|*"[watchdog]"*) echo "monitor" ;;
-        *"[smart]"*) echo "monitor" ;;
+        *"[monitor]"*) echo "monitor" ;;
         *"[network]"*) echo "network" ;;
         *"[packages]"*) echo "packages" ;;
-        *"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
+        *"[update]"*|*"[backup]"*|*"[rdp]"*|*"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac
 }
@@ -329,7 +326,8 @@ is_duplicate() {
     esac
     # Подтверждение демона — только такие строки дедуплицируем.
     case "$line" in
-        *"(PID:"*|*"ttyd запущен"*|*"ttyd остановлен"*|*"Демон запущен"*|*"Демон остановлен"*) ;;
+        *"(PID:"*|*"ttyd запущен"*|*"ttyd остановлен"*|*"Демон запущен"*|*"Демон остановлен"*|\
+        *"restarted (old_pid"*|*"started (pid="*|*"stopped (old_pid"*|*"auto_restart"*) ;;
         *) return 1 ;;
     esac
     ent=$(dedup_entity "$line")
@@ -347,8 +345,9 @@ is_duplicate() {
 # --- Запоминаем время и сущность последнего действия кнопки. ---
 remember_action() {
     local line="$1" now ent
+    # Действия кнопок: «Запрос на START/STOP», «вручную», «Служба X: start/stop/restart».
     case "$line" in
-        *"Запрос на"*|*"вручную"*) ent=$(dedup_entity "$line"); [ -z "$ent" ] && return; now=$(date +%s); mkdir -p "$STATE_DIR" 2>/dev/null; printf '%s %s\n' "$now" "$ent" > "$DEDUP_FILE.tmp" && mv -f "$DEDUP_FILE.tmp" "$DEDUP_FILE" ;;
+        *"Запрос на"*|*"вручную"*|*"Служба "*": start"*|*"Служба "*": stop"*|*"Служба "*": restart"*) ent=$(dedup_entity "$line"); [ -z "$ent" ] && return; now=$(date +%s); mkdir -p "$STATE_DIR" 2>/dev/null; printf '%s %s\n' "$now" "$ent" > "$DEDUP_FILE.tmp" && mv -f "$DEDUP_FILE.tmp" "$DEDUP_FILE" ;;
     esac
 }
 

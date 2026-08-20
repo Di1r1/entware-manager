@@ -414,11 +414,35 @@ func runUpdate(version, arch string) {
 		}
 	}()
 
+	// logUpdateToDaily пишет событие обновления в дневной суточный лог.
+	logUpdateToDaily := func(line string) {
+		ts := time.Now().Format("2006-01-02 15:04:05")
+		ip := os.Getenv("REMOTE_ADDR")
+		if ip == "" {
+			ip = "localhost"
+		}
+		logDir := "/tmp/entware/logs"
+		os.MkdirAll(logDir, 0755)
+		logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
+		df, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return
+		}
+		defer df.Close()
+		fmt.Fprintf(df, "[%s] [INFO] [%s] [%d] [update] %s\n", ts, ip, os.Getpid(), line)
+	}
+
 	log := func(line string) {
 		f, _ := os.OpenFile(updateLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if f != nil {
 			fmt.Fprintf(f, "[%s] %s\n", time.Now().Format("15:04:05"), line)
 			f.Close()
+		}
+		// Дублируем ключевые этапы обновления в дневной лог с тегом [update],
+		// чтобы события обновления (начало/этапы/DONE/ERROR) уходили в Telegram.
+		if strings.Contains(line, "[RUNNING]") || strings.Contains(line, "[STEP") ||
+			strings.Contains(line, "[DONE]") || strings.Contains(line, "[ERROR]") {
+			logUpdateToDaily(line)
 		}
 	}
 

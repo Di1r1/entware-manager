@@ -194,12 +194,14 @@ func HandleRestore() {
 
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	if len(restored) > 0 {
+		logRestoreAction("INFO", "Восстановление конфигов: "+strings.Join(restored, ", "))
 		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"status":   "ok",
 			"message":  fmt.Sprintf("Restored: %s", strings.Join(restored, ", ")),
 			"restored": restored,
 		})
 	} else {
+		logRestoreAction("WARN", "Восстановление: не найдены конфиги в архиве")
 		fmt.Println(`{"status":"error","message":"No config files found in backup"}`)
 	}
 }
@@ -241,4 +243,23 @@ func backupInfo() map[string]string {
 		info["date"] = v.Date
 	}
 	return info
+}
+
+// logRestoreAction пишет событие восстановления в дневной суточный лог
+// с тегом [backup] — его читает Telegram-шлюз (source=system).
+func logRestoreAction(level, msg string) {
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "localhost"
+	}
+	logDir := "/tmp/entware/logs"
+	os.MkdirAll(logDir, 0755)
+	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "[%s] [%s] [%s] [%d] [backup] %s\n", ts, level, ip, os.Getpid(), msg)
 }

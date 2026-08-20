@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -67,6 +68,7 @@ func HandleControl(action string) {
 	}
 
 	if action == "start" {
+		logRDPAction("INFO", "RDP-прокси запущен (порт "+fmt.Sprintf("%d", cfg.ProxyPort)+")")
 		cgiutil.WriteJSON(map[string]string{
 			"status":  "ok",
 			"message": "Прокси запущен на порту " + fmt.Sprintf("%d", cfg.ProxyPort),
@@ -75,7 +77,27 @@ func HandleControl(action string) {
 		})
 		return
 	}
+	logRDPAction("INFO", "RDP-прокси остановлен")
 	cgiutil.WriteJSON(map[string]string{"status": "ok", "message": "Прокси остановлен"})
+}
+
+// logRDPAction пишет событие RDP в дневной суточный лог с тегом [rdp] —
+// его читает Telegram-шлюз (source=system).
+func logRDPAction(level, msg string) {
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "localhost"
+	}
+	logDir := "/tmp/entware/logs"
+	os.MkdirAll(logDir, 0755)
+	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "[%s] [%s] [%s] [%d] [rdp] %s\n", ts, level, ip, os.Getpid(), msg)
 }
 
 func runInit(cmd string) (string, error) {

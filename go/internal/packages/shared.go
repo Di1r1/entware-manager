@@ -79,7 +79,7 @@ func logPkgToDaily(ts, action, pkg, status string) {
 	if ip == "" {
 		ip = "localhost"
 	}
-	fmt.Fprintf(df, "[%s] [%s] [%s] [packages] Пакет %s: %s (%s)\n", ts, statusLevel, ip, pkg, actRu, statusRu)
+	fmt.Fprintf(df, "[%s] [%s] [%s] [%d] [packages] Пакет %s: %s (%s)\n", ts, statusLevel, ip, os.Getpid(), pkg, actRu, statusRu)
 }
 
 func runOpkg(args ...string) (string, int) {
