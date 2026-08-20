@@ -305,16 +305,32 @@ function buildThemePopup() {
 function initTheme() {
     const themeToggle = document.getElementById('themeToggle');
     const popup = document.getElementById('themePopup');
+    let themeHoverTimer = null;
     if (window.Theme) window.Theme.init();
     updateThemeIcon();
     buildThemePopup();
 
+    // Показ выбора цвета при удержании мыши на иконке >2 сек
+    // (переключение день/ночь кликом — мгновенное, без задержки).
+    function showThemePopup() {
+        buildThemePopup();
+        if (popup) popup.classList.add('show');
+    }
+    function clearThemeHoverTimer() {
+        if (themeHoverTimer) { clearTimeout(themeHoverTimer); themeHoverTimer = null; }
+    }
+
     if (themeToggle) {
         themeToggle.addEventListener('mouseenter', () => {
-            buildThemePopup();
-            if (popup) popup.classList.add('show');
+            clearThemeHoverTimer();
+            themeHoverTimer = setTimeout(showThemePopup, 2000);
+        });
+        themeToggle.addEventListener('mouseleave', () => {
+            clearThemeHoverTimer();
+            if (popup) popup.classList.remove('show');
         });
         themeToggle.addEventListener('click', () => {
+            clearThemeHoverTimer();
             if (window.Theme) {
                 window.Theme.set(window.Theme.current(), !window.Theme.isNight());
             }
@@ -323,6 +339,8 @@ function initTheme() {
         });
     }
     if (popup) {
+        // При переходе мыши с иконки на попап — не скрывать и не отменять показ.
+        popup.addEventListener('mouseenter', () => clearThemeHoverTimer());
         popup.addEventListener('mouseleave', () => popup.classList.remove('show'));
         popup.addEventListener('click', (e) => {
             if (e.target.closest('.theme-swatch')) popup.classList.remove('show');
