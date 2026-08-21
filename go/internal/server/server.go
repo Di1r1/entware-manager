@@ -79,6 +79,10 @@ func NewHandler() http.Handler {
 	// Прокси встроенных сервисов на едином origin 8087 (см. proxy.go).
 	// Гейт сессии: если пароль панели настроен, прокси доступны только
 	// после входа (иначе любой LAN-клиент дёргал бы RDP/терминал без пароля).
+	// Исключение — RDP-пинг /rdp/ping и /ping: безвредный RTT-пробник,
+	// открыт без сессии (паритет с lighttpd-режимом; цель валидирует grdp-proxy).
+	mux.Handle("/rdp/ping", rdpPingHandler())
+	mux.Handle("/ping", rdpPingHandler())
 	mux.Handle("/ws", authGate(newWebSocketProxy()))
 	for _, b := range proxyBackends {
 		mux.Handle(b.prefix, authGate(handleRemoteProxy(b)))

@@ -115,3 +115,20 @@ func newWebSocketProxy() http.Handler {
 		httputil.NewSingleHostReverseProxy(u).ServeHTTP(w, r)
 	})
 }
+
+// rdpPingHandler проксирует /rdp/ping и /ping на grdp-proxy БЕЗ auth-гейта.
+// Паритет с lighttpd-режимом: клиент grdpwasm шлёт ping без cookie сессии
+// (fetch c credentials=same-origin не срабатывает в iframe при KeenDNS/redirect),
+// иначе "RDP: N мс" молча скрывается (клиент глотает 401). Сам пробник
+// безвреден — это TCP-RTT до цели, которую grdp-proxy валидирует по
+// allow_subnets. Сам клиент /rdp/ остаётся за authGate.
+func rdpPingHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t, err := url.Parse("http://127.0.0.1:" + strconv.Itoa(rdpProxyPort()))
+		if err != nil {
+			http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
+			return
+		}
+		httputil.NewSingleHostReverseProxy(t).ServeHTTP(w, r)
+	})
+}

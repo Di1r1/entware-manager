@@ -2,6 +2,15 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.11.1 (2026-08-21)
+
+### RDP-пинг в go-режиме
+
+- **Проблема**: в go-режиме `/rdp/ping` и `/ping` оказались под `authGate`. Клиент grdpwasm шлёт ping без cookie сессии (fetch в iframe, `credentials` по умолчанию не срабатывает при KeenDNS/редиректе), получал 401 и **молча скрывал «RDP: N мс»** (`.catch(function(){})`). В lighttpd-режиме эндпоинт был открыт.
+- **Фикс**: `/rdp/ping` и `/ping` снова открыты без сессии (паритет с lighttpd-режимом); сам клиент `/rdp/` остаётся под `authGate`. Цель пинга валидирует grdp-proxy по `allow_subnets` — это безвредный TCP-RTT-пробник.
+- **Go**: `go/internal/server/proxy.go` — новый `rdpPingHandler()`; `server.go` — регистрация `/rdp/ping` + `/ping` без гейта. Новый тест `TestProxyRDPPingOpen` (ping открыт → 502 в тесте, `/rdp/` → 401).
+- **Проверено на роутере**: `/rdp/ping?target=<хост>:3389` без сессии → `200 {"ms":N}`; `/rdp/` → 401 (гейт); `/ws` → 401; панель `session.cgi` → 200.
+
 ## 1.11.0 (2026-08-21)
 
 ### Миграция на go-режим по умолчанию (Variant 1)

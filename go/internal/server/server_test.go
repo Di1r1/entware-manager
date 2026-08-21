@@ -245,3 +245,45 @@ func testHash(password string) string {
 	h := sha256.Sum256([]byte(password))
 	return fmt.Sprintf("%x", h)
 }
+
+// RDP-пинг (/rdp/ping, /ping) открыт БЕЗ сессии (паритет с lighttpd-режимом:
+// клиент grdpwasm шлёт ping без cookie), а сам клиент /rdp/ — под гейтом.
+func TestProxyRDPPingOpen(t *testing.T) {
+	webRoot = t.TempDir() + "/web"
+	cgiGoDir = t.TempDir() + "/go"
+	os.MkdirAll(webRoot, 0755)
+	os.MkdirAll(cgiGoDir, 0755)
+
+	auth.ConfigPath = t.TempDir() + "/auth_config.json"
+	os.WriteFile(auth.ConfigPath, []byte(`{"enabled":true,"password_hash":"`+testHash("secret")+`"}`), 0600)
+	auth.SessionFile = t.TempDir() + "/panel_session"
+	defer func() {
+		auth.ConfigPath = "/opt/web_entware/auth_config.json"
+		auth.SessionFile = "/opt/var/run/panel_session"
+	}()
+
+	h := NewHandler()
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	// Без сессии: ping открыт (маршрут до grdp-proxy; бэкенда в тесте нет → 502,
+	// НО НЕ 401 — гейт не применён). Клиент /rdp/ — под гейтом (401).
+	for _, p := range []string{"/rdp/ping?target=10.0.0.1:3389", "/ping?target=10.0.0.1:3389"} {
+		resp, err := http.Get(srv.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusNotFound {
+			t.Errorf("GET %s без сессии = %d, want 502 (прокси открыт, не гейт/404)", p, resp.StatusCode)
+		}
+	}
+	resp, err := http.Get(srv.URL + "/rdp/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("GET /rdp/ без сессии = %d, want 401 (клиент остаётся под гейтом)", resp.StatusCode)
+	}
+}
