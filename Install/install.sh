@@ -346,30 +346,33 @@ fi
 
 # ========== 4. ОПРЕДЕЛЕНИЕ РЕЖИМА ВЕБ-СЕРВЕРА ==========
 # Режимы:
-#   lighttpd — чистый роутер: общий lighttpd (как раньше).
-#   go       — есть сторонний lighttpd (nfqws/zapret) или общий конфиг
-#              битый: ставим собственный entware-server на 8087.
+#   go (по умолчанию) — собственный entware-server на 8087 (Variant 1).
+#   lighttpd — запасной путь через EWM_MODE=lighttpd (обратная совместимость).
+# Миграционные функции порт-хранителя общего lighttpd.
+MIGRATE_LIB=""
+[ -f "$SELF_DIR/lib/migrate.sh" ] && MIGRATE_LIB="$SELF_DIR/lib/migrate.sh"
+[ -z "$MIGRATE_LIB" ] && [ -f "/opt/web_entware/lib/migrate.sh" ] && MIGRATE_LIB="/opt/web_entware/lib/migrate.sh"
+if [ -n "$MIGRATE_LIB" ]; then
+	. "$MIGRATE_LIB"
+else
+	warn "lib/migrate.sh не найден — миграция порт-хранителя недоступна"
+fi
 step "Определение режима веб-сервера"
 
-WEB_PATH="lighttpd"
-if lighttpd_http_ok 8087; then
-	# 8087 уже отвечает — определяем, кто именно
+if [ "${EWM_MODE:-go}" = "lighttpd" ]; then
+	WEB_PATH="lighttpd"
+	ok "EWM_MODE=lighttpd — принудительно lighttpd (запасной путь)"
+elif lighttpd_http_ok 8087; then
 	if entware_server_running; then
 		WEB_PATH="go"
 		ok "entware-server уже отвечает на 127.0.0.1:8087"
 	else
-		WEB_PATH="lighttpd"
-		ok "менеджер уже отвечает на 127.0.0.1:8087 (lighttpd)"
+		WEB_PATH="go"
+		ok "обнаружен прежний lighttpd-режим — переходим на entware-server (Variant 1)"
 	fi
-elif any_lighttpd_running; then
-	WEB_PATH="go"
-	ok "обнаружен сторонний lighttpd — использую собственный entware-server"
-elif [ -f "$LIGHTTPD_CONF" ] && lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
-	WEB_PATH="lighttpd"
-	ok "общий lighttpd валиден — использую его"
 else
 	WEB_PATH="go"
-	warn "общий lighttpd недоступен — использую собственный entware-server"
+	ok "использую собственный entware-server (порт 8087)"
 fi
 echo "  ${YELLOW}→ режим: $WEB_PATH${NC}"
 
@@ -580,16 +583,62 @@ fi
 else
 	# ---- Режим "go": свой entware-server, общий lighttpd не трогаем ----
 
-	# Миграция: убираем наши старые lighttpd-артефакты, чтобы чужой
-	# lighttpd (nfqws/zapret) снова был валиден.
-	if [ -f /opt/etc/lighttpd/conf.d/90-entware-manager.conf ]; then
-		rm -f /opt/etc/lighttpd/conf.d/90-entware-manager.conf 2>/dev/null
-		ok "удалён наш 90-entware-manager.conf (конфликт server.port устранён)"
-	else
-		ok "наших lighttpd-конфигов не найдено"
+	# --- Миграция lighttpd → go (Variant 1) ---
+	# Панель переезжает на entware-server:8087. Общий lighttpd получает
+	# стабильный порт-хранитель (8086), если необходимо: освобождаем 8087,
+	# не трогая чужие конфиги (koffe/web4static/nfqws2) и чужой server.port.
+
+	# S4: если 8087 занят ЧУЖИМ процессом (не нашим lighttpd и не entware-server)
+	# — ничего не трогаем (порт/lighttpd), только предупреждаем.
+	PORT_SKIP=0
+	if ! migrate_port_free 8087; then
+		if entware_server_running; then
+			ok "entware-server уже работает на 8087 — миграция порта не нужна"
+			PORT_SKIP=1
+		elif any_lighttpd_running; then
+			ok "8087 держит lighttpd — будет освобождён порт-хранителем"
+		else
+			warn "порт 8087 занят чужим процессом — не трогаю lighttpd/порт (задай .port в server_config.json или освободи порт)"
+			PORT_SKIP=1
+		fi
 	fi
+
+	if [ "$PORT_SKIP" = "0" ]; then
+		# Бэкап ДО перезаписи — для rollback.
+		[ -f "$EWM_PORT_KEEPER" ] && backup_file "$EWM_PORT_KEEPER" "90-entware-manager.conf"
+
+		PK=$(migrate_choose_portkeeper)
+		if [ -z "$PK" ]; then
+			# Эффективный порт свободен и чужих сервисов нет — можно удалить.
+			if [ -f "$EWM_PORT_KEEPER" ]; then
+				rm -f "$EWM_PORT_KEEPER" 2>/dev/null
+				ok "90-entware-manager.conf удалён (порт свободен, чужих conf.d нет)"
+			else
+				ok "наших lighttpd-конфигов не найдено"
+			fi
+		else
+			if migrate_is_portkeeper "$EWM_PORT_KEEPER"; then
+				ok "90-entware-manager.conf уже порт-хранитель (:$PK)"
+			else
+				migrate_write_portkeeper "$PK"
+				ok "90-entware-manager.conf → порт-хранитель :$PK (общий lighttpd переезжает)"
+			fi
+			# Освобождаем 8087: перезагрузка lighttpd (SIGHUP → restart fallback).
+			migrate_reload_lighttpd 8087 || warn "не удалось освободить 8087 — проверь lighttpd вручную"
+
+			# Сервисы общего lighttpd (koffe и др.) в links.json: :8087 → :$PK
+			# (панель EM сама остаётся на 8087 — в links.json её нет как абсолютной ссылки).
+			if [ "$PK" != "8087" ] && [ -f "$TARGET_DIR/links.json" ] && grep -q ':8087/' "$TARGET_DIR/links.json" 2>/dev/null; then
+				backup_file "$TARGET_DIR/links.json" "links.json"
+				sed -i "s#:8087/#:$PK/#g" "$TARGET_DIR/links.json" 2>/dev/null
+				ok "links.json: сервисы общего lighttpd :8087 → :$PK (миграция)"
+			fi
+		fi
+	fi
+
+	# 30-cgi.conf — общий файл lighttpd (может принадлежать web4static/nfqws2).
+	# Удаляем только наш устаревший артефакт (ровно наш шаблон); чужой не трогаем.
 	if [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ] && is_our_cgi_conf /opt/etc/lighttpd/conf.d/30-cgi.conf; then
-		# это наш устаревший артефакт (ровно наш шаблон) — можно удалить
 		rm -f /opt/etc/lighttpd/conf.d/30-cgi.conf 2>/dev/null
 		ok "удалён наш 30-cgi.conf (устаревший артефакт)"
 	elif [ -f /opt/etc/lighttpd/conf.d/30-cgi.conf ]; then
@@ -903,6 +952,22 @@ else
 	if [ -f "$EWM_SERVER_INIT" ]; then
 		echo "  → запуск entware-server..."
 		$EWM_SERVER_INIT start 2>&1 | sed 's/^/    /'
+		if [ "$PORT_SKIP" = "0" ] && ! lighttpd_http_ok 8087; then
+			# entware-server не поднялся на 8087 → откат: вернуть прежний 90-conf,
+			# перезагрузить lighttpd (панель остаётся жива через lighttpd-режим).
+			warn "entware-server не отвечает на 8087 — откат порта-хранителя"
+			if [ -f "$BACKUP_DIR/opt/etc/lighttpd/conf.d/90-entware-manager.conf" ]; then
+				cp -a "$BACKUP_DIR/opt/etc/lighttpd/conf.d/90-entware-manager.conf" "$EWM_PORT_KEEPER" 2>/dev/null
+				if [ -x /opt/etc/init.d/S80lighttpd ]; then
+					/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1
+				else
+					p=$(pgrep lighttpd 2>/dev/null | head -1)
+					[ -z "$p" ] && p=$(ps w 2>/dev/null | grep lighttpd | grep -v grep | awk 'NR==1{print $1}')
+					[ -n "$p" ] && kill -HUP "$p" 2>/dev/null
+				fi
+				ok "восстановлен прежний 90-entware-manager.conf"
+			fi
+		fi
 	fi
 fi
 

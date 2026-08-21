@@ -1,0 +1,7 @@
+#!/bin/sh
+# Фейковый netstat для юнит-тестов lib/migrate.sh.
+# Список «занятых» портов — по одному на строку в $FAKE_LISTEN.
+while IFS= read -r p; do
+	[ -z "$p" ] && continue
+	echo "tcp        0      0 0.0.0.0:$p 0.0.0.0:*               LISTEN"
+done < "${FAKE_LISTEN:-/dev/null}"

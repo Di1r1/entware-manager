@@ -86,6 +86,14 @@ check:
 test:
 	@echo "=== Go test ==="
 	@cd "$(MAKEFILE_DIR)/go" && go test ./... 2>&1
+	@echo "=== Shell syntax (sh -n) ==="
+	@for f in $(MAKEFILE_DIR)/*.sh $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh; do \
+		if head -1 "$$f" 2>/dev/null | grep -q '#!/bin/bash\|#!/usr/bin/env bash'; then \
+			echo "  [–] $$(basename "$$f") (bash, пропущен)"; continue; fi; \
+		sh -n "$$f" 2>&1 && echo "  [✓] $$(basename "$$f")" || echo "  [✗] $$f"; \
+	done
+	@echo "=== Shell unit tests ==="
+	@sh "$(MAKEFILE_DIR)/test/migrate_tests.sh" 2>&1
 
 lint:
 	@echo "=== Go vet ==="

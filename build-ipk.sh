@@ -102,8 +102,23 @@ if [ -x /opt/etc/init.d/S80entware-server ]; then
 fi
 rm -f /opt/etc/init.d/S80entware-server 2>/dev/null
 
-# Удаляем наши конфиги
-rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+# Порт-хранитель общего lighttpd НЕ удаляем (иначе lighttpd упадёт на порт 80
+# вместе с koffe/web4static). Полноценную lighttpd-панель заменяем порт-хранителем.
+if [ -f "/opt/web_entware/lib/migrate.sh" ]; then
+	. /opt/web_entware/lib/migrate.sh
+	if migrate_is_portkeeper "/opt/etc/lighttpd/conf.d/90-entware-manager.conf"; then
+		: # порт-хранитель — оставляем как есть
+	elif [ -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" ]; then
+		PK=$(migrate_choose_portkeeper)
+		if [ -n "$PK" ]; then
+			migrate_write_portkeeper "$PK"
+		else
+			rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+		fi
+	fi
+else
+	rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+fi
 
 # 30-cgi.conf — общий файл lighttpd (может принадлежать web4static/nfqws2).
 # Удаляем ТОЛЬКО если это наш устаревший артефакт (ровно наш шаблон).

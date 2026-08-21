@@ -2,6 +2,35 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.11.0 (2026-08-21)
+
+### Миграция на go-режим по умолчанию (Variant 1)
+
+Панель переезжает на собственный веб-сервер `entware-server` (порт **8087**) — это теперь режим по умолчанию. Устранены две уязвимости lighttpd-режима **по дизайну**, без правок в нём:
+- `telegram_config.json` больше не отдаётся по HTTP (whitelist в `entware-server` — 404 вместо 200 с токеном);
+- `/rdp/`, `/ws` (и `/terminal/`, `/htop/`) требуют сессию панели (`authGate`) — 401 без cookie.
+
+**Новый `lib/migrate.sh`** — функции миграции порт-хранителя общего lighttpd:
+- `migrate_effective_lighttpd_port()` — last-wins парсинг `server.port` (main+conf.d, `=`/`:=`, scoped-блоки `$HTTP`/`$SERVER` пропускаются, наш 90-conf исключается);
+- `migrate_port_free()` — netstat-first, ss fallback (на роутере ss нет);
+- `migrate_has_third_party_confd()` — детект чужих конфигов (koffe 98/99, web4static/nfqws2 30-cgi — через `is_our_cgi_conf`);
+- `migrate_choose_portkeeper()` — решает: удалить 90-conf / держать порт-хранитель (8086 по умолчанию, `EWM_LIGHTTPD_PORT` override); идемпотентно;
+- `migrate_write_portkeeper()` — пишет порт-хранитель, **переносит `server.modules`** из прежнего 90-conf + модули под чужие conf.d (mod_alias/mod_cgi/mod_proxy — иначе lighttpd игнорирует `alias.url` и koffe/web4static ломаются);
+- `migrate_reload_lighttpd()` — полный restart (SIGHUP НЕ перечитывает `server.modules`, проверено на роутере).
+
+**`Install/install.sh`:**
+- Детекция режима инвертирована: по умолчанию `go`; `EWM_MODE=lighttpd` — запасной путь.
+- go-ветка: S4 (8087 занят чужим процессом → no-op + WARN), бэкап 90-conf до перезаписи, порт-хранитель → reload lighttpd → старт entware-server → verify → rollback.
+- Миграция `links.json`: сервисы общего lighttpd `:8087/` → `:$PK/`.
+
+**`Install/uninstall.sh` + prerm (`build-ipk.sh`):** порт-хранитель НЕ удаляется (иначе общий lighttpd падает на занятый порт 80 вместе с koffe/web4static) — полноценная lighttpd-панель заменяется порт-хранителем.
+
+### Тесты
+
+- Новый `test/migrate_tests.sh` (29 кейсов): effective_port, choose_portkeeper (матрица), is_portkeeper, write_portkeeper (перенос модулей, идемпотентность), has_third_party_confd. Подключён в `make test`; `sh -n` добавлен в `make lint`.
+- Проверено на роутере (S2): миграция в go-режим, koffe → `:8086` (web+api 200), панель на `:8087` (session.cgi 200), `telegram_config.json` → 404, `/rdp/` → 401, конфиги сохранены (auth/telegram/rdp/links), идемпотентность повторного прогона.
+- Согласовано с автором koffe (v1.1.78-rc, порто-агностичный self-check).
+
 ## 1.10.3 (2026-08-21)
 
 ### Попап выбора цвета темы

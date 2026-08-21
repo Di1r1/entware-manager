@@ -169,22 +169,24 @@ chmod +x install.sh
 
 ## Архитектура
 
+**Режим по умолчанию (go):** панель обслуживает собственный веб-сервер `entware-server` на порту 8087. Общий lighttpd (если используется другими приложениями — koffe, web4static/nfqws2) получает стабильный **порт-хранитель 8086** и продолжает работать независимо.
+
 ```
-браузер  ──http──▶  lighttpd (порт 8087)
-                        │
-                    mod_cgi
-                        │
-                   go.cgi (диспетчер)
+браузер ──http──▶  entware-server (порт 8087)
                         │
               ┌─────────┼─────────┐
               │         │         │
          entware-*   *.html    *.js
-       (9 Go-бинарн.) статика   логика
+      (10 Go-бинарн.) статика   логика
               │
          система / Entware
 ```
 
-**Технологии:** Go (9 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `lighttpd` + `mod_cgi` (или собственный `entware-server`, если на роутере сторонний lighttpd), `jq`, `ttyd`.
+**Запасной режим (lighttpd):** `EWM_MODE=lighttpd` перед запуском install.sh — панель через общий lighttpd (порт 8087, `go.cgi`-диспетчер). Предназначен для обратной совместимости; при следующей установке без этой переменной панель снова перейдёт на entware-server.
+
+**Технологии:** Go (10 бинарников, UPX-сжатые), POSIX `sh` (BusyBox ash), `entware-server` (собственный Go-веб-сервер) или `lighttpd` + `mod_cgi` (запасной режим), `jq`, `ttyd`.
+
+**Перенос сервисов общего lighttpd:** при переходе на go-режим общий lighttpd переезжает на порт 8086 (если на нём живут чужие конфиги — koffe и т.п.). Пользователям таких приложений нужно один раз сменить порт в закладках (например `:8087/koffe/` → `:8086/koffe/`). Порт 8086 стабилен между версиями EM.
 
 ## Компоненты
 
@@ -198,7 +200,7 @@ chmod +x install.sh
 | `entware-smart` | SMART дисков | `smart` (info, attributes, health, selftest) |
 | `entware-logger` | Логи | `logger_*` (config, view, system_logs, rotate, clear)` |
 | `entware-rdp` | RDP-модуль | `rdp_status`, `rdp_config`, `rdp_start`, `rdp_stop` (управление grdp-proxy) |
-| `entware-server` | Веб-сервер | Статика `/entware-manager/` + прокси `/entware-cgi/` (режим с чужим lighttpd) |
+| `entware-server` | Веб-сервер | Статика `/entware-manager/` + `/entware-cgi/` + прокси `/rdp/`,`/ws` (режим по умолчанию) |
 
 ## Конфигурация
 
@@ -212,7 +214,7 @@ chmod +x install.sh
 
 | Проблема | Решение |
 |----------|---------|
-| Port 8087 занят | `netstat -tlnp \| grep 8087` → изменить `server.port` в `/opt/etc/lighttpd/lighttpd.conf` |
+| Port 8087 занят | `netstat -tlnp \| grep 8087` → освободить порт или изменить `.port` в `/opt/web_entware/server_config.json` |
 | `mod_cgi.so` не найден | `opkg install lighttpd-mod-cgi` |
 | CGI выдаёт 500 | Проверить `/opt/var/log/lighttpd/error.log` — часто: забыт `chmod +x`, неверный shebang, ошибка в sh |
 | Пароль не принимается | Проверить `/opt/web_entware/auth_config.json` — хэш должен быть SHA-256 |

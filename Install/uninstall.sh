@@ -3,7 +3,7 @@
 # Полное удаление Entware Manager с роутера
 # ==============================================
 
-# shellcheck disable=SC2034,SC3043
+# shellcheck disable=SC2034,SC3043,SC1090
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -16,6 +16,19 @@ LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
 CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
 LOG_DIR="/tmp/entware"
 SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
+
+# Миграционные функции порт-хранителя. Source ДО удаления $TARGET_DIR.
+MIGRATE_LIB=""
+[ -f "$TARGET_DIR/lib/migrate.sh" ] && MIGRATE_LIB="$TARGET_DIR/lib/migrate.sh"
+[ -z "$MIGRATE_LIB" ] && [ -f "/opt/web_entware/lib/migrate.sh" ] && MIGRATE_LIB="/opt/web_entware/lib/migrate.sh"
+[ -n "$MIGRATE_LIB" ] && . "$MIGRATE_LIB"
+# Fallback для установки ДО v1.11 (migrate.sh отсутствует): не удаляем порт-хранитель,
+# т.к. иначе общий lighttpd может упасть на занятый порт 80.
+if [ -z "$MIGRATE_LIB" ]; then
+	migrate_is_portkeeper() { return 1; }
+	migrate_choose_portkeeper() { echo ""; }
+	migrate_write_portkeeper() { return 0; }
+fi
 
 # Наш ли это 30-cgi.conf (ровно наш шаблон: cgi.assign .cgi=>/bin/sh + execute-x-only)?
 # Чужой файл (web4static/nfqws2: perl/ruby/py/php) не удаляем.
@@ -125,9 +138,21 @@ echo ""
 echo "${BOLD}[4/8] Удаление конфигов lighttpd${NC}"
 echo "────────────────────────────────────────"
 
-# Удаляем наш отдельный конфиг
-rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
-ok "90-entware-manager.conf удалён"
+# 90-entware-manager.conf: порт-хранитель НЕ удаляем — иначе общий lighttpd
+# упадёт на занятый порт 80 вместе с koffe/web4static. Полноценную lighttpd-
+# панель заменяем порт-хранителем (S9b), чтобы чужие conf.d-сервисы жили.
+if migrate_is_portkeeper "/opt/etc/lighttpd/conf.d/90-entware-manager.conf"; then
+	ok "порт-хранитель сохранён (общий lighttpd остаётся на стабильном порту)"
+elif [ -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" ]; then
+	PK=$(migrate_choose_portkeeper)
+	if [ -n "$PK" ]; then
+		migrate_write_portkeeper "$PK"
+		ok "90-entware-manager.conf заменён порт-хранителем (:$PK)"
+	else
+		rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+		ok "90-entware-manager.conf удалён (порт свободен)"
+	fi
+fi
 
 # Наш init-скрипт entware-server
 rm -f "/opt/etc/init.d/S80entware-server" 2>/dev/null
