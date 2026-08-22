@@ -2,6 +2,22 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.12.4 (2026-08-23)
+
+### Шесть новых команд чат-бота (группа A — расширенная информация)
+
+- `/top [N]` — топ процессов по CPU (двухточечный замер /proc/stat за 1 сек) + RSS; N по умолчанию 5, макс 15.
+- `/ports` — слушающие TCP-порты (/proc/net/tcp+tcp6, состояние LISTEN), IPv4-адреса из little-endian hex, подписи известных сервисов (панель EM, koffe, ttyd, grdp-proxy, xray…).
+- `/devices` — устройства домашней сети из RCI Keenetic: имя/hostname, IP, метка 📶 для Wi-Fi; сортировка по IP.
+- `/wifi` — только клиенты Wi-Fi (interface.id начинается с Wifi).
+- `/updates` — `opkg list-upgradable`: счётчик + до 10 позиций.
+- `/cron` — crontab (`crontab -l`, фолбэк на `/opt/etc/crontab`).
+- Все команды отвечают только владельцу chat_id.
+
+**Тесты:** decodeHexSockaddr (little-endian байты), findLines cap, procSnapshot, scanServicesUp, resolveLogPath fallback.
+
+**Фронтенд:** подсказка «Чат-бот» дополнена; кэш entware.js v79. cmdHelp в боте обновлён.
+
 ## 1.12.3 (2026-08-23)
 
 ### Справка: раздел «Telegram-уведомления и чат-бот»

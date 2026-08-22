@@ -304,6 +304,13 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/log":      cmdLogCmd,
 		"/find":     cmdFind,
 		"/digest":   func([]string) tgReply { return tgReply{text: buildDigest()} },
+		// Группа A — расширенная информация
+		"/top":     cmdTop,
+		"/ports":   func([]string) tgReply { return tgReply{text: cmdPorts()} },
+		"/devices": func([]string) tgReply { return tgReply{text: cmdDevices()} },
+		"/wifi":    func([]string) tgReply { return tgReply{text: cmdWifi()} },
+		"/updates": func([]string) tgReply { return tgReply{text: cmdUpdates()} },
+		"/cron":    func([]string) tgReply { return tgReply{text: cmdCron()} },
 		// Уровень 2 — управление (подтверждение inline-кнопкой для опасных).
 		"/service": cmdService,
 		"/pkg":     cmdPkg,
@@ -323,6 +330,12 @@ func cmdHelp() string {
 		"/log [N] — последние N строк лога (по умолчанию 15)\n" +
 		"/find <текст> — поиск по логу\n" +
 		"/digest — сводка за сутки сейчас\n" +
+		"/top [N] — процессы по нагрузке CPU\n" +
+		"/ports — слушающие порты\n" +
+		"/devices — устройства в сети\n" +
+		"/wifi — клиенты Wi-Fi\n" +
+		"/updates — доступные обновления пакетов\n" +
+		"/cron — содержимое crontab\n" +
 		"⚙️ Управление (с подтверждением):\n" +
 		"/service <имя> start|stop|restart — управление службой\n" +
 		"/pkg update — обновить списки пакетов\n" +
@@ -847,4 +860,298 @@ func buildInlineKB(buttons [][2]string) string {
 		return ""
 	}
 	return string(j)
+}
+
+// --- Группа A: расширенная информация ---
+
+// procSample — снимок процесса для замера CPU.
+type procSample struct {
+	name string
+	cpu  int64 // utime+stime в тиках
+	rss  int64 // КБ
+}
+
+// procSnapshot — CPU-тики и RSS всех процессов + суммарные тики системы.
+func procSnapshot() (map[string]procSample, int64) {
+	res := map[string]procSample{}
+	var total int64
+	if f := strings.Fields(readLine("/proc/stat")); len(f) > 4 {
+		for _, v := range f[1:] {
+			x, _ := strconv.ParseInt(v, 10, 64)
+			total += x
+		}
+	}
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return res, total
+	}
+	for _, e := range entries {
+		pid, perr := strconv.Atoi(e.Name())
+		if perr != nil || pid <= 0 {
+			continue
+		}
+		raw := readLine("/proc/" + e.Name() + "/stat")
+		open, close := strings.Index(raw, "("), strings.LastIndex(raw, ")")
+		if open < 0 || close < open || close+2 > len(raw) {
+			continue
+		}
+		f := strings.Fields(raw[close+2:])
+		if len(f) < 22 {
+			continue
+		}
+		ut, _ := strconv.ParseInt(f[11], 10, 64)
+		st, _ := strconv.ParseInt(f[12], 10, 64)
+		rssPages, _ := strconv.ParseInt(f[21], 10, 64)
+		res[e.Name()] = procSample{name: raw[open+1 : close], cpu: ut + st, rss: rssPages * 4}
+	}
+	return res, total
+}
+
+// cmdTop — /top [N]: процессы по приросту CPU (двухточечный замер, 1с).
+func cmdTop(args []string) tgReply {
+	n := 5
+	if len(args) > 0 {
+		if v, err := strconv.Atoi(args[0]); err == nil && v > 0 && v <= 15 {
+			n = v
+		}
+	}
+	s1, t1 := procSnapshot()
+	time.Sleep(time.Second)
+	s2, t2 := procSnapshot()
+	dt := t2 - t1
+	if dt <= 0 {
+		return tgReply{text: "Нет данных для замера"}
+	}
+	type row struct {
+		name string
+		pct  float64
+		rss  int64
+	}
+	var rows []row
+	for pid, s := range s2 {
+		prev, ok := s1[pid]
+		if !ok {
+			continue
+		}
+		d := s.cpu - prev.cpu
+		if d < 0 {
+			d = 0
+		}
+		pct := 100 * float64(d) / float64(dt)
+		rows = append(rows, row{s.name, pct, s.rss})
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].pct != rows[j].pct {
+			return rows[i].pct > rows[j].pct
+		}
+		return rows[i].rss > rows[j].rss
+	})
+	if len(rows) > n {
+		rows = rows[:n]
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("🔝 Топ-%d по CPU (за 1 сек):\n", len(rows)))
+	for _, r := range rows {
+		b.WriteString(fmt.Sprintf("  %s — %.1f%% CPU, %d МБ RAM\n", r.name, r.pct, r.rss/1024))
+	}
+	return tgReply{text: b.String()}
+}
+
+// knownPortNames — подписи известных портов (для /ports).
+var knownPortNames = map[int]string{
+	22: "SSH", 53: "DNS (dnsmasq)", 80: "HTTP", 443: "HTTPS",
+	8086: "lighttpd/koffe", 8087: "Панель EM", 8089: "htop (ttyd)",
+	9089: "терминал (ttyd)", 9097: "koffe-api", 10871: "прокси (xray)",
+}
+
+// decodeHexSockaddr — hex-адрес из /proc/net/tcp → человекочитаемый хост.
+func decodeHexSockaddr(hexAddr string) string {
+	if len(hexAddr) == 8 { // IPv4 little-endian по байтам
+		b := make([]byte, 4)
+		for i := 0; i < 4; i++ {
+			v, _ := strconv.ParseUint(hexAddr[i*2:i*2+2], 16, 8)
+			b[i] = byte(v)
+		}
+		return fmt.Sprintf("%d.%d.%d.%d", b[3], b[2], b[1], b[0])
+	}
+	return hexAddr // IPv6 — как есть
+}
+
+// cmdPorts — слушающие TCP-порты (/proc/net/tcp+tcp6).
+func cmdPorts() string {
+	type listen struct {
+		addr string
+		port int
+	}
+	seen := map[int]map[string]bool{}
+	for _, file := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		for i, ln := range strings.Split(string(data), "\n") {
+			if i == 0 {
+				continue // заголовок
+			}
+			f := strings.Fields(ln)
+			if len(f) < 4 || f[3] != "0A" { // 0A = LISTEN
+				continue
+			}
+			hexAddr, portHex := "", ""
+			if j := strings.IndexByte(f[1], ':'); j > 0 {
+				hexAddr, portHex = f[1][:j], f[1][j+1:]
+			}
+			port, _ := strconv.ParseInt(portHex, 16, 32)
+			host := decodeHexSockaddr(hexAddr)
+			p := int(port)
+			if seen[p] == nil {
+				seen[p] = map[string]bool{}
+			}
+			seen[p][host] = true
+		}
+	}
+	if len(seen) == 0 {
+		return "Слушающие порты не найдены"
+	}
+	ports := make([]int, 0, len(seen))
+	for p := range seen {
+		ports = append(ports, p)
+	}
+	sort.Ints(ports)
+	var b strings.Builder
+	b.WriteString("🔌 Слушающие порты:\n")
+	for _, p := range ports {
+		note := knownPortNames[p]
+		addrs := make([]string, 0, len(seen[p]))
+		for a := range seen[p] {
+			addrs = append(addrs, a)
+		}
+		sort.Strings(addrs)
+		line := fmt.Sprintf("  :%d", p)
+		if note != "" {
+			line += " (" + note + ")"
+		}
+		line += " ← " + strings.Join(addrs, ", ")
+		b.WriteString(line + "\n")
+	}
+	return b.String()
+}
+
+// rciHost — устройство домашней сети из RCI Keenetic.
+type rciHost struct {
+	MAC       string `json:"mac"`
+	IP        string `json:"ip"`
+	Hostname  string `json:"hostname"`
+	Name      string `json:"name"`
+	Interface struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"interface"`
+}
+
+// fetchRCIHosts — список устройств через RCI (как arp.go).
+func fetchRCIHosts() []rciHost {
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:79/rci/show/ip/hotspot/host")
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	var hosts []rciHost
+	if json.NewDecoder(resp.Body).Decode(&hosts) != nil {
+		return nil
+	}
+	return hosts
+}
+
+func hostDisplayName(h rciHost) string {
+	if h.Name != "" {
+		return h.Name
+	}
+	if h.Hostname != "" {
+		return h.Hostname
+	}
+	return h.MAC
+}
+
+// cmdDevices — устройства домашней сети (RCI hotspot/host).
+func cmdDevices() string {
+	hosts := fetchRCIHosts()
+	if len(hosts) == 0 {
+		return "Устройства: нет данных от RCI"
+	}
+	sort.Slice(hosts, func(i, j int) bool { return hosts[i].IP < hosts[j].IP })
+	var b strings.Builder
+	fmt.Fprintf(&b, "📱 Устройства в сети (%d):\n", len(hosts))
+	for _, h := range hosts {
+		wifi := ""
+		if strings.HasPrefix(h.Interface.ID, "Wifi") {
+			wifi = " 📶"
+		}
+		fmt.Fprintf(&b, "  %s%s — %s\n", hostDisplayName(h), wifi, h.IP)
+	}
+	return b.String()
+}
+
+// cmdWifi — клиенты Wi-Fi (интерфейсы Wifi* в RCI).
+func cmdWifi() string {
+	hosts := fetchRCIHosts()
+	var wifi []rciHost
+	for _, h := range hosts {
+		if strings.HasPrefix(h.Interface.ID, "Wifi") {
+			wifi = append(wifi, h)
+		}
+	}
+	if len(wifi) == 0 {
+		return "📶 Клиентов Wi-Fi сейчас нет (или нет данных RCI)"
+	}
+	sort.Slice(wifi, func(i, j int) bool { return wifi[i].IP < wifi[j].IP })
+	var b strings.Builder
+	fmt.Fprintf(&b, "📶 Клиенты Wi-Fi (%d):\n", len(wifi))
+	for _, h := range wifi {
+		seg := h.Interface.Name
+		if seg == "" {
+			seg = h.Interface.ID
+		}
+		fmt.Fprintf(&b, "  %s — %s [%s]\n", hostDisplayName(h), h.IP, seg)
+	}
+	return b.String()
+}
+
+// cmdUpdates — доступные обновления пакетов (opkg list-upgradable).
+func cmdUpdates() string {
+	opkg, err := exec.LookPath("opkg")
+	if err != nil {
+		opkg = "/opt/bin/opkg"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, opkg, "list-upgradable").CombinedOutput()
+	if err != nil {
+		return "❌ Не удалось получить список обновлений"
+	}
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		return "✅ Все пакеты актуальны"
+	}
+	head := fmt.Sprintf("📦 Доступно обновлений: %d\n", len(lines))
+	if len(lines) > 10 {
+		lines = append(lines[:10], "… и ещё "+strconv.Itoa(len(lines)-10))
+	}
+	return head + strings.Join(lines, "\n")
+}
+
+// cmdCron — содержимое crontab (crontab -l с фолбэком на файл).
+func cmdCron() string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "crontab", "-l").Output()
+	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+		return "⏰ Crontab:\n" + strings.TrimRight(string(out), "\n")
+	}
+	data, rerr := os.ReadFile("/opt/etc/crontab")
+	if rerr == nil && len(strings.TrimSpace(string(data))) > 0 {
+		return "⏰ Crontab (/opt/etc/crontab):\n" + strings.TrimRight(string(data), "\n")
+	}
+	return "⏰ Crontab пуст или отсутствует"
 }

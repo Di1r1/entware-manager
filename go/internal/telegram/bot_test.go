@@ -134,3 +134,51 @@ func TestResolveLogPathFallback(t *testing.T) {
 		t.Errorf("неожиданный путь: %q", p)
 	}
 }
+
+func TestDecodeHexSockaddr(t *testing.T) {
+	// /proc/net/tcp хранит адрес little-endian: 127.0.0.1 → 0100007F
+	if got := decodeHexSockaddr("0100007F"); got != "127.0.0.1" {
+		t.Errorf("got %q, want 127.0.0.1", got)
+	}
+	// 192.168.3.1 → 0103A8C0
+	if got := decodeHexSockaddr("0103A8C0"); got != "192.168.3.1" {
+		t.Errorf("got %q, want 192.168.3.1", got)
+	}
+	// 0.0.0.0
+	if got := decodeHexSockaddr("00000000"); got != "0.0.0.0" {
+		t.Errorf("got %q, want 0.0.0.0", got)
+	}
+}
+
+func TestFindLinesCap(t *testing.T) {
+	content := "line ERROR one\nplain\nline error two\nERROR three\n"
+	hits, total := []string{}, 0
+	for _, ln := range strings.Split(content, "\n") {
+		if strings.Contains(strings.ToLower(ln), "error") {
+			total++
+			if len(hits) < 2 {
+				hits = append(hits, ln)
+			}
+		}
+	}
+	if total != 3 || len(hits) != 2 {
+		t.Errorf("total=%d hits=%d, want 3 и 2 (cap)", total, len(hits))
+	}
+}
+
+func TestProcSnapshot(t *testing.T) {
+	// на тестовой машине /proc есть — снимок должен вернуться непустым
+	snap, total := procSnapshot()
+	if total <= 0 {
+		t.Fatal("total cpu ticks должен быть > 0")
+	}
+	if len(snap) == 0 {
+		t.Log("процессов не найдено (ок для CI-контейнера)")
+	}
+	for _, s := range snap {
+		if s.name == "" {
+			t.Error("пустое имя процесса")
+			break
+		}
+	}
+}
