@@ -1733,10 +1733,17 @@ async function renderSettingsTab() {
                 <label style="flex: 0 0 160px;">Chat ID</label>
                 <input type="text" id="tg-chat" class="settings-input" placeholder="123456789" style="flex:1;">
             </div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
                 <label style="flex: 0 0 160px;">Прокси</label>
-                <input type="text" id="tg-proxy" class="settings-input" placeholder="http://127.0.0.1:10871" style="flex:1;">
+                <input type="text" id="tg-proxy" class="settings-input" placeholder="http://127.0.0.1:10871 или socks5://127.0.0.1:1080" style="flex:1;">
             </div>
+            <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:0 0 10px 170px;">
+                Нужен, если провайдер блокирует Telegram напрямую (DPI): запросы к API идут через локальный прокси-клиент на роутере. Варианты:<br>
+                — пусто — прямое соединение (если блокировки нет);<br>
+                — http://127.0.0.1:ПОРТ — локальный HTTP-прокси (xray/v2ray/sing-box и т.п.);<br>
+                — socks5://127.0.0.1:ПОРТ — локальный SOCKS5-прокси.<br>
+                Трафик к Telegram при этом остаётся HTTPS: прокси лишь туннелирует соединение.
+            </p>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Уровень</label>
                 <select id="tg-level" class="settings-input" style="flex:1;">
