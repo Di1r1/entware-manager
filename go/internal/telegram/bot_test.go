@@ -182,3 +182,40 @@ func TestProcSnapshot(t *testing.T) {
 		}
 	}
 }
+
+func TestCleanHostDisplay(t *testing.T) {
+	h := rciHost{Name: "N701-0000004401 - Home network - 2026-07-07 02:15", Hostname: "n701"}
+	if got := cleanHostDisplay(h); got != "N701-0000004401" {
+		t.Errorf("got %q", got)
+	}
+	// имя без хвоста — не трогаем
+	h2 := rciHost{Name: "S23", Hostname: "s23-phone"}
+	if got := cleanHostDisplay(h2); got != "S23" {
+		t.Errorf("got %q", got)
+	}
+	// имя с дефисом в середине (не сегмент+дата) — сохраняем
+	h3 := rciHost{Name: "Google-Home-Mini Спальня"}
+	if got := cleanHostDisplay(h3); got != "Google-Home-Mini Спальня" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestIsWiFiClient(t *testing.T) {
+	w := rciHost{SSID: "DiZyXEL", AP: "WifiMaster1/AccessPoint0"}
+	if !isWiFiClient(w) {
+		t.Error("хост с ssid должен считаться Wi-Fi клиентом")
+	}
+	p := rciHost{Name: "mini-AMD"} // проводной
+	if isWiFiClient(p) {
+		t.Error("проводной хост не должен считаться Wi-Fi")
+	}
+}
+
+func TestIPToNum(t *testing.T) {
+	if ipToNum("192.168.3.10") >= ipToNum("192.168.3.100") {
+		t.Error("10 должно быть меньше 100 при одинаковых первых октетах")
+	}
+	if ipToNum("bad") != -1 {
+		t.Error("невалидный IP → -1")
+	}
+}

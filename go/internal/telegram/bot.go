@@ -1047,6 +1047,31 @@ type rciHost struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"interface"`
+	Link   string `json:"link"`
+	Active bool   `json:"active"`
+	SSID   string `json:"ssid"`
+	AP     string `json:"ap"`
+	Mode   string `json:"mode"`
+	RSSI   int    `json:"rssi"`
+	TXRate int    `json:"txrate"`
+}
+
+// cleanHostDisplay — имя устройства без служебного хвоста Keenetic
+// («Имя - Сегмент - дата регистрации»).
+func cleanHostDisplay(h rciHost) string {
+	name := hostDisplayName(h)
+	if i := strings.Index(name, " - "); i > 0 {
+		tail := strings.ToLower(name[i:])
+		if strings.Contains(tail, "network") && strings.Contains(tail, "- 20") {
+			name = name[:i]
+		}
+	}
+	return name
+}
+
+// isWiFiClient — клиент подключён по Wi-Fi (есть ssid/ap в записи RCI).
+func isWiFiClient(h rciHost) bool {
+	return h.SSID != "" || h.AP != ""
 }
 
 // fetchRCIHosts — список устройств через RCI (как arp.go).
@@ -1074,46 +1099,79 @@ func hostDisplayName(h rciHost) string {
 	return h.MAC
 }
 
-// cmdDevices — устройства домашней сети (RCI hotspot/host).
+// cmdDevices — активные устройства домашней сети (RCI hotspot/host).
+// Офлайн-записи (IP пуст или 0.0.0.0) скрываются.
 func cmdDevices() string {
 	hosts := fetchRCIHosts()
-	if len(hosts) == 0 {
+	var online []rciHost
+	for _, h := range hosts {
+		if h.IP == "" || h.IP == "0.0.0.0" {
+			continue
+		}
+		online = append(online, h)
+	}
+	if len(online) == 0 {
 		return "Устройства: нет данных от RCI"
 	}
-	sort.Slice(hosts, func(i, j int) bool { return hosts[i].IP < hosts[j].IP })
+	sort.Slice(online, func(i, j int) bool {
+		return ipToNum(online[i].IP) < ipToNum(online[j].IP)
+	})
 	var b strings.Builder
-	fmt.Fprintf(&b, "📱 Устройства в сети (%d):\n", len(hosts))
-	for _, h := range hosts {
-		wifi := ""
-		if strings.HasPrefix(h.Interface.ID, "Wifi") {
-			wifi = " 📶"
+	fmt.Fprintf(&b, "📱 Устройства в сети (%d):\n", len(online))
+	for _, h := range online {
+		mark := ""
+		if isWiFiClient(h) {
+			mark = " 📶"
 		}
-		fmt.Fprintf(&b, "  %s%s — %s\n", hostDisplayName(h), wifi, h.IP)
+		fmt.Fprintf(&b, "  %s%s — %s\n", cleanHostDisplay(h), mark, h.IP)
 	}
 	return b.String()
 }
 
-// cmdWifi — клиенты Wi-Fi (интерфейсы Wifi* в RCI).
+// ipToNum — числовое значение IPv4 для человекочитаемой сортировки.
+func ipToNum(ip string) int64 {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return -1
+	}
+	var n int64
+	for i := 0; i < 4; i++ {
+		v, _ := strconv.ParseInt(parts[i], 10, 64)
+		n = n*256 + v
+	}
+	return n
+}
+
+// cmdWifi — клиенты Wi-Fi: SSID, уровень сигнала (RSSI), стандарт и скорость.
 func cmdWifi() string {
 	hosts := fetchRCIHosts()
 	var wifi []rciHost
 	for _, h := range hosts {
-		if strings.HasPrefix(h.Interface.ID, "Wifi") {
+		if h.IP == "" || h.IP == "0.0.0.0" {
+			continue
+		}
+		if isWiFiClient(h) {
 			wifi = append(wifi, h)
 		}
 	}
 	if len(wifi) == 0 {
-		return "📶 Клиентов Wi-Fi сейчас нет (или нет данных RCI)"
+		return "📶 Клиентов Wi-Fi сейчас нет"
 	}
-	sort.Slice(wifi, func(i, j int) bool { return wifi[i].IP < wifi[j].IP })
+	sort.Slice(wifi, func(i, j int) bool { return wifi[i].RSSI > wifi[j].RSSI })
 	var b strings.Builder
-	fmt.Fprintf(&b, "📶 Клиенты Wi-Fi (%d):\n", len(wifi))
+	fmt.Fprintf(&b, "📶 Клиенты Wi-Fi (%d), сильнейший сигнал первым:\n", len(wifi))
 	for _, h := range wifi {
-		seg := h.Interface.Name
-		if seg == "" {
-			seg = h.Interface.ID
+		line := fmt.Sprintf("  %s — %s", cleanHostDisplay(h), h.IP)
+		if h.RSSI != 0 {
+			line += fmt.Sprintf(", сигнал %d dBm", h.RSSI)
 		}
-		fmt.Fprintf(&b, "  %s — %s [%s]\n", hostDisplayName(h), h.IP, seg)
+		if h.Mode != "" {
+			line += ", " + h.Mode
+		}
+		if h.TXRate > 0 {
+			line += fmt.Sprintf(", %d Мбит/с", h.TXRate)
+		}
+		b.WriteString(line + "\n")
 	}
 	return b.String()
 }
