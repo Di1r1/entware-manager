@@ -1,8 +1,10 @@
 package telegram
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -160,5 +162,61 @@ func TestValidateThresholds(t *testing.T) {
 	bad2.RAMUsed.Value = 101
 	if ValidateThresholds(bad2) {
 		t.Error("ram_used 101 should be invalid")
+	}
+}
+
+// POST с пустым chat_id не должен стирать сохранённый chat_id
+// (GET ранее не отдавал chat_id — пересохранение настроек теряло его).
+func TestHandleConfigPostKeepsEmptyChatID(t *testing.T) {
+	origWebRoot := os.Getenv(WebRootEnv)
+	dir := t.TempDir()
+	os.Setenv(WebRootEnv, dir)
+	defer os.Setenv(WebRootEnv, origWebRoot)
+
+	cfg := DefaultConfig()
+	cfg.BotToken = "SECRET:TOKEN"
+	cfg.ChatID = "241544715"
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	// CGI-окружение: POST с ПУСТЫМ chat_id.
+	os.Setenv("REQUEST_METHOD", "POST")
+	os.Unsetenv("HTTP_ORIGIN")
+	os.Unsetenv("HTTP_HOST")
+	defer os.Unsetenv("REQUEST_METHOD")
+
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("enabled=true&autostart=true&chat_id=&level=INFO"); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	os.Stdin = r
+	defer func() { os.Stdin = oldStdin }()
+
+	oldStdout := os.Stdout
+	or, ow, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = ow
+
+	handleConfigPost()
+
+	ow.Close()
+	os.Stdout = oldStdout
+	out, _ := io.ReadAll(or)
+	or.Close()
+
+	if !strings.Contains(string(out), `"status":"ok"`) {
+		t.Fatalf("POST должен пройти успешно, stdout: %s", string(out))
+	}
+	loaded := LoadConfig()
+	if loaded.ChatID != "241544715" {
+		t.Errorf("пустой chat_id затёр сохранённое значение: got %q", loaded.ChatID)
 	}
 }

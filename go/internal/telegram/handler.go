@@ -38,6 +38,7 @@ func HandleConfig() {
 		"bot_enabled": cfg.BotEnabled,
 		"autostart":   cfg.Autostart,
 		"proxy_url":   cfg.ProxyURL,
+		"chat_id":     cfg.ChatID,
 		"thresholds":  cfg.Thresholds,
 	})
 }
@@ -79,8 +80,10 @@ func handleConfigPost() {
 			cfg.Sources = splitComma(v)
 		}
 	}
-	if v, ok := params["chat_id"]; ok {
-		if v != "" && !IsValidChatID(v) {
+	// chat_id: пустое значение сохраняет прежний (GET не отдавал его ранее,
+	// и пересохранение настроек стирало chat_id — фикс потери).
+	if v, ok := params["chat_id"]; ok && v != "" {
+		if !IsValidChatID(v) {
 			cgiutil.WriteStatusError("Некорректный chat_id (только цифры)")
 			return
 		}
