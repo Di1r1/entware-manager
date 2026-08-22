@@ -148,3 +148,27 @@ func logAction(level, message string) {
 	defer f.Close()
 	fmt.Fprintf(f, "[%s] [%s] [%s] [%d] [service] %s\n", timestamp, level, ip, os.Getpid(), message)
 }
+
+// ServiceAction выполняет start/stop/restart для службы по имени.
+// Экспортировано для интерактивного бота Telegram (v1.13): переиспользует
+// findScript + логирование действий панели.
+func ServiceAction(name, action string) error {
+	if !serviceNameRe.MatchString(name) || len(name) > 64 {
+		return fmt.Errorf("недопустимое имя службы")
+	}
+	switch action {
+	case "start", "stop", "restart":
+	default:
+		return fmt.Errorf("недопустимое действие: %s", action)
+	}
+	script := findScript(name)
+	if script == "" {
+		return fmt.Errorf("служба %s не найдена или не исполняема", name)
+	}
+	if err := exec.Command(script, action).Run(); err != nil {
+		logAction("ERROR", fmt.Sprintf("Ошибка при %s службы %s", action, name))
+		return fmt.Errorf("ошибка при выполнении %s", action)
+	}
+	logAction("INFO", fmt.Sprintf("Служба %s: %s", name, action))
+	return nil
+}

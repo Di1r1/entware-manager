@@ -35,28 +35,72 @@ func SendMessage(cfg Config, text string) bool {
 	if !cfg.Configured || cfg.ChatID == "" || text == "" {
 		return false
 	}
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", cfg.BotToken)
 	form := url.Values{}
 	form.Set("chat_id", cfg.ChatID)
 	form.Set("text", text)
 	form.Set("disable_web_page_preview", "true")
 
+	code, _, err := postTelegram(cfg, "sendMessage", form)
+	if err != nil {
+		logErr("sendMessage: %s", err.Error())
+		return false
+	}
+	if code != http.StatusOK {
+		// Не логируем тело — там может быть часть токена/чувствительные данные.
+		logErr("sendMessage HTTP %d (bot token redacted)", code)
+		return false
+	}
+	return true
+}
+
+// SendMessageMarkup отправляет текст с произвольной reply_markup (JSON-строка),
+// например inline-клавиатурой для подтверждения действий бота.
+func SendMessageMarkup(cfg Config, text, replyMarkupJSON string) bool {
+	if !cfg.Configured || cfg.ChatID == "" || text == "" {
+		return false
+	}
+	form := url.Values{}
+	form.Set("chat_id", cfg.ChatID)
+	form.Set("text", text)
+	form.Set("disable_web_page_preview", "true")
+	if replyMarkupJSON != "" {
+		form.Set("reply_markup", replyMarkupJSON)
+	}
+	code, _, err := postTelegram(cfg, "sendMessage", form)
+	if err != nil {
+		logErr("sendMessageMarkup: %s", err.Error())
+		return false
+	}
+	return code == http.StatusOK
+}
+
+// AnswerCallbackQuery закрывает «часики» на нажатой inline-кнопке.
+func AnswerCallbackQuery(cfg Config, cbID, text string) bool {
+	form := url.Values{}
+	form.Set("callback_query_id", cbID)
+	if text != "" {
+		form.Set("text", text)
+	}
+	code, _, err := postTelegram(cfg, "answerCallbackQuery", form)
+	if err != nil {
+		logErr("answerCallbackQuery: %s", err.Error())
+		return false
+	}
+	return code == http.StatusOK
+}
+
+// postTelegram — POST формы на метод Bot API. Возвращает код и тело.
+// Ошибки сети уже маскированы (токен вырезан).
+func postTelegram(cfg Config, method string, form url.Values) (int, []byte, error) {
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/%s", cfg.BotToken, method)
 	client := httpClient(cfg)
 	resp, err := client.Post(apiURL, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
 	if err != nil {
-		// *url.Error включает полный URL с токеном — маскируем перед логированием.
-		logErr("sendMessage network error: %s", redactURL(err.Error(), cfg.BotToken))
-		return false
+		return 0, nil, fmt.Errorf("%s", redactURL(err.Error(), cfg.BotToken))
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-	if resp.StatusCode != http.StatusOK {
-		// Не логируем тело — там может быть часть токена/чувствительные данные.
-		logErr("sendMessage HTTP %d (bot token redacted)", resp.StatusCode)
-		return false
-	}
-	_ = body
-	return true
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	return resp.StatusCode, body, nil
 }
 
 // logErr пишет в stderr с временной меткой (демон перенаправляет в лог).

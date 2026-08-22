@@ -3,6 +3,9 @@ package telegram
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"entware-manager/internal/services"
 )
 
 func TestParseMeminfo(t *testing.T) {
@@ -60,21 +63,57 @@ func TestAllowedChat(t *testing.T) {
 
 func TestReplyForRouting(t *testing.T) {
 	called := ""
-	cmds := map[string]func() string{
-		"/help": func() string { called = "/help"; return "HELP" },
+	cmds := map[string]func([]string) tgReply{
+		"/help": func([]string) tgReply { called = "/help"; return tgReply{text: "HELP"} },
 	}
-	if got := replyFor("/Help@MyBot", cmds); got != "HELP" || called != "/help" {
-		t.Errorf("регистр/@суффикс должны нормализоваться, got %q called=%q", got, called)
+	rep := replyFor("/Help@MyBot", cmds)
+	if rep.text != "HELP" || called != "/help" {
+		t.Errorf("регистр/@суффикс должны нормализоваться, got %q called=%q", rep.text, called)
 	}
-	if got := replyFor("привет", cmds); got != "" {
-		t.Errorf("не-команда должна молчать, got %q", got)
+	if rep := replyFor("привет", cmds); rep.text != "" || len(rep.buttons) != 0 {
+		t.Errorf("не-команда должна молчать, got %+v", rep)
 	}
-	if got := replyFor("/unknown cmd", cmds); !strings.Contains(got, "Неизвестная команда") {
-		t.Errorf("неизвестная команда должна давать подсказку, got %q", got)
+	if rep := replyFor("/unknown cmd", cmds); !strings.Contains(rep.text, "Неизвестная команда") {
+		t.Errorf("неизвестная команда должна давать подсказку, got %q", rep.text)
+	}
+}
+
+func TestPendingLifecycle(t *testing.T) {
+	n := newNonce()
+	if len(n) < 6 {
+		t.Fatalf("nonce слишком короткий: %q", n)
+	}
+	putPending(n, pendingAction{
+		desc:    "тест",
+		run:     func() string { return "done" },
+		expires: time.Now().Add(time.Minute),
+	})
+	act, ok := takePending(n)
+	if !ok || act.run() != "done" {
+		t.Fatalf("takePending не вернул действие")
+	}
+	// одноразовость
+	if _, ok := takePending(n); ok {
+		t.Error("повторный take должен вернуть false")
+	}
+	// просроченное не возвращается через put+prune
+	putPending("x", pendingAction{desc: "старое", expires: time.Now().Add(-time.Second)})
+	if _, ok := takePending("x"); ok {
+		t.Error("просроченное действие не должно выдаваться")
+	}
+}
+
+func TestServiceActionValidation(t *testing.T) {
+	// валидация ошибок без выполнения (path traversal / недопустимое действие)
+	if err := services.ServiceAction("../../bin/reboot", "start"); err == nil {
+		t.Error("path traversal должен отклоняться")
+	}
+	if err := services.ServiceAction("cron", "format"); err == nil {
+		t.Error("недопустимое действие должно отклоняться")
 	}
 }
 
 func TestCmdLogMissing(t *testing.T) {
 	// не должно паниковать при отсутствии файла за сегодня
-	_ = cmdLog()
+	_ = tailLog(15)
 }

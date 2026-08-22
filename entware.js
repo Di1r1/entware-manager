@@ -1768,7 +1768,7 @@ async function renderSettingsTab() {
                     <label style="flex: 0 0 160px;">Чат-бот</label>
                     <input type="checkbox" id="tg-bot" style="transform: scale(1.3);">
                 </div>
-                <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:4px 0 0 170px;">Интерактивные команды боту в Telegram: /help, /status, /temp, /ip, /services, /smart, /log. Отвечает только в вашем chat_id. Работает при включённой защите и заданных токен/chat_id.</p>
+                <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:4px 0 0 170px;">Интерактивные команды боту в Telegram:<br>📖 /help, /status, /temp, /ip, /services, /smart, /log [N]<br>⚙️ /service &lt;имя&gt; start|stop|restart, /pkg update, /rotate, /reboot (с подтверждением)<br>Отвечает только в вашем chat_id. Требуются токен и chat_id.</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Автозапуск</label>

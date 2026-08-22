@@ -7,6 +7,9 @@
 package telegram
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -18,7 +21,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"entware-manager/internal/services"
 )
 
 // tgUpdate — одно обновление из getUpdates.
@@ -30,7 +36,74 @@ type tgUpdate struct {
 			ID int64 `json:"id"`
 		} `json:"chat"`
 	} `json:"message"`
+	CallbackQuery *struct {
+		ID      string `json:"id"`
+		Data    string `json:"data"`
+		Message struct {
+			Chat struct {
+				ID int64 `json:"id"`
+			} `json:"chat"`
+		} `json:"message"`
+	} `json:"callback_query"`
 }
+
+// tgReply — ответ бота: текст и опциональные inline-кнопки [label, callbackData].
+type tgReply struct {
+	text    string
+	buttons [][2]string
+}
+
+// pendingAction — действие, ожидающее подтверждения через inline-кнопку.
+type pendingAction struct {
+	desc    string
+	run     func() string // выполняется после подтверждения; возвращает результат
+	expires time.Time
+}
+
+var (
+	pendingMu      sync.Mutex
+	pendingActions = map[string]pendingAction{}
+)
+
+// newNonce — короткий случайный идентификатор подтверждения.
+func newNonce() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
+// putPending регистрирует действие (заодно вычищает просроченные).
+func putPending(nonce string, act pendingAction) {
+	pendingMu.Lock()
+	defer pendingMu.Unlock()
+	now := time.Now()
+	for k, v := range pendingActions {
+		if now.After(v.expires) {
+			delete(pendingActions, k)
+		}
+	}
+	pendingActions[nonce] = act
+}
+
+// takePending достаёт действие (одноразовое). Просроченное — удаляется
+// и считается отсутствующим.
+func takePending(nonce string) (pendingAction, bool) {
+	pendingMu.Lock()
+	defer pendingMu.Unlock()
+	act, ok := pendingActions[nonce]
+	if !ok {
+		return pendingAction{}, false
+	}
+	delete(pendingActions, nonce)
+	if time.Now().After(act.expires) {
+		return pendingAction{}, false
+	}
+	return act, true
+}
+
+const confirmTTL = 5 * time.Minute
 
 // pollInterval — пауза между опросами, когда нет новых обновлений.
 const pollInterval = 3 * time.Second
@@ -73,30 +146,51 @@ func BotRun() error {
 			if u.UpdateID >= offset {
 				offset = u.UpdateID + 1
 			}
+			if u.CallbackQuery != nil {
+				handleCallback(cfg, u.CallbackQuery)
+				continue
+			}
 			if !allowedChat(u, cfg.ChatID) {
 				continue
 			}
-			if reply := replyFor(u.Message.Text, cmds); reply != "" {
-				SendMessage(cfg, reply)
+			rep := replyFor(u.Message.Text, cmds)
+			if rep.text == "" && len(rep.buttons) == 0 {
+				continue
+			}
+			var kb string
+			if len(rep.buttons) > 0 {
+				kb = buildInlineKB(rep.buttons)
+			}
+			if kb != "" {
+				SendMessageMarkup(cfg, rep.text, kb)
+			} else {
+				SendMessage(cfg, rep.text)
 			}
 		}
 		time.Sleep(pollInterval)
 	}
 }
 
-// allowedChat — сообщение должно прийти ровно из настроенного chat_id.
+// allowedChat — сообщение или нажатие кнопки должно прийти ровно
+// из настроенного chat_id.
 func allowedChat(u tgUpdate, chatID string) bool {
-	if u.Message.Text == "" {
+	var id int64
+	switch {
+	case u.CallbackQuery != nil:
+		id = u.CallbackQuery.Message.Chat.ID
+	case u.Message.Text != "":
+		id = u.Message.Chat.ID
+	default:
 		return false
 	}
-	return strconv.FormatInt(u.Message.Chat.ID, 10) == chatID
+	return strconv.FormatInt(id, 10) == chatID
 }
 
-// replyFor — маршрутизация команды. Возвращает текст ответа ("" — молчать).
-func replyFor(text string, cmds map[string]func() string) string {
+// replyFor — маршрутизация команды. Возвращает ответ ("" — молчать).
+func replyFor(text string, cmds map[string]func([]string) tgReply) tgReply {
 	fields := strings.Fields(strings.TrimSpace(text))
 	if len(fields) == 0 {
-		return ""
+		return tgReply{}
 	}
 	cmd := strings.ToLower(fields[0])
 	// "/status@MyBot" → "/status"
@@ -104,36 +198,150 @@ func replyFor(text string, cmds map[string]func() string) string {
 		cmd = cmd[:i]
 	}
 	if fn, ok := cmds[cmd]; ok {
-		return fn()
+		return fn(fields[1:])
 	}
 	if strings.HasPrefix(cmd, "/") {
-		return "Неизвестная команда. Список: /help"
+		return tgReply{text: "Неизвестная команда. Список: /help"}
 	}
-	return ""
+	return tgReply{}
 }
 
-// defaultCommands — карта команд уровня «только чтение».
-func defaultCommands() map[string]func() string {
-	return map[string]func() string{
-		"/start":    cmdHelp,
-		"/help":     cmdHelp,
-		"/status":   cmdStatus,
-		"/temp":     cmdTemp,
-		"/ip":       cmdIP,
-		"/services": cmdServices,
-		"/smart":    cmdSmart,
-		"/log":      cmdLog,
+// defaultCommands — карта команд. Аргументы — слова после команды.
+func defaultCommands() map[string]func(args []string) tgReply {
+	return map[string]func([]string) tgReply{
+		"/start":    func([]string) tgReply { return tgReply{text: cmdHelp()} },
+		"/help":     func([]string) tgReply { return tgReply{text: cmdHelp()} },
+		"/status":   func([]string) tgReply { return tgReply{text: cmdStatus()} },
+		"/temp":     func([]string) tgReply { return tgReply{text: cmdTemp()} },
+		"/ip":       func([]string) tgReply { return tgReply{text: cmdIP()} },
+		"/services": func([]string) tgReply { return tgReply{text: cmdServices()} },
+		"/smart":    func([]string) tgReply { return tgReply{text: cmdSmart()} },
+		"/log":      cmdLogCmd,
+		// Уровень 2 — управление (подтверждение inline-кнопкой для опасных).
+		"/service": cmdService,
+		"/pkg":     cmdPkg,
+		"/rotate":  func([]string) tgReply { return tgReply{text: execRotate()} },
+		"/reboot":  cmdReboot,
 	}
 }
 
 func cmdHelp() string {
 	return "🤖 Entware Manager — команды:\n" +
+		"📖 Информация:\n" +
 		"/status — аптайм, нагрузка, память, диск\n" +
 		"/temp — температуры CPU/WiFi\n" +
 		"/ip — внешний IP и интерфейс\n" +
 		"/services — статусы служб\n" +
 		"/smart — здоровье дисков\n" +
-		"/log [N] — последние N строк лога (по умолчанию 15)"
+		"/log [N] — последние N строк лога (по умолчанию 15)\n" +
+		"⚙️ Управление (с подтверждением):\n" +
+		"/service <имя> start|stop|restart — управление службой\n" +
+		"/pkg update — обновить списки пакетов\n" +
+		"/rotate — ротация логов сейчас\n" +
+		"/reboot — перезагрузка роутера"
+}
+
+// cmdService — /service <имя> start|stop|restart.
+func cmdService(args []string) tgReply {
+	if len(args) != 2 {
+		return tgReply{text: "Формат: /service <имя> start|stop|restart\nПример: /service cron restart"}
+	}
+	name, action := args[0], strings.ToLower(args[1])
+	nonce := newNonce()
+	putPending(nonce, pendingAction{
+		desc:    action + " службы " + name,
+		expires: time.Now().Add(confirmTTL),
+		run: func() string {
+			if err := services.ServiceAction(name, action); err != nil {
+				return "❌ " + err.Error()
+			}
+			return fmt.Sprintf("✅ Служба %s: %s — выполнено", name, action)
+		},
+	})
+	return tgReply{
+		text:    fmt.Sprintf("⚠️ Подтвердите: %s службы «%s»", action, name),
+		buttons: [][2]string{{"✅ Да, выполнить", "ok:" + nonce}, {"🚫 Отмена", "no:" + nonce}},
+	}
+}
+
+// cmdPkg — /pkg update (долгая операция: результат отдельным сообщением).
+func cmdPkg(args []string) tgReply {
+	if len(args) == 0 || args[0] != "update" {
+		return tgReply{text: "Формат: /pkg update"}
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logErr("pkg update panic: %v", r)
+			}
+		}()
+		res := execPkgUpdate()
+		SendMessage(LoadConfig(), res)
+	}()
+	return tgReply{text: "⏳ Запускаю opkg update (до 2 минут). Результат пришлю отдельным сообщением."}
+}
+
+// execPkgUpdate — opkg update с таймаутом; возвращает хвост вывода.
+func execPkgUpdate() string {
+	opkg, err := exec.LookPath("opkg")
+	if err != nil {
+		opkg = "/opt/bin/opkg"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, opkg, "update").CombinedOutput()
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if len(lines) > 6 {
+		lines = lines[len(lines)-6:]
+	}
+	if err != nil {
+		return "❌ Ошибка обновления:\n" + strings.Join(lines, "\n")
+	}
+	return "✅ opkg update готов:\n" + strings.Join(lines, "\n")
+}
+
+// execRotate — ротация логов сейчас.
+func execRotate() string {
+	script := "/opt/web_entware/logger/scripts/rotate.sh"
+	if _, err := os.Stat(script); err != nil {
+		return "❌ rotate.sh не найден"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, script).CombinedOutput()
+	if err != nil {
+		return "❌ Ошибка ротации: " + err.Error()
+	}
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if len(lines) > 5 {
+		lines = lines[len(lines)-5:]
+	}
+	return "🔄 Ротация логов выполнена:\n" + strings.Join(lines, "\n")
+}
+
+// cmdReboot — /reboot с подтверждением через inline-кнопку.
+func cmdReboot([]string) tgReply {
+	nonce := newNonce()
+	putPending(nonce, pendingAction{
+		desc:    "Перезагрузка роутера",
+		expires: time.Now().Add(confirmTTL),
+		run: func() string {
+			go func() {
+				time.Sleep(800 * time.Millisecond) // дать сообщению уйти
+				_ = exec.Command("sync").Run()
+				reb, err := exec.LookPath("reboot")
+				if err != nil {
+					reb = "/sbin/reboot"
+				}
+				_ = exec.Command(reb).Run()
+			}()
+			return "♻️ Перезагрузка через пару секунд..."
+		},
+	})
+	return tgReply{
+		text:    "⚠️ Точно перезагрузить роутер?",
+		buttons: [][2]string{{"♻️ Да, перезагрузить", "ok:" + nonce}, {"🚫 Отмена", "no:" + nonce}},
+	}
 }
 
 // --- сбор данных ---
@@ -353,10 +561,20 @@ func cmdSmart() string {
 	return "💾 SMART:\n" + strings.Join(out, "\n")
 }
 
-// cmdLog — хвост суточного лога EM; если за сегодня записей ещё нет —
-// самый свежий существующий файл.
-func cmdLog() string {
+// cmdLogCmd — /log [N]: N строк хвоста (по умолчанию 15, макс 100).
+func cmdLogCmd(args []string) tgReply {
 	n := 15
+	if len(args) > 0 {
+		if v, err := strconv.Atoi(args[0]); err == nil && v > 0 && v <= 100 {
+			n = v
+		}
+	}
+	return tgReply{text: tailLog(n)}
+}
+
+// tailLog — хвост суточного лога EM; если за сегодня записей ещё нет —
+// самый свежий существующий файл.
+func tailLog(n int) string {
 	dir := "/tmp/entware/logs"
 	path := filepath.Join(dir, time.Now().Format("2006-01-02")+".log")
 	if _, err := os.Stat(path); err != nil {
@@ -412,4 +630,59 @@ func fetchUpdates(cfg Config, offset int64) ([]tgUpdate, error) {
 		return nil, fmt.Errorf("getUpdates ok=false")
 	}
 	return wrap.Result, nil
+}
+
+// handleCallback — нажатие inline-кнопки подтверждения (формат ok:<nonce> / no:<nonce>).
+func handleCallback(cfg Config, cb *struct {
+	ID      string `json:"id"`
+	Data    string `json:"data"`
+	Message struct {
+		Chat struct {
+			ID int64 `json:"id"`
+		} `json:"chat"`
+	} `json:"message"`
+}) {
+	if strconv.FormatInt(cb.Message.Chat.ID, 10) != cfg.ChatID {
+		AnswerCallbackQuery(cfg, cb.ID, "")
+		return
+	}
+	parts := strings.SplitN(cb.Data, ":", 2)
+	if len(parts) != 2 {
+		AnswerCallbackQuery(cfg, cb.ID, "")
+		return
+	}
+	verb, nonce := parts[0], parts[1]
+	act, ok := takePending(nonce)
+	if !ok {
+		AnswerCallbackQuery(cfg, cb.ID, "Подтверждение истекло")
+		return
+	}
+	switch verb {
+	case "ok":
+		AnswerCallbackQuery(cfg, cb.ID, "Выполняю…")
+		SendMessage(cfg, act.run())
+	case "no":
+		AnswerCallbackQuery(cfg, cb.ID, "Отменено")
+		SendMessage(cfg, "🚫 Отменено: "+act.desc)
+	default:
+		AnswerCallbackQuery(cfg, cb.ID, "")
+	}
+}
+
+// buildInlineKB — JSON reply_markup для sendMessage.
+func buildInlineKB(buttons [][2]string) string {
+	type btn struct {
+		Text         string `json:"text"`
+		CallbackData string `json:"callback_data"`
+	}
+	rows := [][]btn{{}}
+	for _, b := range buttons {
+		rows[0] = append(rows[0], btn{Text: b[0], CallbackData: b[1]})
+	}
+	m := map[string]interface{}{"inline_keyboard": rows}
+	j, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	return string(j)
 }
