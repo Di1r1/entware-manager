@@ -117,3 +117,20 @@ func TestCmdLogMissing(t *testing.T) {
 	// не должно паниковать при отсутствии файла за сегодня
 	_ = tailLog(15)
 }
+
+func TestScanServicesUp(t *testing.T) {
+	// реальный роутер: /opt/var/run/*.pid — функция не должна паниковать
+	up := scanServicesUp()
+	for name := range up {
+		if name == "" {
+			t.Error("пустое имя службы")
+		}
+	}
+}
+
+func TestResolveLogPathFallback(t *testing.T) {
+	p := resolveLogPath()
+	if p != "" && !strings.Contains(p, "/tmp/entware/logs/") {
+		t.Errorf("неожиданный путь: %q", p)
+	}
+}

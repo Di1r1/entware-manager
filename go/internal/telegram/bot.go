@@ -105,6 +105,38 @@ func takePending(nonce string) (pendingAction, bool) {
 
 const confirmTTL = 5 * time.Minute
 
+// Ежедневный дайджест: час отправки и state-файл (чтобы после рестарта
+// не продублировать сводку в тот же день).
+const (
+	digestHour      = 9
+	digestStateFile = "/tmp/entware/telegram/digest.last"
+)
+
+func readDigestDate() string {
+	b, err := os.ReadFile(digestStateFile)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// scanServicesUp — какие службы сейчас работают (по pid-файлам + /proc).
+func scanServicesUp() map[string]bool {
+	up := map[string]bool{}
+	matches, _ := filepath.Glob("/opt/var/run/*.pid")
+	for _, m := range matches {
+		name := strings.TrimSuffix(filepath.Base(m), ".pid")
+		pid := strings.TrimSpace(readLine(m))
+		if pid == "" {
+			continue
+		}
+		if _, err := os.Stat("/proc/" + pid); err == nil {
+			up[name] = true
+		}
+	}
+	return up
+}
+
 // pollInterval — пауза между опросами, когда нет новых обновлений.
 const pollInterval = 3 * time.Second
 
@@ -123,6 +155,10 @@ func BotRun() error {
 	cmds := defaultCommands()
 	offset := int64(0)
 	idle := false
+	svcPrev := map[string]bool{}
+	svcBase := false
+	lastDigest := readDigestDate()
+
 	for {
 		// Перечитываем конфиг каждый цикл: смена токена/галочки «Чат-бот»
 		// применяется на лету, без перезапуска.
@@ -136,6 +172,16 @@ func BotRun() error {
 			continue
 		}
 		idle = false
+
+		// Ежедневный дайджест (в 09:00; после рестарта не дублируется —
+		// дата хранится в state-файле).
+		if today := time.Now().Format("2006-01-02"); time.Now().Hour() >= digestHour && lastDigest != today {
+			lastDigest = today
+			os.MkdirAll(filepath.Dir(digestStateFile), 0755)
+			os.WriteFile(digestStateFile, []byte(today), 0644)
+			SendMessage(cfg, buildDigest())
+		}
+
 		updates, err := fetchUpdates(cfg, offset)
 		if err != nil {
 			logErr("getUpdates: %s", redactURL(err.Error(), cfg.BotToken))
@@ -167,6 +213,45 @@ func BotRun() error {
 				SendMessage(cfg, rep.text)
 			}
 		}
+
+		// Слежение за службами: падение → алерт с кнопкой перезапуска,
+		// восстановление → уведомление. Первый проход — база (без алертов).
+		cur := scanServicesUp()
+		if svcBase {
+			for name, wasUp := range svcPrev {
+				if !wasUp {
+					continue
+				}
+				if cur[name] {
+					continue
+				}
+				n := newNonce()
+				putPending(n, pendingAction{
+					desc:    "перезапуск службы " + name,
+					expires: time.Now().Add(10 * time.Minute),
+					run: func() string {
+						if err := services.ServiceAction(name, "start"); err != nil {
+							return "❌ " + err.Error()
+						}
+						return fmt.Sprintf("✅ Служба %s запущена", name)
+					},
+				})
+				SendMessageMarkup(cfg,
+					fmt.Sprintf("🔴 Служба «%s» остановилась!", name),
+					buildInlineKB([][2]string{
+						{"🔄 Перезапустить", "ok:" + n},
+						{"Игнорировать", "no:" + n},
+					}))
+			}
+			for name := range cur {
+				if !svcPrev[name] && svcPrev != nil {
+					SendMessage(cfg, fmt.Sprintf("🟢 Служба «%s» запущена", name))
+				}
+			}
+		}
+		svcPrev = cur
+		svcBase = true
+
 		time.Sleep(pollInterval)
 	}
 }
@@ -217,6 +302,8 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/services": func([]string) tgReply { return tgReply{text: cmdServices()} },
 		"/smart":    func([]string) tgReply { return tgReply{text: cmdSmart()} },
 		"/log":      cmdLogCmd,
+		"/find":     cmdFind,
+		"/digest":   func([]string) tgReply { return tgReply{text: buildDigest()} },
 		// Уровень 2 — управление (подтверждение inline-кнопкой для опасных).
 		"/service": cmdService,
 		"/pkg":     cmdPkg,
@@ -234,11 +321,42 @@ func cmdHelp() string {
 		"/services — статусы служб\n" +
 		"/smart — здоровье дисков\n" +
 		"/log [N] — последние N строк лога (по умолчанию 15)\n" +
+		"/find <текст> — поиск по логу\n" +
+		"/digest — сводка за сутки сейчас\n" +
 		"⚙️ Управление (с подтверждением):\n" +
 		"/service <имя> start|stop|restart — управление службой\n" +
 		"/pkg update — обновить списки пакетов\n" +
 		"/rotate — ротация логов сейчас\n" +
 		"/reboot — перезагрузка роутера"
+}
+
+// buildDigest — ежедневная сводка (и команда /digest).
+func buildDigest() string {
+	svcUp, svcTotal := 0, 0
+	matches, _ := filepath.Glob("/opt/var/run/*.pid")
+	for _, m := range matches {
+		svcTotal++
+		pid := strings.TrimSpace(readLine(m))
+		if pid != "" {
+			if _, err := os.Stat("/proc/" + pid); err == nil {
+				svcUp++
+			}
+		}
+	}
+	errCount := 0
+	if path := resolveLogPath(); path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			for _, ln := range strings.Split(string(data), "\n") {
+				if strings.Contains(ln, "[ERROR]") {
+					errCount++
+				}
+			}
+		}
+	}
+	return "🌅 Сводка за сутки:\n" +
+		strings.TrimRight(cmdStatus(), "\n") +
+		fmt.Sprintf("\n🟢 Службы: %d/%d работает", svcUp, svcTotal) +
+		fmt.Sprintf("\n❗ Ошибок в логе: %d", errCount)
 }
 
 // cmdService — /service <имя> start|stop|restart.
@@ -572,20 +690,29 @@ func cmdLogCmd(args []string) tgReply {
 	return tgReply{text: tailLog(n)}
 }
 
-// tailLog — хвост суточного лога EM; если за сегодня записей ещё нет —
+// resolveLogPath — суточный лог; если за сегодня записей ещё нет —
 // самый свежий существующий файл.
-func tailLog(n int) string {
+func resolveLogPath() string {
 	dir := "/tmp/entware/logs"
 	path := filepath.Join(dir, time.Now().Format("2006-01-02")+".log")
-	if _, err := os.Stat(path); err != nil {
-		best, bestMod := "", time.Time{}
-		matches, _ := filepath.Glob(filepath.Join(dir, "20*.log"))
-		for _, m := range matches {
-			if fi, err := os.Stat(m); err == nil && fi.ModTime().After(bestMod) {
-				best, bestMod = m, fi.ModTime()
-			}
+	if _, err := os.Stat(path); err == nil {
+		return path
+	}
+	best, bestMod := "", time.Time{}
+	matches, _ := filepath.Glob(filepath.Join(dir, "20*.log"))
+	for _, m := range matches {
+		if fi, err := os.Stat(m); err == nil && fi.ModTime().After(bestMod) {
+			best, bestMod = m, fi.ModTime()
 		}
-		path = best
+	}
+	return best
+}
+
+// tailLog — хвост лога EM (N последних строк).
+func tailLog(n int) string {
+	path := resolveLogPath()
+	if path == "" {
+		return "Логи отсутствуют"
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -597,6 +724,41 @@ func tailLog(n int) string {
 	}
 	name := filepath.Base(path)
 	return "📜 " + name + " (последние записи):\n" + strings.Join(lines, "\n")
+}
+
+// cmdFind — /find <текст>: поиск по логу без учёта регистра (до 10 строк).
+func cmdFind(args []string) tgReply {
+	if len(args) == 0 {
+		return tgReply{text: "Формат: /find <текст>"}
+	}
+	query := strings.ToLower(strings.Join(args, " "))
+	path := resolveLogPath()
+	if path == "" {
+		return tgReply{text: "Логи отсутствуют"}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return tgReply{text: "Логи отсутствуют"}
+	}
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	var hits []string
+	total := 0
+	for _, ln := range lines {
+		if strings.Contains(strings.ToLower(ln), query) {
+			total++
+			if len(hits) < 10 {
+				hits = append(hits, ln)
+			}
+		}
+	}
+	if total == 0 {
+		return tgReply{text: fmt.Sprintf("🔍 «%s»: не найдено в %s", query, filepath.Base(path))}
+	}
+	head := fmt.Sprintf("🔍 «%s»: найдено %d (показаны первые %d):\n", query, total, len(hits))
+	if total <= len(hits) {
+		head = fmt.Sprintf("🔍 «%s»: найдено %d:\n", query, total)
+	}
+	return tgReply{text: head + strings.Join(hits, "\n")}
 }
 
 // --- Telegram API: getUpdates ---
