@@ -30,6 +30,12 @@ CURL_TIMEOUT=8
 CURL=/opt/bin/curl
 [ -x "$CURL" ] || CURL=curl
 
+# Интерактивный чат-бот (Go): long-polling getUpdates, команды /help /status и т.д.
+# Управляется флагом bot_enabled из конфига; жизненным циклом управляет шлюз.
+BOT_BIN="/opt/web_entware/cgi-bin/go/entware-telegram"
+BOT_PID="/tmp/entware/pid/telegram_bot.pid"
+BOT_LOG="/tmp/entware/logs/telegram_bot.log"
+
 # --- Загрузка конфига (поля бота + критические пороги) ---
 load_config() {
     if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
@@ -56,6 +62,7 @@ load_config() {
                 17) T_RAM_VAL=$_v ;;
                 18) T_DISK_EN=$_v ;;
                 19) T_DISK_VAL=$_v ;;
+                20) BOT_ENABLED=$_v ;;
             esac
         done << EOF
 $(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ERROR"), (if (.sources|type)=="array" then (.sources|join("|")) else "system|monitor|service|network|packages" end), (.autostart // false), (.proxy_url // ""),
@@ -64,7 +71,7 @@ $(jq -r '.enabled // false, (.bot_token // ""), (.chat_id // ""), (.level // "ER
   (.thresholds.wifi1_temp.enabled // false), (.thresholds.wifi1_temp.value // 100),
   (.thresholds.cpu_load.enabled // false), (.thresholds.cpu_load.value // 95),
   (.thresholds.ram_used.enabled // false), (.thresholds.ram_used.value // 90),
-  (.thresholds.disk_temp.enabled // false), (.thresholds.disk_temp.value // 60)' "$CONFIG_FILE" 2>/dev/null)
+  (.thresholds.disk_temp.enabled // false), (.thresholds.disk_temp.value // 60), (.bot_enabled // false)' "$CONFIG_FILE" 2>/dev/null)
 EOF
     else
         ENABLED=false
@@ -497,6 +504,39 @@ check_thresholds() {
     check_one_threshold "disk_temp" "$T_DISK_EN" "$T_DISK_VAL" "$disk" "Температура дисков" "°C"
 }
 
+# --- Чат-бот: старт/остановка по флагу bot_enabled (идемпотентно) ---
+bot_running() {
+    [ -f "$BOT_PID" ] || return 1
+    local p
+    p=$(cat "$BOT_PID" 2>/dev/null | tr -d ' ')
+    [ -n "$p" ] && [ -d "/proc/$p" ] || return 1
+    return 0
+}
+
+bot_start() {
+    if [ "$ENABLED" != "true" ] || [ "$BOT_ENABLED" != "true" ] || [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+        bot_stop
+        return 0
+    fi
+    if [ ! -x "$BOT_BIN" ]; then
+        tg_log "WARN" "[bot] бинарник не найден: $BOT_BIN"
+        return 0
+    fi
+    bot_running && return 0
+    nohup "$BOT_BIN" -bot >> "$BOT_LOG" 2>&1 &
+    echo $! > "$BOT_PID.tmp.$$" && mv -f "$BOT_PID.tmp.$$" "$BOT_PID"
+    tg_log "INFO" "[bot] запущен (pid=$(cat "$BOT_PID"))"
+}
+
+bot_stop() {
+    bot_running || { rm -f "$BOT_PID" 2>/dev/null; return 0; }
+    local p
+    p=$(cat "$BOT_PID" 2>/dev/null | tr -d ' ')
+    kill "$p" 2>/dev/null
+    rm -f "$BOT_PID"
+    tg_log "INFO" "[bot] остановлен"
+}
+
 daemon_loop() {
     load_config
     mkdir -p "$STATE_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null
@@ -504,10 +544,11 @@ daemon_loop() {
     # date -r +%s — BusyBox-совместимо (stat -c %Y на роутере недоступен).
     CFG_MTIME=$(date -r "$CONFIG_FILE" +%s 2>/dev/null || echo 0)
 
-    trap 'tg_log "INFO" "[telegram] gateway stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
+    trap 'tg_log "INFO" "[telegram] gateway stopped (pid=$$)"; bot_stop; rm -f "$PID_FILE"; exit 0' TERM
     trap 'load_config; tg_log "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"' HUP
 
     tg_log "INFO" "[telegram] gateway started (level=$LEVEL, sources=$SOURCES)"
+    bot_start
 
     local it=0
     while true; do
@@ -519,11 +560,15 @@ daemon_loop() {
                 CFG_MTIME=$NEW_MTIME
                 load_config
                 tg_log "INFO" "[telegram] config reloaded (level=$LEVEL, sources=$SOURCES)"
+                bot_start
             fi
         fi
         if [ "$ENABLED" = "true" ] && [ -n "$BOT_TOKEN" ] && [ -n "$CHAT_ID" ]; then
             process_all
         fi
+        # Чат-бот: самовосстановление (bot_start идемпотентен — запускает
+        # только если bot_enabled и процесс не жив; иначе останавливает).
+        bot_start
         # Критические пороги — раз в ~6 итераций (~60с), чтобы не блокировать
         # обработку логов на smartctl/RCI (дешёвые метрики идут первыми).
         if [ $((it % 6)) -eq 0 ]; then
@@ -539,6 +584,7 @@ case "$1" in
         ;;
     stop)
         daemon_stop "$PID_FILE" "(^|[/ ])telegram_gateway\.sh daemon"
+        bot_stop
         tg_log "INFO" "[telegram] gateway stopped"
         ;;
     restart)
