@@ -436,7 +436,7 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/digest":   func([]string) tgReply { return tgReply{text: buildDigest()} },
 		// Группа A — расширенная информация
 		"/top":     cmdTop,
-		"/ports":   func([]string) tgReply { return tgReply{text: cmdPorts()} },
+		"/ports":   func([]string) tgReply { return cmdPorts() },
 		"/devices": func([]string) tgReply { return tgReply{text: cmdDevices()} },
 		"/wifi":    func([]string) tgReply { return tgReply{text: cmdWifi()} },
 		"/updates": func([]string) tgReply { return tgReply{text: cmdUpdates()} },
@@ -1109,16 +1109,23 @@ func cmdTop(args []string) tgReply {
 	return tgReply{text: b.String()}
 }
 
-// knownPortNames — подписи известных портов (для /ports).
+// knownPortNames — подписи известных портов.
 var knownPortNames = map[int]string{
-	22: "SSH", 53: "DNS (dnsmasq)", 80: "HTTP", 443: "HTTPS",
-	8086: "lighttpd/koffe", 8087: "Панель EM", 8089: "htop (ttyd)",
-	9089: "терминал (ttyd)", 9097: "koffe-api", 10871: "прокси (xray)",
+	22: "SSH", 23: "telnet", 53: "DNS", 78: "RCI-alt", 79: "RCI",
+	80: "HTTP", 139: "SMB", 443: "HTTPS", 445: "SMB",
+	1080: "SOCKS", 1900: "UPnP", 2222: "SSH-alt",
+	3517: "Keenetic-DDNS", 3702: "WSD",
+	7001: "Keenetic", 7004: "Keenetic", 7005: "Keenetic", 7006: "Keenetic",
+	7007: "Keenetic", 7010: "Keenetic", 7014: "Keenetic", 7020: "Keenetic",
+	7022: "Keenetic", 7024: "Keenetic", 7025: "Keenetic", 7026: "Keenetic",
+	8080: "AdGuard", 8086: "lighttpd/koffe", 8087: "Панель EM",
+	8089: "htop (ttyd)", 9089: "терминал (ttyd)", 9097: "koffe-api",
+	10871: "прокси (xray)", 41230: "внутренний", 54322: "внутренний",
 }
 
-// decodeHexSockaddr — hex-адрес из /proc/net/tcp → человекочитаемый хост.
+// decodeHexSockaddr — hex-адрес из /proc/net/tcp(6) → читаемый вид.
 func decodeHexSockaddr(hexAddr string) string {
-	if len(hexAddr) == 8 { // IPv4 little-endian по байтам
+	if len(hexAddr) == 8 {
 		b := make([]byte, 4)
 		for i := 0; i < 4; i++ {
 			v, _ := strconv.ParseUint(hexAddr[i*2:i*2+2], 16, 8)
@@ -1126,16 +1133,22 @@ func decodeHexSockaddr(hexAddr string) string {
 		}
 		return fmt.Sprintf("%d.%d.%d.%d", b[3], b[2], b[1], b[0])
 	}
-	return hexAddr // IPv6 — как есть
+	if len(hexAddr) == 32 {
+		return decodeHexV6(hexAddr)
+	}
+	return hexAddr
 }
 
-// cmdPorts — слушающие TCP-порты (/proc/net/tcp+tcp6).
-func cmdPorts() string {
-	type listen struct {
-		addr string
-		port int
-	}
-	seen := map[int]map[string]bool{}
+// portEntry — один слушающий порт.
+type portEntry struct {
+	port  int
+	addrs []string // уникальные адреса
+}
+
+// parseListenPorts — парсит /proc/net/tcp и tcp6, возвращает уникальные порты.
+func parseListenPorts() []portEntry {
+	type addrInfo struct{ host, hexAddr string }
+	seen := map[int][]addrInfo{}
 	for _, file := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
@@ -1143,50 +1156,76 @@ func cmdPorts() string {
 		}
 		for i, ln := range strings.Split(string(data), "\n") {
 			if i == 0 {
-				continue // заголовок
-			}
-			f := strings.Fields(ln)
-			if len(f) < 4 || f[3] != "0A" { // 0A = LISTEN
 				continue
 			}
-			hexAddr, portHex := "", ""
-			if j := strings.IndexByte(f[1], ':'); j > 0 {
-				hexAddr, portHex = f[1][:j], f[1][j+1:]
+			f := strings.Fields(ln)
+			if len(f) < 4 || f[3] != "0A" {
+				continue
 			}
-			port, _ := strconv.ParseInt(portHex, 16, 32)
-			host := decodeHexSockaddr(hexAddr)
+			j := strings.IndexByte(f[1], ':')
+			if j <= 0 {
+				continue
+			}
+			hexHost, hexPort := f[1][:j], f[1][j+1:]
+			port, _ := strconv.ParseInt(hexPort, 16, 32)
 			p := int(port)
-			if seen[p] == nil {
-				seen[p] = map[string]bool{}
+			addr := decodeHexSockaddr(hexHost)
+			dup := false
+			for _, a := range seen[p] {
+				if a.host == addr {
+					dup = true
+					break
+				}
 			}
-			seen[p][host] = true
+			if !dup {
+				seen[p] = append(seen[p], addrInfo{host: addr, hexAddr: hexHost})
+			}
 		}
 	}
-	if len(seen) == 0 {
-		return "Слушающие порты не найдены"
-	}
-	ports := make([]int, 0, len(seen))
-	for p := range seen {
-		ports = append(ports, p)
-	}
-	sort.Ints(ports)
-	var b strings.Builder
-	b.WriteString("🔌 Слушающие порты:\n")
-	for _, p := range ports {
-		note := knownPortNames[p]
-		addrs := make([]string, 0, len(seen[p]))
-		for a := range seen[p] {
-			addrs = append(addrs, a)
+	var out []portEntry
+	for p, infos := range seen {
+		var addrs []string
+		for _, a := range infos {
+			addrs = append(addrs, a.host)
 		}
 		sort.Strings(addrs)
-		line := fmt.Sprintf("  :%d", p)
-		if note != "" {
-			line += " (" + note + ")"
-		}
-		line += " ← " + strings.Join(addrs, ", ")
-		b.WriteString(line + "\n")
+		out = append(out, portEntry{port: p, addrs: addrs})
 	}
-	return b.String()
+	sort.Slice(out, func(i, j int) bool { return out[i].port < out[j].port })
+	return out
+}
+
+// portScope — классификация доступности порта по адресам.
+// "ext" — все интерфейсы, "local" — только loopback, "lan" — прочее.
+func portScope(addrs []string) string {
+	hasWild, allLoop, hasNonLoop := false, true, false
+	for _, a := range addrs {
+		if a == "0.0.0.0" || a == "::" {
+			hasWild = true
+		}
+		isLoop := a == "127.0.0.1" || a == "::1"
+		if !isLoop {
+			allLoop = false
+			hasNonLoop = true
+		}
+	}
+	if hasNonLoop || hasWild {
+		if allLoop {
+			return "local"
+		}
+		if hasWild {
+			return "ext"
+		}
+	}
+	if len(addrs) > 0 {
+		for _, a := range addrs {
+			if a == "127.0.0.1" || a == "::1" {
+				return "local"
+			}
+		}
+		return "lan"
+	}
+	return "lan"
 }
 
 // rciHost — устройство домашней сети из RCI Keenetic.
@@ -1472,3 +1511,58 @@ func flushQuiet(cfg Config) {
 
 // backupBusy — флаг «бэкап уже создаётся» (анти-DoS тяжёлой операции).
 var backupBusy int32
+
+// decodeHexV6 — декодирует 32-hex адрес из /proc/net/tcp6.
+func decodeHexV6(hexAddr string) string {
+	if len(hexAddr) != 32 {
+		return hexAddr
+	}
+	b := make([]byte, 16)
+	for g := 0; g < 4; g++ {
+		for i := 0; i < 4; i++ {
+			pos := g*8 + i*2
+			v, _ := strconv.ParseUint(hexAddr[pos:pos+2], 16, 8)
+			// Байты в каждой u32 группе идут в обратном порядке (LE).
+			b[g*4+(3-i)] = byte(v)
+		}
+	}
+	ip := net.IP(b)
+	return ip.String()
+}
+
+// cmdPorts — /ports: слушающие TCP-порты с группировкой по доступности.
+func cmdPorts() tgReply {
+	entries := parseListenPorts()
+	if len(entries) == 0 {
+		return tgReply{text: "Слушающие порты не найдены"}
+	}
+	var ext, lan, local []string
+	for _, e := range entries {
+		note := knownPortNames[e.port]
+		label := fmt.Sprintf(":%d", e.port)
+		if note != "" {
+			label += " (" + note + ")"
+		}
+		scope := portScope(e.addrs)
+		switch scope {
+		case "ext":
+			ext = append(ext, label)
+		case "local":
+			local = append(local, label)
+		default:
+			lan = append(lan, label)
+		}
+	}
+	var b strings.Builder
+	b.WriteString("🔌 Порты:\n")
+	if len(ext) > 0 {
+		b.WriteString("🌐 Все интерфейсы: " + strings.Join(ext, " · ") + "\n")
+	}
+	if len(lan) > 0 {
+		b.WriteString("🏠 LAN: " + strings.Join(lan, " · ") + "\n")
+	}
+	if len(local) > 0 {
+		b.WriteString("🔒 Локальные: " + strings.Join(local, " · ") + "\n")
+	}
+	return tgReply{text: b.String()}
+}
