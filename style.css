@@ -2595,3 +2595,39 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* ===== Вкладки страницы Настроек (v1.13.3) ===== */
+.em-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 18px 0;
+}
+.em-tab {
+    padding: 9px 16px;
+    background: var(--content-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.em-tab:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+.em-tab.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+.em-tab-panel { display: none; }
+.em-tab-panel.active { display: block; }
+.em-tab-panel > h3:first-child { margin-top: 0; }
+@media (max-width: 800px) {
+    .em-tabs { gap: 6px; }
+    .em-tab { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
+}
