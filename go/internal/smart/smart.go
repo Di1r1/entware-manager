@@ -49,15 +49,31 @@ type DiskInfo struct {
 
 var criticalAttrIDs = map[int]bool{5: true, 10: true, 187: true, 196: true, 197: true, 198: true}
 
+// importantAttrIDs — «важные, но не критические» атрибуты (для флага importance).
+var importantAttrIDs = map[int]bool{1: true, 3: true, 4: true, 7: true, 9: true, 12: true, 184: true, 188: true, 189: true, 190: true, 193: true, 194: true, 199: true}
+
+// attrImportance — важность атрибута для фронтенда ("critical"/"important"/"").
+// Единый источник вместо дублей списков в smart.js.
+func attrImportance(id int) string {
+	if criticalAttrIDs[id] {
+		return "critical"
+	}
+	if importantAttrIDs[id] {
+		return "important"
+	}
+	return ""
+}
+
 var deviceRe = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 type AttrInfo struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Value     int    `json:"value"`
-	Worst     int    `json:"worst"`
-	Threshold int    `json:"threshold"`
-	Raw       string `json:"raw"`
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	Value      int    `json:"value"`
+	Worst      int    `json:"worst"`
+	Threshold  int    `json:"threshold"`
+	Raw        string `json:"raw"`
+	Importance string `json:"importance,omitempty"` // critical | important
 }
 
 type PartitionInfo struct {
@@ -813,6 +829,7 @@ func handleAttributes(device string) {
 		if attr.Raw == "" || attr.Raw == "-" {
 			attr.Raw = "0"
 		}
+		attr.Importance = attrImportance(id)
 		attrs = append(attrs, attr)
 	}
 	if attrs == nil {

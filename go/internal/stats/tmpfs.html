@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="/entware-manager/style.css?v=46">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script src="/entware-manager/modal.js?v=4"></script>
+    <script src="/entware-manager/lib/utils.js?v=7"></script>
 </head>
 <body class="packages-body">
 <script>if (window.Theme) Theme.init();</script>
@@ -49,18 +50,7 @@
 (function() {
 var AUTH_ENABLED = {AUTH_ENABLED};
 
-    function parseSize(str) {
-        if (!str) return 0;
-        str = str.trim();
-        var units = { 'B': 1, 'K': 1024, 'M': 1048576, 'G': 1073741824 };
-        var match = str.match(/^([\d.,]+)\s*([KMGT]?B?)$/i);
-        if (!match) return 0;
-        var val = parseFloat(match[1].replace(',', '.'));
-        var unit = match[2].toUpperCase();
-        if (unit === 'B') unit = 'B';
-        if (!units[unit]) return val;
-        return val * units[unit];
-    }
+    // parseSize и escapeHtml — из lib/utils.js (единая реализация).
 
     function sortTable(table, colIndex, dataType) {
         var tbody = table.tBodies[0];
@@ -159,12 +149,6 @@ var AUTH_ENABLED = {AUTH_ENABLED};
         } else {
             doDelete('');
         }
-    }
-
-    function escapeHtml(str) {
-        return str.replace(/[&<>"]/g, function(m) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m];
-        });
     }
 
     function viewFile(path) {

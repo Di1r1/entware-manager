@@ -424,7 +424,7 @@ async function loadTab(tabName) {    const ver = window.APP_VERSION || 'loading.
     }
     if (tabName === 'smart') {
         if (!window.SMART_LOADED) {
-            await loadScript('/entware-manager/smart.js?v=9');
+            await loadScript('/entware-manager/smart.js?v=10');
             window.SMART_LOADED = true;
         }
         SMART.init(); Menu.setActiveTab(tabName); return;
@@ -2824,18 +2824,7 @@ function updateSidebarDateTime() {
 document.addEventListener('DOMContentLoaded', updateSidebarDateTime);
 setInterval(updateSidebarDateTime, 1000);
 
-function parseSize(str) {
-    if (!str) return 0;
-    str = str.trim();
-    const units = { 'B': 1, 'K': 1024, 'M': 1048576, 'G': 1073741824 };
-    const match = str.match(/^([\d.,]+)\s*([KMGT]?B?)$/i);
-    if (!match) return 0;
-    let val = parseFloat(match[1].replace(',', '.'));
-    let unit = match[2].toUpperCase();
-    if (unit === 'B') unit = 'B';
-    if (!units[unit]) return val;
-    return val * units[unit];
-}
+// parseSize и formatSize — в lib/utils.js (единая реализация с TB и кириллицей).
 
 function parseSpeed(str) {
     if (!str) return 0;
@@ -2930,7 +2919,7 @@ function updateSortIndicators(table, activeCol, sortOrder) {
 }
 
 // Универсальное включение сортировки: навешивает click на thead th.
-// opts: { excludeCol: number[], onSort: function(idx, dataType) }.
+// opts: { excludeCol: number[], dataTypes: string[], onSort: function(idx, dataType) }.
 // onSort — кастомная логика (например, сохранение сортировки), по умолчанию sortTable.
 function initTableSorting(table, opts) {
     opts = opts || {};
@@ -2942,11 +2931,15 @@ function initTableSorting(table, opts) {
         th.style.cursor = 'pointer';
         th.addEventListener('click', function() {
             let dataType = 'string';
-            const columnText = th.innerText.toLowerCase();
-            if (columnText.includes('размер')) {
-                dataType = 'size';
-            } else if (columnText.includes('загрузка')) {
-                dataType = 'percent';
+            if (opts.dataTypes && opts.dataTypes[idx]) {
+                dataType = opts.dataTypes[idx];
+            } else {
+                const columnText = th.innerText.toLowerCase();
+                if (columnText.includes('размер')) {
+                    dataType = 'size';
+                } else if (columnText.includes('загрузка')) {
+                    dataType = 'percent';
+                }
             }
             if (opts.onSort) opts.onSort(idx, dataType);
             else sortTable(table, idx, dataType);

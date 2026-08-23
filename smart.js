@@ -3,14 +3,23 @@
 // Версия: 1.1 (кликабельные зоны, цветные типы, подсветка здоровья)
 // Дата: 2026-07-17
 
-function formatSize(bytes) {
-    const n = parseInt(bytes);
-    if (!n || isNaN(n)) return '—';
-    const GB = 1024 * 1024 * 1024;
-    const TB = GB * 1024;
-    if (n >= TB) return (n / TB).toFixed(1) + ' TB';
-    if (n >= GB) return Math.round(n / GB) + ' GB';
-    return Math.round(n / (1024 * 1024)) + ' MB';
+// formatSize — в lib/utils.js (единая реализация).
+
+
+// Сортировка SMART-таблицы: типы колонок явные (Temp «45°C», Power-On «123 ч»).
+// Открытые вложенные строки заполненности при сортировке схлопываются
+// (пересоздаются лениво при следующем клике).
+function enableSmartTableSorting() {
+    const table = document.getElementById('smartTable');
+    if (!table || table.dataset.sortable) return;
+    initTableSorting(table, {
+        dataTypes: ['string', 'string', 'string', 'size', 'string', 'string', 'number', 'number'],
+        onSort: function(idx, dataType) {
+            document.querySelectorAll('#smartTableBody .smart-usage-row').forEach(function(r) { r.remove(); });
+            document.querySelectorAll('#smartTableBody tr.usage-open').forEach(function(r) { r.classList.remove('usage-open'); });
+            sortTable(table, idx, dataType);
+        }
+    });
 }
 
 const SMART = {
@@ -81,6 +90,7 @@ const SMART = {
 
         document.getElementById('refreshSmart').addEventListener('click', () => this.loadDisks(true));
         initTableSearch('searchSmart', 'smartTable', -1);
+        enableSmartTableSorting();
     },
 
     async loadDisks(forceRefresh, silent) {
@@ -209,6 +219,7 @@ const SMART = {
         container.innerHTML = html;
         this.bindClickZones();
         initTableSearch('searchSmart', 'smartTable', -1);
+        enableSmartTableSorting();
     },
 
     bindClickZones() {
@@ -340,13 +351,16 @@ ${escapeHtml(data.info || 'Нет данных')}
                 let statusIcon = 'icon-check';
                 let statusText = 'OK';
 
-                // Важность атрибута (цвет текста)
+                // Важность атрибута — единый источник: флаг importance из бэкенда
+                // (smart.go attrImportance); fallback на локальные списки для старых ответов.
                 const CRITICAL_ATTRS = [5, 10, 187, 196, 197, 198];
                 const IMPORTANT_ATTRS = [1, 3, 4, 7, 9, 12, 184, 188, 189, 190, 193, 194, 199];
+                const imp = attr.importance || (CRITICAL_ATTRS.includes(id) ? 'critical'
+                    : IMPORTANT_ATTRS.includes(id) ? 'important' : '');
 
-                if (CRITICAL_ATTRS.includes(id)) {
+                if (imp === 'critical') {
                     impClass = 'smart-imp-critical';
-                } else if (IMPORTANT_ATTRS.includes(id)) {
+                } else if (imp === 'important') {
                     impClass = 'smart-imp-important';
                 }
 
