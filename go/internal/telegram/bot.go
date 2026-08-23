@@ -53,6 +53,7 @@ type tgUpdate struct {
 type tgReply struct {
 	text    string
 	buttons [][2]string
+	quickKB bool // прикрепить постоянную клавиатуру быстрых команд
 }
 
 // pendingAction — действие, ожидающее подтверждения через inline-кнопку.
@@ -211,12 +212,14 @@ func BotRun() error {
 				continue
 			}
 			rep := replyFor(u.Message.Text, cmds)
-			if rep.text == "" && len(rep.buttons) == 0 {
+			if rep.text == "" && len(rep.buttons) == 0 && !rep.quickKB {
 				continue
 			}
 			var kb string
 			if len(rep.buttons) > 0 {
 				kb = buildInlineKB(rep.buttons)
+			} else if rep.quickKB {
+				kb = replyMarkupQuickCommands()
 			}
 			if kb != "" {
 				SendMessageMarkup(cfg, rep.text, kb)
@@ -421,8 +424,8 @@ func replyFor(text string, cmds map[string]func([]string) tgReply) tgReply {
 // defaultCommands — карта команд. Аргументы — слова после команды.
 func defaultCommands() map[string]func(args []string) tgReply {
 	return map[string]func([]string) tgReply{
-		"/start":    func([]string) tgReply { return tgReply{text: cmdHelp()} },
-		"/help":     func([]string) tgReply { return tgReply{text: cmdHelp()} },
+		"/start":    func([]string) tgReply { return tgReply{text: cmdHelp(), quickKB: true} },
+		"/help":     func([]string) tgReply { return tgReply{text: cmdHelp(), quickKB: true} },
 		"/status":   func([]string) tgReply { return tgReply{text: cmdStatus()} },
 		"/temp":     func([]string) tgReply { return tgReply{text: cmdTemp()} },
 		"/ip":       func([]string) tgReply { return tgReply{text: cmdIP()} },
@@ -970,6 +973,27 @@ func handleCallback(cfg Config, cb *struct {
 	default:
 		AnswerCallbackQuery(cfg, cb.ID, "")
 	}
+}
+
+// replyMarkupQuickCommands — постоянная клавиатура быстрых команд:
+// кнопки отправляют текст команды, маршрутизация обрабатывает как обычные.
+func replyMarkupQuickCommands() string {
+	rows := [][]string{
+		{"/status", "/temp"},
+		{"/ip", "/services"},
+		{"/devices", "/smart"},
+		{"/log", "/help"},
+	}
+	m := map[string]interface{}{
+		"keyboard":        rows,
+		"resize_keyboard": true,
+		"is_persistent":   true,
+	}
+	j, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	return string(j)
 }
 
 // buildInlineKB — JSON reply_markup для sendMessage.

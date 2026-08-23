@@ -273,3 +273,18 @@ func TestRecipients(t *testing.T) {
 		t.Errorf("внутренние дубликаты не убраны: %v", got)
 	}
 }
+
+func TestReplyMarkupQuickCommands(t *testing.T) {
+	j := replyMarkupQuickCommands()
+	if !strings.Contains(j, "/status") || !strings.Contains(j, "/help") {
+		t.Errorf("клавиатура без команд: %s", j)
+	}
+	if !strings.Contains(j, "resize_keyboard") || !strings.Contains(j, "is_persistent") {
+		t.Error("нет resize_keyboard/is_persistent")
+	}
+	// help/start возвращают клавиатуру
+	rep := replyFor("/help", defaultCommands())
+	if !rep.quickKB {
+		t.Error("/help должен возвращать quickKB")
+	}
+}
