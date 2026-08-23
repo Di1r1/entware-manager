@@ -36,7 +36,7 @@ echo "=== Сборка deploy ==="
 for f in "$PROJECT_DIR"/*; do
     name=$(basename "$f")
     case "$name" in
-        deploy|go|tmp|test|build-deploy.sh|Makefile|build-ipk.sh|forum_post.md|TECH_SPEC.md|RULES.md|links.json|DEVLOG.md|DEVICE.md|BUILD.md|router_backup|conffiles|control|postinst|prerm|*_config.json|*.tar.gz|*.ipk)
+        deploy|go|tmp|test|dist|build-deploy.sh|Makefile|build-ipk.sh|forum_post.md|TECH_SPEC.md|RULES.md|links.json|DEVLOG.md|DEVICE.md|BUILD.md|router_backup|conffiles|control|postinst|prerm|*_config.json|*.tar.gz|*.ipk)
             continue ;;
     esac
     if [ -d "$f" ]; then
@@ -49,6 +49,7 @@ for f in "$PROJECT_DIR"/*; do
 done
 
 # Удаляем dev-артефакты и пользовательские конфиги из deploy
+rm -rf "$DEPLOY_DIR/doc/local"
 rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" "$DEPLOY_DIR/doc/IPK_BUILD.md" "$DEPLOY_DIR/doc/NETDATA_MANUAL.md" "$DEPLOY_DIR/logger/config.json" 2>/dev/null
 
 echo ""
@@ -233,7 +234,8 @@ for arch_dir in "$DEPLOY_DIR"/cgi-bin/go/*/; do
 done
 
 if $BUILD_TAR; then
-    ARCHIVE="$PROJECT_DIR/entware-manager-all.tar.gz"
+    mkdir -p "$PROJECT_DIR/dist"
+    ARCHIVE="$PROJECT_DIR/dist/entware-manager-all.tar.gz"
     tar -czf "$ARCHIVE" -C "$PROJECT_DIR" deploy/
     echo ""
     echo "Архив: $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"

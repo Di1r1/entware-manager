@@ -25,7 +25,8 @@ for arg in "$@"; do
 done
 
 DEPLOY_DIR="$SCRIPT_DIR/deploy"
-OUT_DIR="$SCRIPT_DIR"
+OUT_DIR="$SCRIPT_DIR/dist"
+mkdir -p "$OUT_DIR"
 PKG_TMP="/tmp/entware-ipk-$$"
 
 cleanup() { rm -rf "$PKG_TMP"; }

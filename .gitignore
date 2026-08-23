@@ -1,4 +1,5 @@
 deploy/
+dist/
 tmp/
 *.tar.gz
 *.ipk

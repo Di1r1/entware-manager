@@ -34,14 +34,12 @@ release: clean all archives
 	@echo "============================================"
 	@echo " Релиз v$(VERSION) собран"
 	@echo " Файлы:"
-	@ls -lh $(MAKEFILE_DIR)/entware-manager*.tar.gz $(MAKEFILE_DIR)/entware-manager_*.ipk 2>/dev/null || echo "  (нет ipk/tar.gz)"
+	@ls -lh $(MAKEFILE_DIR)/dist/ 2>/dev/null || echo "  (нет ipk/tar.gz)"
 	@echo "============================================"
 
 clean:
 	@echo "=== Очистка ==="
-	rm -rf "$(MAKEFILE_DIR)/deploy"
-	rm -f $(MAKEFILE_DIR)/entware-manager_*.tar.gz $(MAKEFILE_DIR)/entware-manager-*.tar.gz
-	rm -f $(MAKEFILE_DIR)/entware-manager_*.ipk
+	rm -rf "$(MAKEFILE_DIR)/deploy" "$(MAKEFILE_DIR)/dist"
 	@echo "✓ Очищено"
 
 version:
@@ -53,8 +51,8 @@ archives: deploy
 		rm -rf "/tmp/deploy" && \
 		cp -a "$(MAKEFILE_DIR)/deploy" "/tmp/deploy" && \
 		find "/tmp/deploy/cgi-bin/go" -mindepth 1 -maxdepth 1 -type d ! -name "$$arch" -exec rm -rf {} + && \
-		tar -czf "$(MAKEFILE_DIR)/entware-manager-$$arch.tar.gz" -C /tmp "deploy" && \
-		echo "  ✓ entware-manager-$$arch.tar.gz"; \
+		mkdir -p "$(MAKEFILE_DIR)/dist" && tar -czf "$(MAKEFILE_DIR)/dist/entware-manager-$$arch.tar.gz" -C /tmp "deploy" && \
+		echo "  ✓ dist/entware-manager-$$arch.tar.gz"; \
 	done
 
 check:
@@ -140,7 +138,7 @@ help:
 	@echo "  ipk            сборка ipk (зависит от deploy)"
 	@echo "  archives       per-arch tar.gz из deploy/"
 	@echo "  release        clean → deploy → ipk → archives"
-	@echo "  clean          удалить deploy/, *.ipk, *.tar.gz"
+	@echo "  clean          удалить deploy/ и dist/"
 	@echo "  version        показать версию"
 	@echo "  check          проверка инструментов"
 	@echo "  test           go test ./..."
