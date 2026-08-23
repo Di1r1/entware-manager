@@ -24,10 +24,41 @@ func TestRatelimitFlow(t *testing.T) {
 		t.Fatal("после исчерпания попыток IP должен быть заблокирован")
 	}
 
-	// сброс при успехе
+	// имитируем истечение локлаута: last = 31 сек назад (в пределах окна 15 мин)
+	ageRecord(t, ip, RateLimitLockout+time.Second)
+
+	if RateLimited(ip) {
+		t.Error("после истечения локлаута попытка должна быть разрешена (счётчик НЕ сбрасывается)")
+	}
+	// счётчик сохранился (5) → следующая неудача = мгновенный ре-лок
+	RecordFailure(ip)
+	if !RateLimited(ip) {
+		t.Error("неудача после локлаута должна давать мгновенный ре-лок")
+	}
+
+	// сброс только при успехе
 	ResetFailures(ip)
 	if RateLimited(ip) {
 		t.Fatal("после сброса IP не должен быть заблокирован")
+	}
+}
+
+// ageRecord сдвигает timestamp записи назад (имитация прошедшего времени).
+func ageRecord(t *testing.T, ip string, d time.Duration) {
+	t.Helper()
+	path := filepath.Join(RatelimitDir, sanitizeIP(ip))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fails int
+	var last int64
+	if _, err := fmt.Sscanf(string(data), "%d %d", &fails, &last); err != nil {
+		t.Fatal(err)
+	}
+	newer := fmt.Sprintf("%d %d\n", fails, last-int64(d.Seconds()))
+	if err := os.WriteFile(path, []byte(newer), 0600); err != nil {
+		t.Fatal(err)
 	}
 }
 

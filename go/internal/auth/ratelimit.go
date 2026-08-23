@@ -69,10 +69,11 @@ func RateLimited(ip string) bool {
 	if fails >= RateLimitMaxFails && now.Unix()-last <= int64(RateLimitLockout.Seconds()) {
 		return true
 	}
-	// лимит исчерпан, но локлаут уже истёк — запись больше не действует
-	if fails >= RateLimitMaxFails {
-		ResetFailures(ip)
-	}
+	// Локлаут истёк: разрешаем одну попытку, счётчик НЕ сбрасываем.
+	// Следующая же неудача (RecordFailure обновит timestamp) — мгновенный
+	// ре-лок. Раньше здесь был полный сброс → атакующий получал свежие
+	// 5 попыток каждые ~35 сек (~8/мин); теперь ~2/мин максимум,
+	// а успешный вход по-прежнему очищает счётчик полностью (ResetFailures).
 	return false
 }
 

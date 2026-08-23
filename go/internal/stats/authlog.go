@@ -60,7 +60,7 @@ func HandleAuthLog() {
 			if !ok {
 				continue
 			}
-			if e.Level == "WARN" && isWithin24h(e.Time, dayAgo, now) {
+			if e.Level == "WARN" && isFailedLogin(e.Message) && isWithin24h(e.Time, dayAgo, now) {
 				failed24h++
 			}
 			entries = append(entries, e)
@@ -104,6 +104,12 @@ func parseAuthLine(line string) (authLogEntry, bool) {
 	msg = strings.TrimPrefix(msg, "login.cgi]")
 	e.Message = strings.TrimSpace(msg)
 	return e, e.IP != "" && e.Message != ""
+}
+
+// isFailedLogin — только фактически неверный пароль; прочие WARN («Вход
+// отклонён», блокировки) в счётчик неудач за 24ч не попадают.
+func isFailedLogin(msg string) bool {
+	return strings.Contains(msg, "Неверный пароль")
 }
 
 // isWithin24h — запись новее dayAgo (время в формате лога).
