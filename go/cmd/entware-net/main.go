@@ -24,6 +24,8 @@ func main() {
 		network.HandleRoutes()
 	case "network_arp":
 		network.HandleARP()
+	case "network_wifi":
+		network.HandleWiFi()
 	case "network_status":
 		network.HandleStatus()
 	case "network_stats":

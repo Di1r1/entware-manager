@@ -44,7 +44,7 @@ var flatDispatch = map[string]string{
 	// net
 	"network_interfaces": "net", "network_routes": "net", "network_arp": "net",
 	"network_status": "net", "network_stats": "net", "network_events": "net",
-	"network_action": "net",
+	"network_action": "net", "network_wifi": "net",
 	// services
 	"check_syntax": "services", "check_deps": "services", "services": "services",
 	"service_action": "services", "ttyd_control": "services",

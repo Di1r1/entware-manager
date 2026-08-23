@@ -41,6 +41,7 @@ const NETWORK = {
                 <button class="tab-button active" data-tab="interfaces" id="tab-btn-interfaces">Интерфейсы</button>
                 <button class="tab-button" data-tab="routes" id="tab-btn-routes">Маршруты</button>
                 <button class="tab-button" data-tab="arp" id="tab-btn-arp">ARP</button>
+                <button class="tab-button" data-tab="wifi" id="tab-btn-wifi">Wi-Fi</button>
                 <button class="tab-button" data-tab="events" id="tab-btn-events">События</button>
                 <label class="tab-toggle" title="Скрыть неизвестные интерфейсы">
                     <input type="checkbox" id="hide-unknown-ifaces" style="display: none;">
@@ -84,6 +85,18 @@ const NETWORK = {
                         </table>
                     </div>
                 </div>
+                <div id="tab-wifi" class="tab-content">
+                    <div class="packages-table-wrapper">
+                        <table class="packages-table">
+                            <thead>
+                                <tr><th>Имя</th><th>IP адрес</th><th>MAC адрес</th><th>Сигнал (dBm)</th><th>Стандарт</th><th>Скорость (Мбит/с)</th><th>Сегмент</th></tr>
+                            </thead>
+                            <tbody id="wifi-tbody">
+                                <tr><td colspan="7">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="tab-events" class="tab-content">
                     <div id="events-list" style="background: var(--pre-bg); padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto;">
                         <p>Загрузка событий...</p>
@@ -100,6 +113,7 @@ const NETWORK = {
         await this.loadRoutes();
         await this.loadArp();
         await this.loadEvents();
+        await this.loadWifi();
     },
 
     async loadStatus() {
@@ -179,6 +193,34 @@ const NETWORK = {
             }
         } catch (e) {
             tbody.innerHTML = '<tr><td colspan="4">Ошибка загрузки</td></tr>';
+        }
+    },
+
+    async loadWifi() {
+        const tbody = document.getElementById('wifi-tbody');
+        if (!tbody) return;
+        try {
+            const data = await apiGet('/network/wifi.cgi');
+            const clients = data.clients || [];
+            if (clients.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">Клиентов Wi-Fi не найдено</td></tr>';
+                return;
+            }
+            tbody.innerHTML = clients.map(c => {
+                const rssiColor = c.rssi >= -50 ? 'var(--success-color, #2ecc71)'
+                    : c.rssi >= -70 ? 'var(--warning-color, #f39c12)' : 'var(--danger-color, #e74c3c)';
+                return `<tr>
+                    <td>${escapeHtml(c.name || c.hostname || '-')}</td>
+                    <td><code>${escapeHtml(c.ip)}</code></td>
+                    <td><code>${escapeHtml(c.mac)}</code></td>
+                    <td style="color:${rssiColor};font-weight:600;">${c.rssi} dBm</td>
+                    <td>${escapeHtml(c.mode || '-')}</td>
+                    <td>${c.txrate > 0 ? c.txrate : '-'}</td>
+                    <td>${escapeHtml(c.segment || '-')}</td>
+                </tr>`;
+            }).join('');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger-color);">Ошибка загрузки: ' + escapeHtml(e.message) + '</td></tr>';
         }
     },
 
@@ -272,7 +314,7 @@ const NETWORK = {
             this.loadInterfaces();
         });
         
-        ['interfaces', 'routes', 'arp', 'events'].forEach(tab => {
+        ['interfaces', 'routes', 'arp', 'wifi', 'events'].forEach(tab => {
             const btn = document.getElementById('tab-btn-' + tab);
             if (btn) {
                 btn.onclick = (e) => {
@@ -344,9 +386,12 @@ function switchNetworkTab(btn, tabName) {
     const contentEl = document.getElementById('tab-' + tabName);
     if (contentEl) {
         contentEl.classList.add('active');
-        console.log('Activated tab:', 'tab-' + tabName);
-    } else {
-        console.error('Tab not found:', 'tab-' + tabName);
     }
+    
+    // Загрузка данных при переключении на вкладку Wi-Fi
+    if (tabName === 'wifi' && typeof NETWORK !== 'undefined') {
+        NETWORK.loadWifi();
+    }
+    
     NETWORK.currentTab = tabName;
 }

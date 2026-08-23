@@ -97,7 +97,7 @@ cgi-bin)
 		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
 	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline|login|logout|session)
 		ENDPOINT="$name" exec "$(go_bin stats)" ;;
-	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_action)
+	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_action|network_wifi)
 		ENDPOINT="$name" exec "$(go_bin net)" ;;
 	check_syntax|check_deps|services|service_action|ttyd_control)
 		ENDPOINT="$name" exec "$(go_bin services)" ;;
