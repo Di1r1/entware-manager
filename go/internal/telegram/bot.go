@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"entware-manager/internal/backup"
 	"entware-manager/internal/services"
 )
 
@@ -158,6 +159,11 @@ func BotRun() error {
 	svcPrev := map[string]bool{}
 	svcBase := false
 	lastDigest := readDigestDate()
+	netPrev := scanNetDevices()
+	netBase := false
+	bgIt := 0
+	diskAlerted := false
+	wanPrev, wanSet := "", false
 
 	for {
 		// Перечитываем конфиг каждый цикл: смена токена/галочки «Чат-бот»
@@ -252,6 +258,44 @@ func BotRun() error {
 		svcPrev = cur
 		svcBase = true
 
+		// Раз в ~60 сек — фоновые проверки безопасности.
+		bgIt++
+		if bgIt%12 == 0 {
+			// Новое устройство в сети
+			devs := scanNetDevices()
+			if netBase {
+				for k, h := range devs {
+					if _, known := netPrev[k]; !known {
+						SendMessage(cfg, fmt.Sprintf("🔴 Новое устройство в сети!\n📱 %s\n🌐 IP: %s\n🔖 MAC: %s",
+							cleanHostDisplay(h), h.IP, strings.ToUpper(h.MAC)))
+					}
+				}
+			}
+			netPrev = devs
+			netBase = true
+
+			// Мало места на /opt (Entware)
+			pct := dfUsedPct(runDF(), "/opt")
+			if pct >= 90 && !diskAlerted {
+				diskAlerted = true
+				SendMessage(cfg, fmt.Sprintf("🟡 Мало места на /opt: занято %d%%", pct))
+			} else if pct >= 0 && pct < 85 {
+				diskAlerted = false
+			}
+
+			// Смена внешнего IP
+			ip := ifaceIPv4(defaultIface(readLine("/proc/net/route")))
+			if wanSet && ip != "" && ip != wanPrev {
+				SendMessage(cfg, fmt.Sprintf("🌐 Внешний IP изменился: %s → %s", wanPrev, ip))
+			}
+			if ip != "" {
+				wanPrev = ip
+			} else if !wanSet {
+				wanSet = true
+				wanPrev = ip
+			}
+		}
+
 		time.Sleep(pollInterval)
 	}
 }
@@ -315,6 +359,7 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/service": cmdService,
 		"/pkg":     cmdPkg,
 		"/rotate":  func([]string) tgReply { return tgReply{text: execRotate()} },
+		"/backup":  cmdBackup,
 		"/reboot":  cmdReboot,
 	}
 }
@@ -664,14 +709,14 @@ func cmdSmart() string {
 		}
 		sm = "/opt/sbin/smartctl"
 	}
-	var out []string
+	var results []string
 	for _, dev := range []string{"/dev/sda", "/dev/sdb", "/dev/sdc", "/dev/sdd"} {
 		if _, err := os.Stat(dev); err != nil {
 			continue
 		}
-		ctx := exec.Command(sm, "-H", dev)
-		ctx.Stdout = nil
-		b, err := ctx.Output()
+		cctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		b, err := exec.CommandContext(cctx, sm, "-H", dev).Output()
+		cancel()
 		res := "нет ответа"
 		if err == nil {
 			s := string(b)
@@ -684,12 +729,12 @@ func cmdSmart() string {
 				res = "⚠️ см. панель"
 			}
 		}
-		out = append(out, fmt.Sprintf("%s — %s", dev, res))
+		results = append(results, fmt.Sprintf("%s — %s", dev, res))
 	}
-	if len(out) == 0 {
+	if len(results) == 0 {
 		return "SMART: диски не найдены"
 	}
-	return "💾 SMART:\n" + strings.Join(out, "\n")
+	return "💾 SMART:\n" + strings.Join(results, "\n")
 }
 
 // cmdLogCmd — /log [N]: N строк хвоста (по умолчанию 15, макс 100).
@@ -1212,4 +1257,73 @@ func cmdCron() string {
 		return "⏰ Crontab (/opt/etc/crontab):\n" + strings.TrimRight(string(data), "\n")
 	}
 	return "⏰ Crontab пуст или отсутствует"
+}
+
+// scanNetDevices — активные устройства по MAC-ключу (для диффа «новое устройство»).
+func scanNetDevices() map[string]rciHost {
+	m := map[string]rciHost{}
+	for _, h := range fetchRCIHosts() {
+		if h.IP == "" || h.IP == "0.0.0.0" {
+			continue
+		}
+		key := strings.ToLower(h.MAC)
+		if key == "" {
+			key = "ip:" + h.IP
+		}
+		m[key] = h
+	}
+	return m
+}
+
+// dfUsedPct — процент занятого места для точки монтирования (-1: не найдено).
+func dfUsedPct(dfOut, mount string) int {
+	for _, ln := range strings.Split(dfOut, "\n") {
+		f := strings.Fields(ln)
+		if len(f) >= 5 && f[len(f)-1] == mount {
+			v, err := strconv.Atoi(strings.TrimSuffix(f[4], "%"))
+			if err != nil {
+				return -1
+			}
+			return v
+		}
+	}
+	return -1
+}
+
+// cmdBackup — /backup: архив конфигурации файлом в чат.
+func cmdBackup([]string) tgReply {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logErr("backup panic: %v", r)
+			}
+		}()
+		cfgNow := LoadConfig()
+		data, err := backup.BuildArchive()
+		if err != nil || len(data) == 0 {
+			msg := "❌ Не удалось создать бэкап"
+			if err != nil {
+				msg += ": " + err.Error()
+			}
+			SendMessage(cfgNow, msg)
+			return
+		}
+		fn := "entware-backup-" + time.Now().Format("2006-01-02_1504") + ".tar.gz"
+		if SendDocumentBytes(cfgNow, fn, data, "📦 Бэкап Entware Manager ("+fmtKB(len(data))+")") {
+			SendMessage(cfgNow, fmt.Sprintf("✅ Бэкап отправлен (%s)", fmtKB(len(data))))
+		} else {
+			SendMessage(cfgNow, "❌ Не удалось отправить файл (лимит Telegram — 50 МБ)")
+		}
+	}()
+	return tgReply{text: "⏳ Создаю бэкап конфигурации... Архив пришлю отдельным сообщением."}
+}
+
+// fmtKB — человекочитаемый размер.
+func fmtKB(n int) string {
+	switch {
+	case n >= 1024*1024:
+		return fmt.Sprintf("%.1f МБ", float64(n)/(1024*1024))
+	default:
+		return fmt.Sprintf("%d КБ", n/1024)
+	}
 }

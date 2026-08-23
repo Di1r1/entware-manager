@@ -154,3 +154,16 @@ func TestRestore_EntryTooLargeRejected(t *testing.T) {
 	})
 	_ = runRestore(t, archive)
 }
+
+func TestBuildArchive(t *testing.T) {
+	data, err := BuildArchive()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) < 20 {
+		t.Fatal("архив подозрительно мал")
+	}
+	if data[0] != 0x1f || data[1] != 0x8b {
+		t.Error("архив не gzip")
+	}
+}

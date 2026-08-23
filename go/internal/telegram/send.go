@@ -4,6 +4,7 @@ package telegram
 import (
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -115,4 +116,46 @@ func redactURL(s, token string) string {
 		return s
 	}
 	return strings.ReplaceAll(s, token, RedactToken(token))
+}
+
+// SendDocumentBytes отправляет файл документом в chat_id (лимит 50 МБ).
+func SendDocumentBytes(cfg Config, filename string, data []byte, caption string) bool {
+	if !cfg.Configured || cfg.ChatID == "" || len(data) == 0 {
+		return false
+	}
+	if len(data) > 50*1024*1024 {
+		logErr("sendDocument: файл %s слишком большой (%d байт)", filename, len(data))
+		return false
+	}
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+	go func() {
+		defer pw.Close()
+		mw.WriteField("chat_id", cfg.ChatID)
+		if caption != "" {
+			mw.WriteField("caption", caption)
+		}
+		part, err := mw.CreateFormFile("document", filename)
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		part.Write(data)
+		mw.Close()
+	}()
+
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendDocument", cfg.BotToken)
+	client := httpClient(cfg)
+	resp, err := client.Post(apiURL, mw.FormDataContentType(), pr)
+	if err != nil {
+		logErr("sendDocument: %s", redactURL(err.Error(), cfg.BotToken))
+		return false
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, io.LimitReader(resp.Body, 2048))
+	if resp.StatusCode != http.StatusOK {
+		logErr("sendDocument HTTP %d", resp.StatusCode)
+		return false
+	}
+	return true
 }

@@ -36,13 +36,13 @@ var configs = []configFile{
 	{Path: "logger/config.json"},
 }
 
-func HandleCreate() {
+// BuildArchive собирает архив бэкапа конфигурации в памяти
+// (конфиги + список пакетов + info). Экспортировано для чат-бота.
+func BuildArchive() ([]byte, error) {
 	cleanupOldTemp("entware-backup-")
 	tmpDir, err := os.MkdirTemp("", "entware-backup-*")
 	if err != nil {
-		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
-		fmt.Println("Error: cannot create temp dir:", err)
-		return
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -87,11 +87,21 @@ func HandleCreate() {
 	tw.Close()
 	gw.Close()
 
+	return buf.Bytes(), nil
+}
+
+func HandleCreate() {
+	data, err := BuildArchive()
+	if err != nil {
+		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
+		fmt.Println("Error:", err)
+		return
+	}
 	fmt.Println("Content-type: application/gzip; charset=utf-8")
 	fmt.Println("Content-Disposition: attachment; filename=entware-manager-backup.tar.gz")
-	fmt.Println("Content-Length:", buf.Len())
+	fmt.Println("Content-Length:", len(data))
 	fmt.Println()
-	os.Stdout.Write(buf.Bytes())
+	os.Stdout.Write(data)
 }
 
 func HandleRestore() {
