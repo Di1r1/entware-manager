@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"entware-manager/internal/backup"
@@ -161,9 +162,9 @@ func BotRun() error {
 	lastDigest := readDigestDate()
 	netPrev := scanNetDevices()
 	netBase := false
-	bgIt := 0
 	diskAlerted := false
 	wanPrev, wanSet := "", false
+	lastBg := time.Time{}
 
 	for {
 		// Перечитываем конфиг каждый цикл: смена токена/галочки «Чат-бот»
@@ -185,7 +186,11 @@ func BotRun() error {
 			lastDigest = today
 			os.MkdirAll(filepath.Dir(digestStateFile), 0755)
 			os.WriteFile(digestStateFile, []byte(today), 0644)
-			SendMessage(cfg, buildDigest())
+			for _, to := range recipients(cfg) {
+				c := cfg
+				c.ChatID = to
+				SendMessage(c, buildDigest())
+			}
 		}
 
 		updates, err := fetchUpdates(cfg, offset)
@@ -242,31 +247,53 @@ func BotRun() error {
 						return fmt.Sprintf("✅ Служба %s запущена", name)
 					},
 				})
-				SendMessageMarkup(cfg,
-					fmt.Sprintf("🔴 Служба «%s» остановилась!", name),
-					buildInlineKB([][2]string{
-						{"🔄 Перезапустить", "ok:" + n},
-						{"Игнорировать", "no:" + n},
-					}))
+				kb := buildInlineKB([][2]string{
+					{"🔄 Перезапустить", "ok:" + n},
+					{"Игнорировать", "no:" + n},
+				})
+				alertText := fmt.Sprintf("🔴 Служба «%s» остановилась!", name)
+				for _, to := range recipients(cfg) {
+					c := cfg
+					c.ChatID = to
+					SendMessageMarkup(c, alertText, kb)
+				}
 			}
 			for name := range cur {
-				if !svcPrev[name] && svcPrev != nil {
-					SendMessage(cfg, fmt.Sprintf("🟢 Служба «%s» запущена", name))
+				if !svcPrev[name] {
+					for _, to := range recipients(cfg) {
+						c := cfg
+						c.ChatID = to
+						SendMessage(c, fmt.Sprintf("🟢 Служба «%s» запущена", name))
+					}
 				}
 			}
 		}
 		svcPrev = cur
 		svcBase = true
 
-		// Раз в ~60 сек — фоновые проверки безопасности.
-		bgIt++
-		if bgIt%12 == 0 {
+		// Фоновые проверки безопасности: раз в минуту по настенным часам.
+		if time.Since(lastBg) >= time.Minute {
+			lastBg = time.Now()
+
+			quiet := isQuietHour(cfg)
+			sendOrQueue := func(text string) {
+				if quiet {
+					queueAlert(cfg, text)
+					return
+				}
+				for _, to := range recipients(cfg) {
+					c := cfg
+					c.ChatID = to
+					SendMessage(c, text)
+				}
+			}
+
 			// Новое устройство в сети
 			devs := scanNetDevices()
 			if netBase {
 				for k, h := range devs {
 					if _, known := netPrev[k]; !known {
-						SendMessage(cfg, fmt.Sprintf("🔴 Новое устройство в сети!\n📱 %s\n🌐 IP: %s\n🔖 MAC: %s",
+						sendOrQueue(fmt.Sprintf("🔴 Новое устройство в сети!\n📱 %s\n🌐 IP: %s\n🔖 MAC: %s",
 							cleanHostDisplay(h), h.IP, strings.ToUpper(h.MAC)))
 					}
 				}
@@ -278,25 +305,81 @@ func BotRun() error {
 			pct := dfUsedPct(runDF(), "/opt")
 			if pct >= 90 && !diskAlerted {
 				diskAlerted = true
-				SendMessage(cfg, fmt.Sprintf("🟡 Мало места на /opt: занято %d%%", pct))
+				sendOrQueue(fmt.Sprintf("🟡 Мало места на /opt: занято %d%%", pct))
 			} else if pct >= 0 && pct < 85 {
 				diskAlerted = false
 			}
 
 			// Смена внешнего IP
 			ip := ifaceIPv4(defaultIface(readLine("/proc/net/route")))
-			if wanSet && ip != "" && ip != wanPrev {
-				SendMessage(cfg, fmt.Sprintf("🌐 Внешний IP изменился: %s → %s", wanPrev, ip))
-			}
-			if ip != "" {
-				wanPrev = ip
+			if ip == "" {
+				wanSet = false
 			} else if !wanSet {
 				wanSet = true
 				wanPrev = ip
+			} else if ip != wanPrev {
+				for _, to := range recipients(cfg) {
+					c := cfg
+					c.ChatID = to
+					SendMessage(c, fmt.Sprintf("🌐 Внешний IP изменился: %s → %s", wanPrev, ip))
+				}
+				wanPrev = ip
 			}
+
+			// Конец тихого режима: отправляем накопленные алерты.
+			if quiet {
+				continue
+			}
+			flushQuiet(cfg)
 		}
 
 		time.Sleep(pollInterval)
+	}
+}
+
+// isQuietHour — активен ли тихий режим сейчас.
+func isQuietHour(cfg Config) bool {
+	return quietAt(cfg, time.Now().Hour())
+}
+
+// quietAt — попадает ли час в окно тихого режима. Окно может пересекать полночь.
+func quietAt(cfg Config, hour int) bool {
+	if !cfg.QuietEnabled {
+		return false
+	}
+	from, to := cfg.QuietFrom, cfg.QuietTo
+	if from < 0 || from > 23 || to < 0 || to > 23 || from == to {
+		return false
+	}
+	if from < to {
+		return hour >= from && hour < to
+	}
+	return hour >= from || hour < to // окно через полночь
+}
+
+// recipients — список chat_id получателей уведомлений: основной + доп.,
+// без дубликатов (и среди самих доп. ID тоже), порядок сохранён.
+func recipients(cfg Config) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(id string) {
+		if id == "" || seen[id] {
+			return
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	add(cfg.ChatID)
+	for _, id := range cfg.AllowedChatIDs {
+		add(id)
+	}
+	return out
+}
+
+// forEachRecipient — выполнить fn для каждого получателя уведомлений.
+func forEachRecipient(cfg Config, fn func(chatID string)) {
+	for _, to := range recipients(cfg) {
+		fn(to)
 	}
 }
 
@@ -359,7 +442,7 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/service": cmdService,
 		"/pkg":     cmdPkg,
 		"/rotate":  func([]string) tgReply { return tgReply{text: execRotate()} },
-		"/backup":  cmdBackup,
+		"/backup":  func([]string) tgReply { return cmdBackup(&backupBusy) },
 		"/reboot":  cmdReboot,
 	}
 }
@@ -1291,11 +1374,18 @@ func dfUsedPct(dfOut, mount string) int {
 }
 
 // cmdBackup — /backup: архив конфигурации файлом в чат.
-func cmdBackup([]string) tgReply {
+func cmdBackup(backupBusy *int32) tgReply {
+	// Анти-DoS: тяжёлая операция — один запуск за раз (MINOR кворума v1.13.0).
+	if !atomic.CompareAndSwapInt32(backupBusy, 0, 1) {
+		return tgReply{text: "⏳ Бэкап уже создаётся, дождитесь завершения."}
+	}
 	go func() {
+		defer atomic.StoreInt32(backupBusy, 0)
 		defer func() {
 			if r := recover(); r != nil {
 				logErr("backup panic: %v", r)
+				cfgNow := LoadConfig()
+				SendMessage(cfgNow, "❌ Внутренняя ошибка при создании бэкапа")
 			}
 		}()
 		cfgNow := LoadConfig()
@@ -1327,3 +1417,34 @@ func fmtKB(n int) string {
 		return fmt.Sprintf("%d КБ", n/1024)
 	}
 }
+
+const quietQueueFile = "/tmp/entware/telegram/quiet.queue"
+
+// queueAlert — накопить алерт во время тихого режима.
+func queueAlert(cfg Config, line string) {
+	os.MkdirAll(filepath.Dir(quietQueueFile), 0755)
+	f, err := os.OpenFile(quietQueueFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.WriteString(line + "\n")
+}
+
+// flushQuiet — отправить накопленные за ночь алерты одной сводкой.
+func flushQuiet(cfg Config) {
+	data, err := os.ReadFile(quietQueueFile)
+	if err != nil || len(strings.TrimSpace(string(data))) == 0 {
+		return
+	}
+	os.Remove(quietQueueFile)
+	msg := "🌅 Тихий режим закончен. Ночные события:\n" + strings.TrimRight(string(data), "\n")
+	for _, to := range recipients(cfg) {
+		c := cfg
+		c.ChatID = to
+		SendMessage(c, msg)
+	}
+}
+
+// backupBusy — флаг «бэкап уже создаётся» (анти-DoS тяжёлой операции).
+var backupBusy int32

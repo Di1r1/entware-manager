@@ -530,9 +530,16 @@ bot_start() {
 
 bot_stop() {
     bot_running || { rm -f "$BOT_PID" 2>/dev/null; return 0; }
-    local p
+    local p i
     p=$(cat "$BOT_PID" 2>/dev/null | tr -d ' ')
     kill "$p" 2>/dev/null
+    # Ждём завершения до ~3с — предотвращает гонку двух ботов (дубль getUpdates).
+    i=0
+    while [ "$i" -lt 3 ] && [ -d "/proc/$p" ]; do
+        sleep 1
+        i=$((i + 1))
+    done
+    [ -d "/proc/$p" ] && kill -9 "$p" 2>/dev/null
     rm -f "$BOT_PID"
     tg_log "INFO" "[bot] остановлен"
 }

@@ -6,6 +6,7 @@ import (
 	"entware-manager/internal/auth"
 	"entware-manager/internal/cgiutil"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -29,17 +30,22 @@ func HandleConfig() {
 		return
 	}
 	cfg := LoadConfig()
+	extra := strings.Join(cfg.AllowedChatIDs, ",")
 	cgiutil.WriteJSON(map[string]interface{}{
-		"status":      "ok",
-		"enabled":     cfg.Enabled,
-		"configured":  cfg.Configured,
-		"level":       cfg.Level,
-		"sources":     cfg.Sources,
-		"bot_enabled": cfg.BotEnabled,
-		"autostart":   cfg.Autostart,
-		"proxy_url":   cfg.ProxyURL,
-		"chat_id":     cfg.ChatID,
-		"thresholds":  cfg.Thresholds,
+		"status":         "ok",
+		"enabled":        cfg.Enabled,
+		"configured":     cfg.Configured,
+		"level":          cfg.Level,
+		"sources":        cfg.Sources,
+		"bot_enabled":    cfg.BotEnabled,
+		"autostart":      cfg.Autostart,
+		"proxy_url":      cfg.ProxyURL,
+		"chat_id":        cfg.ChatID,
+		"chat_ids_extra": extra,
+		"quiet_enabled":  cfg.QuietEnabled,
+		"quiet_from":     cfg.QuietFrom,
+		"quiet_to":       cfg.QuietTo,
+		"thresholds":     cfg.Thresholds,
 	})
 }
 
@@ -113,6 +119,45 @@ func handleConfigPost() {
 			return
 		}
 		cfg.Thresholds = th
+	}
+	// Тихий режим: алерты ночью копятся, утром — сводка.
+	if v, ok := params["quiet_enabled"]; ok {
+		cfg.QuietEnabled = v == "true"
+	}
+	for _, field := range []string{"quiet_from", "quiet_to"} {
+		if v, ok := params[field]; ok && v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 0 || n > 23 {
+				cgiutil.WriteStatusError("Некорректный час тихого режима (" + field + "): 0-23")
+				return
+			}
+			if field == "quiet_from" {
+				cfg.QuietFrom = n
+			} else {
+				cfg.QuietTo = n
+			}
+		}
+	}
+	// Дополнительные получатели уведомлений (семья) через запятую.
+	if v, ok := params["chat_ids_extra"]; ok {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			cfg.AllowedChatIDs = nil
+		} else {
+			var ids []string
+			for _, id := range splitComma(v) {
+				id = strings.TrimSpace(id)
+				if id == "" {
+					continue
+				}
+				if !IsValidChatID(id) {
+					cgiutil.WriteStatusError("Некорректный дополнительный chat_id: " + id)
+					return
+				}
+				ids = append(ids, id)
+			}
+			cfg.AllowedChatIDs = ids
+		}
 	}
 	cfg.Configured = cfg.BotToken != ""
 

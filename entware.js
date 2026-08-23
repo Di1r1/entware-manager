@@ -1774,6 +1774,21 @@ async function renderSettingsTab() {
                 <label style="flex: 0 0 160px;">Автозапуск</label>
                 <input type="checkbox" id="tg-autostart" style="transform: scale(1.3);">
             </div>
+            <div style="margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="flex: 0 0 160px;">Тихий режим</label>
+                    <input type="checkbox" id="tg-quiet" style="transform: scale(1.3);">
+                    <span class="text-secondary" style="font-size:0.75rem;">с</span>
+                    <input type="number" id="tg-quiet-from" class="settings-input" min="0" max="23" placeholder="23" style="width:60px;text-align:center;">
+                    <span class="text-secondary" style="font-size:0.75rem;">до</span>
+                    <input type="number" id="tg-quiet-to" class="settings-input" min="0" max="23" placeholder="7" style="width:60px;text-align:center;">
+                </div>
+                <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:4px 0 0 170px;">Ночью алерты не отправляются, а копятся — утром придёт сводка. Часы 0–23.</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Доп. chat ID</label>
+                <input type="text" id="tg-chat-extra" class="settings-input" placeholder="111222333, 444555666 (через запятую)" style="flex:1;">
+            </div>
             <div style="display: flex; gap: 10px; margin-top: 12px;">
                 <button class="packages-delete-btn" style="background:#4a5568;" id="tg-save">Сохранить</button>
                 <button class="packages-delete-btn" style="background:#27ae60;" id="tg-test">Отправить тест</button>
@@ -1855,6 +1870,14 @@ function loadTelegramConfig() {
         if (chat) chat.value = data.chat_id || '';
         var proxy = document.getElementById('tg-proxy');
         if (proxy) proxy.value = data.proxy_url || '';
+        var quiet = document.getElementById('tg-quiet');
+        if (quiet) quiet.checked = !!data.quiet_enabled;
+        var qFrom = document.getElementById('tg-quiet-from');
+        if (qFrom) qFrom.value = data.quiet_from || '';
+        var qTo = document.getElementById('tg-quiet-to');
+        if (qTo) qTo.value = data.quiet_to || '';
+        var chatExtra = document.getElementById('tg-chat-extra');
+        if (chatExtra) chatExtra.value = data.chat_ids_extra || '';
         var srcs = data.sources || [];
         ['system','monitor','network','service','packages'].forEach(function(s) {
             var el = document.getElementById('tg-src-' + s);
@@ -1946,6 +1969,12 @@ function saveTelegramConfig() {
     data += '&level=' + encodeURIComponent(document.getElementById('tg-level').value);
     data += '&chat_id=' + encodeURIComponent(document.getElementById('tg-chat').value);
     data += '&sources=' + encodeURIComponent(tgSources());
+    data += '&quiet_enabled=' + (document.getElementById('tg-quiet') && document.getElementById('tg-quiet').checked ? 'true' : 'false');
+    var qf = document.getElementById('tg-quiet-from'), qt = document.getElementById('tg-quiet-to');
+    if (qf && qf.value !== '') data += '&quiet_from=' + encodeURIComponent(qf.value);
+    if (qt && qt.value !== '') data += '&quiet_to=' + encodeURIComponent(qt.value);
+    var chatExtra = document.getElementById('tg-chat-extra');
+    if (chatExtra) data += '&chat_ids_extra=' + encodeURIComponent(chatExtra.value);
     var proxy = document.getElementById('tg-proxy').value;
     if (proxy) data += '&proxy_url=' + encodeURIComponent(proxy);
     var token = document.getElementById('tg-token').value;

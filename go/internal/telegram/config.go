@@ -25,6 +25,12 @@ type Config struct {
 	ProxyURL   string     `json:"proxy_url,omitempty"`
 	Thresholds Thresholds `json:"thresholds,omitempty"`
 	Configured bool       `json:"-"`
+	// Тихий режим: алерты копятся ночью, утром — сводка.
+	QuietEnabled bool `json:"quiet_enabled,omitempty"`
+	QuietFrom    int  `json:"quiet_from,omitempty"` // час начала (0-23)
+	QuietTo      int  `json:"quiet_to,omitempty"`   // час конца (0-23)
+	// Дополнительные получатели уведомлений (семья), через запятую на фронте.
+	AllowedChatIDs []string `json:"allowed_chat_ids,omitempty"`
 }
 
 // Threshold — порог для одной метрики (вкл/выкл + значение).
