@@ -1613,6 +1613,19 @@ function tmpfsClean(mount) {
     scan();
 }
 
+// Под-вкладки Настроек: чистое переключение классов, не гасит интервалы.
+function switchEmTab(name) {
+    const valid = ['terminal', 'notifications', 'security', 'maintenance'];
+    if (valid.indexOf(name) === -1) name = 'terminal';
+    document.querySelectorAll('#em-settings-tabs .em-tab').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.emtab === name);
+    });
+    document.querySelectorAll('.em-tab-panel').forEach(function(p) {
+        p.classList.toggle('active', p.id === 'em-panel-' + name);
+    });
+    try { localStorage.setItem('settings_sub_tab', name); } catch(e) {}
+}
+
 async function renderSettingsTab() {
     const links = await loadLinks();
     let html = `
@@ -1622,6 +1635,13 @@ async function renderSettingsTab() {
             </span>
             Настройки
         </h2>
+        <div class="em-tabs" id="em-settings-tabs">
+            <span class="em-tab" data-emtab="terminal">🖥 Терминал и ссылки</span>
+            <span class="em-tab" data-emtab="notifications">🌐 Уведомления</span>
+            <span class="em-tab" data-emtab="security">🔒 Безопасность</span>
+            <span class="em-tab" data-emtab="maintenance">📦 Обслуживание</span>
+        </div>
+<div class="em-tab-panel active" id="em-panel-terminal">
         <h3><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-terminal"/></svg> Управление ttyd</h3>
         <div id="ttyd-status"><div class="loading-spinner"></div></div>
         <div id="ttyd-controls" style="display: flex; gap: 20px; margin-top: 20px;">
@@ -1686,14 +1706,18 @@ async function renderSettingsTab() {
             <button id="saveAllLinksBtn" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-disk"/></svg> Сохранить все на сервер</button>
             <button id="resetDefaultLinksBtn" class="packages-delete-btn" style="background:#f59e0b;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Сбросить по умолчанию</button>
         </div>
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-lock"/></svg> Защита панели</h3>
+        </div>
+    <div class="em-tab-panel" id="em-panel-security">
+    <h3 style=""><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-lock"/></svg> Защита панели</h3>
         <p>Пароль используется для входа в панель и для доступа к изменению и удалению файлов через встроенный менеджер (tmpfs). Если пароль задан — при открытии панели будет показан экран входа.</p>
         <div id="filemgr-auth-settings">
             <div class="loading-spinner"></div>
         </div>
     `;
     html += `
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-disk"/></svg> Бэкап и восстановление</h3>
+        </div>
+    <div class="em-tab-panel" id="em-panel-maintenance">
+    <h3 style=""><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-disk"/></svg> Бэкап и восстановление</h3>
         <p>Скачайте бэкап настроек перед сбросом роутера или для переноса на новое устройство.</p>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога.</p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
@@ -1728,7 +1752,9 @@ async function renderSettingsTab() {
             <div id="update-status" style="margin-top: 8px;"></div>
             <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
         </div>
-        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-email"/></svg> Telegram-уведомления</h3>
+        </div>
+    <div class="em-tab-panel active" id="em-panel-notifications">
+    <h3 style=""><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-email"/></svg> Telegram-уведомления</h3>
         <p class="text-secondary" style="font-size:0.75rem;">Отправка событий в Telegram через независимый шлюз. Токен бота хранится скрыто и не отображается. <a href="#" onclick="return openHelpTG()" style="color:var(--accent-color);">Инструкция и все команды бота — во вкладке «Справка».</a></p>
         <div id="telegram-form" style="margin-top: 10px; max-width: 520px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -1839,8 +1865,25 @@ async function renderSettingsTab() {
             </div>
             <div id="th-status" style="margin-top:10px;font-size:0.9rem;"></div>
         </div>
+        </div><!-- /notifications -->
     `;
     contentDiv.innerHTML = html;
+
+    // Восстановить сохранённую под-вкладку
+    let savedSub = 'terminal';
+    try {
+        const v = localStorage.getItem('settings_sub_tab');
+        if (['terminal','notifications','security','maintenance'].indexOf(v) !== -1) savedSub = v;
+    } catch(e) {}
+    switchEmTab(savedSub);
+
+    // Обработчик кликов по табам
+    const tabsBar = document.getElementById('em-settings-tabs');
+    if (tabsBar) tabsBar.addEventListener('click', function(e){
+        const t = e.target.closest('.em-tab');
+        if (t) switchEmTab(t.dataset.emtab);
+    });
+
     fetchTtydStatus();
     loadUpdateInfo();
     loadTelegramConfig();
