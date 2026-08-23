@@ -219,3 +219,57 @@ func TestIPToNum(t *testing.T) {
 		t.Error("невалидный IP → -1")
 	}
 }
+
+func TestQuietAt(t *testing.T) {
+	// выключен — никогда
+	cfg := Config{QuietEnabled: false, QuietFrom: 23, QuietTo: 7}
+	if quietAt(cfg, 3) {
+		t.Error("выключенный тихий режим не должен срабатывать")
+	}
+	// ночное окно через полночь: 23 → 7
+	cfg = Config{QuietEnabled: true, QuietFrom: 23, QuietTo: 7}
+	if !quietAt(cfg, 23) || !quietAt(cfg, 3) {
+		t.Error("23:00-07:00: ночь должна попадать в окно")
+	}
+	if quietAt(cfg, 12) {
+		t.Error("12:00 днём не должно попадать в ночное окно")
+	}
+	// дневное окно: 13 → 15
+	cfg = Config{QuietEnabled: true, QuietFrom: 13, QuietTo: 15}
+	if !quietAt(cfg, 14) {
+		t.Error("14:00 должно быть в окне 13-15")
+	}
+	if quietAt(cfg, 16) {
+		t.Error("16:00 вне окна 13-15")
+	}
+	// границы: from включительно, to исключительно
+	cfg = Config{QuietEnabled: true, QuietFrom: 13, QuietTo: 15}
+	if !quietAt(cfg, 13) || quietAt(cfg, 15) {
+		t.Error("границы окна: from вкл, to исключён")
+	}
+	// from == to — неактивно
+	cfg = Config{QuietEnabled: true, QuietFrom: 9, QuietTo: 9}
+	if quietAt(cfg, 9) {
+		t.Error("from==to не должно активировать режим")
+	}
+}
+
+func TestRecipients(t *testing.T) {
+	cfg := Config{ChatID: "111"}
+	got := recipients(cfg)
+	if len(got) != 1 || got[0] != "111" {
+		t.Errorf("только основной chat_id: %v", got)
+	}
+	cfg.AllowedChatIDs = []string{"222", "333", "111"}
+	got = recipients(cfg)
+	if len(got) != 3 {
+		t.Errorf("основной + 2 доп: %v", got)
+	}
+	// дубликаты отфильтрованы, порядок сохранён
+	// внутренние дубликаты среди доп. ID тоже убираются
+	cfg.AllowedChatIDs = []string{"111", "222", "111", "222"}
+	got = recipients(cfg)
+	if len(got) != 2 || got[0] != "111" || got[1] != "222" {
+		t.Errorf("внутренние дубликаты не убраны: %v", got)
+	}
+}
