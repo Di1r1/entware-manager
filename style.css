@@ -2593,14 +2593,12 @@ html.night #toast {
 }
 .login-logo {
     margin: 0 auto;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
+    width: 72px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--accent-soft);
-    color: var(--accent);
+    filter: drop-shadow(0 6px 16px rgba(124, 58, 237, 0.35));
 }
 .login-card h2 { margin: 0; }
 .login-sub { color: var(--text-muted); margin: 0; font-size: 0.9rem; }
