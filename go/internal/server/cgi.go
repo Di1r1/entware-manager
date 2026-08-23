@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/cgiutil"
 )
 
 const cgiPath = "/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin"
@@ -200,7 +200,7 @@ func buildCGIEnv(r *http.Request, endpoint string) []string {
 	env := []string{
 		"REQUEST_METHOD=" + r.Method,
 		"QUERY_STRING=" + r.URL.RawQuery,
-		"REMOTE_ADDR=" + remoteAddr(r),
+		"REMOTE_ADDR=" + cgiutil.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.Header.Get("X-Real-IP")),
 		"PATH=" + cgiPath,
 		"GATEWAY_INTERFACE=CGI/1.1",
 		"SERVER_SOFTWARE=entware-server",
@@ -232,14 +232,6 @@ func buildCGIEnv(r *http.Request, endpoint string) []string {
 		env = append(env, "HTTP_COOKIE="+cookie)
 	}
 	return env
-}
-
-func remoteAddr(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // writeCGIOutput разбирает CGI-заголовки (до первой пустой строки)

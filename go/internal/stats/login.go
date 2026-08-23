@@ -34,11 +34,9 @@ func HandleLogin() {
 	params := cgiutil.ParseFormBody(string(body))
 	password := params["password"]
 
-	// IP клиента (за прокси может быть 127.0.0.1 — общий bucket, компромисс).
-	ip := os.Getenv("REMOTE_ADDR")
-	if ip == "" {
-		ip = "0.0.0.0"
-	}
+	// Реальный IP клиента: за туннелем KeenDNS/lighttpd-прокси соединение
+	// приходит с локального адреса — тогда берём X-Forwarded-For/X-Real-IP.
+	ip := clientIP()
 
 	allow, reason := auth.EnabledReports()
 	if !allow {
@@ -130,16 +128,22 @@ func writeAuthJSON(v interface{}) {
 	json.NewEncoder(os.Stdout).Encode(v)
 }
 
+// clientIP — реальный IP клиента CGI (REMOTE_ADDR + доверенный XFF).
+func clientIP() string {
+	ip := cgiutil.ClientIP(os.Getenv("REMOTE_ADDR"), os.Getenv("HTTP_X_FORWARDED_FOR"), os.Getenv("HTTP_X_REAL_IP"))
+	if ip == "" {
+		return "0.0.0.0"
+	}
+	return ip
+}
+
 // logAuthAction пишет запись о попытке входа в суточный лог защищённых действий
 // /tmp/entware/logs/<дата>.log. Формат строки единый для статистики:
 // [время] [уровень] [IP клиента] [pid] [login.cgi] сообщение.
 func logAuthAction(level, msg string) {
 	logFile := fmt.Sprintf("/tmp/entware/logs/%s.log", time.Now().Format("2006-01-02"))
 	ts := time.Now().Format("2006-01-02 15:04:05")
-	ip := os.Getenv("REMOTE_ADDR")
-	if ip == "" {
-		ip = "0.0.0.0"
-	}
+	ip := clientIP()
 	entry := fmt.Sprintf("[%s] [%s] [%s] [%d] [login.cgi] %s\n", ts, level, ip, os.Getpid(), msg)
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
