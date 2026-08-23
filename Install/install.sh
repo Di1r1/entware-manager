@@ -464,7 +464,7 @@ $HTTP["url"] =~ "^/entware-manager/" {
     $HTTP["url"] =~ "^/entware-manager/cgi-bin/go/" {
         url.access-deny = ( "" )
     }
-    $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config)\.json$" {
+    $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config|telegram_config|rdp_config)\.json$" {
         url.access-deny = ( "" )
     }
     # Init-скрипты (S90grdp-proxy, S80entware-server, install.sh) — не статика.
@@ -510,6 +510,18 @@ else
 	LIGHTTPD_ERR="$LIGHTTPD_ERR 90-entware-manager.conf"
 	fail "90-entware-manager.conf не создался"
 fi
+
+# Подставляем RDP-порт СРАЗУ после записи конфига и ДО валидации lighttpd.
+# Иначе lighttpd -t падает: «Undefined config variable: var.__RDP_PORT__»
+# (MAJOR, найден полным циклом go↔lighttpd: EWM_MODE=lighttpd давал нерабочую
+# панель на 8087). Источник порта — существующий rdp_config.json (переживает
+# установку), иначе дефолт 9099; блок ШАГ 8 ниже повторяет подстановку
+# идемпотентно (для свежей установки порт совпадает с дефолтом).
+RDP_CFG_EARLY="$TARGET_DIR/rdp_config.json"
+RP_EARLY=$(jq -r '.proxy_port // 9099' "$RDP_CFG_EARLY" 2>/dev/null || echo 9099)
+case "$RP_EARLY" in ''|*[!0-9]*) RP_EARLY=9099 ;; esac
+sed -i "s/__RDP_PORT__/$RP_EARLY/g" "$CONF_FILE" 2>/dev/null
+ok "lighttpd-conf: RDP-порт $RP_EARLY подставлен до валидации"
 
 # Сжатие статики (mod_deflate): WASM-клиент RDP ~10МБ → ~3МБ при передаче.
 # Расширяем deflate.mimetypes в системном 30-deflate.conf (если есть).
@@ -914,6 +926,9 @@ chmod 755 "$TARGET_DIR/cgi-bin/go.cgi" 2>/dev/null
 chmod 755 "$TARGET_DIR"/watchdog.sh "$TARGET_DIR"/network_watchdog.sh "$TARGET_DIR"/service_watchdog.sh "$TARGET_DIR"/backup.sh 2>/dev/null
 find "$TARGET_DIR" -type f -name "*.sh" -exec chmod 755 {} \; 2>/dev/null
 find "$TARGET_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" \) -exec chmod 644 {} \; 2>/dev/null
+# Секретные конфиги — строго 600 (blanket chmod 644 выше перетирает права,
+# а в них: хеш пароля и токен Telegram-бота; подтверждено живым тестом).
+chmod 600 "$TARGET_DIR/auth_config.json" "$TARGET_DIR/telegram_config.json" 2>/dev/null
 find "$TARGET_DIR/cgi-bin" -type d -exec chmod 755 {} \; 2>/dev/null
 ok "Права доступа установлены"
 
@@ -931,9 +946,12 @@ if [ "$WEB_PATH" = "lighttpd" ]; then
 	if lighttpd_http_ok 8087; then
 		ok "lighttpd уже отвечает на 127.0.0.1:8087"
 	elif [ -f /opt/etc/init.d/S80lighttpd ]; then
-		echo "  → запуск..."
-		/opt/etc/init.d/S80lighttpd start 2>&1 | sed 's/^/    /'
-		sleep 1
+		echo "  → перезапуск (конфиг мог измениться)..."
+		# restart, а не start: если lighttpd уже работает на старом конфиге
+		# (порт-хранитель 8086), start ничего не сделает и новый конфиг
+		# (панель на 8087) не применится (MAJOR полного цикла go↔lighttpd).
+		/opt/etc/init.d/S80lighttpd restart 2>&1 | sed 's/^/    /'
+		sleep 2
 	elif [ -x /opt/sbin/lighttpd ]; then
 		warn "S80lighttpd не найден, попробую запустить напрямую"
 		/opt/sbin/lighttpd -f "$LIGHTTPD_CONF" >/dev/null 2>&1 &
