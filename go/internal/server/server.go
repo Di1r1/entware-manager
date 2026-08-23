@@ -25,6 +25,7 @@ import (
 
 const (
 	defaultPort    = 8087
+	defaultTLSPort = 8443
 	defaultTimeout = 300 // секунд на CGI-запрос (opkg install может идти долго)
 )
 
@@ -46,13 +47,15 @@ func envOr(name, def string) string {
 
 // Config — настройки сервера из server_config.json.
 type Config struct {
-	Port    int `json:"port"`
-	Timeout int `json:"timeout"` // секунд на CGI-запрос
+	Port    int  `json:"port"`
+	Timeout int  `json:"timeout"` // секунд на CGI-запрос
+	TLS     bool `json:"tls"`     // дополнительный HTTPS-листенер (self-signed)
+	TLSPort int  `json:"tls_port"`
 }
 
 // LoadConfig читает server_config.json (при ошибке — значения по умолчанию).
 func LoadConfig() Config {
-	cfg := Config{Port: defaultPort, Timeout: defaultTimeout}
+	cfg := Config{Port: defaultPort, Timeout: defaultTimeout, TLSPort: defaultTLSPort}
 	data, err := os.ReadFile(serverConfig)
 	if err != nil {
 		return cfg
@@ -67,6 +70,10 @@ func LoadConfig() Config {
 	if c.Timeout > 0 {
 		cfg.Timeout = c.Timeout
 	}
+	if c.TLSPort > 0 && c.TLSPort < 65536 {
+		cfg.TLSPort = c.TLSPort
+	}
+	cfg.TLS = c.TLS
 	return cfg
 }
 

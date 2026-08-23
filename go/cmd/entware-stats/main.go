@@ -39,6 +39,8 @@ func main() {
 		stats.HandleLinksSave()
 	case "auth_config":
 		stats.HandleAuthConfig()
+	case "tls_config":
+		stats.HandleTLSConfig()
 	case "auth_log":
 		stats.HandleAuthLog()
 	case "crontab":

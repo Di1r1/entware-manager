@@ -100,7 +100,7 @@ cgi-bin)
 	case "$name" in
 	available|packages|installed|install|remove|upgrade|update|upgradable|api)
 		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
-	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|auth_log|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline|login|logout|session)
+	stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|auth_log|tls_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline|login|logout|session)
 		ENDPOINT="$name" exec "$(go_bin stats)" ;;
 	network_interfaces|network_routes|network_arp|network_status|network_stats|network_events|network_action|network_wifi)
 		ENDPOINT="$name" exec "$(go_bin net)" ;;

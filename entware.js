@@ -1713,6 +1713,15 @@ async function renderSettingsTab() {
         <div id="filemgr-auth-settings">
             <div class="loading-spinner"></div>
         </div>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-lock"/></svg> HTTPS (свой сертификат)</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Дополнительный защищённый доступ по адресу <code>https://&lt;адрес-роутера&gt;:8443</code>. Сертификат создаётся автоматически (самоподписанный, на 10 лет) — браузер один раз попросит подтвердить доверие. Обычный HTTP при этом продолжает работать.</p>
+        <div style="display:flex; align-items:center; gap:12px; margin:10px 0; flex-wrap:wrap;">
+            <label><input type="checkbox" id="tls-enabled"> Включить HTTPS</label>
+            <label>Порт: <input type="number" id="tls-port" value="8443" min="1" max="65535" class="settings-input" style="width:90px;"></label>
+            <button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveTLSConfig()">Применить</button>
+            <span id="tls-status"></span>
+        </div>
+
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-shield"/></svg> Попытки входа</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Кто и когда пытался войти в панель (сегодня и вчера). Из внешней сети через KeenDNS/проброс порта виден настоящий IP посетителя.</p>
         <div style="margin: 10px 0;">
@@ -1912,6 +1921,7 @@ async function renderSettingsTab() {
     initLinksDrag();
     loadAuthConfig();
     loadAuthLog();
+    loadTLSConfig();
 }
 
 // ===== Telegram-уведомления =====
@@ -2267,6 +2277,44 @@ function pollUpdateStatus() {
             // ignore polling errors
         }
     }, 2000);
+}
+
+function tlsStatus(msg, isErr) {
+    const el = document.getElementById('tls-status');
+    if (el) el.innerHTML = '<span style="color:' + (isErr ? '#e53e3e' : '#2ecc71') + ';">' + escapeHtml(msg) + '</span>';
+}
+
+async function loadTLSConfig() {
+    const cb = document.getElementById('tls-enabled');
+    if (!cb) return;
+    try {
+        const data = await apiGet('/tls_config.cgi');
+        cb.checked = !!data.tls;
+        if (data.tls_port) document.getElementById('tls-port').value = data.tls_port;
+        const hint = [];
+        if (!data.server_running) hint.push('режим lighttpd — недоступно');
+        if (data.has_cert) hint.push('сертификат создан');
+        if (hint.length) tlsStatus(hint.join(' · '), !data.server_running);
+    } catch(e) { /* тихо: блок необязательный */ }
+}
+
+async function saveTLSConfig() {
+    const password = prompt('Пароль панели для подтверждения:');
+    if (!password) return;
+    const enabled = document.getElementById('tls-enabled').checked ? 'true' : 'false';
+    const port = document.getElementById('tls-port').value || '8443';
+    tlsStatus('Сохранение и перезапуск сервера…', false);
+    try {
+        const res = await apiPost('/tls_config.cgi', 'password=' + encodeURIComponent(password) + '&enabled=' + enabled + '&port=' + encodeURIComponent(port));
+        if (res.status === 'ok') {
+            tlsStatus(res.message || 'Готово', false);
+            setTimeout(() => location.reload(), 2500);
+        } else {
+            tlsStatus(res.message || res.status, true);
+        }
+    } catch(err) {
+        tlsStatus('Ошибка: ' + err.message, true);
+    }
 }
 
 async function loadAuthLog() {

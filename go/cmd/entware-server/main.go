@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	_ "entware-manager/internal/buildinfo"
 	"errors"
 	"log"
@@ -50,6 +51,38 @@ func main() {
 	}()
 
 	log.Printf("entware-server listening on %s (timeout=%ds)", addr, cfg.Timeout)
+
+	// Дополнительный HTTPS-листенер (self-signed): HTTP остаётся для
+	// совместимости (lighttpd-прокси, LAN-ссылки), HTTPS — для защиты
+	// пароля/сессии при доступе по IP.
+	if cfg.TLS {
+		go func() {
+			cert, err := server.EnsureCert(server.TLSDomain(cfg))
+			if err != nil {
+				log.Printf("tls: сертификат не создан, HTTPS отключён: %v", err)
+				return
+			}
+			tlsSrv := &http.Server{
+				Addr:              ":" + itoa(cfg.TLSPort),
+				Handler:           server.NewHandler(),
+				ReadHeaderTimeout: 30 * time.Second,
+				TLSConfig:         &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12},
+			}
+			go func() {
+				sig := make(chan os.Signal, 1)
+				signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
+				<-sig
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				_ = tlsSrv.Shutdown(ctx)
+			}()
+			log.Printf("entware-server TLS listening on :%d", cfg.TLSPort)
+			if err := tlsSrv.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("tls error: %v", err)
+			}
+		}()
+	}
+
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Printf("server error: %v", err)
 		os.Exit(1)
