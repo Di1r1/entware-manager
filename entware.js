@@ -1713,6 +1713,22 @@ async function renderSettingsTab() {
         <div id="filemgr-auth-settings">
             <div class="loading-spinner"></div>
         </div>
+        <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-shield"/></svg> Попытки входа</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Кто и когда пытался войти в панель (сегодня и вчера). Из внешней сети через KeenDNS/проброс порта виден настоящий IP посетителя.</p>
+        <div style="margin: 10px 0;">
+            <span id="authlog-failed-badge" style="display:none;"></span>
+            <button class="packages-delete-btn" style="background:#4a5568;" onclick="loadAuthLog()"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Обновить</button>
+        </div>
+        <div class="packages-table-wrapper">
+            <table class="packages-table">
+                <thead>
+                    <tr><th>Время</th><th>IP адрес</th><th>Событие</th></tr>
+                </thead>
+                <tbody id="authlog-tbody">
+                    <tr><td colspan="3">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
     `;
     html += `
         </div>
@@ -1790,6 +1806,7 @@ async function renderSettingsTab() {
                     <label><input type="checkbox" id="tg-src-network" value="network"> Сеть</label>
                     <label><input type="checkbox" id="tg-src-service" value="service"> Службы</label>
                     <label><input type="checkbox" id="tg-src-packages" value="packages"> Пакеты</label>
+                    <label><input type="checkbox" id="tg-src-login" value="login"> Входы в панель</label>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -1894,6 +1911,7 @@ async function renderSettingsTab() {
     document.getElementById('resetDefaultLinksBtn').addEventListener('click', resetDefaultLinks);
     initLinksDrag();
     loadAuthConfig();
+    loadAuthLog();
 }
 
 // ===== Telegram-уведомления =====
@@ -1922,7 +1940,7 @@ function loadTelegramConfig() {
         var chatExtra = document.getElementById('tg-chat-extra');
         if (chatExtra) chatExtra.value = data.chat_ids_extra || '';
         var srcs = data.sources || [];
-        ['system','monitor','network','service','packages'].forEach(function(s) {
+        ['system','monitor','network','service','packages','login'].forEach(function(s) {
             var el = document.getElementById('tg-src-' + s);
             if (el) el.checked = srcs.indexOf(s) !== -1;
         });
@@ -1998,7 +2016,7 @@ function saveThresholds() {
 
 function tgSources() {
     var out = [];
-    ['system','monitor','network','service','packages'].forEach(function(s) {
+    ['system','monitor','network','service','packages','login'].forEach(function(s) {
         var el = document.getElementById('tg-src-' + s);
         if (el && el.checked) out.push(s);
     });
@@ -2249,6 +2267,42 @@ function pollUpdateStatus() {
             // ignore polling errors
         }
     }, 2000);
+}
+
+async function loadAuthLog() {
+    const tbody = document.getElementById('authlog-tbody');
+    if (!tbody) return;
+    try {
+        const data = await apiGet('/auth_log.cgi');
+        const entries = data.entries || [];
+        const badge = document.getElementById('authlog-failed-badge');
+        if (badge) {
+            if (data.failed_24h > 0) {
+                badge.style.display = 'inline-block';
+                badge.style.cssText = 'display:inline-block;background:#e53e3e;color:#fff;border-radius:12px;padding:2px 10px;font-size:0.8rem;margin-right:8px;';
+                badge.textContent = data.failed_24h + ' неудачных попыток за 24ч';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+        if (!entries.length) {
+            tbody.innerHTML = '<tr><td colspan="3">Попыток входа не зафиксировано</td></tr>';
+            return;
+        }
+        tbody.innerHTML = entries.map(e => {
+            let color = '';
+            if (/Неверный пароль|CSRF|отклон/.test(e.message)) color = '#e53e3e';
+            else if (/заблокирован|Слишком много/.test(e.message)) color = '#f59e0b';
+            else if (/Успешный/.test(e.message)) color = '#2ecc71';
+            return '<tr>' +
+                '<td>' + escapeHtml(e.time) + '</td>' +
+                '<td><code>' + escapeHtml(e.ip) + '</code></td>' +
+                '<td style="' + (color ? 'color:' + color + ';font-weight:600;' : '') + '">' + escapeHtml(e.message) + '</td>' +
+                '</tr>';
+        }).join('');
+    } catch(err) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--danger-color,#e53e3e);">Ошибка загрузки: ' + escapeHtml(err.message) + '</td></tr>';
+    }
 }
 
 async function loadAuthConfig() {

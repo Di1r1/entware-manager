@@ -37,7 +37,7 @@ var flatDispatch = map[string]string{
 	// stats
 	"stats": "stats", "version": "stats", "help": "stats", "links_load": "stats",
 	"links_save": "stats", "tmpfs": "stats", "tmpfs_clean": "stats", "view_file": "stats", "delete_file": "stats",
-	"auth_config": "stats", "crontab": "stats", "crontab_update": "stats",
+	"auth_config": "stats", "auth_log": "stats", "crontab": "stats", "crontab_update": "stats",
 	"backup": "stats", "backup_restore": "stats", "update_check": "stats",
 	"update_run": "stats", "update_status": "stats", "prepare_offline": "stats",
 	"login": "stats", "logout": "stats", "session": "stats",

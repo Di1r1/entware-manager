@@ -138,6 +138,7 @@ source_emoji() {
         monitor) echo "📊" ;;
         smart)   echo "💾" ;;
         packages) echo "📦" ;;
+        login)   echo "🔐" ;;
         *)       echo "🖥️" ;;
     esac
 }
@@ -210,7 +211,8 @@ detect_source() {
         *"[monitor]"*) echo "monitor" ;;
         *"[network]"*) echo "network" ;;
         *"[packages]"*) echo "packages" ;;
-        *"[update]"*|*"[backup]"*|*"[rdp]"*|*"[login.cgi]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
+        *"[login.cgi]"*) echo "login" ;;
+        *"[update]"*|*"[backup]"*|*"[rdp]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac
 }
