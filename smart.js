@@ -81,7 +81,7 @@ const SMART = {
                     <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=5#icon-search"/></svg>
                     <input type="text" id="searchSmart" placeholder="Поиск по модели/серийнику..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
                 </div>
-                <button id="refreshSmart" class="packages-delete-btn" style="background: #4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Обновить</button>
+                <button id="refreshSmart" class="packages-delete-btn btn-neutral"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-refresh"/></svg> Обновить</button>
             </div>
             <div id="smart-table-container" class="packages-table-wrapper">
                 <div class="loading-spinner"></div>
@@ -301,14 +301,14 @@ ${escapeHtml(data.info || 'Нет данных')}
             html += '<thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
             parts.forEach(p => {
                 const pct = parseInt(p.pct) || 0;
-                const color = pct >= 90 ? '#e53e3e' : (pct >= 80 ? '#d69e2e' : '#38a169');
+                const usageClass = pct >= 90 ? 'smart-usage-critical' : (pct >= 80 ? 'smart-usage-warning' : 'smart-usage-ok');
                 html += `<tr>
                     <td>${escapeHtml(p.part)}</td>
                     <td>${escapeHtml(p.mnt)}</td>
                     <td>${escapeHtml(p.size)}</td>
                     <td>${escapeHtml(p.used)}</td>
                     <td>${escapeHtml(p.avail)}</td>
-                    <td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:var(--input-bg);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div></div><span style="font-weight:600;color:${color};">${pct}%</span></div></td>
+                    <td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:var(--input-bg);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;" class="smart-usage-fill ${usageClass}"></div></div><span class="${usageClass}">${pct}%</span></div></td>
                 </tr>`;
             });
             html += '</tbody></table></div></div></td>';
@@ -409,11 +409,11 @@ ${escapeHtml(data.info || 'Нет данных')}
                         Критично
                     </span>
                     <span class="smart-legend-item">
-                        <span style="color: #e53e3e; font-weight: 700; font-size: 12px;">Критичный</span>
+                        <span class="smart-imp-critical" style="font-size: 12px;">Критичный</span>
                         <span style="font-size: 12px;">атрибут</span>
                     </span>
                     <span class="smart-legend-item">
-                        <span style="color: #d69e2e; font-weight: 600; font-size: 12px;">Важный</span>
+                        <span class="smart-imp-important" style="font-size: 12px;">Важный</span>
                         <span style="font-size: 12px;">атрибут</span>
                     </span>
                 </div>
@@ -453,13 +453,13 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             <h3 style="margin-bottom: 12px;">Самодиагностика: ${escapeHtml(device)}</h3>
             <p>Выберите тип теста:</p>
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="short" style="background: #3182ce;">
+                <button class="packages-delete-btn smart-btn-test-short" data-device="${escapeHtml(device)}" data-test-type="short">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-play"/></svg> Короткий тест (~2 мин)
                 </button>
-                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="long" style="background: #2c7a7b;">
+                <button class="packages-delete-btn smart-btn-test-long" data-device="${escapeHtml(device)}" data-test-type="long">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-play"/></svg> Полный тест (~60-120 мин)
                 </button>
-                <button class="packages-delete-btn" data-device="${escapeHtml(device)}" data-test-type="conveyance" style="background: #c05621;">
+                <button class="packages-delete-btn smart-btn-test-conveyance" data-device="${escapeHtml(device)}" data-test-type="conveyance">
                     <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=5#icon-play"/></svg> Conveyance тест (~5 мин)
                 </button>
             </div>

@@ -1687,6 +1687,28 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
 .smart-legend-dot.warning { background: #d69e2e; }
 .smart-legend-dot.critical { background: #e53e3e; }
 
+/* Заполненность раздела: цвет текста и заливки бара по проценту
+   (вместо инлайн-хексов). Цветовой класс вешается и на текст %,
+   и на fill-див бара; фон красится только у fill (smart-usage-fill). */
+.smart-usage-ok { color: #38a169; font-weight: 600; }
+.smart-usage-warning { color: #d69e2e; font-weight: 600; }
+.smart-usage-critical { color: #e53e3e; font-weight: 700; }
+.smart-usage-fill { border-radius: 4px; }
+.smart-usage-fill.smart-usage-ok { background-color: #38a169; }
+.smart-usage-fill.smart-usage-warning { background-color: #d69e2e; }
+.smart-usage-fill.smart-usage-critical { background-color: #e53e3e; }
+
+/* Кнопки самодиагностики: тип теста кодируется классом, не инлайн-хексом */
+.smart-btn-test-short { background: #3182ce !important; }
+.smart-btn-test-long { background: #2c7a7b !important; }
+.smart-btn-test-conveyance { background: #c05621 !important; }
+
+/* Нейтральная кнопка (Обновить) — через переменную темы */
+.btn-neutral {
+    background: var(--btn-muted) !important;
+    background-image: none;
+}
+
 @keyframes modalFadeIn {
     from { opacity: 0; transform: translateY(-30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }

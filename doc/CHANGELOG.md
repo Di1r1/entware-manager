@@ -2,6 +2,17 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.13.8 (2026-08-23)
+
+### SMART: цвета → CSS-классы (темизация)
+
+- **smart.js очищен от инлайн-хексов** (grep `#[0-9a-f]{6}` = 0): кнопка «Обновить» → `.btn-neutral` (через `var(--btn-muted)`, учитывает ночную тему), шкала заполненности разделов → `.smart-usage-ok/warning/critical` (цвет текста % + заливка fill-дива через `.smart-usage-fill.<класс>`), легенда «Критичный/Важный атрибут» → существующие `.smart-imp-critical/.smart-imp-important`, кнопки самодиагностики → `.smart-btn-test-short/long/conveyance`.
+- Новые классы в style.css (SMART-секция); фон красится только у `.smart-usage-fill`, у текста — только color.
+- Кэш-каскад: style.css v=47 (index.html + help/tmpfs/viewfile embed, пересобран entware-stats), smart.js v=11.
+
+### Проверено на dev-роутере
+- smart.js без хексов, классы на месте, версии согласованы, панель 200.
+
 ## 1.13.7 (2026-08-23)
 
 ### Мелкие улучшения защиты и скорости (MINOR/INFO из ретро-кворума)
