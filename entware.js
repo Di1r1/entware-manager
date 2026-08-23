@@ -3241,6 +3241,24 @@ async function checkSystemDeps() {
         });
         html += '</ul>';
 
+        // Модули панели (демоны и опциональные компоненты)
+        if (data.modules) {
+            const m = data.modules;
+            const modRow = (label, on, hint) => {
+                const color = on ? '#38a169' : '#718096';
+                return `<li>${label}: <b style="color:${color};">${on ? 'работает' : 'остановлен'}</b>${!on && hint ? ' <small style="color:#718096;">(' + hint + ')</small>' : ''}</li>`;
+            };
+            html += '<h4>Модули панели:</h4><ul style="list-style:none; padding:0;">';
+            html += modRow('Watchdog защиты', m.watchdog_monitor);
+            html += modRow('Watchdog сети', m.watchdog_network);
+            html += modRow('Watchdog служб', m.watchdog_services);
+            html += modRow('Telegram-шлюз', m.telegram_gateway, 'включается в Настройках');
+            html += modRow('Telegram-бот', m.telegram_bot, 'галочка «Чат-бот»');
+            html += modRow('RDP-прокси', m.rdp_proxy_running, m.rdp_proxy_bin ? 'запускается на вкладке RDP' : 'не установлен');
+            html += modRow('Терминал (ttyd)', m.ttyd_installed, 'opkg install ttyd');
+            html += '</ul>';
+        }
+
         // Проверка синтаксиса скриптов
         const syn = await apiGet('/check_syntax.cgi');
         html += '<h4>Проверка синтаксиса скриптов:</h4><ul style="list-style:none; padding:0;">';

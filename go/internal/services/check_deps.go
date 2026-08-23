@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"entware-manager/internal/cgiutil"
 	"fmt"
 	"os"
@@ -52,9 +53,24 @@ type DepsSections struct {
 	Smart      string `json:"smart"`
 }
 
+// DepsModules — опциональные модули панели (появились после v1.07.3,
+// «Проверка системы» про них не знала). Отсутствие/остановка модуля —
+// не деградация системы: пользователь мог осознанно его выключить.
+type DepsModules struct {
+	WatchdogMonitor  bool `json:"watchdog_monitor"`
+	WatchdogNetwork  bool `json:"watchdog_network"`
+	WatchdogServices bool `json:"watchdog_services"`
+	TelegramGateway  bool `json:"telegram_gateway"`
+	TelegramBot      bool `json:"telegram_bot"`
+	RdpProxyBin      bool `json:"rdp_proxy_bin"`
+	RdpProxyRunning  bool `json:"rdp_proxy_running"`
+	TtydInstalled    bool `json:"ttyd_installed"`
+}
+
 type DepsResult struct {
 	Base          DepsBase     `json:"base"`
 	Deps          DepsDeps     `json:"deps"`
+	Modules       DepsModules  `json:"modules"`
 	Sections      DepsSections `json:"sections"`
 	OverallStatus string       `json:"overall_status"`
 	Timestamp     string       `json:"timestamp"`
@@ -85,7 +101,7 @@ func HandleCheckDeps() {
 	cronPid := readPid(cronPidFile)
 	r.Deps.CronRunning = cronPid > 0 && pidIsAlive(cronPid)
 
-	r.Deps.Jq = lookPath("/opt/bin/jq")
+	r.Deps.Jq = lookPath("jq") || lookPath("/opt/bin/jq")
 
 	ipPath, ipOk := lookPathWithPath("ip")
 	r.Deps.Ip = ipOk
@@ -104,6 +120,25 @@ func HandleCheckDeps() {
 	r.Sections.Network = statusOk(r.Deps.Ip && r.Deps.Brctl)
 	r.Sections.Logger = statusOk(r.Deps.Jq)
 	r.Sections.Smart = statusSmart()
+
+	// Модули панели: pid-файлы демонов + бинарники опциональных компонентов.
+	pidAlive := func(path string) bool {
+		if pid := readPid(path); pid > 0 {
+			return pidIsAlive(pid)
+		}
+		return false
+	}
+	pidDir := "/tmp/entware/pid"
+	r.Modules.WatchdogMonitor = pidAlive(filepath.Join(pidDir, "watchdog.pid"))
+	r.Modules.WatchdogNetwork = pidAlive(filepath.Join(pidDir, "network_watchdog.pid"))
+	r.Modules.WatchdogServices = pidAlive(filepath.Join(pidDir, "service_watchdog.pid"))
+	r.Modules.TelegramGateway = pidAlive(filepath.Join(pidDir, "telegram_gateway.pid"))
+	r.Modules.TelegramBot = pidAlive(filepath.Join(pidDir, "telegram_bot.pid"))
+	if binPath := readJSONString(filepath.Join(webEntwareDir, "rdp_config.json"), "bin_path"); binPath != "" {
+		r.Modules.RdpProxyBin = true
+	}
+	r.Modules.RdpProxyRunning = pidAlive("/opt/var/run/grdp-proxy.pid")
+	r.Modules.TtydInstalled = lookPath("/opt/bin/ttyd") || lookPath("ttyd")
 
 	r.OverallStatus = "ok"
 	webServerUp := r.Base.LighttpdRunning || r.Base.EntwareServerRunning
@@ -182,6 +217,22 @@ func statusSmart() string {
 	return "missing"
 }
 
+// readJSONString — строковое поле верхнего уровня из JSON-конфига ("" при ошибке).
+func readJSONString(path, key string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var m map[string]interface{}
+	if json.Unmarshal(data, &m) != nil {
+		return ""
+	}
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
 type SyntaxFile struct {
 	File    string `json:"file"`
 	Status  string `json:"status"`
@@ -225,6 +276,15 @@ func HandleCheckSyntax() {
 		for _, e := range entries {
 			if !e.IsDir() && strings.HasSuffix(e.Name(), ".sh") {
 				files = append(files, filepath.Join(libDir, e.Name()))
+			}
+		}
+	}
+	// Корневые скрипты панели (демоны и утилиты): watchdog.sh,
+	// network/service_watchdog.sh, telegram_gateway.sh, backup.sh, fix-lighttpd.sh…
+	if entries, err := os.ReadDir(webEntwareDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".sh") {
+				files = append(files, filepath.Join(webEntwareDir, e.Name()))
 			}
 		}
 	}
