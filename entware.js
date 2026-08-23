@@ -375,8 +375,18 @@ function initTheme() {
     }
 }
 
-async function loadTab(tabName) {
-    const ver = window.APP_VERSION || 'loading...';
+// Открыть вкладку «Справка» и проскроллить к разделу Telegram-бота.
+// Используется ссылкой из блока настроек Telegram.
+async function openHelpTG() {
+    try { await loadTab('help'); } catch (e) {}
+    setTimeout(function () {
+        var el = document.getElementById('tg-help');
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 250);
+    return false;
+}
+
+async function loadTab(tabName) {    const ver = window.APP_VERSION || 'loading...';
     console.log(`[v${ver}] Загрузка вкладки:`, tabName);
     if (settingsInterval) clearInterval(settingsInterval);
     settingsInterval = null;
@@ -1719,7 +1729,7 @@ async function renderSettingsTab() {
             <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
         </div>
         <h3 style="margin-top: 30px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=5#icon-email"/></svg> Telegram-уведомления</h3>
-        <p>Отправка событий в Telegram через независимый шлюз. Токен бота хранится скрыто и не отображается.</p>
+        <p class="text-secondary" style="font-size:0.75rem;">Отправка событий в Telegram через независимый шлюз. Токен бота хранится скрыто и не отображается. <a href="#" onclick="return openHelpTG()" style="color:var(--accent-color);">Инструкция и все команды бота — во вкладке «Справка».</a></p>
         <div id="telegram-form" style="margin-top: 10px; max-width: 520px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Включить</label>
@@ -1733,17 +1743,10 @@ async function renderSettingsTab() {
                 <label style="flex: 0 0 160px;">Chat ID</label>
                 <input type="text" id="tg-chat" class="settings-input" placeholder="123456789" style="flex:1;">
             </div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Прокси</label>
                 <input type="text" id="tg-proxy" class="settings-input" placeholder="http://127.0.0.1:10871 или socks5://127.0.0.1:1080" style="flex:1;">
             </div>
-            <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:0 0 10px 170px;">
-                Нужен, если провайдер блокирует Telegram напрямую (DPI): запросы к API идут через локальный прокси-клиент на роутере. Варианты:<br>
-                — пусто — прямое соединение (если блокировки нет);<br>
-                — http://127.0.0.1:ПОРТ — локальный HTTP-прокси (xray/v2ray/sing-box и т.п.);<br>
-                — socks5://127.0.0.1:ПОРТ — локальный SOCKS5-прокси.<br>
-                Трафик к Telegram при этом остаётся HTTPS: прокси лишь туннелирует соединение.
-            </p>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Уровень</label>
                 <select id="tg-level" class="settings-input" style="flex:1;">
@@ -1763,12 +1766,9 @@ async function renderSettingsTab() {
                     <label><input type="checkbox" id="tg-src-packages" value="packages"> Пакеты</label>
                 </div>
             </div>
-            <div style="margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <label style="flex: 0 0 160px;">Чат-бот</label>
-                    <input type="checkbox" id="tg-bot" style="transform: scale(1.3);">
-                </div>
-                <p class="text-secondary" style="font-size:0.7rem;line-height:1.4;margin:4px 0 0 170px;">Интерактивные команды боту в Telegram:<br>📖 /help, /status, /temp, /ip, /services, /smart, /log [N], /find &lt;текст&gt;, /digest<br>📊 /top [N], /ports, /devices, /wifi, /updates, /cron<br>⚙️ /service &lt;имя&gt; start|stop|restart, /pkg update, /rotate, /reboot (с подтверждением)<br>🔔 Алерты: остановка службы (с кнопкой перезапуска), сводка за сутки в 09:00.<br>Отвечает только в вашем chat_id. Требуются токен и chat_id.</p>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <label style="flex: 0 0 160px;">Чат-бот</label>
+                <input type="checkbox" id="tg-bot" style="transform: scale(1.3);">
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <label style="flex: 0 0 160px;">Автозапуск</label>
