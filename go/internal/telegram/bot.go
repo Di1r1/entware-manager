@@ -1197,35 +1197,40 @@ func parseListenPorts() []portEntry {
 
 // portScope — классификация доступности порта по адресам.
 // "ext" — все интерфейсы, "local" — только loopback, "lan" — прочее.
+// portScope — определяет самую широкую область доступности порта.
+// Приоритет: ext > lan > local (порт доступен настолько, насколько позволяет
+// самый открытый биндинг).
 func portScope(addrs []string) string {
-	hasWild, allLoop, hasNonLoop := false, true, false
+	if len(addrs) == 0 {
+		return "local"
+	}
+	hasPublic, hasPrivate := false, false
+	allLoop := true
 	for _, a := range addrs {
-		if a == "0.0.0.0" || a == "::" {
-			hasWild = true
+		ip := net.ParseIP(a)
+		if ip == nil {
+			continue
 		}
-		isLoop := a == "127.0.0.1" || a == "::1"
-		if !isLoop {
-			allLoop = false
-			hasNonLoop = true
+		if ip.IsLoopback() {
+			continue // loopback не влияет на классификацию
 		}
-	}
-	if hasNonLoop || hasWild {
-		if allLoop {
-			return "local"
-		}
-		if hasWild {
-			return "ext"
+		allLoop = false
+		if ip.IsPrivate() {
+			hasPrivate = true
+		} else {
+			hasPublic = true
 		}
 	}
-	if len(addrs) > 0 {
-		for _, a := range addrs {
-			if a == "127.0.0.1" || a == "::1" {
-				return "local"
-			}
-		}
+	if hasPublic {
+		return "ext"
+	}
+	if hasPrivate {
 		return "lan"
 	}
-	return "lan"
+	if allLoop {
+		return "local"
+	}
+	return "lan" // fallback для нераспознанных
 }
 
 // rciHost — устройство домашней сети из RCI Keenetic.
@@ -1531,38 +1536,22 @@ func decodeHexV6(hexAddr string) string {
 }
 
 // cmdPorts — /ports: слушающие TCP-порты с группировкой по доступности.
+// cmdPorts — /ports: слушающие порты с адресами и подписями.
 func cmdPorts() tgReply {
 	entries := parseListenPorts()
 	if len(entries) == 0 {
 		return tgReply{text: "Слушающие порты не найдены"}
 	}
-	var ext, lan, local []string
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("🔌 Слушающие порты (%d):\n", len(entries)))
 	for _, e := range entries {
 		note := knownPortNames[e.port]
 		label := fmt.Sprintf(":%d", e.port)
 		if note != "" {
 			label += " (" + note + ")"
 		}
-		scope := portScope(e.addrs)
-		switch scope {
-		case "ext":
-			ext = append(ext, label)
-		case "local":
-			local = append(local, label)
-		default:
-			lan = append(lan, label)
-		}
-	}
-	var b strings.Builder
-	b.WriteString("🔌 Порты:\n")
-	if len(ext) > 0 {
-		b.WriteString("🌐 Все интерфейсы: " + strings.Join(ext, " · ") + "\n")
-	}
-	if len(lan) > 0 {
-		b.WriteString("🏠 LAN: " + strings.Join(lan, " · ") + "\n")
-	}
-	if len(local) > 0 {
-		b.WriteString("🔒 Локальные: " + strings.Join(local, " · ") + "\n")
+		addrs := strings.Join(e.addrs, ", ")
+		b.WriteString(fmt.Sprintf("  %s ← %s\n", label, addrs))
 	}
 	return tgReply{text: b.String()}
 }
