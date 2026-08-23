@@ -23,6 +23,11 @@ var SessionFile = "/opt/var/run/panel_session"
 // SessionTTL — время жизни сессии.
 const SessionTTL = 24 * time.Hour
 
+// SessionTouchInterval — минимальный интервал продления сессии.
+// mtime обновляется не чаще раза в 10 минут — защита флеш-памяти роутера
+// от износа при частых запросах панели.
+const SessionTouchInterval = 10 * time.Minute
+
 // SessionCookieName — имя cookie.
 const SessionCookieName = "panel_session"
 
@@ -84,9 +89,15 @@ func SessionValidCookie(token string) bool {
 	if err != nil {
 		return false
 	}
-	if time.Since(fi.ModTime()) > SessionTTL {
+	age := time.Since(fi.ModTime())
+	if age > SessionTTL {
 		DestroySession()
 		return false
+	}
+	// Sliding TTL: активная сессия продлевается, но не чаще раза в 10 минут.
+	if age > SessionTouchInterval {
+		now := time.Now()
+		_ = os.Chtimes(SessionFile, now, now)
 	}
 	return true
 }

@@ -2297,8 +2297,8 @@ window.saveAuthConfig = async function() {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Пароли не совпадают</span>';
         return;
     }
-    if (enabled && password && password.length < 4) {
-        statusEl.innerHTML = '<span style="color:#e53e3e;">Пароль должен быть минимум 4 символа</span>';
+    if (enabled && password && password.length < 8) {
+        statusEl.innerHTML = '<span style="color:#e53e3e;">Пароль должен быть минимум 8 символов</span>';
         return;
     }
 

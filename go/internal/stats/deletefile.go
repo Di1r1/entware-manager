@@ -125,7 +125,8 @@ func checkFilemgrAuth(password string) bool {
 		return true
 	}
 	if cfg.PasswordHash != "" {
-		return sha256Hex(password) == cfg.PasswordHash
+		// VerifyPassword понимает legacy sha256-hex и новый PBKDF2+соль.
+		return auth.VerifyPassword(password, cfg.PasswordHash)
 	}
 	if cfg.Password != "" {
 		return password == cfg.Password

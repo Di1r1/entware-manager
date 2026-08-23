@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"entware-manager/internal/cgiutil"
 	"fmt"
@@ -86,8 +85,7 @@ func handleAuthConfigPost() {
 			return
 		}
 		if authNeedsCheck {
-			h := sha256.Sum256([]byte(currentPassword))
-			hashOk := oldHash != "" && fmt.Sprintf("%x", h) == oldHash
+			hashOk := oldHash != "" && auth.VerifyPassword(currentPassword, oldHash)
 			plainOk := oldHash == "" && oldPlain != "" && oldPlain == currentPassword
 			if !hashOk && !plainOk {
 				fmt.Print("Content-type: application/json; charset=utf-8\n\n")
@@ -110,13 +108,17 @@ func handleAuthConfigPost() {
 
 	if enabled {
 		if password != "" {
-			if len(password) < 4 {
+			if len(password) < 8 {
 				fmt.Print("Content-type: application/json; charset=utf-8\n\n")
-				fmt.Println(`{"status":"error","message":"Пароль должен быть минимум 4 символа"}`)
+				fmt.Println(`{"status":"error","message":"Пароль должен быть минимум 8 символов"}`)
 				return
 			}
-			h := sha256.Sum256([]byte(password))
-			passwordHash = fmt.Sprintf("%x", h)
+			passwordHash = auth.HashPassword(password)
+			if passwordHash == "" {
+				fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+				fmt.Println(`{"status":"error","message":"Не удалось сохранить настройки"}`)
+				return
+			}
 		} else if oldHash != "" {
 			passwordHash = oldHash
 		} else {

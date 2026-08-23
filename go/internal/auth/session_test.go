@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestSessionLifecycle(t *testing.T) {
@@ -89,6 +90,45 @@ func TestSessionValidCookie(t *testing.T) {
 	}
 	if SessionValidCookie("") {
 		t.Error("SessionValidCookie(empty) = true")
+	}
+}
+
+func TestSessionSlidingTTL(t *testing.T) {
+	orig := SessionFile
+	defer func() { SessionFile = orig }()
+	SessionFile = filepath.Join(t.TempDir(), "panel_session")
+
+	tok, err := CreateSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// mtime 11 минут назад: в пределах TTL, но старше интервала продления
+	old := time.Now().Add(-11 * time.Minute)
+	if err := os.Chtimes(SessionFile, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if !SessionValidCookie(tok) {
+		t.Fatal("валидная сессия отклонена")
+	}
+	fi, err := os.Stat(SessionFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(fi.ModTime()) > time.Minute {
+		t.Error("mtime сессии не продлён (sliding TTL не сработал)")
+	}
+
+	// свежая сессия (продлена только что) — повторный вызов не обязан
+	// менять mtime, но должен оставаться валидным
+	if !SessionValidCookie(tok) {
+		t.Error("повторная проверка после продления должна проходить")
+	}
+
+	// сессия старше TTL → инвалидация
+	stale := time.Now().Add(-25 * time.Hour)
+	os.Chtimes(SessionFile, stale, stale)
+	if SessionValidCookie(tok) {
+		t.Error("сессия старше TTL должна быть уничтожена")
 	}
 }
 

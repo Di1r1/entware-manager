@@ -34,20 +34,36 @@ func HandleLogin() {
 	params := cgiutil.ParseFormBody(string(body))
 	password := params["password"]
 
+	// IP клиента (за прокси может быть 127.0.0.1 — общий bucket, компромисс).
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "0.0.0.0"
+	}
+
 	allow, reason := auth.EnabledReports()
 	if !allow {
 		logAuthAction("WARN", "Вход отклонён: "+reason)
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": reason})
 		return
 	}
+	// Антибрутфорс: после 5 неудач подряд — отказ на 30 сек.
+	if auth.RateLimited(ip) {
+		time.Sleep(1 * time.Second)
+		logAuthAction("WARN", "Вход заблокирован: исчерпаны попытки ("+ip+")")
+		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Слишком много неудачных попыток. Повторите через 30 секунд"})
+		return
+	}
 	if !auth.CheckPassword(password) {
+		auth.RecordFailure(ip)
 		// антибрутфорс: задержка перед ответом
 		time.Sleep(1 * time.Second)
 		logAuthAction("WARN", "Неверный пароль при входе")
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Неверный пароль"})
 		return
 	}
+	auth.ResetFailures(ip)
 
+	migratePasswordHash(password)
 	logAuthAction("INFO", "Успешный вход")
 	token, err := auth.CreateSession()
 	if err != nil {
@@ -81,6 +97,31 @@ func HandleSession() {
 	authenticated := !auth.Enabled() || auth.SessionValid()
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	fmt.Printf(`{"authenticated":%v}`+"\n", authenticated)
+}
+
+// migratePasswordHash прозрачно перехеширует legacy-хеш (голый sha256-hex)
+// в PBKDF2+соль после успешного входа. Атомарно (уникальный temp+rename),
+// поле enabled сохраняется as-is; мигрируем только активную защиту.
+func migratePasswordHash(password string) {
+	cfg, ok := auth.LoadConfig()
+	if !ok || !cfg.Enabled || cfg.PasswordHash == "" || !auth.NeedsRehash(cfg.PasswordHash) {
+		return
+	}
+	newHash := auth.HashPassword(password)
+	if newHash == "" {
+		return // crypto/rand недоступен — остаёмся на legacy
+	}
+	out, _ := json.MarshalIndent(struct {
+		Enabled      bool   `json:"enabled"`
+		PasswordHash string `json:"password_hash"`
+	}{Enabled: cfg.Enabled, PasswordHash: newHash}, "", "    ")
+	out = append(out, '\n')
+	tmp := fmt.Sprintf("%s.%d.tmp", auth.ConfigPath, os.Getpid())
+	if os.WriteFile(tmp, out, 0600) == nil {
+		if os.Rename(tmp, auth.ConfigPath) != nil {
+			os.Remove(tmp)
+		}
+	}
 }
 
 // writeAuthJSON выводит JSON с Content-Type.

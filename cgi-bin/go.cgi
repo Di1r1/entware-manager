@@ -78,6 +78,10 @@ auth_gate() {
 	MTIME=$(date -r "$SESSION_FILE" +%s 2>/dev/null || echo 0)
 	NOW=$(date +%s)
 	[ $((NOW - MTIME)) -le "$SESSION_TTL_SECONDS" ] || { rm -f "$SESSION_FILE"; echo_401; exit 1; }
+	# Sliding TTL: продлеваем сессию не чаще раза в 10 минут (анти-износ флеша).
+	if [ $((NOW - MTIME)) -gt 600 ]; then
+		touch "$SESSION_FILE" 2>/dev/null
+	fi
 	return 0
 }
 

@@ -6,9 +6,7 @@
 package auth
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -60,6 +58,8 @@ func EnabledReports() (allow bool, denyReason string) {
 }
 
 // CheckPassword проверяет введённый пароль (fail-closed).
+// Единая точка проверки: PBKDF2/legacy через VerifyPassword — покрыты
+// все вызывающие (логин, RDP, файловый менеджер).
 func CheckPassword(password string) bool {
 	allow, _ := EnabledReports()
 	if !allow {
@@ -70,8 +70,7 @@ func CheckPassword(password string) bool {
 		return true
 	}
 	if cfg.PasswordHash != "" {
-		h := sha256.Sum256([]byte(password))
-		return fmt.Sprintf("%x", h) == cfg.PasswordHash
+		return VerifyPassword(password, cfg.PasswordHash)
 	}
 	if cfg.Password != "" {
 		return password == cfg.Password
