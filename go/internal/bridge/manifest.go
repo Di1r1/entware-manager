@@ -58,9 +58,11 @@ type FieldDef struct {
 	Path  string `json:"path"`           // точечный путь в JSON-ответе
 	Label string `json:"label"`          // подпись на карточке
 	From  string `json:"from,omitempty"` // источник: status | stats | <имя extra>; пусто = перебор
-	Type  string `json:"type,omitempty"` // "" текст | bool | bytes | count
+	Type  string `json:"type,omitempty"` // "" текст | bool | bytes | count | num | ms | dur | top
 	Tile  bool   `json:"tile,omitempty"` // показать крупной плиткой
 	Color string `json:"color,omitempty"`
+	On    string `json:"on,omitempty"`  // текст для true (по умолчанию «да»)
+	Off   string `json:"off,omitempty"` // текст для false (по умолчанию «нет»)
 }
 
 type Manifest struct {
@@ -123,7 +125,7 @@ func ValidateManifest(m *Manifest) error {
 			return fmt.Errorf("field[%d]: пустая или длинная label", i)
 		}
 		switch f.Type {
-		case "", "bool", "bytes", "count", "num", "ms", "top":
+		case "", "bool", "bytes", "count", "num", "ms", "dur", "top":
 		default:
 			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count)", i, f.Type)
 		}

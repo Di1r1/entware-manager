@@ -100,6 +100,7 @@ func BuildCard(dir, id string) (*CardData, error) {
 		if !ok {
 			continue // поля нет в ответе — пропускаем строку
 		}
+		curField = &f
 		value := formatValue(val, f.Type)
 		if value == "" {
 			continue
@@ -159,14 +160,27 @@ func lookupPath(src map[string]interface{}, parts []string) (interface{}, bool) 
 }
 
 // formatValue приводит значение к читаемой строке согласно типу поля.
+var curField *FieldDef
+
 func formatValue(v interface{}, typ string) string {
 	switch typ {
 	case "bool":
 		b, _ := v.(bool)
 		if b {
+			if curField.On != "" {
+				return curField.On
+			}
 			return "да"
 		}
+		if curField.Off != "" {
+			return curField.Off
+		}
 		return "нет"
+	case "dur":
+		if f, ok := toFloat(v); ok {
+			return humanDur(f)
+		}
+		return ""
 	case "ms":
 		if f, ok := toFloat(v); ok {
 			return strconv.Itoa(int(MathRound(f*1000))) + " мс"
@@ -284,4 +298,21 @@ func MathRound(f float64) float64 {
 		return -float64(int64(f - 0.5))
 	}
 	return float64(int64(f + 0.5))
+}
+
+// humanDur — секунды → «1 дн 2 ч 3 мин».
+func humanDur(sec float64) string {
+	s := int64(sec)
+	d := s / 86400
+	h := (s % 86400) / 3600
+	m := (s % 3600) / 60
+	var parts []string
+	if d > 0 {
+		parts = append(parts, fmt.Sprintf("%d дн", d))
+	}
+	if h > 0 || d > 0 {
+		parts = append(parts, fmt.Sprintf("%d ч", h))
+	}
+	parts = append(parts, fmt.Sprintf("%d мин", m))
+	return strings.Join(parts, " ")
 }

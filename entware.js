@@ -2082,9 +2082,13 @@ function renderBridgeDetails(d) {
             '<span class="bd-chip">' + escapeHtml(c) + '</span>').join('') + '</div>';
     }
     if (d.rows && d.rows.length) {
-        html += '<div class="bridge-details">' + d.rows.map(r =>
-            '<div class="bd-row"><span class="bd-label">' + escapeHtml(r[0]) + '</span>' +
-            '<span class="bd-value">' + escapeHtml(r[1]) + '</span></div>').join('') + '</div>';
+        html += '<div class="bridge-details">' + d.rows.map(r => {
+            // совместимость: ряд приходит и объектом {label,value}, и массивом [l,v]
+            const label = (r && r.label !== undefined) ? r.label : r[0];
+            const value = (r && r.value !== undefined) ? r.value : r[1];
+            return '<div class="bd-row"><span class="bd-label">' + escapeHtml(label) + '</span>' +
+                '<span class="bd-value">' + escapeHtml(value) + '</span></div>';
+        }).join('') + '</div>';
     }
     return html;
 }

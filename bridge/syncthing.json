@@ -16,8 +16,9 @@
   "fields": [
     {
       "path": "uptime",
-      "label": "Аптайм (сек)",
-      "tile": true
+      "label": "Аптайм",
+      "tile": true,
+      "type": "dur"
     },
     {
       "path": "myID",
