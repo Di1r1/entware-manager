@@ -1877,6 +1877,20 @@ function buildServiceDetails(id, body) {
         return out;
     }
 
+    // Syncthing: /rest/system/status (+ connections отдельным блоком)
+    if (id === 'syncthing') {
+        const up = Number(body.uptime) || 0;
+        const dd = Math.floor(up / 86400), hh = Math.floor((up % 86400) / 3600);
+        const mm = Math.floor((up % 3600) / 60);
+        let t = [];
+        if (dd) t.push(dd + ' дн');
+        if (hh || dd) t.push(hh + ' ч');
+        t.push(mm + ' мин');
+        out.rows.push(['Аптайм', t.join(' ')]);
+        if (body.myID) out.rows.push(['ID устройства', String(body.myID).slice(0, 7)]);
+        return out;
+    }
+
     // Koffe VPN
     if (typeof body.running === 'boolean') {
         out.rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
@@ -1921,6 +1935,20 @@ async function renderBridgeCardsOnStats() {
             const k = await bridgeKoffeRows();
             det.rows.push(...(k.rows || []));
             if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
+        }
+        // Syncthing: подключения и суммарный трафик
+        if (svc.id === 'syncthing') {
+            try {
+                const c = await apiGet('/bridge_stats.cgi?id=syncthing&block=conns');
+                if (c.status === 'ok' && c.result && c.result.body) {
+                    const cb = c.result.body;
+                    let online = 0;
+                    Object.values(cb.connections || {}).forEach(x => { if (x && x.connected) online++; });
+                    det.tiles.push({ label: 'Устройств на связи', value: String(online) });
+                    det.tiles.push({ label: 'Принято всего',   value: fmtBytesJS(Number((cb.total || {}).inBytesTotal) || 0) });
+                    det.tiles.push({ label: 'Отправлено всего',value: fmtBytesJS(Number((cb.total || {}).outBytesTotal) || 0) });
+                }
+            } catch(e) {}
         }
         // AdGuard: числа плитками, топы рядами
         if (svc.id === 'adguard') {

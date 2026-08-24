@@ -68,7 +68,7 @@ func handleAuthSave() {
 	}
 
 	credType := params["cred_type"]
-	if credType != "basic" && credType != "cookie_login" {
+	if credType != "basic" && credType != "cookie_login" && credType != "api_key" {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "cred_type должен быть basic или cookie_login"})
 		return
 	}

@@ -123,8 +123,15 @@ func authedDo(client *http.Client, dir, id string, method, url, body string) (*h
 				req.Header.Set(extraHdr[:i], extraHdr[i+1:])
 			}
 		}
-		if creds != nil && creds.Type == "basic" {
-			req.SetBasicAuth(creds.Username, creds.Password)
+		if creds != nil {
+			switch creds.Type {
+			case "basic":
+				req.SetBasicAuth(creds.Username, creds.Password)
+			case "api_key":
+				if creds.Password != "" {
+					req.Header.Set("X-API-Key", creds.Password)
+				}
+			}
 		}
 		return client.Do(req)
 	}
