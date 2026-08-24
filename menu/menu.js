@@ -47,7 +47,7 @@ const Menu = (() => {
             li.innerHTML = `
                 <span class="menu-icon">
                     <svg class="icon" width="16" height="16">
-                        <use href="/entware-manager/icons.svg?v=5#icon-${item.icon}"/>
+                        <use href="/entware-manager/icons.svg?v=6#icon-${item.icon}"/>
                     </svg>
                 </span>
                 <span class="menu-text">${escapeHtml(item.text)}</span>

@@ -2,17 +2,70 @@
   "version": "1.0",
   "comment": "Конфигурация меню Entware Manager. Для изменения пунктов редактируйте этот файл.",
   "items": [
-    { "tab": "stats", "icon": "stats", "text": "Статистика" },
-    { "tab": "packages", "icon": "package", "text": "Пакеты" },
-    { "tab": "processes", "icon": "process", "text": "Процессы" },
-    { "tab": "terminal", "icon": "terminal", "text": "Терминал" },
-    { "tab": "system-services", "icon": "services", "text": "Службы и Cron" },
-    { "tab": "network", "icon": "router", "text": "Сеть" },
-    { "tab": "smart", "icon": "hdd", "text": "SMART" },
-    { "tab": "rdp", "icon": "vpn", "text": "RDP" },
-    { "tab": "settings", "icon": "settings", "text": "Настройки" },
-    { "tab": "monitor", "icon": "shield", "text": "Защита" },
-    { "tab": "help", "icon": "help", "text": "Справка" },
-    { "tab": "logs", "icon": "list", "text": "Логи" }
+    {
+      "tab": "stats",
+      "icon": "stats",
+      "text": "Статистика"
+    },
+    {
+      "tab": "packages",
+      "icon": "package",
+      "text": "Пакеты"
+    },
+    {
+      "tab": "processes",
+      "icon": "process",
+      "text": "Процессы"
+    },
+    {
+      "tab": "terminal",
+      "icon": "terminal",
+      "text": "Терминал"
+    },
+    {
+      "tab": "system-services",
+      "icon": "services",
+      "text": "Службы и Cron"
+    },
+    {
+      "tab": "network",
+      "icon": "router",
+      "text": "Сеть"
+    },
+    {
+      "tab": "bridge",
+      "icon": "modules",
+      "text": "Модули"
+    },
+    {
+      "tab": "smart",
+      "icon": "hdd",
+      "text": "SMART"
+    },
+    {
+      "tab": "rdp",
+      "icon": "vpn",
+      "text": "RDP"
+    },
+    {
+      "tab": "settings",
+      "icon": "settings",
+      "text": "Настройки"
+    },
+    {
+      "tab": "monitor",
+      "icon": "shield",
+      "text": "Защита"
+    },
+    {
+      "tab": "help",
+      "icon": "help",
+      "text": "Справка"
+    },
+    {
+      "tab": "logs",
+      "icon": "list",
+      "text": "Логи"
+    }
   ]
 }

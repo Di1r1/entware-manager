@@ -2,6 +2,24 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.15.0 (2026-08-24)
+
+### Мост сервисов: Этап 1 — обнаружение, статус, действия
+
+Новая подсистема «Универсальный мост»: EM обнаруживает локальные сервисы Entware и показывает их единообразно. Вместо хардкод-интеграций — каталог сигнатур + JSON-манифесты (`/opt/web_entware/bridge/<id>.json`), расширяемо без пересборки.
+
+- **`internal/bridge`**: SSRF-гейт `ValidateBridgeURL` (только http+loopback литерал, запрет userinfo/fragments/redirects, резолв относительных URL с повторной проверкой); строгий валидатор манифестов (DisallowUnknownFields, лимиты 16КБ/20шт/10 действий, id `[a-z0-9_-]{1,32}`, защита от path traversal); discovery с параллельными пробами (семофор ≤8, таймаут 1с, бюджет 3с, кэш 30с); прокси статуса/действий с LimitReader (64/256КБ) и без passthrough чужого HTML.
+- **Каталог v1**: koffe-api (:9097), AdGuard Home (:8080), ttyd, Transmission, Syncthing — порт ≠ сигнатура.
+- **Бинарник entware-bridge** (изолирован от панели): bridge_discover/bridge_status/bridge_action; действия за паролем панели + Origin + rate-limit 2с (tmpfs).
+- **Фронтенд**: вкладка «Модули» (карточки со статусом, переключатель уведомлений в localStorage до Этапа 4, кнопки действий с confirm) + компактная зона модулей на Статистике; иконка icon-modules; кэш icons.svg?v=6, entware.js?v=87.
+- Секреты коннекторов (`<id>.auth.json`, basic-auth) вне манифестов, не попадают в GET-ответы структурно.
+- Тесты: SSRF-гейт (11 кейсов), валидатор манифестов (traversal/oversize/unknown-fields/duplicates).
+
+### Проверено на dev-роутере
+- Discovery: koffe=running, adguard=auth_required (401), syncthing/transmission/ttyd=absent.
+- bridge_status?id=koffe → живой статус (running, uptime, сервер, счётчики устройств).
+- SSRF: traversal-id отклонён; без сессии → 401.
+
 ## 1.14.0 (2026-08-23)
 
 ### HTTPS self-signed для панели (go-режим)

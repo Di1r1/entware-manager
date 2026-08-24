@@ -57,6 +57,8 @@ var flatDispatch = map[string]string{
 	"rdp_status": "rdp", "rdp_start": "rdp", "rdp_stop": "rdp", "rdp_config": "rdp",
 	// telegram
 	"telegram_config": "telegram", "telegram_test": "telegram",
+	// bridge
+	"bridge_discover": "bridge", "bridge_status": "bridge", "bridge_action": "bridge",
 }
 
 // subdirDispatch — подкаталоги /entware-cgi/<dir>/<name>.cgi.

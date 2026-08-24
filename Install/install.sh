@@ -1078,7 +1078,7 @@ fi
 
 # Проверка Go-бинарников
 echo "  ${BOLD}Go-бинарники:${NC}"
-GO_BINS="entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats entware-telegram"
+GO_BINS="entware-bridge entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats entware-telegram"
 GO_OK=0
 for bin in $GO_BINS; do
 	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
