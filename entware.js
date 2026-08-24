@@ -1917,7 +1917,7 @@ async function renderBridgeCardsOnStats() {
                 '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
                 '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
                 (rows.length ? renderBridgeRows(rows) : '') +
-                (isKoffe ? '<a href="/koffe/" target="_blank" rel="noopener noreferrer" title="Клик — открыть интерфейс Koffe" style="display:block;" id="koffe-spark-box"></a>' : '') +
+                (isKoffe ? '<div id="koffe-spark-box"></div>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
