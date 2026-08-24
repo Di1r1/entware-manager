@@ -1685,6 +1685,21 @@ function bindAghToggle() {
 }
 
 // Детальная строка для карточки на Статистике — из статуса приложения.
+// bridgeTopEntries — имена из массива {"ключ": число} (AGH stats), топ N.
+function bridgeTopEntries(arr, n) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, n).map(item => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+            const k = Object.keys(item)[0];
+            if (k === undefined) return '';
+            const cnt = Number(item[k]);
+            return cnt > 0 ? k.split('.')[0] + ' (' + cnt.toLocaleString('ru-RU') + ')' : k;
+        }
+        return '';
+    }).filter(Boolean);
+}
+
 function bridgeDetailLine(id, body) {
     if (!body || typeof body !== 'object') return '';
     if (id === 'adguard') {
@@ -1696,6 +1711,14 @@ function bridgeDetailLine(id, body) {
     if (typeof body.running === 'boolean') bits.push(body.running ? 'туннель активен' : 'туннель остановлен');
     if (body.mode) bits.push('режим: ' + body.mode);
     if (body.server) bits.push(String(body.server));
+    // Раскладка устройств по режимам маршрутизации
+    const dev = [];
+    const devMap = [['device_tunnel','через туннель'],['device_bypass','напрямую'],['device_hysteria2','hysteria2'],['device_custom','внешний']];
+    devMap.forEach(([k, label]) => {
+        const n = Number(body[k]) || 0;
+        if (n > 0) dev.push(n + ' ' + label);
+    });
+    if (dev.length) bits.push('устройства: ' + dev.join(', '));
     if (body.uptime) bits.push('аптайм ' + body.uptime);
     return bits.join(' · ');
 }
@@ -1732,6 +1755,16 @@ async function renderBridgeCardsOnStats() {
                     const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
                     lines.push('Запросов за сутки: ' + fmtN(b.num_dns_queries));
                     lines.push('Заблокировано: ' + fmtN(b.num_blocked_filtering));
+                    const q = Number(b.num_dns_queries) || 0;
+                    if (q > 0) {
+                        const pct = Math.round((Number(b.num_blocked_filtering) || 0) / q * 1000) / 10;
+                        lines.push('Блокируется: ' + String(pct).replace('.', ',') + '%');
+                    }
+                    if (b.avg_processing_time !== undefined) {
+                        lines.push('Ответ DNS: ~' + String(Math.round(Number(b.avg_processing_time) * 1000)) + ' мс');
+                    }
+                    const tc = bridgeTopEntries(b.top_clients, 3);
+                    if (tc.length) lines.push('Топ клиенты: ' + tc.map(x => escapeHtml(x)).join(', '));
                 }
             } catch(e) {}
         }
