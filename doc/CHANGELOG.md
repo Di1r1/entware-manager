@@ -2,6 +2,24 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.15.6 (2026-08-25)
+
+### Мост: Transmission + редактор манифестов
+
+*(консолидация коммитов после 1.15.3; включает содержимое пометки v1.15.5 — тег остаётся в истории)*
+
+- **Коннектор Transmission**: CatalogEntry.Ports []int (нативный transmissiond Keenetic :8090 / Entware :9091, первый не-absent выигрывает); authedDo с телом запроса и флоу 409 X-Transmission-Session-Id (tmpfs-сессия); Endpoint.MethodOrGET() — манифесты задают метод для status/stats/extra/actions; bridge/transmission.json (session-stats/torrent-start/stop).
+- **Редактор манифестов**: bridge_manifest/bridge_save/bridge_delete (GET/POST, пароль+Origin); серверная валидация ValidateManifestData (DisallowUnknownFields + SSRF-гейт + лимиты), запрет удаления встроенных модулей; UI-редактор JSON с шаблоном, подсказками полей и статусом ошибок.
+- **Универсальная форма авторизации** для любых auth_required сервисов (bridgeAuthFormHTML вместо agh-специфичной).
+- **Исправления**: обрыв больших тел (контекст не отменяет чтение тела — TestAuthedDoLargeBody); парсинг сохранённой сессии по имени (MAJOR-B: сырое Имя|Значение в Cookie); дедупликация discovery (манифест главнее каталога); резолв относительных probe-URL; classify: 2xx–3xx running, 405 → running (документировано), 401/403/409 → auth_required; ReferenceError det в рендере Статистики; поиск таблиц после пересоздания tbody.
+- Кворум на дизайн моста (12 требований) + верификация NOTE-фиксов: APPROVE WITH NOTES → все NOTES закрыты (b0502a9, 7500de9).
+- Кэш: entware.js?v=106.
+
+### Проверено на dev-роутере
+- Discovery: koffe/adguard/transmission running, syncthing/ttyd честно absent; дубликатов нет.
+- bridge_manifest/save/delete полный цикл (валидация, создание, удаление, защита встроенных).
+- Transmission block=status с creds → session-stats (торренты/скорости).
+
 ## 1.15.5 (2026-08-24)
 
 ### Мост: Transmission из каталога приложений Keenetic (Этап 2 продолжение)
