@@ -2714,3 +2714,41 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     word-break: break-word;
     font-weight: 600;
 }
+
+/* Мост: плитки чисел и чипы списков в карточках */
+.bd-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+.bd-tile {
+    background: var(--input-bg);
+    border-radius: 8px;
+    padding: 7px 9px;
+}
+.bd-tile-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+}
+.bd-tile-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+.bd-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+}
+.bd-chip {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 10px;
+    padding: 2px 9px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}

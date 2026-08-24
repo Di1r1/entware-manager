@@ -1821,32 +1821,45 @@ function startKoffeSparkTimer() {
     koffeSparkTimer = setInterval(updateKoffeSparkLive, 10000);
 }
 
-// bridgeDetailLine → массив строк-пар [метка, значение] для карточки.
-function bridgeDetailRows(id, body) {
-    if (!body || typeof body !== 'object') return [];
+// buildServiceDetails — структурированное наполнение карточки моста:
+//   tiles: крупные числа (сетка 2×N), rows: пары метка→значение, chips: бейджи списков.
+function buildServiceDetails(id, body) {
+    const out = { tiles: [], rows: [], chips: [] };
+    if (!body || typeof body !== 'object') return out;
     const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
+
     if (id === 'adguard') {
-        return [
-            ['Защита', body.protection_enabled ? 'вкл' : 'выкл'],
-            ['Версия', body.version ? String(body.version).replace(/^v/, '') : '—']
+        const q = Number(body.num_dns_queries) || 0;
+        const blk = Number(body.num_blocked_filtering) || 0;
+        const pct = q > 0 ? Math.round(blk / q * 1000) / 10 : 0;
+        out.tiles = [
+            { label: 'Запросов за сутки', value: fmtN(q) },
+            { label: 'Заблокировано',     value: fmtN(blk), color: '#d69e2e' },
+            { label: 'Доля блокировок',   value: String(pct).replace('.', ',') + '%' },
+            { label: 'Ответ DNS',         value: '~' + Math.round(Number(body.avg_processing_time) * 1000) + ' мс' }
         ];
+        out.rows.push(['Версия', body.version ? String(body.version).replace(/^v/, '') : '—']);
+        const tc = bridgeTopEntries(body.top_clients, 3);
+        if (tc.length) out.rows.push(['Топ клиенты', tc.join(', ')]);
+        const tb = bridgeTopEntries(body.top_blocked_domains, 5);
+        if (tb.length) out.rows.push(['Топ блокировок', tb.join(', ')]);
+        return out;
     }
-    const rows = [];
+
+    // Koffe VPN
     if (typeof body.running === 'boolean') {
-        rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
+        out.rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
     }
-    if (body.mode) rows.push(['Режим', body.mode]);
-    if (body.server) rows.push(['Сервер', body.server]);
-    // Счётчики списков маршрутизации (ipset): сплит/байпас/туннель/hysteria2
-    const lists = [];
-    [['split_count','сплит'],['device_bypass','байпас'],['device_tunnel','туннель'],
-     ['device_hysteria2','hysteria2'],['device_custom','внешний']].forEach(([k, label]) => {
+    if (body.mode) out.rows.push(['Режим', body.mode]);
+    if (body.server) out.rows.push(['Сервер', body.server]);
+    const chipMap = [['split_count','сплит'],['device_bypass','байпас'],['device_tunnel','туннель'],
+                     ['device_hysteria2','hysteria2'],['device_custom','внешний']];
+    chipMap.forEach(([k, label]) => {
         const n = Number(body[k]) || 0;
-        if (n > 0) lists.push(label + ' ' + fmtN(n));
+        if (n > 0) out.chips.push(label + ' ' + fmtN(n));
     });
-    if (lists.length) rows.push(['Списки IP', lists.join(' · ')]);
-    if (body.uptime) rows.push(['Аптайм', body.uptime]);
-    return rows;
+    if (body.uptime) out.rows.push(['Аптайм', body.uptime]);
+    return out;
 }
 
 async function renderBridgeCardsOnStats() {
@@ -1864,11 +1877,12 @@ async function renderBridgeCardsOnStats() {
     // Живые детали из статуса каждого сервиса (параллельно)
     const details = {};
     await Promise.all(services.map(async svc => {
-        const rows = [];
+        const det = { tiles: [], rows: [], chips: [] };
         try {
             const res = await apiGet('/bridge_status.cgi?id=' + encodeURIComponent(svc.id));
             if (res.status === 'ok' && res.result && res.result.body) {
-                rows.push(...bridgeDetailRows(svc.id, res.result.body));
+                const d = buildServiceDetails(svc.id, res.result.body);
+                det.tiles = d.tiles; det.rows = d.rows; det.chips = d.chips;
             }
         } catch(e) { /* нет деталей — покажем только статус */ }
         // Koffe: failover, пинг до VPS, скорость туннеля
@@ -1878,31 +1892,29 @@ async function renderBridgeCardsOnStats() {
             if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
         }
         // AdGuard: цифры DNS за сутки
+        // AdGuard: числа — плитками, топы — рядами
         if (svc.id === 'adguard') {
             try {
                 const st = await apiGet('/bridge_stats.cgi?id=adguard&block=stats');
                 if (st.status === 'ok' && st.result && st.result.body) {
                     const b = st.result.body;
-                    const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
-                    rows.push(['Запросов за сутки', fmtN(b.num_dns_queries)]);
-                    const blk = Number(b.num_blocked_filtering) || 0;
-                    rows.push(['Заблокировано', fmtN(blk)]);
-                    const tb = bridgeTopEntries(b.top_blocked_domains, 3);
-                    if (tb.length) rows.push(['Топ блокировок', tb.join(', ')]);
                     const q = Number(b.num_dns_queries) || 0;
-                    if (q > 0) {
-                        const pct = Math.round(blk / q * 1000) / 10;
-                        rows.push(['Доля блокировок', String(pct).replace('.', ',') + '%']);
-                    }
-                    if (b.avg_processing_time !== undefined) {
-                        rows.push(['Ответ DNS', '~' + Math.round(Number(b.avg_processing_time) * 1000) + ' мс']);
-                    }
+                    const blk = Number(b.num_blocked_filtering) || 0;
+                    const pct = q > 0 ? Math.round(blk / q * 1000) / 10 : 0;
+                    det.tiles = [
+                        { label: 'Запросов за сутки', value: (q).toLocaleString('ru-RU') },
+                        { label: 'Заблокировано',     value: blk.toLocaleString('ru-RU'), color: '#d69e2e' },
+                        { label: 'Доля блокировок',   value: String(pct).replace('.', ',') + '%' },
+                        { label: 'Ответ DNS',         value: '~' + Math.round(Number(b.avg_processing_time) * 1000) + ' мс' }
+                    ];
+                    const tb = bridgeTopEntries(b.top_blocked_domains, 5);
+                    if (tb.length) det.rows.push(['Топ блокировок', tb.join(', ')]);
                     const tc = bridgeTopEntries(b.top_clients, 3);
-                    if (tc.length) rows.push(['Топ клиенты', tc.join(', ')]);
+                    if (tc.length) det.rows.push(['Топ клиенты', tc.join(', ')]);
                 }
             } catch(e) {}
         }
-        if (rows.length) details[svc.id] = rows;
+        details[svc.id] = det;
     }));
 
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
@@ -1916,7 +1928,7 @@ async function renderBridgeCardsOnStats() {
                 escapeHtml(s.name) +
                 '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
                 '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
-                (rows.length ? renderBridgeRows(rows) : '') +
+                renderBridgeDetails(det) +
                 (isKoffe ? '<div id="koffe-spark-box"></div>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
@@ -1932,11 +1944,30 @@ async function renderBridgeCardsOnStats() {
     startKoffeSparkTimer();
 }
 
-// Структурированные ряды метка→значение для карточек моста.
+// Рендер структурированных деталей моста (плитки чисел + ряды + чипы).
+function renderBridgeDetails(d) {
+    let html = '';
+    if (d.tiles && d.tiles.length) {
+        html += '<div class="bd-tiles">' + d.tiles.map(t =>
+            '<div class="bd-tile"><div class="bd-tile-label">' + escapeHtml(t.label) + '</div>' +
+            '<div class="bd-tile-value"' + (t.color ? ' style="color:' + t.color + ';"' : '') + '>' +
+            escapeHtml(t.value) + '</div></div>').join('') + '</div>';
+    }
+    if (d.chips && d.chips.length) {
+        html += '<div class="bd-chips">' + d.chips.map(c =>
+            '<span class="bd-chip">' + escapeHtml(c) + '</span>').join('') + '</div>';
+    }
+    if (d.rows && d.rows.length) {
+        html += '<div class="bridge-details">' + d.rows.map(r =>
+            '<div class="bd-row"><span class="bd-label">' + escapeHtml(r[0]) + '</span>' +
+            '<span class="bd-value">' + escapeHtml(r[1]) + '</span></div>').join('') + '</div>';
+    }
+    return html;
+}
+
+// Совместимость со старыми вызовами.
 function renderBridgeRows(rows) {
-    return '<div class="bridge-details">' + rows.map(r =>
-        '<div class="bd-row"><span class="bd-label">' + escapeHtml(r[0]) + '</span>' +
-        '<span class="bd-value">' + escapeHtml(r[1]) + '</span></div>').join('') + '</div>';
+    return renderBridgeDetails({ rows: rows });
 }
 
 async function renderLinksOnStats() {
