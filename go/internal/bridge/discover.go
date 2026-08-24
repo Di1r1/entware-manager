@@ -85,12 +85,17 @@ func clientBridge() *http.Client {
 }
 
 // classify определяет состояние по ответу пробы.
+// Любой осмысленный ответ HTTP = сервис жив. 401/403/409 выделяются как
+// «нужна авторизация», 405 — эндпоинт существует, но метод не тот
+// (Transmission RPC принимает только POST).
 func classify(code int, contentType string, body []byte) ServiceState {
 	switch {
-	case code == 200:
-		return ServiceState{State: "running"} // 200 = жив (ttyd/syncthing отдают HTML)
-	case code == 401 || code == 403:
+	case code >= 200 && code < 400:
+		return ServiceState{State: "running"}
+	case code == 401 || code == 403 || code == 409:
 		return ServiceState{State: "auth_required", Detail: fmt.Sprintf("HTTP %d", code)}
+	case code == 405:
+		return ServiceState{State: "running", Detail: fmt.Sprintf("HTTP %d", code)}
 	default:
 		return ServiceState{State: "absent", Detail: fmt.Sprintf("HTTP %d", code)}
 	}
