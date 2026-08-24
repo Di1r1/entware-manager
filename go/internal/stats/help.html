@@ -150,11 +150,31 @@ opkg install syncthing</div>
     <p>Когда Syncthing запущен, карточка во вкладке «Модули» показывает статус зелёным. Если в Syncthing включён пароль, мост продолжает работать через API-ключ (он извлекается из конфига автоматически при первом подключении).</p>
 
     <h4>Если нужно указать/обновить ключ API вручную</h4>
-    <p>Ключ лежит в конфиге Syncthing. Одна команда подключает его к панели:</p>
-    <div class="pre-cmd">KEY=$(grep -o "&lt;apikey&gt;[^&lt;]*&lt;/apikey&gt;" /opt/etc/syncthing/config.xml | sed 's/&lt;[^&gt;]*&gt;//g')
-printf '{"type": "api_key", "password": "%s"}\n' "$KEY"   &gt; /opt/web_entware/bridge/syncthing.auth.json
-chmod 600 /opt/web_entware/bridge/syncthing.auth.json</div>
-    <p>Перезапуск не требуется — следующий опрос подхватит ключ. Если Syncthing переустановлен и сгенерировал новый ключ — просто повторите команду.</p>
+    <p>Ключ лежит в конфиге Syncthing. Чтобы панель могла получать данные, его нужно сохранить в специальный файл. Ниже — готовая команда: она сама найдёт ключ и всё запишет.</p>
+
+    <h4>Как подключить (3 шага)</h4>
+    <p><strong>Шаг 1.</strong> Откройте терминал роутера (<strong>Настройки → Терминал → Запустить</strong>, режим «Консоль Entware») или подключитесь по SSH.</p>
+    <p><strong>Шаг 2.</strong> Скопируйте весь блок ниже целиком и вставьте в терминал (правая кнопка мыши → Вставить), затем нажмите Enter:</p>
+    <div class="pre-cmd">KEY=$(grep -o "&lt;apikey&gt;[^&lt;]*&lt;/apikey&gt;" /opt/etc/syncthing/config.xml | sed 's/&lt;[^&gt;]*&gt;//g') &amp;&amp; \
+printf '{"type": "api_key", "password": "%s"}\n' "$KEY" &gt; /opt/web_entware/bridge/syncthing.auth.json &amp;&amp; \
+chmod 600 /opt/web_entware/bridge/syncthing.auth.json &amp;&amp; \
+echo "ГОТОВО: ключ сохранён"</div>
+    <p><strong>Шаг 3.</strong> Если увидели ответ <code>ГОТОВО: ключ сохранён</code> — всё получилось. Перезапускать ничего не нужно: панель подхватит ключ при следующем обновлении карточки.</p>
+
+    <h4>Что делает эта команда</h4>
+    <ul>
+        <li>Находит ключ API в конфиге Syncthing и запоминает его в переменную <code>KEY</code>.</li>
+        <li>Создаёт файл <code>/opt/web_entware/bridge/syncthing.auth.json</code> с этим ключом — из него панель берёт данные.</li>
+        <li>Закрывает файл от чужого доступа (только root может читать).</li>
+        <li>Печатает подтверждение «ГОТОВО».</li>
+    </ul>
+
+    <h4>Если что-то пошло не так</h4>
+    <ul>
+        <li><strong>«ГОТОВО» не появилось</strong> — проверьте, что Syncthing запущен (см. «Установка и первый запуск» выше) и повторите блок ещё раз.</li>
+        <li><strong>Syncthing переустановили</strong> — он генерирует новый ключ; просто выполните блок заново.</li>
+        <li><strong>Карточка показывает «нужна авторизация»</strong> после ввода пароля GUI Syncthing — это нормально: ключ API работает независимо от пароля. Если статус не восстановился сам, удалите файл <code>rm /opt/web_entware/bridge/syncthing.auth.json</code> и выполните блок заново.</li>
+    </ul>
 
     <h3>
         <span class="stat-icon">
