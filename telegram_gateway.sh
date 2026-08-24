@@ -139,6 +139,7 @@ source_emoji() {
         smart)   echo "💾" ;;
         packages) echo "📦" ;;
         login)   echo "🔐" ;;
+        bridge)  echo "🧩" ;;
         *)       echo "🖥️" ;;
     esac
 }
@@ -212,6 +213,7 @@ detect_source() {
         *"[network]"*) echo "network" ;;
         *"[packages]"*) echo "packages" ;;
         *"[login.cgi]"*) echo "login" ;;
+        *"[bridge]"*) echo "bridge" ;;
         *"[update]"*|*"[backup]"*|*"[rdp]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
         *) echo "system" ;;
     esac
@@ -365,6 +367,8 @@ remember_action() {
 process_all() {
     local syslog="/opt/var/log/entware/system.log"
     local daylog="/tmp/entware/logs/$(date '+%Y-%m-%d').log"
+    # Мониторинг модулей моста: переходы пишутся в daylog тегом [bridge]
+    command -v curl >/dev/null 2>&1 &&         curl -s --connect-timeout 4 -o /dev/null "http://127.0.0.1:${EWM_PANEL_PORT:-8087}/entware-cgi/bridge_watch.cgi" 2>/dev/null
     process_file "$syslog" "system"
     process_file "$daylog" "monitor"
 }

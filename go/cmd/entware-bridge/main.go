@@ -35,6 +35,8 @@ func main() {
 		handleStats()
 	case "bridge_auth":
 		handleAuthSave()
+	case "bridge_watch":
+		handleWatch()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}
@@ -82,6 +84,21 @@ func handlePrefs() {
 
 func isValidBridgeID(id string) bool {
 	return bridge.ValidID(id)
+}
+
+// handleWatch — мониторинг модулей для Telegram (вызывается шлюзом по curl,
+// без сессии: только внутренние пробы и запись переходов в суточный лог).
+func handleWatch() {
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
+		return
+	}
+	events := bridge.RunWatch(bridgeDirVarPath())
+	cgiutil.WriteJSON(map[string]interface{}{
+		"status":  "ok",
+		"events":  len(events),
+		"checked": time.Now().Format("15:04:05"),
+	})
 }
 
 func handleDiscover() {

@@ -60,6 +60,7 @@ var flatDispatch = map[string]string{
 	// bridge
 	"bridge_discover": "bridge", "bridge_status": "bridge", "bridge_action": "bridge",
 	"bridge_auth": "bridge", "bridge_prefs": "bridge", "bridge_stats": "bridge",
+	"bridge_watch": "bridge",
 }
 
 // subdirDispatch — подкаталоги /entware-cgi/<dir>/<name>.cgi.
@@ -155,7 +156,7 @@ func handleCGI(w http.ResponseWriter, r *http.Request) {
 	// требуют валидную сессию, если пароль панели настроен.
 	if !auth.Enabled() {
 		// пароль не настроен — панель открыта
-	} else if name != "login" && name != "logout" && name != "session" {
+	} else if name != "bridge_watch" && name != "login" && name != "logout" && name != "session" {
 		if !auth.SessionValidCookie(auth.TokenFromHeader(r.Header.Get("Cookie"))) {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

@@ -2233,6 +2233,7 @@ async function renderSettingsTab() {
                     <label><input type="checkbox" id="tg-src-service" value="service"> Службы</label>
                     <label><input type="checkbox" id="tg-src-packages" value="packages"> Пакеты</label>
                     <label><input type="checkbox" id="tg-src-login" value="login"> Входы в панель</label>
+                    <label><input type="checkbox" id="tg-src-bridge" value="bridge"> Модули</label>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -2367,7 +2368,7 @@ function loadTelegramConfig() {
         var chatExtra = document.getElementById('tg-chat-extra');
         if (chatExtra) chatExtra.value = data.chat_ids_extra || '';
         var srcs = data.sources || [];
-        ['system','monitor','network','service','packages','login'].forEach(function(s) {
+        ['system','monitor','network','service','packages','login','bridge'].forEach(function(s) {
             var el = document.getElementById('tg-src-' + s);
             if (el) el.checked = srcs.indexOf(s) !== -1;
         });
@@ -2443,7 +2444,7 @@ function saveThresholds() {
 
 function tgSources() {
     var out = [];
-    ['system','monitor','network','service','packages','login'].forEach(function(s) {
+    ['system','monitor','network','service','packages','login','bridge'].forEach(function(s) {
         var el = document.getElementById('tg-src-' + s);
         if (el && el.checked) out.push(s);
     });

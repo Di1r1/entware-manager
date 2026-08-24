@@ -55,7 +55,7 @@ SESSION_TTL_SECONDS=86400
 
 auth_gate() {
 	case "$name" in
-	login|logout|session) return 0 ;;
+	login|logout|session|bridge_watch) return 0 ;;
 	esac
 	[ -f /opt/web_entware/auth_config.json ] || return 0
 	ENABLED=$(jq -r '.enabled // false' /opt/web_entware/auth_config.json 2>/dev/null)
@@ -114,7 +114,7 @@ cgi-bin)
 		ENDPOINT="$name" exec "$(go_bin rdp)" ;;
 	telegram_config|telegram_test)
 		ENDPOINT="$name" exec "$(go_bin telegram)" ;;
-	bridge_auth|bridge_discover|bridge_prefs|bridge_action|bridge_stats)
+	bridge_auth|bridge_discover|bridge_prefs|bridge_action|bridge_stats|bridge_watch)
 		ENDPOINT="$name" exec "$(go_bin bridge)" ;;
 	*)
 		echo "Content-type: text/plain"
