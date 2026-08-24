@@ -2,6 +2,24 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.15.3 (2026-08-24)
+
+### Мост сервисов: коннектор AdGuard + управление Koffe + Telegram-алерты (Этапы 2–4)
+
+*(включает содержимое пометки v1.16.0 — тег остаётся в истории, релиз продолжен как 1.15.3)*
+
+- **Коннектор AdGuard Home** (Этап 3): манифест status/stats/protection_toggle; bridge_stats.cgi?block=; bridge_auth.cgi — creds AGH из UI → `<id>.auth.json` 0600; карточка AGH: защита кнопкой, версия, запросы/блокировки за сутки, доля блокировок, ответ DNS, топ клиенты/домены.
+- **Koffe: failover + пинг + трафик** (Этап 2): Manifest.Extra (именованные GET-эндпоинты с slice_last); карточка из failover_dashboard/server_health_status/stats_history (rate = разность накопительных байтов); раскладка списков маршрутизации (сплит/байпас/туннель/hysteria2 — ipset-счётчики).
+- **Telegram-алерты** (Этап 4): internal/bridge/watch.go — анти-дребезг (fails≥2 → down, oks≥2 → recovery), переходы тегом `[bridge]` в суточный лог; bridge_watch без сессии (исправлена инверсия исключения в cgi.go); telegram_gateway.sh источник `bridge` 🧩 + вызов watch каждый цикл; чекбокс «Модули» в настройках Telegram.
+- **Исправления**: discovery-пробы через authedDo (сервисы с сохранёнными creds = running); handleStats уважает block=status; дедупликация карточек (манифест главнее каталога); относительные probe-URL резолвятся; поиск таблиц после пересоздания tbody (utils.js?v=8); 🔴 обрыв больших тел — контекст authedDo больше не отменяет чтение тела (TestAuthedDoLargeBody).
+- Кэш: icons.svg?v=6, style.css?v=49, utils.js?v=8, entware.js?v=95.
+
+### Проверено на dev-роутере
+- Koffe: живой статус/failover/пинг VPS/скорость туннеля через мост.
+- AdGuard: stats→401 структурированно без creds; с creds — полный статус+статистика.
+- Алерт end-to-end: сбой манифеста → восстановление → [bridge] в логе → sent в Telegram.
+- Поиск пакетов после смены фильтра работает.
+
 ## 1.15.0 (2026-08-24)
 
 ### Мост сервисов: Этап 1 — обнаружение, статус, действия
