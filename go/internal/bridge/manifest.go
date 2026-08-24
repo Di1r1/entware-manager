@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,14 @@ type Endpoint struct {
 	Expect string `json:"expect,omitempty"` // "json" → ответ обязан парситься
 	Method string `json:"method,omitempty"`
 	Body   string `json:"body,omitempty"`
+}
+
+// MethodOrGET — метод с дефолтом GET.
+func (e *Endpoint) MethodOrGET() string {
+	if e != nil && e.Method != "" {
+		return e.Method
+	}
+	return http.MethodGet
 }
 
 type Action struct {

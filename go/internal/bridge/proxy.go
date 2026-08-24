@@ -19,7 +19,7 @@ func RunAction(m *Manifest, a *Action) (*StatusProxy, error) {
 		method = http.MethodPost
 	}
 	client := clientBridge()
-	resp, err := authedDo(client, dirForManifest(m), m.ID, method, u.String())
+	resp, err := authedDo(client, dirForManifest(m), m.ID, method, u.String(), a.Body)
 	if err != nil {
 		return &StatusProxy{HTTPCode: 0, Error: "сервис не отвечает"}, nil
 	}

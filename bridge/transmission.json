@@ -1,0 +1,11 @@
+{
+    "id": "transmission",
+    "name": "Transmission",
+    "base": "http://127.0.0.1:9091",
+    "probe": {"url": "/transmission/rpc"},
+    "status": {"url": "/transmission/rpc", "method": "POST", "body": "{\"method\":\"session-stats\"}"},
+    "actions": [
+        {"id": "torrents_start", "label": "Запустить все торренты", "url": "/transmission/rpc", "method": "POST", "body": "{\"method\":\"torrent-start\"}", "confirm": true},
+        {"id": "torrents_stop", "label": "Остановить все торренты", "url": "/transmission/rpc", "method": "POST", "body": "{\"method\":\"torrent-stop\"}", "confirm": true}
+    ]
+}

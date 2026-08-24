@@ -51,7 +51,7 @@ func TestAuthedDoCookieLogin(t *testing.T) {
 		[]byte(`{"type":"cookie_login","password":"svc-pass","login_url":"/login"}`), 0600)
 
 	client := clientBridge()
-	resp, err := authedDo(client, dir, "svc", http.MethodGet, srv.URL+"/status")
+	resp, err := authedDo(client, dir, "svc", http.MethodGet, srv.URL+"/status", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestAuthedDoBasic(t *testing.T) {
 		[]byte(`{"type":"basic","username":"u1","password":"p1"}`), 0600)
 
 	client := clientBridge()
-	resp, err := authedDo(client, dir, "b", http.MethodGet, srv.URL+"/")
+	resp, err := authedDo(client, dir, "b", http.MethodGet, srv.URL+"/", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestAuthedDoLargeBody(t *testing.T) {
 	defer srv.Close()
 
 	client := clientBridge()
-	resp, err := authedDo(client, t.TempDir(), "svc2", http.MethodGet, srv.URL+"/")
+	resp, err := authedDo(client, t.TempDir(), "svc2", http.MethodGet, srv.URL+"/", "")
 	if err != nil {
 		t.Fatal(err)
 	}

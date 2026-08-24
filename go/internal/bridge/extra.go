@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 )
 
 // ProxyExtra — прокси именованного extra-эндпоинта манифеста.
@@ -23,7 +22,7 @@ func ProxyExtra(dir, id, name string) (*StatusProxy, error) {
 		return nil, err
 	}
 	client := clientBridge()
-	resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
+	resp, err := authedDo(client, dir, id, ep.MethodOrGET(), u.String(), ep.Body)
 	if err != nil {
 		return &StatusProxy{Error: "сервис не отвечает"}, nil
 	}

@@ -93,19 +93,32 @@ func saveSessionCookie(dir, id string, resp *http.Response) {
 
 // authedDo выполняет запрос с авто-логином: cookie из файла → при 401 логин
 // по creds → retry один раз. Возвращает финальный ответ (resp.Close на вызывающем).
-func authedDo(client *http.Client, dir, id string, method, url string) (*http.Response, error) {
+func authedDo(client *http.Client, dir, id string, method, url, body string) (*http.Response, error) {
 	creds := LoadAuth(dir, id)
 	// ВАЖНО: контекст НЕ должен действовать на чтение тела ответа — иначе
 	// отмена после возврата do() обрывает большие тела (истории) посреди
 	// потока. Таймауты на соединение/заголовки задаёт Transport (clientBridge);
 	// объём тела ограничивает вызывающий через LimitReader.
-	do := func(cookie string) (*http.Response, error) {
-		req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
+	var bodyReader io.Reader
+	if body != "" {
+		bodyReader = strings.NewReader(body)
+	}
+	do := func(extraHdr, cookie string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(context.Background(), method, url, bodyReader)
 		if err != nil {
 			return nil, err
 		}
+		if body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
 		if cookie != "" {
 			req.Header.Set("Cookie", cookie)
+		}
+		if extraHdr != "" {
+			// формат "Имя|Значение" из файла сессии (напр. X-Transmission-Session-Id)
+			if i := strings.Index(extraHdr, "|"); i > 0 {
+				req.Header.Set(extraHdr[:i], extraHdr[i+1:])
+			}
 		}
 		if creds != nil && creds.Type == "basic" {
 			req.SetBasicAuth(creds.Username, creds.Password)
@@ -113,8 +126,21 @@ func authedDo(client *http.Client, dir, id string, method, url string) (*http.Re
 		return client.Do(req)
 	}
 
-	resp, err := do(loadSessionCookie(dir, id))
-	if err != nil || resp.StatusCode != http.StatusUnauthorized {
+	resp, err := do("", loadStoredSession(dir, id))
+	if err != nil {
+		return resp, err
+	}
+	// Transmission-стиль: 409 + X-Transmission-Session-Id → сохранить и повторить.
+	if resp.StatusCode == http.StatusConflict {
+		tok := resp.Header.Get("X-Transmission-Session-Id")
+		if tok != "" {
+			saveNamedSession(dir, id, "X-Transmission-Session-Id", tok)
+			io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+			resp.Body.Close()
+			return do("X-Transmission-Session-Id|"+tok, loadStoredSession(dir, id))
+		}
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
 		return resp, err
 	}
 	io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
@@ -137,7 +163,7 @@ func authedDo(client *http.Client, dir, id string, method, url string) (*http.Re
 	saveSessionCookie(dir, id, loginResp)
 
 	// Повтор исходного запроса со свежей cookie
-	return do(loadSessionCookie(dir, id))
+	return do("", loadSessionCookie(dir, id))
 }
 
 func baseOf(url string) string {
@@ -148,4 +174,24 @@ func baseOf(url string) string {
 		return url[:i+1]
 	}
 	return url
+}
+
+// loadStoredSession — содержимое файла сессии "Имя|Значение" (универсальный
+// формат: cookie приложения или именованный заголовок вроде
+// X-Transmission-Session-Id).
+func loadStoredSession(dir, id string) string {
+	data, err := os.ReadFile(sessionPath(dir, id))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+// saveNamedSession — сохранение именованной сессии приложения (0600, атомарно).
+func saveNamedSession(dir, id, name, value string) {
+	os.MkdirAll(filepath.Dir(sessionPath(dir, id)), 0700)
+	tmp := sessionPath(dir, id) + ".tmp"
+	if os.WriteFile(tmp, []byte(name+"|"+value), 0600) == nil {
+		os.Rename(tmp, sessionPath(dir, id))
+	}
 }

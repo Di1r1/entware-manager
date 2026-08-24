@@ -144,7 +144,7 @@ func Discover(bridgeDir string) []ServiceState {
 		}
 		// Проба через authedDo: сервисы с сохранёнными creds (например,
 		// AdGuard Home) показываются как running, а не auth_required.
-		resp, err := authedDo(client, bridgeDirVar, id, http.MethodGet, url)
+		resp, err := authedDo(client, bridgeDirVar, id, http.MethodGet, url, "")
 		if err != nil {
 			add(ServiceState{ID: id, Name: name, State: "absent"})
 			return
@@ -226,6 +226,41 @@ type StatusProxy struct {
 	Error    string          `json:"error,omitempty"`
 }
 
+func proxyEndpoint(dir, id string, ep *Endpoint) (*StatusProxy, error) {
+	m, err := LoadManifest(dir, id)
+	if err != nil {
+		return nil, err
+	}
+	u, err := ValidateBridgeURL(ep.URL, m.Base)
+	if err != nil {
+		return nil, err
+	}
+	client := clientBridge()
+	resp, err := authedDo(client, dir, id, ep.MethodOrGET(), u.String(), ep.Body)
+	if err != nil {
+		return &StatusProxy{Error: "сервис не отвечает"}, nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxExtraBody))
+	sp := &StatusProxy{HTTPCode: resp.StatusCode}
+	var v interface{}
+	if json.Unmarshal(body, &v) != nil {
+		if len(body) >= maxStatusBody {
+			return &StatusProxy{Error: "ответ сервиса слишком большой"}, nil
+		}
+		sp.Raw = truncate(string(body), 512)
+		return sp, nil
+	}
+	out, err2 := json.Marshal(v)
+	if err2 != nil {
+		sp.Raw = truncate(string(body), 512)
+		return sp, nil
+	}
+	sp.Body = json.RawMessage(out)
+	return sp, nil
+}
+
+// ProxyStatus — прокси блока статуса (manifest.status или probe).
 func ProxyStatus(dir, id string) (*StatusProxy, error) {
 	m, err := LoadManifest(dir, id)
 	if err != nil {
@@ -235,27 +270,10 @@ func ProxyStatus(dir, id string) (*StatusProxy, error) {
 	if ep == nil {
 		ep = &m.Probe
 	}
-	u, err := ValidateBridgeURL(ep.URL, m.Base)
-	if err != nil {
-		return nil, err
-	}
-	client := clientBridge()
-	resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
-	if err != nil {
-		return &StatusProxy{Error: "сервис не отвечает"}, nil
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxStatusBody))
-	sp := &StatusProxy{HTTPCode: resp.StatusCode}
-	if looksLikeJSON(body) {
-		sp.Body = json.RawMessage(body)
-	} else {
-		sp.Raw = truncate(string(body), 512)
-	}
-	return sp, nil
+	return proxyEndpoint(dir, id, ep)
 }
 
-// ProxyStats — прокси GET блока статистики (manifest.stats).
+// ProxyStats — прокси блока статистики (manifest.stats).
 func ProxyStats(dir, id string) (*StatusProxy, error) {
 	m, err := LoadManifest(dir, id)
 	if err != nil {
@@ -264,24 +282,7 @@ func ProxyStats(dir, id string) (*StatusProxy, error) {
 	if m.Stats == nil {
 		return nil, fmt.Errorf("у сервиса нет блока статистики")
 	}
-	u, err := ValidateBridgeURL(m.Stats.URL, m.Base)
-	if err != nil {
-		return nil, err
-	}
-	client := clientBridge()
-	resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
-	if err != nil {
-		return &StatusProxy{Error: "сервис не отвечает"}, nil
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxStatusBody))
-	sp := &StatusProxy{HTTPCode: resp.StatusCode}
-	if looksLikeJSON(body) {
-		sp.Body = json.RawMessage(body)
-	} else {
-		sp.Raw = truncate(string(body), 512)
-	}
-	return sp, nil
+	return proxyEndpoint(dir, id, m.Stats)
 }
 
 // RateLimitAction — простое ограничение частоты действий (tmpfs-файл).

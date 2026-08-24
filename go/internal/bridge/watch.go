@@ -131,7 +131,7 @@ func RunWatch(dir string) []string {
 				mu.unlock()
 				return
 			}
-			resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
+			resp, err := authedDo(client, dir, id, http.MethodGet, u.String(), "")
 			if err != nil {
 				mu.lock()
 				results[id] = "absent"
