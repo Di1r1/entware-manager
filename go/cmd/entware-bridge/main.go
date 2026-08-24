@@ -31,6 +31,10 @@ func main() {
 		handleAction()
 	case "bridge_prefs":
 		handlePrefs()
+	case "bridge_stats":
+		handleStats()
+	case "bridge_auth":
+		handleAuthSave()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}
@@ -85,7 +89,7 @@ func handleDiscover() {
 		cgiutil.NotAllowed()
 		return
 	}
-	services := bridge.Discover(bridgeDir)
+	services := bridge.Discover(bridgeDirVarPath())
 	cgiutil.WriteJSON(map[string]interface{}{
 		"status":   "ok",
 		"services": services,
@@ -102,7 +106,15 @@ func handleStatus() {
 		cgiutil.WriteError("укажите id")
 		return
 	}
-	sp, err := bridge.ProxyStatus(bridgeDir, id)
+	var (
+		sp  *bridge.StatusProxy
+		err error
+	)
+	if cgiutil.GetQueryParam("block") == "stats" {
+		sp, err = bridge.ProxyStats(bridgeDirVarPath(), id)
+	} else {
+		sp, err = bridge.ProxyStatus(bridgeDirVarPath(), id)
+	}
 	if err != nil {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
@@ -127,7 +139,7 @@ func handleAction() {
 		return
 	}
 
-	m, err := bridge.LoadManifest(bridgeDir, id)
+	m, err := bridge.LoadManifest(bridgeDirVarPath(), id)
 	if err != nil {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return

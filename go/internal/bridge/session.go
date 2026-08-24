@@ -11,6 +11,7 @@ package bridge
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,38 @@ func newTimeout(d time.Duration) (context.Context, context.CancelFunc) {
 // приложения, LoginURL = относительный адрес логина.
 func sessionPath(dir, id string) string {
 	return filepath.Join("/tmp/entware/bridge", sanitize(id)+".session")
+}
+
+// BridgeDir — каталог манифестов (для cmd-обработчиков).
+func BridgeDir() string { return bridgeDirVar }
+
+// SetBridgeDir — переопределение для тестов.
+func SetBridgeDir(dir string) { bridgeDirVar = dir }
+
+// SaveAuth атомарно пишет секреты коннектора (0600).
+func SaveAuth(dir, id string, creds AuthCreds) error {
+	if !ValidID(id) {
+		return fmt.Errorf("плохой id")
+	}
+	out, err := json.MarshalIndent(creds, "", "    ")
+	if err != nil {
+		return err
+	}
+	out = append(out, '\n')
+	tmp := filepath.Join(dir, id+".auth.json.tmp")
+	if err := os.WriteFile(tmp, out, 0600); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, filepath.Join(dir, id+".auth.json")); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+// ClearSession удаляет сохранённую cookie приложения.
+func ClearSession(dir, id string) {
+	os.Remove(sessionPath(dir, id))
 }
 
 func loadSessionCookie(dir, id string) string {

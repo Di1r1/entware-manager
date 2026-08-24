@@ -263,6 +263,35 @@ func ProxyStatus(dir, id string) (*StatusProxy, error) {
 	return sp, nil
 }
 
+// ProxyStats — прокси GET блока статистики (manifest.stats).
+func ProxyStats(dir, id string) (*StatusProxy, error) {
+	m, err := LoadManifest(dir, id)
+	if err != nil {
+		return nil, err
+	}
+	if m.Stats == nil {
+		return nil, fmt.Errorf("у сервиса нет блока статистики")
+	}
+	u, err := ValidateBridgeURL(m.Stats.URL, m.Base)
+	if err != nil {
+		return nil, err
+	}
+	client := clientBridge()
+	resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
+	if err != nil {
+		return &StatusProxy{Error: "сервис не отвечает"}, nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxStatusBody))
+	sp := &StatusProxy{HTTPCode: resp.StatusCode}
+	if looksLikeJSON(body) {
+		sp.Body = json.RawMessage(body)
+	} else {
+		sp.Raw = truncate(string(body), 512)
+	}
+	return sp, nil
+}
+
 // RateLimitAction — простое ограничение частоты действий (tmpfs-файл).
 func RateLimitAction(id, actionID string, minInterval time.Duration) bool {
 	dir := "/tmp/entware/bridge"

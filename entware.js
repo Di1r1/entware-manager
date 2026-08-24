@@ -1575,6 +1575,113 @@ async function renderBridgeTab() {
     contentDiv.innerHTML = html;
 
     bindBridgeCards(contentDiv);
+
+    // Спец-карточка AdGuard Home: статистика + управление защитой
+    const agh = services.find(s => s.id === 'adguard');
+    if (agh) {
+        const zone = document.createElement('div');
+        zone.innerHTML = '<h3 style="margin-top:24px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-shield"/></svg> AdGuard Home</h3><div id="agh-zone"><p>Загрузка статистики…</p></div>';
+        contentDiv.appendChild(zone);
+        loadAdGuardZone();
+    }
+}
+
+async function loadAdGuardZone() {
+    const zone = document.getElementById('agh-zone');
+    if (!zone) return;
+    try {
+        const res = await apiGet('/bridge_stats.cgi?id=adguard&block=status');
+        if (res.status !== 'ok') { zone.innerHTML = '<p class="error">' + escapeHtml(res.message || 'нет данных') + '</p>'; return; }
+        const r = res.result || {};
+        if (r.http_code === 401 || r.http_code === 403) {
+            zone.innerHTML = aghAuthFormHTML();
+            bindAghAuthForm();
+            return;
+        }
+        if (r.error) { zone.innerHTML = '<p class="error">' + escapeHtml(r.error) + '</p>'; return; }
+
+        const st = r.body || {};
+        let html = '<div class="stats-grid">';
+        html += '<div class="stat-card"><h4>Защита</h4><div id="agh-prot" style="font-weight:700;font-size:1.1em;">' +
+            (st.protection_enabled ? '<span style="color:#38a169;">ВКЛЮЧЕНА</span>' : '<span style="color:#e53e3e;">ОТКЛЮЧЕНА</span>') + '</div>' +
+            '<button class="packages-delete-btn" style="margin-top:8px;background:#4a5568;" data-agh="toggle">' +
+            (st.protection_enabled ? 'Выключить' : 'Включить') + '</button></div>';
+        html += '<div class="stat-card"><h4>Версия</h4><div style="font-weight:600;">' + escapeHtml(st.version || '—') + '</div></div>';
+        html += '</div><div id="agh-stats-extra" style="margin-top:12px;"></div>' +
+            '<button class="packages-delete-btn" style="background:#4a5568;margin-top:8px;" onclick="loadAdGuardZone()">' +
+            '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить</button>';
+        zone.innerHTML = html;
+        bindAghToggle();
+
+        apiGet('/bridge_stats.cgi?id=adguard&block=stats').then(extra => {
+            const box = document.getElementById('agh-stats-extra');
+            if (!box || extra.status !== 'ok' || !extra.result || !extra.result.body) return;
+            const b = extra.result.body;
+            const fmtN = n => Number(n).toLocaleString('ru-RU');
+            let h = '<div class="stats-grid">' +
+                '<div class="stat-card"><div style="color:var(--text-muted);">Запросов за сутки</div><div style="font-size:1.3em;font-weight:700;">' + fmtN(b.num_dns_queries || 0) + '</div></div>' +
+                '<div class="stat-card"><div style="color:var(--text-muted);">Заблокировано</div><div style="font-size:1.3em;font-weight:700;color:#d69e2e;">' + fmtN(b.num_blocked_filtering || 0) + '</div></div>' +
+                '</div>';
+            if ((b.top_blocked_domains || []).length) {
+                h += '<div style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);">Топ блокировок: ' +
+                    b.top_blocked_domains.slice(0, 5).map(d => {
+                        const name = (typeof d === 'string') ? d : (d.domain || '?');
+                        return escapeHtml(name);
+                    }).join(', ') + '</div>';
+            }
+            box.innerHTML = h;
+        }).catch(() => {});
+    } catch(e) {
+        zone.innerHTML = '<p class="error">' + escapeHtml(e.message) + '</p>';
+    }
+}
+
+function aghAuthFormHTML() {
+    return '<div class="stat-card" style="max-width:420px;">' +
+        '<p style="margin-top:0;">AdGuard Home требует авторизацию. Введите логин и пароль от его веб-интерфейса — они сохранятся на роутере (файл 0600, не покидают устройство).</p>' +
+        '<input type="text" id="agh-user" class="settings-input" placeholder="Логин AGH" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="agh-pass" class="settings-input" placeholder="Пароль AGH" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="agh-panel-pass" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
+        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveAghAuth()">Сохранить</button>' +
+        '<span id="agh-auth-status"></span></div>';
+}
+
+function bindAghAuthForm() {
+    const inp = document.getElementById('agh-pass');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveAghAuth(); });
+}
+
+async function saveAghAuth() {
+    const user = document.getElementById('agh-user').value.trim();
+    const appPass = document.getElementById('agh-pass').value;
+    const panelPass = document.getElementById('agh-panel-pass').value;
+    const st = document.getElementById('agh-auth-status');
+    if (!user || !appPass || !panelPass) { st.innerHTML = '<span style="color:#e53e3e;">Заполните все поля</span>'; return; }
+    st.innerHTML = 'Сохранение…';
+    try {
+        const res = await apiPost('/bridge_auth.cgi',
+            'id=adguard&cred_type=basic&username=' + encodeURIComponent(user) +
+            '&app_password=' + encodeURIComponent(appPass) +
+            '&password=' + encodeURIComponent(panelPass));
+        st.innerHTML = res.status === 'ok'
+            ? '<span style="color:#38a169;">Сохранено</span>'
+            : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.status) + '</span>';
+        if (res.status === 'ok') setTimeout(loadAdGuardZone, 800);
+    } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
+}
+
+function bindAghToggle() {
+    document.querySelector('[data-agh="toggle"]')?.addEventListener('click', async function() {
+        this.disabled = true;
+        const password = prompt('Повторите пароль панели для подтверждения:');
+        if (!password) { this.disabled = false; return; }
+        try {
+            const res = await apiPost('/bridge_action.cgi',
+                'id=adguard&action=protection_toggle&password=' + encodeURIComponent(password));
+            Toast.show(res.status === 'ok' ? 'Применено (' + ((res.result||{}).raw||'ok') + ')' : (res.message || res.status));
+            setTimeout(loadAdGuardZone, 1200);
+        } catch(e) { Toast.show('Ошибка: ' + e.message); this.disabled = false; }
+    });
 }
 
 async function renderBridgeCardsOnStats() {

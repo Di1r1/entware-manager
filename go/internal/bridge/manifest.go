@@ -45,6 +45,7 @@ type Manifest struct {
 	Base    string    `json:"base,omitempty"` // база для относительных URL
 	Probe   Endpoint  `json:"probe"`
 	Status  *Endpoint `json:"status,omitempty"`
+	Stats   *Endpoint `json:"stats,omitempty"` // блок статистики для карточки
 	Actions []Action  `json:"actions,omitempty"`
 }
 
@@ -71,6 +72,11 @@ func ValidateManifest(m *Manifest) error {
 	if m.Status != nil {
 		if _, err := ValidateBridgeURL(m.Status.URL, m.Base); err != nil {
 			return fmt.Errorf("status: %w", err)
+		}
+	}
+	if m.Stats != nil {
+		if _, err := ValidateBridgeURL(m.Stats.URL, m.Base); err != nil {
+			return fmt.Errorf("stats: %w", err)
 		}
 	}
 	if len(m.Actions) > MaxActions {
