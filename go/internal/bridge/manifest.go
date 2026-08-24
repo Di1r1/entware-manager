@@ -73,6 +73,7 @@ type Manifest struct {
 	Status  *Endpoint                 `json:"status,omitempty"`
 	Stats   *Endpoint                 `json:"stats,omitempty"`  // блок статистики для карточки
 	Extra   map[string]*SliceEndpoint `json:"extra,omitempty"`  // именованные GET-эндпоинты (slice_last — обрезка массива)
+	Ports   []int                     `json:"ports,omitempty"`  // кандидаты портов base (native/entware установки)
 	Fields  []FieldDef                `json:"fields,omitempty"` // универсальные поля карточки сканера
 	Actions []Action                  `json:"actions,omitempty"`
 }
@@ -117,6 +118,11 @@ func ValidateManifest(m *Manifest) error {
 	if len(m.Fields) > MaxFields {
 		return fmt.Errorf("полей больше %d", MaxFields)
 	}
+	for _, p := range m.Ports {
+		if p < 1 || p > 65535 {
+			return fmt.Errorf("порт %d вне диапазона 1–65535", p)
+		}
+	}
 	for i, f := range m.Fields {
 		if f.Path == "" || len(f.Path) > 128 {
 			return fmt.Errorf("field[%d]: пустой или длинный path", i)
@@ -127,7 +133,7 @@ func ValidateManifest(m *Manifest) error {
 		switch f.Type {
 		case "", "bool", "bytes", "count", "num", "ms", "dur", "top":
 		default:
-			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count)", i, f.Type)
+			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count, num, ms, dur, top)", i, f.Type)
 		}
 		if f.From != "" && !sourceNameRe.MatchString(f.From) {
 			return fmt.Errorf("field[%d]: плохое имя источника %q", i, f.From)

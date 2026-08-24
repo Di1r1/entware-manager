@@ -1577,7 +1577,6 @@ async function renderBridgeTab() {
     contentDiv.innerHTML = html;
     bindBridgeCards(contentDiv);
 
-    bindBridgeCards(contentDiv);
 
     // Спец-карточка AdGuard Home: статистика + управление защитой
     const agh = services.find(s => s.id === 'adguard');

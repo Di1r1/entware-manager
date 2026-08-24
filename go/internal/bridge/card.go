@@ -8,9 +8,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -112,7 +110,6 @@ func BuildCard(dir, id string) (*CardData, error) {
 		}
 	}
 
-	sort.SliceStable(card.Tiles, func(i, j int) bool { return false }) // порядок = порядок манифеста
 	return card, nil
 }
 
@@ -273,8 +270,6 @@ func trimZero(f float64) string {
 	s := strconv.FormatFloat(f, 'f', 1, 64)
 	return strings.TrimSuffix(s, ".0")
 }
-
-var _ = io.Discard // сохранение импорта при рефакторинге
 
 // groupInt — разряды через пробел (96 461).
 func groupInt(n int64) string {

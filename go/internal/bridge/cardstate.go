@@ -47,5 +47,3 @@ func DiscoverState(dir, id string) string {
 	}
 	return "absent"
 }
-
-var _ = http.MethodGet

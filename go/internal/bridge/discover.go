@@ -218,6 +218,26 @@ func Discover(bridgeDir string) []ServiceState {
 				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error()})
 				return
 			}
+			// Порты-кандидаты манифеста (native/entware): первый не-absent выигрывает.
+			if len(m.Ports) > 0 {
+				var best ServiceState
+				for _, port := range m.Ports {
+					resp, err := authedDo(client, bridgeDirVar, m.ID, http.MethodGet,
+						fmt.Sprintf("http://127.0.0.1:%d%s", port, u.Path), "")
+					if err != nil {
+						continue
+					}
+					body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
+					resp.Body.Close()
+					best = classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+					if best.State != "absent" {
+						break
+					}
+				}
+				best.ID, best.Name = m.ID, m.Name
+				add(best)
+				return
+			}
 			run(m.ID, m.Name, u.String())
 		}(m)
 	}
