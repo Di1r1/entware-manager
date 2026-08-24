@@ -95,7 +95,7 @@ func classify(code int, contentType string, body []byte) ServiceState {
 	case code == 401 || code == 403 || code == 409:
 		return ServiceState{State: "auth_required", Detail: fmt.Sprintf("HTTP %d", code)}
 	case code == 405:
-		return ServiceState{State: "running", Detail: fmt.Sprintf("HTTP %d", code)}
+		return ServiceState{State: "running"} // эндпоинт жив, просто метод не тот
 	default:
 		return ServiceState{State: "absent", Detail: fmt.Sprintf("HTTP %d", code)}
 	}
