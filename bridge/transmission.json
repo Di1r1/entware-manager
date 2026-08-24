@@ -30,38 +30,38 @@
   ],
   "fields": [
     {
-      "path": "torrentCount",
+      "path": "arguments.torrentCount",
       "label": "Всего торрентов",
       "tile": true
     },
     {
-      "path": "activeTorrentCount",
+      "path": "arguments.activeTorrentCount",
       "label": "Активные",
       "tile": true
     },
     {
-      "path": "downloadSpeed",
+      "path": "arguments.downloadSpeed",
       "label": "Загрузка (Б/с)",
       "tile": true,
       "color": "#8b5cf6"
     },
     {
-      "path": "uploadSpeed",
+      "path": "arguments.uploadSpeed",
       "label": "Отдача (Б/с)",
       "tile": true,
       "color": "#38a169"
     },
     {
-      "path": "pausedTorrentCount",
+      "path": "arguments.pausedTorrentCount",
       "label": "На паузе"
     },
     {
-      "path": "cumulative-stats.downloadedBytes",
+      "path": "arguments.cumulative-stats.downloadedBytes",
       "label": "Скачано за всё время",
       "type": "bytes"
     },
     {
-      "path": "cumulative-stats.uploadedBytes",
+      "path": "arguments.cumulative-stats.uploadedBytes",
       "label": "Отдано за всё время",
       "type": "bytes"
     }
