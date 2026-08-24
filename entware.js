@@ -1885,14 +1885,13 @@ async function renderBridgeCardsOnStats() {
                 det.tiles = d.tiles; det.rows = d.rows; det.chips = d.chips;
             }
         } catch(e) { /* нет деталей — покажем только статус */ }
-        // Koffe: failover, пинг до VPS, скорость туннеля
+        // Koffe: failover, пинг до VPS, спарклайн
         if (svc.id === 'koffe') {
             const k = await bridgeKoffeRows();
-            rows.push(...(k.rows || []));
+            det.rows.push(...(k.rows || []));
             if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
         }
-        // AdGuard: цифры DNS за сутки
-        // AdGuard: числа — плитками, топы — рядами
+        // AdGuard: числа плитками, топы рядами
         if (svc.id === 'adguard') {
             try {
                 const st = await apiGet('/bridge_stats.cgi?id=adguard&block=stats');
