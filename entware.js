@@ -1715,23 +1715,39 @@ async function renderBridgeCardsOnStats() {
     // Живые детали из статуса каждого сервиса (параллельно)
     const details = {};
     await Promise.all(services.map(async svc => {
+        const lines = [];
         try {
             const res = await apiGet('/bridge_status.cgi?id=' + encodeURIComponent(svc.id));
             if (res.status === 'ok' && res.result && res.result.body) {
-                details[svc.id] = bridgeDetailLine(svc.id, res.result.body);
+                const d = bridgeDetailLine(svc.id, res.result.body);
+                if (d) lines.push(d);
             }
         } catch(e) { /* нет деталей — покажем только статус */ }
+        // AdGuard: цифры DNS за сутки
+        if (svc.id === 'adguard') {
+            try {
+                const st = await apiGet('/bridge_stats.cgi?id=adguard&block=stats');
+                if (st.status === 'ok' && st.result && st.result.body) {
+                    const b = st.result.body;
+                    const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
+                    lines.push('Запросов за сутки: ' + fmtN(b.num_dns_queries));
+                    lines.push('Заблокировано: ' + fmtN(b.num_blocked_filtering));
+                }
+            } catch(e) {}
+        }
+        if (lines.length) details[svc.id] = lines;
     }));
 
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
-            const d = details[s.id];
+            const lines = details[s.id] || [];
             return '<div class="stat-card" style="min-width:220px;">' +
                 '<div style="font-weight:700;">' + escapeHtml(s.name) + '</div>' +
                 '<div style="color:' + color + ';font-weight:600;margin-top:4px;">● ' + label + '</div>' +
-                (d ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">' + escapeHtml(d) + '</div>' : '') +
+                (lines.length ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;line-height:1.5;">' +
+                    lines.map(l => escapeHtml(l)).join('<br>') + '</div>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
