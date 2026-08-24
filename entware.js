@@ -1784,14 +1784,15 @@ function koffeSparkSVG(points) {
     const area = key => line(key) + ' L' + X(rates.length - 1).toFixed(1) + ',' + (h - pad) +
         ' L' + X(0).toFixed(1) + ',' + (h - pad) + ' Z';
     const last = rates[rates.length - 1];
+    // Цвета графика — из темы панели (CSS-переменные): приём = accent, отдача = success.
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none" style="display:block;background:var(--input-bg);border-radius:6px;">' +
-        '<path d="' + area('rx') + '" fill="rgba(139,92,246,0.15)"/>' +
-        '<path d="' + line('rx') + '" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>' +
-        '<path d="' + line('tx') + '" fill="none" stroke="#38a169" stroke-width="1.4" stroke-dasharray="3,2"/>' +
+        '<path d="' + area('rx') + '" style="fill:var(--accent);opacity:0.12"/>' +
+        '<path d="' + line('rx') + '" style="fill:none;stroke:var(--accent);stroke-width:1.6"/>' +
+        '<path d="' + line('tx') + '" style="fill:none;stroke:var(--btn-success);stroke-width:1.5;stroke-dasharray:3,2"/>' +
         '</svg><div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-top:2px;">' +
-        '<span style="color:#8b5cf6;">↓' + fmtRate(last.rx) + '</span>' +
+        '<span style="color:var(--accent);">↓' + fmtRate(last.rx) + '</span>' +
         '<span>последние ~20 мин</span>' +
-        '<span style="color:#38a169;">↑' + fmtRate(last.tx) + '</span></div>';
+        '<span style="color:var(--btn-success);">↑' + fmtRate(last.tx) + '</span></div>';
 }
 
 var koffeSparkTimer = null;
