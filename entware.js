@@ -1578,12 +1578,20 @@ async function renderBridgeTab() {
 
     // Спец-карточка AdGuard Home: статистика + управление защитой
     const agh = services.find(s => s.id === 'adguard');
-    if (agh) {
+    if (agh && agh.state !== 'auth_required') {
         const zone = document.createElement('div');
         zone.innerHTML = '<h3 style="margin-top:24px;"><svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-shield"/></svg> AdGuard Home</h3><div id="agh-zone"><p>Загрузка статистики…</p></div>';
         contentDiv.appendChild(zone);
         loadAdGuardZone();
     }
+
+    // Формы авторизации для всех найденных, но запертых сервисов
+    services.filter(s => s.state === 'auth_required').forEach(s => {
+        const zone = document.createElement('div');
+        zone.innerHTML = bridgeAuthFormHTML(s.id, s.name);
+        contentDiv.appendChild(zone);
+        bindBridgeAuthForm(s.id);
+    });
 }
 
 async function loadAdGuardZone() {
@@ -1597,8 +1605,8 @@ async function loadAdGuardZone() {
         if (stRes.status !== 'ok') { zone.innerHTML = '<p class="error">' + escapeHtml(stRes.message || 'нет данных') + '</p>'; return; }
         const r = stRes.result || {};
         if (r.http_code === 401 || r.http_code === 403) {
-            zone.innerHTML = aghAuthFormHTML();
-            bindAghAuthForm();
+            zone.innerHTML = bridgeAuthFormHTML('adguard', 'AdGuard Home');
+            bindBridgeAuthForm('adguard');
             return;
         }
         if (r.error) { zone.innerHTML = '<p class="error">' + escapeHtml(r.error) + '</p>'; return; }
@@ -1651,37 +1659,38 @@ async function loadAdGuardZone() {
     }
 }
 
-function aghAuthFormHTML() {
+// Универсальная форма учётных данных для любого сервиса моста.
+function bridgeAuthFormHTML(id, name) {
     return '<div class="stat-card" style="max-width:420px;">' +
-        '<p style="margin-top:0;">AdGuard Home требует авторизацию. Введите логин и пароль от его веб-интерфейса — они сохранятся на роутере (файл 0600, не покидают устройство).</p>' +
-        '<input type="text" id="agh-user" class="settings-input" placeholder="Логин AGH" style="width:100%;margin-bottom:6px;">' +
-        '<input type="password" id="agh-pass" class="settings-input" placeholder="Пароль AGH" style="width:100%;margin-bottom:6px;">' +
-        '<input type="password" id="agh-panel-pass" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
-        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveAghAuth()">Сохранить</button>' +
-        '<span id="agh-auth-status"></span></div>';
+        '<p style="margin-top:0;">«' + escapeHtml(name) + '» требует авторизацию. Введите логин и пароль от его веб-интерфейса — они сохранятся на роутере (файл 0600, не покидают устройство).</p>' +
+        '<input type="text" id="ba-user-' + id + '" class="settings-input" placeholder="Логин" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="ba-pass-' + id + '" class="settings-input" placeholder="Пароль" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="ba-panel-' + id + '" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
+        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeAuth(\'' + id + '\')">Сохранить</button>' +
+        '<span id="ba-st-' + id + '"></span></div>';
 }
 
-function bindAghAuthForm() {
-    const inp = document.getElementById('agh-pass');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveAghAuth(); });
+function bindBridgeAuthForm(id) {
+    const inp = document.getElementById('ba-pass-' + id);
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveBridgeAuth(id); });
 }
 
-async function saveAghAuth() {
-    const user = document.getElementById('agh-user').value.trim();
-    const appPass = document.getElementById('agh-pass').value;
-    const panelPass = document.getElementById('agh-panel-pass').value;
-    const st = document.getElementById('agh-auth-status');
+async function saveBridgeAuth(id) {
+    const user = document.getElementById('ba-user-' + id).value.trim();
+    const appPass = document.getElementById('ba-pass-' + id).value;
+    const panelPass = document.getElementById('ba-panel-' + id).value;
+    const st = document.getElementById('ba-st-' + id);
     if (!user || !appPass || !panelPass) { st.innerHTML = '<span style="color:#e53e3e;">Заполните все поля</span>'; return; }
     st.innerHTML = 'Сохранение…';
     try {
         const res = await apiPost('/bridge_auth.cgi',
-            'id=adguard&cred_type=basic&username=' + encodeURIComponent(user) +
+            'id=' + encodeURIComponent(id) + '&cred_type=basic&username=' + encodeURIComponent(user) +
             '&app_password=' + encodeURIComponent(appPass) +
             '&password=' + encodeURIComponent(panelPass));
         st.innerHTML = res.status === 'ok'
             ? '<span style="color:#38a169;">Сохранено</span>'
             : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.status) + '</span>';
-        if (res.status === 'ok') setTimeout(loadAdGuardZone, 800);
+        if (res.status === 'ok') Toast.show('Учётные данные «' + id + '» сохранены');
     } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
 }
 
