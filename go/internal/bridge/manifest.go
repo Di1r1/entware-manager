@@ -49,10 +49,12 @@ type Manifest struct {
 }
 
 // AuthCreds — секретный файл <id>.auth.json (0600), НИКОГДА не попадает в ответы.
+// Типы: "basic" | "cookie_login" | "" (без авторизации).
 type AuthCreds struct {
-	Type     string `json:"type"` // "basic" | ""
-	Username string `json:"username"`
+	Type     string `json:"type"`
+	Username string `json:"username,omitempty"`
 	Password string `json:"password"`
+	LoginURL string `json:"login_url,omitempty"` // для cookie_login, относительно Base
 }
 
 // ValidateManifest — структурная и семантическая проверка + гейт URL.

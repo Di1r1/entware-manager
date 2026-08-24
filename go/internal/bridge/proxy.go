@@ -2,11 +2,9 @@
 package bridge
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // RunAction выполняет действие коннектора (URL уже провалидирован манифестом).
@@ -21,15 +19,7 @@ func RunAction(m *Manifest, a *Action) (*StatusProxy, error) {
 		method = http.MethodPost
 	}
 	client := clientBridge()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	applyAuth(req, LoadAuth(dirForManifest(m), m.ID))
-	resp, err := client.Do(req)
+	resp, err := authedDo(client, dirForManifest(m), m.ID, method, u.String())
 	if err != nil {
 		return &StatusProxy{HTTPCode: 0, Error: "сервис не отвечает"}, nil
 	}

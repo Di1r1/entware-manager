@@ -248,14 +248,7 @@ func ProxyStatus(dir, id string) (*StatusProxy, error) {
 		return nil, err
 	}
 	client := clientBridge()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*probeTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	applyAuth(req, LoadAuth(dir, id))
-	resp, err := client.Do(req)
+	resp, err := authedDo(client, dir, id, http.MethodGet, u.String())
 	if err != nil {
 		return &StatusProxy{Error: "сервис не отвечает"}, nil
 	}
