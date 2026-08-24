@@ -1,0 +1,11 @@
+{
+    "id": "adguard",
+    "name": "AdGuard Home",
+    "base": "http://127.0.0.1:8080",
+    "probe": {"url": "/control/status", "expect": "json"},
+    "status": {"url": "/control/status"},
+    "stats": {"url": "/control/stats"},
+    "actions": [
+        {"id": "protection_toggle", "label": "Переключить защиту", "url": "/control/protection", "method": "POST", "body": "{\"enabled\": false}", "confirm": true}
+    ]
+}

@@ -59,6 +59,7 @@ func SavePrefs(pf prefsFile) error {
 		return err
 	}
 	out = append(out, '\n')
+	os.MkdirAll(filepath.Dir(prefsPath()), 0755)
 	tmp := prefsPath() + ".tmp"
 	if err := os.WriteFile(tmp, out, 0600); err != nil {
 		return err

@@ -37,6 +37,7 @@ func SaveAuth(dir, id string, creds AuthCreds) error {
 	if !ValidID(id) {
 		return fmt.Errorf("плохой id")
 	}
+	os.MkdirAll(dir, 0755)
 	out, err := json.MarshalIndent(creds, "", "    ")
 	if err != nil {
 		return err

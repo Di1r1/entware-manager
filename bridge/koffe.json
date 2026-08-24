@@ -1,0 +1,15 @@
+{
+    "id": "koffe",
+    "name": "Koffe VPN",
+    "base": "http://127.0.0.1:9097/",
+    "probe": {"url": "?action=version", "expect": "json"},
+    "status": {"url": "?action=status"},
+    "extra": {
+        "failover": {"url": "?action=failover_dashboard"},
+        "health": {"url": "?action=server_health_status"},
+        "history": {"url": "?action=stats_history", "slice_last": 240}
+    },
+    "actions": [
+        {"id": "restart", "label": "Перезапустить", "url": "?action=restart", "method": "POST", "confirm": true}
+    ]
+}

@@ -467,6 +467,11 @@ $HTTP["url"] =~ "^/entware-manager/" {
     $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config|telegram_config|rdp_config)\.json$" {
         url.access-deny = ( "" )
     }
+    # Мост сервисов: манифесты и СЕКРЕТНЫЕ файлы (auth.json/prefs/state) —
+    # не отдаём как статику вообще.
+    $HTTP["url"] =~ "^/entware-manager/bridge/" {
+        url.access-deny = ( "" )
+    }
     # Init-скрипты (S90grdp-proxy, S80entware-server, install.sh) — не статика.
     $HTTP["url"] =~ "^/entware-manager/Install/" {
         url.access-deny = ( "" )
@@ -790,6 +795,22 @@ done
 
 # Конфиг RDP-модуля: порт прокси и пути (создаём в обоих режимах — lighttpd и go)
 # build-deploy.sh исключает *_config.json из deploy, поэтому файл создаём здесь.
+# Манифесты моста сервисов: ставим только отсутствующие —
+# пользовательские правки и .auth.json (0600) не трогаем.
+BRIDGE_SRC="$SELF_DIR/bridge"
+BRIDGE_DST="$TARGET_DIR/bridge"
+mkdir -p "$BRIDGE_DST"
+if [ -d "$BRIDGE_SRC" ]; then
+    for f in "$BRIDGE_SRC"/*.json; do
+        [ -f "$f" ] || continue
+        bn=$(basename "$f")
+        if [ ! -f "$BRIDGE_DST/$bn" ]; then
+            cp -a "$f" "$BRIDGE_DST/$bn" && chmod 644 "$BRIDGE_DST/$bn"
+        fi
+    done
+    ok "манифесты моста: установлены отсутствующие (существующие не перезаписаны)"
+fi
+
 RDP_CFG="$TARGET_DIR/rdp_config.json"
 if [ ! -f "$RDP_CFG" ]; then
 	echo '{"proxy_port":9099,"proxy_host":"","bin_path":"/opt/web_entware/cgi-bin/go/grdp-proxy","static_dir":"/opt/web_entware/static/rdp/","enabled":false}' > "$RDP_CFG"

@@ -195,12 +195,10 @@ func Discover(bridgeDir string) []ServiceState {
 		}(m)
 	}
 
-	done := make(chan struct{})
-	go func() { wg.Wait(); close(done) }()
-	select {
-	case <-done:
-	case <-time.After(discoverBudget):
-	}
+	// Ждём ВСЕГДА: ранний выход оставлял бы горутины, дописывающие в results
+	// после возврата функции (data race, найден кворумом). Пробы сами ограничены
+	// таймаутом 1с и семофором — хвост здесь не длиннее бюджета.
+	wg.Wait()
 
 	// Работающие сверху, затем требующие авторизации, отсутствующие в конце.
 	stateRank := map[string]int{"running": 0, "auth_required": 1, "absent": 2, "disabled": 3}
@@ -319,11 +317,4 @@ func truncate(s string, n int) string {
 		return s[:n]
 	}
 	return s
-}
-
-func applyAuth(req *http.Request, a *AuthCreds) {
-	if a == nil || a.Type != "basic" {
-		return
-	}
-	req.SetBasicAuth(a.Username, a.Password)
 }

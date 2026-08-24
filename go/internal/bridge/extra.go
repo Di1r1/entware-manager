@@ -53,15 +53,3 @@ func ProxyExtra(dir, id, name string) (*StatusProxy, error) {
 	sp.Body = json.RawMessage(out)
 	return sp, nil
 }
-
-// compactJSON убирает переводы строк из ответа upstream (иначе RawMessage
-// с \n ломает однострочные карточки).
-func compactJSON(body []byte) json.RawMessage {
-	var v interface{}
-	if json.Unmarshal(body, &v) == nil {
-		if out, err := json.Marshal(v); err == nil {
-			return json.RawMessage(out)
-		}
-	}
-	return json.RawMessage(body)
-}

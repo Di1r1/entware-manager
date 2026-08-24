@@ -67,8 +67,13 @@ func handleAuthSave() {
 		return
 	}
 
+	credType := params["cred_type"]
+	if credType != "basic" && credType != "cookie_login" {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "cred_type должен быть basic или cookie_login"})
+		return
+	}
 	creds := bridge.AuthCreds{
-		Type:     params["cred_type"],
+		Type:     credType,
 		Username: params["username"],
 		Password: params["app_password"],
 		LoginURL: params["login_url"],

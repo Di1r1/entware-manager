@@ -31,7 +31,34 @@ type watchState struct {
 	Modules map[string]*moduleWatch `json:"modules"`
 }
 
-func watchStatePath() string { return filepath.Join(bridgeDirVar, ".state.json") }
+// Каталоги мониторинга (переопределяются в тестах).
+var (
+	watchStateDir = "/tmp/entware/bridge"
+	watchLogDir   = "/tmp/entware/logs"
+)
+
+// Состояние мониторинга живёт в tmpfs (переживать ребут не нужно:
+// после него первый проход молча создаёт базу) — берегём flash.
+func watchStatePath() string { return filepath.Join(watchStateDir, ".state.json") }
+
+// withWatchLock — межпроцессное исключение для read-modify-write состояния.
+// Lock-файл O_EXCL; зависший (старше 15с) удаляется. Возврат false = не удалось.
+func withWatchLock(fn func()) bool {
+	lockDir := filepath.Dir(watchStatePath())
+	os.MkdirAll(lockDir, 0700)
+	lockPath := filepath.Join(lockDir, ".watch.lock")
+	if fi, err := os.Stat(lockPath); err == nil && time.Since(fi.ModTime()) > 15*time.Second {
+		os.Remove(lockPath) // зависший lock
+	}
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return false // занято другим процессом — этот цикл пропускаем
+	}
+	f.Close()
+	defer os.Remove(lockPath)
+	fn()
+	return true
+}
 
 func loadWatchState() watchState {
 	st := watchState{Modules: map[string]*moduleWatch{}}
@@ -77,7 +104,6 @@ func RunWatch(dir string) []string {
 	var (
 		wg      syncWatch
 		mu      syncMutex
-		events  []string
 		results = map[string]string{} // id → состояние пробы
 	)
 
@@ -127,59 +153,62 @@ func RunWatch(dir string) []string {
 	}
 	wg.wait()
 
-	st := loadWatchState()
-	for id, state := range results {
-		name := id
-		if mf, err := LoadManifest(dir, id); err == nil && mf.Name != "" {
-			name = mf.Name
-		}
-		up := state == "running" || state == "auth_required"
-
-		w := st.Modules[id]
-		if w == nil {
-			w = &moduleWatch{Up: up, Name: name} // первый проход — база, без алертов
-		}
-		w.Name = name
-
-		var evType string
-		if up {
-			w.Oks++
-			w.Fails = 0
-			if !w.Up && w.Oks >= watchOksToUp {
-				evType = "recovery"
-				w.Up = true
+	var events []string
+	withWatchLock(func() {
+		st := loadWatchState()
+		for id, state := range results {
+			name := id
+			if mf, err := LoadManifest(dir, id); err == nil && mf.Name != "" {
+				name = mf.Name
 			}
-		} else {
-			w.Fails++
-			w.Oks = 0
-			if w.Up && w.Fails >= watchFailsToDown {
-				evType = "down"
-				w.Up = false
+			up := state == "running" || state == "auth_required"
+
+			w := st.Modules[id]
+			if w == nil {
+				w = &moduleWatch{Up: up, Name: name} // первый проход — база, без алертов
+			}
+			w.Name = name
+
+			var evType string
+			if up {
+				w.Oks++
+				w.Fails = 0
+				if !w.Up && w.Oks >= watchOksToUp {
+					evType = "recovery"
+					w.Up = true
+				}
+			} else {
+				w.Fails++
+				w.Oks = 0
+				if w.Up && w.Fails >= watchFailsToDown {
+					evType = "down"
+					w.Up = false
+				}
+			}
+			st.Modules[id] = w
+
+			switch evType {
+			case "down":
+				line := fmt.Sprintf("[%s] [WARN] [127.0.0.1] [%d] [bridge] Модуль «%s» перестал отвечать",
+					time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
+				appendDailyLog(line)
+				events = append(events, line)
+			case "recovery":
+				line := fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s» восстановился",
+					time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
+				appendDailyLog(line)
+				events = append(events, line)
 			}
 		}
-		st.Modules[id] = w
 
-		switch evType {
-		case "down":
-			line := fmt.Sprintf("[%s] [WARN] [127.0.0.1] [%d] [bridge] Модуль «%s» перестал отвечать",
-				time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
-			appendDailyLog(line)
-			events = append(events, line)
-		case "recovery":
-			line := fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s» восстановился",
-				time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
-			appendDailyLog(line)
-			events = append(events, line)
+		// Модуль удалён из prefs → чистим его состояние
+		for id := range st.Modules {
+			if _, ok := prefs.Modules[id]; !ok {
+				delete(st.Modules, id)
+			}
 		}
-	}
 
-	// Модуль удалён из prefs → чистим его состояние
-	for id := range st.Modules {
-		if _, ok := prefs.Modules[id]; !ok {
-			delete(st.Modules, id)
-		}
-	}
-
-	_ = saveWatchState(st)
+		_ = saveWatchState(st)
+	})
 	return events
 }
