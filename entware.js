@@ -1571,8 +1571,11 @@ async function renderBridgeTab() {
         html += '<div class="stats-grid" id="bridge-grid">' + services.map(s => renderBridgeCard(s, prefs)).join('') + '</div>';
     }
     html += '<button class="packages-delete-btn" style="background:#4a5568;margin-top:16px;" onclick="renderBridgeTab()">' +
-        '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Пересканировать</button>';
+        '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Пересканировать</button>' +
+        '<button class="packages-delete-btn" style="margin-top:16px;background:#4a5568;" onclick="openBridgeEditor()">' +
+        '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-file"/></svg> Манифесты</button>';
     contentDiv.innerHTML = html;
+    bindBridgeCards(contentDiv);
 
     bindBridgeCards(contentDiv);
 
@@ -1706,6 +1709,102 @@ function bindAghToggle() {
             setTimeout(loadAdGuardZone, 1200);
         } catch(e) { Toast.show('Ошибка: ' + e.message); this.disabled = false; }
     });
+}
+
+// ===== Редактор манифестов моста =====
+
+const BRIDGE_TEMPLATE = `{
+    "id": "myservice",
+    "name": "Мой сервис",
+    "base": "http://127.0.0.1:8081",
+    "probe":  { "url": "/" },
+    "status": { "url": "/api/status", "expect": "json" }
+}`;
+
+function openBridgeEditor(editId) {
+    const contentDiv = document.getElementById('content');
+    let existingJson = BRIDGE_TEMPLATE;
+    let title = 'Новый модуль';
+    if (editId) {
+        title = 'Редактирование: ' + editId;
+    }
+    const known = (bridgeDiscoverCache || []).filter(s => s.id === editId);
+    if (editId && !known.length) {
+        // редактируем сервис, которого нет в discovery — попробуем прочитать файл
+        apiGet('/bridge_manifest.cgi?id=' + encodeURIComponent(editId)).then(r => {
+            if (r.status === 'ok' && r.found) openBridgeEditorFill(editId, r.json);
+            else openBridgeEditorBlank(editId, title, existingJson);
+        }).catch(() => openBridgeEditorBlank(editId, title, existingJson));
+    } else {
+        openBridgeEditorBlank(editId, title, editId ? null : existingJson);
+    }
+}
+
+async function openBridgeEditorBlank(editId, title, presetJson) {
+    let jsonText = presetJson || BRIDGE_TEMPLATE;
+    if (editId && !presetJson) {
+        try {
+            const r = await apiGet('/bridge_manifest.cgi?id=' + encodeURIComponent(editId));
+            if (r.found) jsonText = r.json;
+        } catch(e) {}
+    }
+    renderBridgeEditor(title, editId || '', jsonText, !!editId && !!presetJson === false ? false : !!editId);
+}
+
+async function openBridgeEditorFill(id, jsonText) {
+    renderBridgeEditor('Редактирование: ' + id, id, jsonText, true);
+}
+
+function renderBridgeEditor(title, editId, jsonText, isExisting) {
+    const contentDiv = document.getElementById('content');
+    contentDiv.innerHTML =
+        '<h2><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=6#icon-file"/></svg> ' + escapeHtml(title) + '</h2>' +
+        '<p style="color:var(--text-muted);">JSON-манифест модуля. Поле <code>id</code> должно совпадать с именем файла. Подробности — во вкладке «Справка», раздел «Модули».</p>' +
+        '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">' +
+        '<label>ID файла: <input type="text" id="br-ed-id" class="settings-input" value="' + escapeHtml(editId) + '"' + (isExisting ? ' readonly style="background:var(--input-bg);"' : '') + '></label>' +
+        '<span id="br-ed-exists" style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
+        '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:320px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
+        '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
+        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeManifest()">Сохранить</button>' +
+        '<button class="packages-delete-btn" style="background:#4a5568;" onclick="renderBridgeTab()">Отмена</button>' +
+        '<span id="br-ed-status"></span></div>' +
+        '<div style="margin-top:14px;font-size:0.82rem;color:var(--text-muted);">' +
+        '<b>Подсказки по полям:</b><br>' +
+        '<code>id</code> — латиница/цифры/дефис, до 32 символов · ' +
+        '<code>base</code> — базовый адрес, остальные пути относительны него · ' +
+        '<code>probe</code> — адрес проверки «жив ли» (любой путь с ответом 200) · ' +
+        '<code>status</code>/<code>stats</code>/<code>extra</code> — JSON-адреса для карточки · ' +
+        '<code>actions[].confirm</code> — кнопка запросит повторный пароль.<br>' +
+        'Адреса только http://127.0.0.1:порт... Логины/пароли приложений сюда НЕ вносятся — для них отдельный секретный файл через форму авторизации на карточке.</div>';
+}
+
+async function saveBridgeManifest() {
+    const id = document.getElementById('br-ed-id').value.trim();
+    const raw = document.getElementById('br-ed-json').value;
+    const password = prompt('Пароль панели:');
+    if (!password) return;
+    const st = document.getElementById('br-ed-status');
+    st.innerHTML = 'Проверка и сохранение…';
+    try {
+        const res = await apiPost('/bridge_save.cgi',
+            'id=' + encodeURIComponent(id) + '&body=' + encodeURIComponent(raw) +
+            '&password=' + encodeURIComponent(password));
+        if (res.status === 'ok') {
+            st.innerHTML = '<span style="color:#38a169;">Сохранено</span>';
+            setTimeout(renderBridgeTab, 800);
+        } else {
+            st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.status) + '</span>';
+        }
+    } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
+}
+
+// Кэш выдачи discovery для редактора и карточек
+let bridgeDiscoverCache = [];
+
+async function bridgeDiscover() {
+    const data = await apiGet('/bridge_discover.cgi');
+    bridgeDiscoverCache = data.services || [];
+    return bridgeDiscoverCache;
 }
 
 const fmtRate = bps => {

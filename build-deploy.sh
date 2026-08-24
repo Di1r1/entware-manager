@@ -175,7 +175,7 @@ echo ""
 echo "=== Симлинки cgi → go.cgi ==="
 
 cd "$DEPLOY_DIR/cgi-bin"
-for ep in api auth_config available backup backup_restore bridge_action bridge_auth bridge_discover bridge_prefs bridge_stats bridge_watch bridge_status check_deps check_syntax crontab crontab_update delete_file help install installed kill_pid links_load links_save login logout network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline rdp_config rdp_start rdp_status rdp_stop remove service_action services session smart stats telegram_config telegram_test temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
+for ep in api auth_config available backup backup_restore bridge_action bridge_auth bridge_delete bridge_discover bridge_manifest bridge_prefs bridge_save bridge_stats bridge_watch bridge_status check_deps check_syntax crontab crontab_update delete_file help install installed kill_pid links_load links_save login logout network_action network_arp network_events network_interfaces network_routes network_stats network_status packages prepare_offline rdp_config rdp_start rdp_status rdp_stop remove service_action services session smart stats telegram_config telegram_test temp_history temperature tmpfs tmpfs_clean ttyd_control update update_check update_run update_status upgradable upgrade version view_file wifi_temp wifi_temp_history; do
     ln -sf go.cgi "$ep.cgi"
     echo "  $ep.cgi -> go.cgi"
 done

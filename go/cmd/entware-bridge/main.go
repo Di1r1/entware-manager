@@ -37,6 +37,12 @@ func main() {
 		handleAuthSave()
 	case "bridge_watch":
 		handleWatch()
+	case "bridge_manifest":
+		handleManifestGet()
+	case "bridge_save":
+		handleManifestSave()
+	case "bridge_delete":
+		handleManifestDelete()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}
