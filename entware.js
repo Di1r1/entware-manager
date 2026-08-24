@@ -1855,6 +1855,28 @@ function buildServiceDetails(id, body) {
         return out;
     }
 
+    // Transmission RPC: session-stats
+    if (id === 'transmission') {
+        const a = body.arguments || {};
+        const cum = a['cumulative-stats'] || {};
+        out.tiles = [
+            { label: 'Активные торренты', value: fmtN(a.activeTorrentCount) },
+            { label: 'Всего торрентов',   value: fmtN(a.torrentCount) },
+            { label: 'Загрузка',          value: fmtRate(a.downloadSpeed), color: '#8b5cf6' },
+            { label: 'Отдача',            value: fmtRate(a.uploadSpeed),   color: '#38a169' }
+        ];
+        if (Number(a.pausedTorrentCount) > 0) {
+            out.rows.push(['На паузе', fmtN(a.pausedTorrentCount)]);
+        }
+        if (Number(cum.downloadedBytes) > 0) {
+            out.rows.push(['Скачано за всё время', fmtBytesJS(Number(cum.downloadedBytes))]);
+        }
+        if (Number(cum.uploadedBytes) > 0) {
+            out.rows.push(['Отдано за всё время', fmtBytesJS(Number(cum.uploadedBytes))]);
+        }
+        return out;
+    }
+
     // Koffe VPN
     if (typeof body.running === 'boolean') {
         out.rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
