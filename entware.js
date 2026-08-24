@@ -1622,12 +1622,10 @@ async function loadAdGuardZone() {
                 '<div class="stat-card"><div style="color:var(--text-muted);">Запросов за сутки</div><div style="font-size:1.3em;font-weight:700;">' + fmtN(b.num_dns_queries || 0) + '</div></div>' +
                 '<div class="stat-card"><div style="color:var(--text-muted);">Заблокировано</div><div style="font-size:1.3em;font-weight:700;color:#d69e2e;">' + fmtN(b.num_blocked_filtering || 0) + '</div></div>' +
                 '</div>';
-            if ((b.top_blocked_domains || []).length) {
+            const tb = bridgeTopEntries(b.top_blocked_domains, 5);
+            if (tb.length) {
                 h += '<div style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);">Топ блокировок: ' +
-                    b.top_blocked_domains.slice(0, 5).map(d => {
-                        const name = (typeof d === 'string') ? d : (d.domain || '?');
-                        return escapeHtml(name);
-                    }).join(', ') + '</div>';
+                    tb.map(x => escapeHtml(x)).join(', ') + '</div>';
             }
             box.innerHTML = h;
         }).catch(() => {});
