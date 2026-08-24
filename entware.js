@@ -1590,9 +1590,12 @@ async function loadAdGuardZone() {
     const zone = document.getElementById('agh-zone');
     if (!zone) return;
     try {
-        const res = await apiGet('/bridge_stats.cgi?id=adguard&block=status');
-        if (res.status !== 'ok') { zone.innerHTML = '<p class="error">' + escapeHtml(res.message || 'нет данных') + '</p>'; return; }
-        const r = res.result || {};
+        const [stRes, statsRes] = await Promise.all([
+            apiGet('/bridge_stats.cgi?id=adguard&block=status'),
+            apiGet('/bridge_stats.cgi?id=adguard&block=stats').catch(() => null)
+        ]);
+        if (stRes.status !== 'ok') { zone.innerHTML = '<p class="error">' + escapeHtml(stRes.message || 'нет данных') + '</p>'; return; }
+        const r = stRes.result || {};
         if (r.http_code === 401 || r.http_code === 403) {
             zone.innerHTML = aghAuthFormHTML();
             bindAghAuthForm();
@@ -1601,34 +1604,48 @@ async function loadAdGuardZone() {
         if (r.error) { zone.innerHTML = '<p class="error">' + escapeHtml(r.error) + '</p>'; return; }
 
         const st = r.body || {};
-        let html = '<div class="stats-grid">';
-        html += '<div class="stat-card"><h4>Защита</h4><div id="agh-prot" style="font-weight:700;font-size:1.1em;">' +
-            (st.protection_enabled ? '<span style="color:#38a169;">ВКЛЮЧЕНА</span>' : '<span style="color:#e53e3e;">ОТКЛЮЧЕНА</span>') + '</div>' +
-            '<button class="packages-delete-btn" style="margin-top:8px;background:#4a5568;" data-agh="toggle">' +
-            (st.protection_enabled ? 'Выключить' : 'Включить') + '</button></div>';
-        html += '<div class="stat-card"><h4>Версия</h4><div style="font-weight:600;">' + escapeHtml(st.version || '—') + '</div></div>';
-        html += '</div><div id="agh-stats-extra" style="margin-top:12px;"></div>' +
-            '<button class="packages-delete-btn" style="background:#4a5568;margin-top:8px;" onclick="loadAdGuardZone()">' +
-            '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить</button>';
-        zone.innerHTML = html;
-        bindAghToggle();
+        let b = {};
+        if (statsRes && statsRes.status === 'ok' && statsRes.result && statsRes.result.body) {
+            b = statsRes.result.body;
+        }
+        const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
 
-        apiGet('/bridge_stats.cgi?id=adguard&block=stats').then(extra => {
-            const box = document.getElementById('agh-stats-extra');
-            if (!box || extra.status !== 'ok' || !extra.result || !extra.result.body) return;
-            const b = extra.result.body;
-            const fmtN = n => Number(n).toLocaleString('ru-RU');
-            let h = '<div class="stats-grid">' +
-                '<div class="stat-card"><div style="color:var(--text-muted);">Запросов за сутки</div><div style="font-size:1.3em;font-weight:700;">' + fmtN(b.num_dns_queries || 0) + '</div></div>' +
-                '<div class="stat-card"><div style="color:var(--text-muted);">Заблокировано</div><div style="font-size:1.3em;font-weight:700;color:#d69e2e;">' + fmtN(b.num_blocked_filtering || 0) + '</div></div>' +
-                '</div>';
-            const tb = bridgeTopEntries(b.top_blocked_domains, 5);
-            if (tb.length) {
-                h += '<div style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);">Топ блокировок: ' +
-                    tb.map(x => escapeHtml(x)).join(', ') + '</div>';
+        const rows = [{ label: 'Защита', value: st.protection_enabled ? 'ВКЛЮЧЕНА' : 'ОТКЛЮЧЕНА',
+                        color: st.protection_enabled ? '#38a169' : '#e53e3e' }];
+        if (st.version) rows.push({ label: 'Версия', value: String(st.version).replace(/^v/, '') });
+        if (b.num_dns_queries !== undefined) {
+            rows.push({ label: 'Запросов за сутки', value: fmtN(b.num_dns_queries) });
+            const blk = Number(b.num_blocked_filtering) || 0;
+            rows.push({ label: 'Заблокировано', value: fmtN(blk), color: '#d69e2e' });
+            const q = Number(b.num_dns_queries) || 0;
+            if (q > 0) {
+                const pct = Math.round(blk / q * 1000) / 10;
+                rows.push({ label: 'Доля блокировок', value: String(pct).replace('.', ',') + '%' });
             }
-            box.innerHTML = h;
-        }).catch(() => {});
+            if (b.avg_processing_time !== undefined) {
+                rows.push({ label: 'Ответ DNS', value: '~' + Math.round(Number(b.avg_processing_time) * 1000) + ' мс' });
+            }
+            const tc = bridgeTopEntries(b.top_clients, 3);
+            if (tc.length) rows.push({ label: 'Топ клиенты', value: tc.join(', ') });
+            const tb = bridgeTopEntries(b.top_blocked_domains, 5);
+            if (tb.length) rows.push({ label: 'Топ блокировок', value: tb.join(', ') });
+        }
+
+        zone.innerHTML =
+            '<div class="stat-card" style="min-width:280px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:6px;">AdGuard Home' +
+            '<button class="packages-delete-btn" style="background:#4a5568;padding:4px 12px;font-size:0.8rem;" data-agh="toggle">' +
+            (st.protection_enabled ? 'Выключить защиту' : 'Включить защиту') + '</button></div>' +
+            '<div class="bridge-details">' +
+            rows.map(rw =>
+                '<div class="bd-row"><span class="bd-label">' + escapeHtml(rw.label) + '</span>' +
+                '<span class="bd-value"' + (rw.color ? ' style="color:' + rw.color + ';"' : '') + '>' +
+                escapeHtml(rw.value) + '</span></div>').join('') +
+            '</div>' +
+            '<button class="packages-delete-btn" style="background:#4a5568;margin-top:8px;" onclick="loadAdGuardZone()">' +
+            '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить</button>' +
+            '</div>';
+        bindAghToggle();
     } catch(e) {
         zone.innerHTML = '<p class="error">' + escapeHtml(e.message) + '</p>';
     }
@@ -1726,6 +1743,9 @@ async function bridgeKoffeRows() {
 
 // Детальная строка для карточки на Статистике — из статуса приложения.
 // bridgeTopEntries — имена из массива {"ключ": число} (AGH stats), топ N.
+// Ключи показываются целиком: полные домены и IP-адреса без обрезки
+// (обрезка по точке ломала и домены («da» вместо da.gravatar.com),
+// и IP («192» вместо 192.168.3.5)).
 function bridgeTopEntries(arr, n) {
     if (!Array.isArray(arr)) return [];
     return arr.slice(0, n).map(item => {
@@ -1734,7 +1754,7 @@ function bridgeTopEntries(arr, n) {
             const k = Object.keys(item)[0];
             if (k === undefined) return '';
             const cnt = Number(item[k]);
-            return cnt > 0 ? k.split('.')[0] + ' (' + cnt.toLocaleString('ru-RU') + ')' : k;
+            return cnt > 0 ? k + ' (' + cnt.toLocaleString('ru-RU') + ')' : k;
         }
         return '';
     }).filter(Boolean);
@@ -1866,6 +1886,8 @@ async function renderBridgeCardsOnStats() {
                     rows.push(['Запросов за сутки', fmtN(b.num_dns_queries)]);
                     const blk = Number(b.num_blocked_filtering) || 0;
                     rows.push(['Заблокировано', fmtN(blk)]);
+                    const tb = bridgeTopEntries(b.top_blocked_domains, 3);
+                    if (tb.length) rows.push(['Топ блокировок', tb.join(', ')]);
                     const q = Number(b.num_dns_queries) || 0;
                     if (q > 0) {
                         const pct = Math.round(blk / q * 1000) / 10;
