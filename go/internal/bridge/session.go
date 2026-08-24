@@ -18,17 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
-
-type contextT = context.Context
-type cancelF = context.CancelFunc
-type contextContext = context.Context
-type cancelFunc = context.CancelFunc
-
-func newTimeout(d time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), d)
-}
 
 // Extend AuthCreds (manifest.go): Type="cookie_login", Password = пароль
 // приложения, LoginURL = относительный адрес логина.
@@ -104,10 +94,12 @@ func saveSessionCookie(dir, id string, resp *http.Response) {
 // по creds → retry один раз. Возвращает финальный ответ (resp.Close на вызывающем).
 func authedDo(client *http.Client, dir, id string, method, url string) (*http.Response, error) {
 	creds := LoadAuth(dir, id)
+	// ВАЖНО: контекст НЕ должен действовать на чтение тела ответа — иначе
+	// отмена после возврата do() обрывает большие тела (истории) посреди
+	// потока. Таймауты на соединение/заголовки задаёт Transport (clientBridge);
+	// объём тела ограничивает вызывающий через LimitReader.
 	do := func(cookie string) (*http.Response, error) {
-		ctx, cancel := contextWithTimeout()
-		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, method, url, nil)
+		req, err := http.NewRequestWithContext(context.Background(), method, url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +137,6 @@ func authedDo(client *http.Client, dir, id string, method, url string) (*http.Re
 
 	// Повтор исходного запроса со свежей cookie
 	return do(loadSessionCookie(dir, id))
-}
-
-// contextWithTimeout — обёртка для читаемости.
-func contextWithTimeout() (ctx contextContext, cancel cancelFunc) {
-	return newTimeout(5 * time.Second)
 }
 
 func baseOf(url string) string {

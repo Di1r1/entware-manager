@@ -1684,6 +1684,54 @@ function bindAghToggle() {
     });
 }
 
+const fmtRate = bps => {
+    if (!bps || bps < 0) return '—';
+    if (bps < 1024) return Math.round(bps) + ' Б/с';
+    if (bps < 1048576) return (bps / 1024).toFixed(1) + ' КБ/с';
+    return (bps / 1048576).toFixed(1) + ' МБ/с';
+};
+
+// bridgeKoffeRows — failover, пинг VPS и скорость туннеля из extra-эндпоинтов.
+async function bridgeKoffeRows() {
+    const rows = [];
+    try {
+        const fo = await apiGet('/bridge_status.cgi?id=koffe&block=failover');
+        const b = fo.status === 'ok' && fo.result && fo.result.body;
+        if (b && typeof b === 'object') {
+            if (b.enabled === false) rows.push(['Failover', 'выключен']);
+            else {
+                const parts = [];
+                if (b.running !== undefined) parts.push(b.running ? 'работает' : 'остановлен');
+                if (b.fail_count !== undefined) parts.push('переключений: ' + Number(b.restore_count || 0).toLocaleString('ru-RU'));
+                rows.push(['Failover', parts.join(' · ') || 'вкл']);
+                if (b.current_name) rows.push(['Активный сервер', String(b.current_name)]);
+            }
+        }
+    } catch(e) {}
+    try {
+        const h = await apiGet('/bridge_status.cgi?id=koffe&block=health');
+        const hb = h.status === 'ok' && h.result && h.result.body;
+        if (hb && typeof hb === 'object' && hb.last_latency_ms !== undefined && hb.last_latency_ms >= 0) {
+            rows.push(['Пинг до VPS', hb.last_latency_ms + ' мс']);
+        }
+    } catch(e) {}
+    try {
+        // rate = разность накопительных байтов последних точек / время
+        const sh = await apiGet('/bridge_status.cgi?id=koffe&block=history');
+        const arr = sh.status === 'ok' && sh.result && sh.result.body;
+        if (Array.isArray(arr) && arr.length >= 2) {
+            const a = arr[arr.length - 2], z = arr[arr.length - 1];
+            const dt = Number(z.t) - Number(a.t);
+            if (dt > 0) {
+                const rx = Math.max(0, (Number(z.rx) - Number(a.rx)) / dt);
+                const tx = Math.max(0, (Number(z.tx) - Number(a.tx)) / dt);
+                rows.push(['Трафик туннеля', '↓' + fmtRate(rx) + ' ↑' + fmtRate(tx)]);
+            }
+        }
+    } catch(e) {}
+    return rows;
+}
+
 // Детальная строка для карточки на Статистике — из статуса приложения.
 // bridgeTopEntries — имена из массива {"ключ": число} (AGH stats), топ N.
 function bridgeTopEntries(arr, n) {
@@ -1750,6 +1798,11 @@ async function renderBridgeCardsOnStats() {
                 rows.push(...bridgeDetailRows(svc.id, res.result.body));
             }
         } catch(e) { /* нет деталей — покажем только статус */ }
+        // Koffe: failover, пинг до VPS, скорость туннеля
+        if (svc.id === 'koffe') {
+            const k = await bridgeKoffeRows();
+            rows.push(...k);
+        }
         // AdGuard: цифры DNS за сутки
         if (svc.id === 'adguard') {
             try {

@@ -110,10 +110,14 @@ func handleStatus() {
 		sp  *bridge.StatusProxy
 		err error
 	)
-	if cgiutil.GetQueryParam("block") == "stats" {
-		sp, err = bridge.ProxyStats(bridgeDirVarPath(), id)
-	} else {
+	block := cgiutil.GetQueryParam("block")
+	switch {
+	case block == "" || block == "status":
 		sp, err = bridge.ProxyStatus(bridgeDirVarPath(), id)
+	case block == "stats":
+		sp, err = bridge.ProxyStats(bridgeDirVarPath(), id)
+	default:
+		sp, err = bridge.ProxyExtra(bridgeDirVarPath(), id, block)
 	}
 	if err != nil {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})

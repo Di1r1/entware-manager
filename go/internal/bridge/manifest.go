@@ -18,6 +18,7 @@ const (
 	MaxManifestSize = 16 * 1024
 	MaxManifests    = 20
 	MaxActions      = 10
+	MaxExtra        = 8
 	maxIDLen        = 32
 )
 
@@ -40,13 +41,14 @@ type Action struct {
 }
 
 type Manifest struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
-	Base    string    `json:"base,omitempty"` // база для относительных URL
-	Probe   Endpoint  `json:"probe"`
-	Status  *Endpoint `json:"status,omitempty"`
-	Stats   *Endpoint `json:"stats,omitempty"` // блок статистики для карточки
-	Actions []Action  `json:"actions,omitempty"`
+	ID      string                    `json:"id"`
+	Name    string                    `json:"name"`
+	Base    string                    `json:"base,omitempty"` // база для относительных URL
+	Probe   Endpoint                  `json:"probe"`
+	Status  *Endpoint                 `json:"status,omitempty"`
+	Stats   *Endpoint                 `json:"stats,omitempty"` // блок статистики для карточки
+	Extra   map[string]*SliceEndpoint `json:"extra,omitempty"` // именованные GET-эндпоинты (slice_last — обрезка массива)
+	Actions []Action                  `json:"actions,omitempty"`
 }
 
 // AuthCreds — секретный файл <id>.auth.json (0600), НИКОГДА не попадает в ответы.
@@ -56,6 +58,13 @@ type AuthCreds struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password"`
 	LoginURL string `json:"login_url,omitempty"` // для cookie_login, относительно Base
+}
+
+// SliceEndpoint — GET-эндпоинт с опциональной обрезкой массива-ответа
+// до последних N элементов (для тяжёлых историй).
+type SliceEndpoint struct {
+	Endpoint
+	SliceLast int `json:"slice_last,omitempty"`
 }
 
 // ValidateManifest — структурная и семантическая проверка + гейт URL.
@@ -77,6 +86,20 @@ func ValidateManifest(m *Manifest) error {
 	if m.Stats != nil {
 		if _, err := ValidateBridgeURL(m.Stats.URL, m.Base); err != nil {
 			return fmt.Errorf("stats: %w", err)
+		}
+	}
+	if len(m.Extra) > MaxExtra {
+		return fmt.Errorf("extra-эндпоинтов больше %d", MaxExtra)
+	}
+	for name, ep := range m.Extra {
+		if !idRe.MatchString(name) || len(name) > maxIDLen {
+			return fmt.Errorf("extra %q: плохое имя", name)
+		}
+		if ep == nil {
+			return fmt.Errorf("extra %q: пустой", name)
+		}
+		if _, err := ValidateBridgeURL(ep.URL, m.Base); err != nil {
+			return fmt.Errorf("extra %q: %w", name, err)
 		}
 	}
 	if len(m.Actions) > MaxActions {

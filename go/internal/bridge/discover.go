@@ -26,6 +26,7 @@ const (
 	discoverBudget = 3 * time.Second
 	maxProbeBody   = 64 * 1024
 	maxStatusBody  = 256 * 1024
+	maxExtraBody   = 1024 * 1024
 	maxConcurrency = 8
 	cacheTTL       = 30 * time.Second
 )

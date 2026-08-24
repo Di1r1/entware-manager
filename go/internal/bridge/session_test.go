@@ -3,10 +3,12 @@ package bridge
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -102,3 +104,37 @@ func readAllStr(resp *http.Response) string {
 	n, _ := resp.Body.Read(b)
 	return string(b[:n])
 }
+
+// Регрессия: большие тела (>256КБ) должны читаться полностью — контекст
+// запроса не должен отменяться до завершения чтения тела.
+func TestAuthedDoLargeBody(t *testing.T) {
+	points := make([]string, 1200) // ~600КБ JSON
+	for i := range points {
+		points[i] = `{"t":` + itoa2(i) + `,"rx":1000,"tx":2000}`
+	}
+	payload := "[" + strings.Join(points, ",") + "]"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	client := clientBridge()
+	resp, err := authedDo(client, t.TempDir(), "svc2", http.MethodGet, srv.URL+"/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxExtraBody))
+	if len(body) < len(payload) {
+		t.Fatalf("тело обрезано: %d из %d байт", len(body), len(payload))
+	}
+	var arr []interface{}
+	if json.Unmarshal(body, &arr) != nil {
+		t.Error("полное тело не парсится")
+	} else if len(arr) != 1200 {
+		t.Errorf("точек = %d, хочу 1200", len(arr))
+	}
+}
+
+func itoa2(i int) string { return strconv.Itoa(i) }
