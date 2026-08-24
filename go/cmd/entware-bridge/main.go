@@ -29,9 +29,55 @@ func main() {
 		handleStatus()
 	case "bridge_action":
 		handleAction()
+	case "bridge_prefs":
+		handlePrefs()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}
+}
+
+// handlePrefs — GET: текущие настройки; POST (password+Origin): {id, enabled, notifications}.
+func handlePrefs() {
+	if !cgiutil.IsGET() {
+		if !cgiutil.IsPOST() {
+			cgiutil.NotAllowed()
+			return
+		}
+		if auth.IsCrossSiteOrigin() {
+			cgiutil.WriteError(auth.CrossSiteDeny)
+			return
+		}
+		params := cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())
+		id := params["id"]
+		if id == "" || !isValidBridgeID(id) {
+			cgiutil.WriteError("плохой id")
+			return
+		}
+		// prefs не управляют приложениями (только мониторингом в мосте),
+		// поэтому достаточно сессии панели + CSRF-чека выше.
+		pf := bridge.LoadPrefs()
+		m := pf.Modules[id]
+		m.Enabled = params["enabled"] != "false"
+		m.Notifications = params["notifications"] != "false"
+		pf.Modules[id] = m
+		if err := bridge.SavePrefs(pf); err != nil {
+			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "не удалось сохранить"})
+			return
+		}
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "id": id, "enabled": m.Enabled, "notifications": m.Notifications})
+		return
+	}
+	// GET
+	pf := bridge.LoadPrefs()
+	out := map[string]bridge.ModulePrefs{}
+	for id, m := range pf.Modules {
+		out[id] = m
+	}
+	cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "modules": out})
+}
+
+func isValidBridgeID(id string) bool {
+	return bridge.ValidID(id)
 }
 
 func handleDiscover() {

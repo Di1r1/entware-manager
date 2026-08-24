@@ -150,6 +150,10 @@ func Discover(bridgeDir string) []ServiceState {
 	deadline := time.Now().Add(discoverBudget)
 
 	run := func(id, name, url string) {
+		if !IsEnabled(id) {
+			add(ServiceState{ID: id, Name: name, State: "disabled"})
+			return
+		}
 		if time.Now().After(deadline) {
 			add(ServiceState{ID: id, Name: name, State: "absent", Detail: "budget"})
 			return
@@ -159,7 +163,18 @@ func Discover(bridgeDir string) []ServiceState {
 		add(st)
 	}
 
+	// Манифесты пользователя главнее каталога: если id совпал — проба каталога
+	// пропускается (иначе дубликаты карточек, найдено живым тестом).
+	manifests := ListManifests(bridgeDir)
+	catalogIDs := map[string]bool{}
+	for _, m := range manifests {
+		catalogIDs[m.ID] = true
+	}
+
 	for _, e := range BuiltInCatalog() {
+		if catalogIDs[e.ID] {
+			continue
+		}
 		wg.Add(1)
 		go func(e CatalogEntry) {
 			defer wg.Done()
@@ -169,13 +184,20 @@ func Discover(bridgeDir string) []ServiceState {
 		}(e)
 	}
 
-	for _, m := range ListManifests(bridgeDir) {
+	for _, m := range manifests {
 		wg.Add(1)
 		go func(m *Manifest) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			run(m.ID, m.Name, m.Probe.URL)
+			// Относительные probe-URL резолвим от базы через гейт
+			// (иначе http.NewRequest отклонит "?action=..." → ложное absent).
+			u, err := ValidateBridgeURL(m.Probe.URL, m.Base)
+			if err != nil {
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error()})
+				return
+			}
+			run(m.ID, m.Name, u.String())
 		}(m)
 	}
 
@@ -186,7 +208,14 @@ func Discover(bridgeDir string) []ServiceState {
 	case <-time.After(discoverBudget):
 	}
 
-	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
+	// Работающие сверху, затем требующие авторизации, отсутствующие в конце.
+	stateRank := map[string]int{"running": 0, "auth_required": 1, "absent": 2, "disabled": 3}
+	sort.Slice(results, func(i, j int) bool {
+		if stateRank[results[i].State] != stateRank[results[j].State] {
+			return stateRank[results[i].State] < stateRank[results[j].State]
+		}
+		return strings.ToLower(results[i].Name) < strings.ToLower(results[j].Name)
+	})
 
 	cacheMu.Lock()
 	cachedResult = results

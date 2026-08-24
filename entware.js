@@ -1439,7 +1439,8 @@ async function loadNetworkStatus(fresh) {
 const BRIDGE_STATE_LABELS = {
     running: ['работает', '#38a169'],
     auth_required: ['нужна авторизация', '#d69e2e'],
-    absent: ['не найден', '#718096']
+    absent: ['не установлен', '#718096'],
+    disabled: ['выключен', '#718096']
 };
 
 function bridgeStateBadge(st) {
@@ -1455,28 +1456,54 @@ async function bridgeDiscover() {
 // Читаем настройки уведомлений из localStorage (Серверная часть — Этап 4).
 function bridgeNotifKey(id) { return 'bridge_notif_' + id; }
 
-function renderBridgeCard(svc) {
-    const notif = localStorage.getItem(bridgeNotifKey(svc.id)) !== 'off';
-    const actionsHtml = (svc.actions || []).map(a =>
+function renderBridgeCard(svc, prefs) {
+    const p = prefs && prefs[svc.id] || {};
+    const enabled = p.enabled !== false && svc.state !== 'disabled';
+    const notif = p.notifications !== undefined ? !!p.notifications
+        : localStorage.getItem(bridgeNotifKey(svc.id)) !== 'off';
+    const dimStyle = enabled ? '' : 'opacity:0.55;';
+    const actionsHtml = enabled ? (svc.actions || []).map(a =>
         '<button class="packages-delete-btn" style="background:#4a5568;padding:4px 10px;font-size:0.8rem;" data-bridge-id="' +
         escapeHtml(svc.id) + '" data-action="' + escapeHtml(a.id) + '"' +
         (a.confirm ? ' data-confirm="1"' : '') + '>' + escapeHtml(a.label) + '</button>'
-    ).join(' ');
-    return '<div class="stat-card" style="min-width:220px;">' +
-        '<h4 style="margin:0 0 6px 0;display:flex;align-items:center;gap:8px;justify-content:space-between;">' +
-        escapeHtml(svc.name) + ' ' + bridgeStateBadge(svc.state) + '</h4>' +
-        (svc.detail ? '<div style="font-size:0.75rem;color:var(--text-muted);">' + escapeHtml(svc.detail) + '</div>' : '') +
-        '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">' +
+    ).join(' ') : '';
+    return '<div class="stat-card" style="min-width:230px;' + dimStyle + '">' +
+        '<h4 style="margin:0 0 6px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+        '<span>' + escapeHtml(svc.name) + '</span>' +
+        '<label class="ewm-toggle" title="Включить/выключить модуль">' +
+        '<input type="checkbox" class="bridge-enabled" data-id="' + escapeHtml(svc.id) + '"' + (enabled ? ' checked' : '') + '>' +
+        '<span class="ewm-slider"></span></label></h4>' +
+        '<div style="margin-bottom:6px;">' + bridgeStateBadge(enabled ? svc.state : 'disabled') + '</div>' +
+        (enabled && svc.detail ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(svc.detail) + '</div>' : '') +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
         '<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--text-muted);">' +
         '<input type="checkbox" class="bridge-notif" data-id="' + escapeHtml(svc.id) + '"' + (notif ? ' checked' : '') + '> уведомления</label>' +
         actionsHtml + '</div></div>';
 }
 
 function bindBridgeCards(container) {
+    container.querySelectorAll('.bridge-enabled').forEach(cb => {
+        cb.addEventListener('change', async () => {
+            cb.disabled = true;
+            try {
+                await saveBridgePref(cb.dataset.id, 'enabled', cb.checked);
+                Toast.show('Модуль «' + cb.dataset.id + '»: ' + (cb.checked ? 'включён' : 'выключен'));
+                renderBridgeTab(); // перерисовать с учётом состояния
+            } catch(e) {
+                Toast.show('Ошибка: ' + e.message);
+                cb.disabled = false;
+            }
+        });
+    });
     container.querySelectorAll('.bridge-notif').forEach(cb => {
-        cb.addEventListener('change', () => {
-            localStorage.setItem(bridgeNotifKey(cb.dataset.id), cb.checked ? 'on' : 'off');
-            Toast.show('Уведомления для «' + cb.dataset.id + '»: ' + (cb.checked ? 'вкл' : 'выкл'));
+        cb.addEventListener('change', async () => {
+            try {
+                await saveBridgePref(cb.dataset.id, 'notifications', cb.checked);
+                Toast.show('Уведомления для «' + cb.dataset.id + '»: ' + (cb.checked ? 'вкл' : 'выкл'));
+            } catch(e) {
+                Toast.show('Ошибка: ' + e.message);
+                cb.checked = !cb.checked;
+            }
         });
     });
     container.querySelectorAll('[data-action]').forEach(btn => {
@@ -1502,37 +1529,64 @@ function bindBridgeCards(container) {
     });
 }
 
+let bridgePrefsCache = null;
+
+async function loadBridgePrefs() {
+    try {
+        const data = await apiGet('/bridge_prefs.cgi');
+        bridgePrefsCache = data.modules || {};
+    } catch(e) { bridgePrefsCache = {}; }
+    return bridgePrefsCache;
+}
+
+async function saveBridgePref(id, field, value) {
+    // prefs хранятся парами enabled/notifications — читаем текущие и обновляем поле
+    const p = (bridgePrefsCache && bridgePrefsCache[id]) || {};
+    const body = 'id=' + encodeURIComponent(id) +
+        '&enabled=' + (field === 'enabled' ? String(value) : String(p.enabled !== false)) +
+        '&notifications=' + (field === 'notifications' ? String(value) : String(!!p.notifications));
+    const res = await apiPost('/bridge_prefs.cgi', body);
+    if (res.status !== 'ok') throw new Error(res.message || res.status);
+    bridgePrefsCache[id] = { enabled: res.enabled, notifications: res.notifications };
+}
+
 async function renderBridgeTab() {
     const contentDiv = document.getElementById('content');
     contentDiv.innerHTML = '<p>Загрузка...</p>';
     let services = [];
-    try { services = await bridgeDiscover(); }
-    catch (e) {
+    try {
+        services = await bridgeDiscover();
+        await loadBridgePrefs();
+    } catch (e) {
         contentDiv.innerHTML = '<p class="error">Мост недоступен: ' + escapeHtml(e.message) + '</p>';
         return;
     }
 
     let html = '<h2><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h2>';
-    html += '<p style="color:var(--text-muted);">Локальные сервисы Entware, обнаруженные на этом роутере. Галочка управляет уведомлениями в Telegram о падении/восстановлении сервиса.</p>';
+    html += '<p style="color:var(--text-muted);">Локальные сервисы Entware, обнаруженные на этом роутере. Ползунок включает/выключает модуль в панели, галочка управляет уведомлениями о падении/восстановлении сервиса.</p>';
     if (!services.length) {
         html += '<p>Ничего не найдено.</p>';
     } else {
-        html += '<div class="stats-grid" id="bridge-grid">' + services.map(renderBridgeCard).join('') + '</div>';
+        const prefs = bridgePrefsCache;
+        html += '<div class="stats-grid" id="bridge-grid">' + services.map(s => renderBridgeCard(s, prefs)).join('') + '</div>';
     }
     html += '<button class="packages-delete-btn" style="background:#4a5568;margin-top:16px;" onclick="renderBridgeTab()">' +
         '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Пересканировать</button>';
     contentDiv.innerHTML = html;
 
-    const grid = document.getElementById('bridge-grid');
-    if (grid) bindBridgeCards(grid);
+    bindBridgeCards(contentDiv);
 }
 
 async function renderBridgeCardsOnStats() {
     const statsContent = document.querySelector('.stats-grid');
     if (!statsContent || document.querySelector('#bridge-stats-zone')) return;
+    await loadBridgePrefs();
     let services = [];
-    try { services = (await bridgeDiscover()).filter(s => s.state === 'running' || s.state === 'auth_required'); }
-    catch (e) { return; }
+    try {
+        services = (await bridgeDiscover())
+            .filter(s => (s.state === 'running' || s.state === 'auth_required'))
+            .filter(s => { const p = bridgePrefsCache && bridgePrefsCache[s.id]; return !p || p.enabled !== false; });
+    } catch (e) { return; }
     if (!services.length) return;
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +

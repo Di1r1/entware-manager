@@ -59,6 +59,7 @@ var flatDispatch = map[string]string{
 	"telegram_config": "telegram", "telegram_test": "telegram",
 	// bridge
 	"bridge_discover": "bridge", "bridge_status": "bridge", "bridge_action": "bridge",
+	"bridge_prefs": "bridge",
 }
 
 // subdirDispatch — подкаталоги /entware-cgi/<dir>/<name>.cgi.
