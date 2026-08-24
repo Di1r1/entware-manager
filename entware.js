@@ -1684,6 +1684,22 @@ function bindAghToggle() {
     });
 }
 
+// Детальная строка для карточки на Статистике — из статуса приложения.
+function bridgeDetailLine(id, body) {
+    if (!body || typeof body !== 'object') return '';
+    if (id === 'adguard') {
+        let t = 'Защита: ' + (body.protection_enabled ? 'вкл' : 'выкл');
+        if (body.version) t += ' · v' + String(body.version).replace(/^v/, '');
+        return t;
+    }
+    const bits = [];
+    if (typeof body.running === 'boolean') bits.push(body.running ? 'туннель активен' : 'туннель остановлен');
+    if (body.mode) bits.push('режим: ' + body.mode);
+    if (body.server) bits.push(String(body.server));
+    if (body.uptime) bits.push('аптайм ' + body.uptime);
+    return bits.join(' · ');
+}
+
 async function renderBridgeCardsOnStats() {
     const statsContent = document.querySelector('.stats-grid');
     if (!statsContent || document.querySelector('#bridge-stats-zone')) return;
@@ -1691,17 +1707,31 @@ async function renderBridgeCardsOnStats() {
     let services = [];
     try {
         services = (await bridgeDiscover())
-            .filter(s => (s.state === 'running' || s.state === 'auth_required'))
+            .filter(s => s.state === 'running')
             .filter(s => { const p = bridgePrefsCache && bridgePrefsCache[s.id]; return !p || p.enabled !== false; });
     } catch (e) { return; }
     if (!services.length) return;
+
+    // Живые детали из статуса каждого сервиса (параллельно)
+    const details = {};
+    await Promise.all(services.map(async svc => {
+        try {
+            const res = await apiGet('/bridge_status.cgi?id=' + encodeURIComponent(svc.id));
+            if (res.status === 'ok' && res.result && res.result.body) {
+                details[svc.id] = bridgeDetailLine(svc.id, res.result.body);
+            }
+        } catch(e) { /* нет деталей — покажем только статус */ }
+    }));
+
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
-            return '<div class="stat-card" style="min-width:180px;">' +
+            const d = details[s.id];
+            return '<div class="stat-card" style="min-width:220px;">' +
                 '<div style="font-weight:700;">' + escapeHtml(s.name) + '</div>' +
                 '<div style="color:' + color + ';font-weight:600;margin-top:4px;">● ' + label + '</div>' +
+                (d ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">' + escapeHtml(d) + '</div>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
