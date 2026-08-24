@@ -35,7 +35,7 @@ const (
 type CatalogEntry struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	Port       int    `json:"port"`
+	Ports      []int  `json:"ports"`            // кандидаты: native-прошивка и Entware могут слушать разные порты
 	Path       string `json:"path"`             // путь для пробы
 	Mark       string `json:"mark,omitempty"`   // подстрока в теле/заголовках (опц.)
 	Expect     string `json:"expect,omitempty"` // "json" | ""
@@ -45,11 +45,11 @@ type CatalogEntry struct {
 // BuiltInCatalog — известные Entware-сервисы (v1).
 func BuiltInCatalog() []CatalogEntry {
 	return []CatalogEntry{
-		{ID: "koffe", Name: "Koffe VPN", Port: 9097, Path: "/?action=version", Expect: "json", StatusPath: "/?action=status"},
-		{ID: "adguard", Name: "AdGuard Home", Port: 8080, Path: "/control/status", Expect: "json", StatusPath: "/control/status"},
-		{ID: "ttyd", Name: "Терминал ttyd", Port: 7681, Path: "/"},
-		{ID: "transmission", Name: "Transmission", Port: 9091, Path: "/transmission/rpc"},
-		{ID: "syncthing", Name: "Syncthing", Port: 8384, Path: "/"},
+		{ID: "koffe", Name: "Koffe VPN", Ports: []int{9097}, Path: "/?action=version", Expect: "json", StatusPath: "/?action=status"},
+		{ID: "adguard", Name: "AdGuard Home", Ports: []int{8080}, Path: "/control/status", Expect: "json", StatusPath: "/control/status"},
+		{ID: "ttyd", Name: "Терминал ttyd", Ports: []int{7681}, Path: "/"},
+		{ID: "transmission", Name: "Transmission", Ports: []int{8090, 9091}, Path: "/transmission/rpc", StatusPath: "/transmission/rpc"},
+		{ID: "syncthing", Name: "Syncthing", Ports: []int{8384}, Path: "/"},
 	}
 }
 
@@ -174,7 +174,25 @@ func Discover(bridgeDir string) []ServiceState {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			run(e.ID, e.Name, fmt.Sprintf("http://127.0.0.1:%d%s", e.Port, e.Path))
+			// Пробуем порты-кандидаты по порядку: первый ответивший
+			// (running/auth_required) выигрывает; все absent → absent.
+			var best ServiceState
+			for _, port := range e.Ports {
+				resp, err := authedDo(client, bridgeDirVar, e.ID, http.MethodGet,
+					fmt.Sprintf("http://127.0.0.1:%d%s", port, e.Path), "")
+				if err != nil {
+					best = ServiceState{State: "absent"}
+					continue
+				}
+				body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
+				resp.Body.Close()
+				best = classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+				if best.State != "absent" {
+					break
+				}
+			}
+			best.ID, best.Name = e.ID, e.Name
+			add(best)
 		}(e)
 	}
 
