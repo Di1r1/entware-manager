@@ -2,6 +2,16 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.15.5 (2026-08-24)
+
+### Мост: Transmission из каталога приложений Keenetic (Этап 2 продолжение)
+
+- **CatalogEntry.Ports []int**: нативная установка transmissiond слушает :8090, Entware — :9091; discovery пробует порты-кандидаты по порядку, первый не-absent выигрывает.
+- **authedDo**: поддержка POST-тела запроса; флоу Transmission RPC — 409 + X-Transmission-Session-Id → сохранить в tmpfs-сессию → повторить с заголовком.
+- **Endpoint.MethodOrGET()**: манифесты задают метод для status/stats/actions; ProxyStatus/ProxyStats/ProxyExtra/RunAction передают Method/Body из манифеста.
+- bridge/transmission.json: session-stats + torrent-start/stop (confirm).
+- Диагностика по выводу пользователя: ps/netstat показали native transmissiond на 0.0.0.0:8090.
+
 ## 1.15.4 (2026-08-24)
 
 ### Мост: живой спарклайн и полировка карточек
