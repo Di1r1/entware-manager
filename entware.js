@@ -1700,27 +1700,32 @@ function bridgeTopEntries(arr, n) {
     }).filter(Boolean);
 }
 
-function bridgeDetailLine(id, body) {
-    if (!body || typeof body !== 'object') return '';
+// bridgeDetailLine → массив строк-пар [метка, значение] для карточки.
+function bridgeDetailRows(id, body) {
+    if (!body || typeof body !== 'object') return [];
+    const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
     if (id === 'adguard') {
-        let t = 'Защита: ' + (body.protection_enabled ? 'вкл' : 'выкл');
-        if (body.version) t += ' · v' + String(body.version).replace(/^v/, '');
-        return t;
+        return [
+            ['Защита', body.protection_enabled ? 'вкл' : 'выкл'],
+            ['Версия', body.version ? String(body.version).replace(/^v/, '') : '—']
+        ];
     }
-    const bits = [];
-    if (typeof body.running === 'boolean') bits.push(body.running ? 'туннель активен' : 'туннель остановлен');
-    if (body.mode) bits.push('режим: ' + body.mode);
-    if (body.server) bits.push(String(body.server));
-    // Раскладка устройств по режимам маршрутизации
-    const dev = [];
-    const devMap = [['device_tunnel','через туннель'],['device_bypass','напрямую'],['device_hysteria2','hysteria2'],['device_custom','внешний']];
-    devMap.forEach(([k, label]) => {
+    const rows = [];
+    if (typeof body.running === 'boolean') {
+        rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
+    }
+    if (body.mode) rows.push(['Режим', body.mode]);
+    if (body.server) rows.push(['Сервер', body.server]);
+    // Счётчики списков маршрутизации (ipset): сплит/байпас/туннель/hysteria2
+    const lists = [];
+    [['split_count','сплит'],['device_bypass','байпас'],['device_tunnel','туннель'],
+     ['device_hysteria2','hysteria2'],['device_custom','внешний']].forEach(([k, label]) => {
         const n = Number(body[k]) || 0;
-        if (n > 0) dev.push(n + ' ' + label);
+        if (n > 0) lists.push(label + ' ' + fmtN(n));
     });
-    if (dev.length) bits.push('устройства: ' + dev.join(', '));
-    if (body.uptime) bits.push('аптайм ' + body.uptime);
-    return bits.join(' · ');
+    if (lists.length) rows.push(['Списки IP', lists.join(' · ')]);
+    if (body.uptime) rows.push(['Аптайм', body.uptime]);
+    return rows;
 }
 
 async function renderBridgeCardsOnStats() {
@@ -1738,12 +1743,11 @@ async function renderBridgeCardsOnStats() {
     // Живые детали из статуса каждого сервиса (параллельно)
     const details = {};
     await Promise.all(services.map(async svc => {
-        const lines = [];
+        const rows = [];
         try {
             const res = await apiGet('/bridge_status.cgi?id=' + encodeURIComponent(svc.id));
             if (res.status === 'ok' && res.result && res.result.body) {
-                const d = bridgeDetailLine(svc.id, res.result.body);
-                if (d) lines.push(d);
+                rows.push(...bridgeDetailRows(svc.id, res.result.body));
             }
         } catch(e) { /* нет деталей — покажем только статус */ }
         // AdGuard: цифры DNS за сутки
@@ -1753,37 +1757,46 @@ async function renderBridgeCardsOnStats() {
                 if (st.status === 'ok' && st.result && st.result.body) {
                     const b = st.result.body;
                     const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
-                    lines.push('Запросов за сутки: ' + fmtN(b.num_dns_queries));
-                    lines.push('Заблокировано: ' + fmtN(b.num_blocked_filtering));
+                    rows.push(['Запросов за сутки', fmtN(b.num_dns_queries)]);
+                    const blk = Number(b.num_blocked_filtering) || 0;
+                    rows.push(['Заблокировано', fmtN(blk)]);
                     const q = Number(b.num_dns_queries) || 0;
                     if (q > 0) {
-                        const pct = Math.round((Number(b.num_blocked_filtering) || 0) / q * 1000) / 10;
-                        lines.push('Блокируется: ' + String(pct).replace('.', ',') + '%');
+                        const pct = Math.round(blk / q * 1000) / 10;
+                        rows.push(['Доля блокировок', String(pct).replace('.', ',') + '%']);
                     }
                     if (b.avg_processing_time !== undefined) {
-                        lines.push('Ответ DNS: ~' + String(Math.round(Number(b.avg_processing_time) * 1000)) + ' мс');
+                        rows.push(['Ответ DNS', '~' + Math.round(Number(b.avg_processing_time) * 1000) + ' мс']);
                     }
                     const tc = bridgeTopEntries(b.top_clients, 3);
-                    if (tc.length) lines.push('Топ клиенты: ' + tc.map(x => escapeHtml(x)).join(', '));
+                    if (tc.length) rows.push(['Топ клиенты', tc.join(', ')]);
                 }
             } catch(e) {}
         }
-        if (lines.length) details[svc.id] = lines;
+        if (rows.length) details[svc.id] = rows;
     }));
 
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
-            const lines = details[s.id] || [];
-            return '<div class="stat-card" style="min-width:220px;">' +
-                '<div style="font-weight:700;">' + escapeHtml(s.name) + '</div>' +
-                '<div style="color:' + color + ';font-weight:600;margin-top:4px;">● ' + label + '</div>' +
-                (lines.length ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;line-height:1.5;">' +
-                    lines.map(l => escapeHtml(l)).join('<br>') + '</div>' : '') +
+            const rows = details[s.id] || [];
+            return '<div class="stat-card" style="min-width:230px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
+                escapeHtml(s.name) +
+                '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
+                '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
+                (rows.length ? renderBridgeRows(rows) : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
+}
+
+// Структурированные ряды метка→значение для карточек моста.
+function renderBridgeRows(rows) {
+    return '<div class="bridge-details">' + rows.map(r =>
+        '<div class="bd-row"><span class="bd-label">' + escapeHtml(r[0]) + '</span>' +
+        '<span class="bd-value">' + escapeHtml(r[1]) + '</span></div>').join('') + '</div>';
 }
 
 async function renderLinksOnStats() {

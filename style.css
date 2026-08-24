@@ -2687,3 +2687,30 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
 .ewm-toggle input:checked + .ewm-slider:before {
     transform: translateX(18px);
 }
+
+/* Мост: структурированные ряды метка→значение в карточках */
+.bridge-details {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+.bd-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--border-color, rgba(128,128,128,0.2));
+}
+.bd-row:last-child {
+    border-bottom: none;
+}
+.bd-label {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.bd-value {
+    text-align: right;
+    word-break: break-word;
+    font-weight: 600;
+}
