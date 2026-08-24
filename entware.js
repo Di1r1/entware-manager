@@ -1713,21 +1713,15 @@ async function bridgeKoffeRows() {
             rows.push(['Пинг до VPS', hb.last_latency_ms + ' мс']);
         }
     } catch(e) {}
+    // Трафик: возвращаем массив точек для спарклайна (отдельно от rows)
     try {
-        // rate = разность накопительных байтов последних точек / время
         const sh = await apiGet('/bridge_status.cgi?id=koffe&block=history');
         const arr = sh.status === 'ok' && sh.result && sh.result.body;
         if (Array.isArray(arr) && arr.length >= 2) {
-            const a = arr[arr.length - 2], z = arr[arr.length - 1];
-            const dt = Number(z.t) - Number(a.t);
-            if (dt > 0) {
-                const rx = Math.max(0, (Number(z.rx) - Number(a.rx)) / dt);
-                const tx = Math.max(0, (Number(z.tx) - Number(a.tx)) / dt);
-                rows.push(['Трафик туннеля', '↓' + fmtRate(rx) + ' ↑' + fmtRate(tx)]);
-            }
+            return {rows: rows, hist: arr};
         }
     } catch(e) {}
-    return rows;
+    return {rows: rows};
 }
 
 // Детальная строка для карточки на Статистике — из статуса приложения.
@@ -1744,6 +1738,66 @@ function bridgeTopEntries(arr, n) {
         }
         return '';
     }).filter(Boolean);
+}
+
+// koffeSparkSVG — спарклайн трафика туннеля по истории точек.
+function koffeSparkSVG(points) {
+    if (!Array.isArray(points) || points.length < 3) return '';
+    const rates = [];
+    for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1], z = points[i];
+        const dt = Number(z.t) - Number(a.t);
+        if (dt <= 0) continue;
+        rates.push({
+            rx: Math.max(0, (Number(z.rx) - Number(a.rx)) / dt),
+            tx: Math.max(0, (Number(z.tx) - Number(a.tx)) / dt)
+        });
+    }
+    if (rates.length < 2) return '';
+    const w = 220, h = 40, pad = 3;
+    let max = 1;
+    rates.forEach(r => { max = Math.max(max, r.rx, r.tx); });
+    const X = i => pad + i * (w - 2 * pad) / (rates.length - 1);
+    const Y = v => h - pad - (v / max) * (h - 2 * pad);
+    const line = key => rates.map((r, i) =>
+        (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(r[key]).toFixed(1)).join(' ');
+    const area = key => line(key) + ' L' + X(rates.length - 1).toFixed(1) + ',' + (h - pad) +
+        ' L' + X(0).toFixed(1) + ',' + (h - pad) + ' Z';
+    const last = rates[rates.length - 1];
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none" style="display:block;background:var(--input-bg);border-radius:6px;">' +
+        '<path d="' + area('rx') + '" fill="rgba(139,92,246,0.15)"/>' +
+        '<path d="' + line('rx') + '" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>' +
+        '<path d="' + line('tx') + '" fill="none" stroke="#38a169" stroke-width="1.4" stroke-dasharray="3,2"/>' +
+        '</svg><div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-top:2px;">' +
+        '<span style="color:#8b5cf6;">↓' + fmtRate(last.rx) + '</span>' +
+        '<span>последние ~20 мин</span>' +
+        '<span style="color:#38a169;">↑' + fmtRate(last.tx) + '</span></div>';
+}
+
+var koffeSparkTimer = null;
+var koffeHistData = null;
+
+// updateKoffeSparkLive — обновляет спарклайн каждые 10 сек без перерисовки страницы.
+function updateKoffeSparkLive() {
+    if (!document.getElementById('koffe-spark-box')) return; // карточки нет — стоп
+    if (typeof updateKoffeSparkLive._busy === 'undefined') updateKoffeSparkLive._busy = false;
+    if (updateKoffeSparkLive._busy) return;
+    updateKoffeSparkLive._busy = true;
+    apiGet('/bridge_status.cgi?id=koffe&block=history')
+        .then(sh => {
+            const arr = sh.status === 'ok' && sh.result && sh.result.body;
+            if (Array.isArray(arr) && arr.length >= 3) {
+                const box = document.getElementById('koffe-spark-box');
+                if (box) box.innerHTML = koffeSparkSVG(arr);
+            }
+        })
+        .catch(() => {})
+        .then(() => { updateKoffeSparkLive._busy = false; });
+}
+
+function startKoffeSparkTimer() {
+    if (koffeSparkTimer) clearInterval(koffeSparkTimer);
+    koffeSparkTimer = setInterval(updateKoffeSparkLive, 10000);
 }
 
 // bridgeDetailLine → массив строк-пар [метка, значение] для карточки.
@@ -1799,7 +1853,8 @@ async function renderBridgeCardsOnStats() {
         // Koffe: failover, пинг до VPS, скорость туннеля
         if (svc.id === 'koffe') {
             const k = await bridgeKoffeRows();
-            rows.push(...k);
+            rows.push(...(k.rows || []));
+            if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
         }
         // AdGuard: цифры DNS за сутки
         if (svc.id === 'adguard') {
@@ -1832,15 +1887,26 @@ async function renderBridgeCardsOnStats() {
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
             const rows = details[s.id] || [];
+            const isKoffe = s.id === 'koffe';
             return '<div class="stat-card" style="min-width:230px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
                 escapeHtml(s.name) +
                 '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
                 '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
                 (rows.length ? renderBridgeRows(rows) : '') +
+                (isKoffe ? '<a href="/koffe/" target="_blank" rel="noopener noreferrer" title="Клик — открыть интерфейс Koffe" style="display:block;" id="koffe-spark-box"></a>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
+
+    bindBridgeCards(document.getElementById('bridge-stats-zone'));
+
+    // Живой спарклайн Koffe: первичный рендер + обновление каждые 10 сек
+    if (koffeHistData && koffeHistData.length >= 3) {
+        const box = document.getElementById('koffe-spark-box');
+        if (box) box.innerHTML = koffeSparkSVG(koffeHistData);
+    }
+    startKoffeSparkTimer();
 }
 
 // Структурированные ряды метка→значение для карточек моста.
