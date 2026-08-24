@@ -179,6 +179,60 @@ echo "ГОТОВО: ключ сохранён"</div>
     <h3>
         <span class="stat-icon">
             <svg class="icon" width="24" height="24">
+                <use href="/entware-manager/icons.svg?v=6#icon-modules"/>
+            </svg>
+        </span>
+        Модули — как добавить свой сервис
+    </h3>
+    <p>Вкладка «Модули» показывает локальные приложения роутера. Список задаётся файлами-описаниями («манифестами») в каталоге <code>/opt/web_entware/bridge/</code>. В комплекте уже есть Koffe VPN, AdGuard Home, Transmission, Syncthing и терминал ttyd — их добавлять не нужно.</p>
+
+    <h4>Быстрый способ: узнать адрес сервиса</h4>
+    <p>Каждое веб-приложение слушает свой порт. Узнать его можно командой в терминале:</p>
+    <div class="pre-cmd">netstat -tlnp | grep имя_процесса</div>
+
+    <h4>Формат манифеста</h4>
+    <p>Создайте файл <code>/opt/web_entware/bridge/мойсервис.json</code>:</p>
+    <div class="pre-cmd">{
+    "id": "myapp",
+    "name": "Моё приложение",
+    "base": "http://127.0.0.1:8081",
+    "probe":  { "url": "/" },
+    "status": { "url": "/api/status", "expect": "json" },
+    "actions": [
+        { "id": "restart", "label": "Перезапустить",
+          "url": "/api/restart", "method": "POST", "confirm": true }
+    ]
+}</div>
+    <table class="packages-table" style="margin:10px 0;">
+        <thead><tr><th>Поле</th><th>Назначение</th></tr></thead>
+        <tbody>
+            <tr><td><code>id</code></td><td>Короткое имя латиницей (буквы, цифры, дефис). Совпадает с именем файла.</td></tr>
+            <tr><td><code>name</code></td><td>Название, которое видно на карточке.</td></tr>
+            <tr><td><code>base</code></td><td>Базовый адрес сервиса; остальные пути указываются относительно него.</td></tr>
+            <tr><td><code>probe</code></td><td>Адрес для проверки «жив ли сервис». Подходит любой путь, отвечающий кодом 200.</td></tr>
+            <tr><td><code>status</code></td><td>(необязательно) Адрес JSON со статусом — попадёт в карточку на Статистике.</td></tr>
+            <tr><td><code>stats</code></td><td>(необязательно) Адрес блока статистики.</td></tr>
+            <tr><td><code>extra</code></td><td>(необязательно) Дополнительные адреса; <code>slice_last</code> обрезает длинный массив до последних N точек (для графиков).</td></tr>
+            <tr><td><code>actions</code></td><td>(необязательно) Кнопки на карточке: <code>confirm:true</code> требует повторного ввода пароля панели.</td></tr>
+        </tbody>
+    </table>
+
+    <h4>Правила безопасности</h4>
+    <ul>
+        <li>Адреса только вида <code>http://127.0.0.1:порт...</code> — панель общается с приложениями только внутри роутера. Другие хосты и https отклоняются.</li>
+        <li><code>id</code> — только строчные латинские буквы, цифры, дефис и подчёркивание, до 32 символов.</li>
+        <li>Логины и пароли приложений НЕ записываются в этот файл. Для них существует отдельный секретный файл <code>&lt;id&gt;.auth.json</code> (права 600) — он создаётся через форму авторизации на карточке сервиса.</li>
+        <li>Размер манифеста до 16 КБ, действий до 10, модулей до 20.</li>
+    </ul>
+
+    <h4>Как применить</h4>
+    <p>После сохранения файла откройте вкладку <strong>«Модули»</strong> и нажмите <strong>«Пересканировать»</strong>. Если сервис отвечает — появится зелёная карточка; если нет — серая «не установлен» (панель будет проверять его дальше и подхватит автоматически).</p>
+
+    <p style="color:var(--text-muted);font-size:0.85rem;">Готовые примеры — в репозитории проекта: файлы <code>koffe.json</code> и <code>adguard.json</code>.</p>
+
+    <h3>
+        <span class="stat-icon">
+            <svg class="icon" width="24" height="24">
                 <use href="/entware-manager/icons.svg?v=6#icon-terminal"/>
             </svg>
         </span>
