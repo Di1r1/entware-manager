@@ -99,11 +99,14 @@ func authedDo(client *http.Client, dir, id string, method, url, body string) (*h
 	// отмена после возврата do() обрывает большие тела (истории) посреди
 	// потока. Таймауты на соединение/заголовки задаёт Transport (clientBridge);
 	// объём тела ограничивает вызывающий через LimitReader.
-	var bodyReader io.Reader
-	if body != "" {
-		bodyReader = strings.NewReader(body)
-	}
+	// Ридер тела создаётся ВНУТРИ do(): строки.NewReader исчерпывается после
+	// первого чтения, и ретрай (409/401-флоу) уходил бы с пустым телом
+	// (MAJOR-A кворума v1.15.5).
 	do := func(extraHdr, cookie string) (*http.Response, error) {
+		var bodyReader io.Reader
+		if body != "" {
+			bodyReader = strings.NewReader(body)
+		}
 		req, err := http.NewRequestWithContext(context.Background(), method, url, bodyReader)
 		if err != nil {
 			return nil, err
@@ -126,18 +129,34 @@ func authedDo(client *http.Client, dir, id string, method, url, body string) (*h
 		return client.Do(req)
 	}
 
-	resp, err := do("", loadStoredSession(dir, id))
+	// Сохранённая сессия разбирается по имени: заголовочные имена (X-*,
+	// напр. X-Transmission-Session-Id) → в заголовок, остальные → в Cookie
+	// как "name=value" (MAJOR-B: сырое "Имя|Значение" в Cookie битое).
+	extraHdr, cookie := "", ""
+	if stored := loadStoredSession(dir, id); stored != "" {
+		if i := strings.Index(stored, "|"); i > 0 {
+			name, val := stored[:i], stored[i+1:]
+			if name == "X-Transmission-Session-Id" {
+				extraHdr = stored
+			} else if name != "" && val != "" {
+				cookie = name + "=" + val
+			}
+		}
+	}
+
+	resp, err := do(extraHdr, cookie)
 	if err != nil {
 		return resp, err
 	}
-	// Transmission-стиль: 409 + X-Transmission-Session-Id → сохранить и повторить.
+	// Transmission-стиль: 409 + X-Transmission-Session-Id → сохранить и повторить
+	// (cookie сохраняемой сессии здесь не дублируем).
 	if resp.StatusCode == http.StatusConflict {
 		tok := resp.Header.Get("X-Transmission-Session-Id")
 		if tok != "" {
 			saveNamedSession(dir, id, "X-Transmission-Session-Id", tok)
 			io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 			resp.Body.Close()
-			return do("X-Transmission-Session-Id|"+tok, loadStoredSession(dir, id))
+			return do("X-Transmission-Session-Id|"+tok, "")
 		}
 	}
 	if resp.StatusCode != http.StatusUnauthorized {

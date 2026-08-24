@@ -95,7 +95,11 @@ func classify(code int, contentType string, body []byte) ServiceState {
 	case code == 401 || code == 403 || code == 409:
 		return ServiceState{State: "auth_required", Detail: fmt.Sprintf("HTTP %d", code)}
 	case code == 405:
-		return ServiceState{State: "running"} // эндпоинт жив, просто метод не тот
+		// Осознанная эвристика: чужой сервис на порту-кандидате, отвечающий
+		// 405 на путь Transmission, будет показан как Transmission. Для
+		// домашнего роутера риск принят (порты проверяются в порядке
+		// специфичности). См. кворум v1.15.5 MINOR-2.
+		return ServiceState{State: "running"}
 	default:
 		return ServiceState{State: "absent", Detail: fmt.Sprintf("HTTP %d", code)}
 	}
@@ -268,7 +272,7 @@ func proxyEndpoint(dir, id string, ep *Endpoint) (*StatusProxy, error) {
 	sp := &StatusProxy{HTTPCode: resp.StatusCode}
 	var v interface{}
 	if json.Unmarshal(body, &v) != nil {
-		if len(body) >= maxStatusBody {
+		if len(body) >= maxExtraBody {
 			return &StatusProxy{Error: "ответ сервиса слишком большой"}, nil
 		}
 		sp.Raw = truncate(string(body), 512)

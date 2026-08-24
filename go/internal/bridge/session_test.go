@@ -138,3 +138,43 @@ func TestAuthedDoLargeBody(t *testing.T) {
 }
 
 func itoa2(i int) string { return strconv.Itoa(i) }
+
+// Регрессия MAJOR-A: 409-флоу Transmission — ретрай обязан нести тело
+// (раньше strings.NewReader исчерпывался и ретрай уходил пустым).
+func TestAuthedDo409RetriesWithBody(t *testing.T) {
+	var sizes []int
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		sizes = append(sizes, len(b))
+		t.Logf("handler: hdr=%q body=%d", r.Header.Get("X-Transmission-Session-Id"), len(b))
+		gotMethod = r.Method
+		if r.Header.Get("X-Transmission-Session-Id") == "" {
+			w.Header().Set("X-Transmission-Session-Id", "tok42")
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		w.Write([]byte(`{"result":"success"}`))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	os.Remove(sessionPath(dir, "tr")) // глобальный tmpfs — чистим сессию прошлых прогонов
+	client := clientBridge()
+	resp, err := authedDo(client, dir, "tr", http.MethodPost, srv.URL+"/", `{"method":"session-stats"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "success") {
+		t.Errorf("финал: %d %q", resp.StatusCode, string(body))
+	}
+	if len(sizes) != 2 || sizes[0] == 0 || sizes[1] == 0 {
+		t.Errorf("размеры тел попыток: %v — обе должны быть непустыми", sizes)
+	}
+	if gotMethod != http.MethodPost {
+		t.Errorf("метод = %q", gotMethod)
+	}
+}
