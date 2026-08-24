@@ -1,11 +1,70 @@
 {
-    "id": "adguard",
-    "name": "AdGuard Home",
-    "base": "http://127.0.0.1:8080",
-    "probe": {"url": "/control/status", "expect": "json"},
-    "status": {"url": "/control/status"},
-    "stats": {"url": "/control/stats"},
-    "actions": [
-        {"id": "protection_toggle", "label": "Переключить защиту", "url": "/control/protection", "method": "POST", "body": "{\"enabled\": false}", "confirm": true}
-    ]
+  "id": "adguard",
+  "name": "AdGuard Home",
+  "base": "http://127.0.0.1:8080",
+  "probe": {
+    "url": "/control/status",
+    "expect": "json"
+  },
+  "status": {
+    "url": "/control/status"
+  },
+  "stats": {
+    "url": "/control/stats"
+  },
+  "actions": [
+    {
+      "id": "protection_toggle",
+      "label": "Переключить защиту",
+      "url": "/control/protection",
+      "method": "POST",
+      "body": "{\"enabled\": false}",
+      "confirm": true
+    }
+  ],
+  "fields": [
+    {
+      "path": "protection_enabled",
+      "label": "Защита",
+      "type": "bool",
+      "tile": true
+    },
+    {
+      "path": "num_dns_queries",
+      "label": "Запросов за сутки",
+      "from": "stats",
+      "tile": true,
+      "type": "num"
+    },
+    {
+      "path": "num_blocked_filtering",
+      "label": "Заблокировано",
+      "from": "stats",
+      "type": "num",
+      "tile": true
+    },
+    {
+      "path": "avg_processing_time",
+      "label": "Ответ DNS (мс)",
+      "from": "stats",
+      "tile": true,
+      "type": "ms"
+    },
+    {
+      "path": "version",
+      "label": "Версия"
+    },
+    {
+      "path": "top_clients",
+      "label": "Топ клиенты",
+      "from": "stats",
+      "type": "top"
+    },
+    {
+      "path": "top_blocked_domains",
+      "label": "Топ блокировок",
+      "from": "stats",
+      "type": "top"
+    }
+  ]
 }

@@ -27,5 +27,43 @@
       "body": "{\"method\":\"torrent-stop\"}",
       "confirm": true
     }
+  ],
+  "fields": [
+    {
+      "path": "torrentCount",
+      "label": "Всего торрентов",
+      "tile": true
+    },
+    {
+      "path": "activeTorrentCount",
+      "label": "Активные",
+      "tile": true
+    },
+    {
+      "path": "downloadSpeed",
+      "label": "Загрузка (Б/с)",
+      "tile": true,
+      "color": "#8b5cf6"
+    },
+    {
+      "path": "uploadSpeed",
+      "label": "Отдача (Б/с)",
+      "tile": true,
+      "color": "#38a169"
+    },
+    {
+      "path": "pausedTorrentCount",
+      "label": "На паузе"
+    },
+    {
+      "path": "cumulative-stats.downloadedBytes",
+      "label": "Скачано за всё время",
+      "type": "bytes"
+    },
+    {
+      "path": "cumulative-stats.uploadedBytes",
+      "label": "Отдано за всё время",
+      "type": "bytes"
+    }
   ]
 }

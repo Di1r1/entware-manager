@@ -37,6 +37,8 @@ func main() {
 		handleAuthSave()
 	case "bridge_watch":
 		handleWatch()
+	case "bridge_card":
+		handleCard()
 	case "bridge_manifest":
 		handleManifestGet()
 	case "bridge_save":
@@ -90,6 +92,27 @@ func handlePrefs() {
 
 func isValidBridgeID(id string) bool {
 	return bridge.ValidID(id)
+}
+
+// handleCard — универсальный сканер карточки: все JSON-эндпоинты манифеста
+// + значения полей по путям из manifest.fields.
+func handleCard() {
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
+		return
+	}
+	id := cgiutil.GetQueryParam("id")
+	if id == "" {
+		cgiutil.WriteError("укажите id")
+		return
+	}
+	card, err := bridge.BuildCard(bridgeDirVarPath(), id)
+	if err != nil {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
+		return
+	}
+	state := bridge.DiscoverState(bridgeDirVarPath(), id)
+	cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "state": state, "card": card})
 }
 
 // handleWatch — мониторинг модулей для Telegram (вызывается шлюзом по curl,

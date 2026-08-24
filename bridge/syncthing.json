@@ -1,10 +1,41 @@
 {
-    "id": "syncthing",
-    "name": "Syncthing",
-    "base": "http://127.0.0.1:8384",
-    "probe": {"url": "/"},
-    "status": {"url": "/rest/system/status"},
-    "extra": {
-        "conns": {"url": "/rest/system/connections"}
+  "id": "syncthing",
+  "name": "Syncthing",
+  "base": "http://127.0.0.1:8384",
+  "probe": {
+    "url": "/"
+  },
+  "status": {
+    "url": "/rest/system/status"
+  },
+  "extra": {
+    "conns": {
+      "url": "/rest/system/connections"
     }
+  },
+  "fields": [
+    {
+      "path": "uptime",
+      "label": "Аптайм (сек)",
+      "tile": true
+    },
+    {
+      "path": "myID",
+      "label": "ID устройства"
+    },
+    {
+      "path": "total.inBytesTotal",
+      "label": "Принято всего",
+      "from": "conns",
+      "type": "bytes",
+      "tile": true
+    },
+    {
+      "path": "total.outBytesTotal",
+      "label": "Отправлено всего",
+      "from": "conns",
+      "type": "bytes",
+      "tile": true
+    }
+  ]
 }

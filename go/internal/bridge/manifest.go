@@ -20,10 +20,13 @@ const (
 	MaxManifests    = 20
 	MaxActions      = 10
 	MaxExtra        = 8
+	MaxFields       = 24
 	maxIDLen        = 32
 )
 
 var idRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+
+var sourceNameRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
 type Endpoint struct {
 	URL    string `json:"url"`
@@ -49,14 +52,26 @@ type Action struct {
 	Confirm bool   `json:"confirm,omitempty"`
 }
 
+// FieldDef — универсальное описание поля карточки сканера:
+// значение берётся из ответа эндпоинта по точечному пути (a.b.c).
+type FieldDef struct {
+	Path  string `json:"path"`           // точечный путь в JSON-ответе
+	Label string `json:"label"`          // подпись на карточке
+	From  string `json:"from,omitempty"` // источник: status | stats | <имя extra>; пусто = перебор
+	Type  string `json:"type,omitempty"` // "" текст | bool | bytes | count
+	Tile  bool   `json:"tile,omitempty"` // показать крупной плиткой
+	Color string `json:"color,omitempty"`
+}
+
 type Manifest struct {
 	ID      string                    `json:"id"`
 	Name    string                    `json:"name"`
 	Base    string                    `json:"base,omitempty"` // база для относительных URL
 	Probe   Endpoint                  `json:"probe"`
 	Status  *Endpoint                 `json:"status,omitempty"`
-	Stats   *Endpoint                 `json:"stats,omitempty"` // блок статистики для карточки
-	Extra   map[string]*SliceEndpoint `json:"extra,omitempty"` // именованные GET-эндпоинты (slice_last — обрезка массива)
+	Stats   *Endpoint                 `json:"stats,omitempty"`  // блок статистики для карточки
+	Extra   map[string]*SliceEndpoint `json:"extra,omitempty"`  // именованные GET-эндпоинты (slice_last — обрезка массива)
+	Fields  []FieldDef                `json:"fields,omitempty"` // универсальные поля карточки сканера
 	Actions []Action                  `json:"actions,omitempty"`
 }
 
@@ -95,6 +110,25 @@ func ValidateManifest(m *Manifest) error {
 	if m.Stats != nil {
 		if _, err := ValidateBridgeURL(m.Stats.URL, m.Base); err != nil {
 			return fmt.Errorf("stats: %w", err)
+		}
+	}
+	if len(m.Fields) > MaxFields {
+		return fmt.Errorf("полей больше %d", MaxFields)
+	}
+	for i, f := range m.Fields {
+		if f.Path == "" || len(f.Path) > 128 {
+			return fmt.Errorf("field[%d]: пустой или длинный path", i)
+		}
+		if f.Label == "" || len(f.Label) > 64 {
+			return fmt.Errorf("field[%d]: пустая или длинная label", i)
+		}
+		switch f.Type {
+		case "", "bool", "bytes", "count", "num", "ms", "top":
+		default:
+			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count)", i, f.Type)
+		}
+		if f.From != "" && !sourceNameRe.MatchString(f.From) {
+			return fmt.Errorf("field[%d]: плохое имя источника %q", i, f.From)
 		}
 	}
 	if len(m.Extra) > MaxExtra {

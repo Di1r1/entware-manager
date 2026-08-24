@@ -2018,60 +2018,27 @@ async function renderBridgeCardsOnStats() {
     } catch (e) { return; }
     if (!services.length) return;
 
-    // Живые детали из статуса каждого сервиса (параллельно)
+    // Живые детали из статуса каждого сервиса — универсальный сканер моста
     const details = {};
     await Promise.all(services.map(async svc => {
-        const det = { tiles: [], rows: [], chips: [] };
         try {
-            const res = await apiGet('/bridge_status.cgi?id=' + encodeURIComponent(svc.id));
-            if (res.status === 'ok' && res.result && res.result.body) {
-                const d = buildServiceDetails(svc.id, res.result.body);
-                det.tiles = d.tiles; det.rows = d.rows; det.chips = d.chips;
+            const res = await apiGet('/bridge_card.cgi?id=' + encodeURIComponent(svc.id));
+            if (res.status === 'ok' && res.card) {
+                const d = res.card;
+                // Спец: у koffe история для спарклайна приходит отдельно
+                const extraRows = [];
+                if (svc.id === 'koffe') {
+                    const k = await bridgeKoffeRows();
+                    extraRows.push(...(k.rows || []));
+                    if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
+                }
+                details[svc.id] = {
+                    tiles: d.tiles || [],
+                    rows: [...extraRows, ...(d.rows || [])],
+                    chips: d.chips || []
+                };
             }
-        } catch(e) { /* нет деталей — покажем только статус */ }
-        // Koffe: failover, пинг до VPS, спарклайн
-        if (svc.id === 'koffe') {
-            const k = await bridgeKoffeRows();
-            det.rows.push(...(k.rows || []));
-            if (k.hist && k.hist.length >= 2) koffeHistData = k.hist;
-        }
-        // Syncthing: подключения и суммарный трафик
-        if (svc.id === 'syncthing') {
-            try {
-                const c = await apiGet('/bridge_stats.cgi?id=syncthing&block=conns');
-                if (c.status === 'ok' && c.result && c.result.body) {
-                    const cb = c.result.body;
-                    let online = 0;
-                    Object.values(cb.connections || {}).forEach(x => { if (x && x.connected) online++; });
-                    det.tiles.push({ label: 'Устройств на связи', value: String(online) });
-                    det.tiles.push({ label: 'Принято всего',   value: fmtBytesJS(Number((cb.total || {}).inBytesTotal) || 0) });
-                    det.tiles.push({ label: 'Отправлено всего',value: fmtBytesJS(Number((cb.total || {}).outBytesTotal) || 0) });
-                }
-            } catch(e) {}
-        }
-        // AdGuard: числа плитками, топы рядами
-        if (svc.id === 'adguard') {
-            try {
-                const st = await apiGet('/bridge_stats.cgi?id=adguard&block=stats');
-                if (st.status === 'ok' && st.result && st.result.body) {
-                    const b = st.result.body;
-                    const q = Number(b.num_dns_queries) || 0;
-                    const blk = Number(b.num_blocked_filtering) || 0;
-                    const pct = q > 0 ? Math.round(blk / q * 1000) / 10 : 0;
-                    det.tiles = [
-                        { label: 'Запросов за сутки', value: (q).toLocaleString('ru-RU') },
-                        { label: 'Заблокировано',     value: blk.toLocaleString('ru-RU'), color: '#d69e2e' },
-                        { label: 'Доля блокировок',   value: String(pct).replace('.', ',') + '%' },
-                        { label: 'Ответ DNS',         value: '~' + Math.round(Number(b.avg_processing_time) * 1000) + ' мс' }
-                    ];
-                    const tb = bridgeTopEntries(b.top_blocked_domains, 5);
-                    if (tb.length) det.rows.push(['Топ блокировок', tb.join(', ')]);
-                    const tc = bridgeTopEntries(b.top_clients, 3);
-                    if (tc.length) det.rows.push(['Топ клиенты', tc.join(', ')]);
-                }
-            } catch(e) {}
-        }
-        details[svc.id] = det;
+        } catch(e) { /* нет данных — покажем только статус */ }
     }));
 
     let html = '<div id="bridge-stats-zone"><h3 style="margin-top:30px;display:flex;align-items:center;gap:8px;">' +
