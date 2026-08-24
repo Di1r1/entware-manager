@@ -47,10 +47,14 @@ func TestParseAuthLine(t *testing.T) {
 func TestHandleAuthLog(t *testing.T) {
 	dir := t.TempDir()
 	logsDir = dir
-	today := time.Now().Format("2006-01-02")
-	content := "[2026-08-23 09:00:00] [INFO] [192.168.3.5] [100] [login.cgi] Успешный вход\n" +
-		"[2026-08-23 09:30:00] [WARN] [203.0.113.7] [101] [login.cgi] Неверный пароль при входе\n" +
-		"[2026-08-23 09:31:00] [WARN] [other-daemon] событие не про логин\n"
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	ts := func(offset time.Duration) string {
+		return now.Add(offset).Format("2006-01-02 15:04:05")
+	}
+	content := "[" + ts(-90*time.Minute) + "] [INFO] [192.168.3.5] [100] [login.cgi] Успешный вход\n" +
+		"[" + ts(-30*time.Minute) + "] [WARN] [203.0.113.7] [101] [login.cgi] Неверный пароль при входе\n" +
+		"[" + ts(-29*time.Minute) + "] [WARN] [other-daemon] событие не про логин\n"
 	if err := os.WriteFile(filepath.Join(dir, today+".log"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +66,7 @@ func TestHandleAuthLog(t *testing.T) {
 	}
 	var entries []authLogEntry
 	failed := 0
-	dayAgo := time.Now().Add(-24 * time.Hour)
-	now := time.Now()
+	dayAgo := now.Add(-24 * time.Hour)
 	for _, ln := range splitLines(string(data)) {
 		e, ok := parseAuthLine(ln)
 		if !ok {
