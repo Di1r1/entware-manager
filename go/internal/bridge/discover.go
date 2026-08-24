@@ -8,7 +8,6 @@
 package bridge
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -84,31 +83,15 @@ func clientBridge() *http.Client {
 	}
 }
 
-// probeOne классифицирует одну пробу.
-func probeOne(client *http.Client, url string) ServiceState {
-	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return ServiceState{State: "absent", Detail: "bad url"}
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return ServiceState{State: "absent"}
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
-
+// classify определяет состояние по ответу пробы.
+func classify(code int, contentType string, body []byte) ServiceState {
 	switch {
-	case resp.StatusCode == 200:
-		if isJSONBody(resp.Header.Get("Content-Type"), body) || looksLikeJSON(body) {
-			return ServiceState{State: "running"}
-		}
+	case code == 200:
 		return ServiceState{State: "running"} // 200 = жив (ttyd/syncthing отдают HTML)
-	case resp.StatusCode == 401 || resp.StatusCode == 403:
-		return ServiceState{State: "auth_required", Detail: fmt.Sprintf("HTTP %d", resp.StatusCode)}
+	case code == 401 || code == 403:
+		return ServiceState{State: "auth_required", Detail: fmt.Sprintf("HTTP %d", code)}
 	default:
-		return ServiceState{State: "absent", Detail: fmt.Sprintf("HTTP %d", resp.StatusCode)}
+		return ServiceState{State: "absent", Detail: fmt.Sprintf("HTTP %d", code)}
 	}
 }
 
@@ -158,7 +141,17 @@ func Discover(bridgeDir string) []ServiceState {
 			add(ServiceState{ID: id, Name: name, State: "absent", Detail: "budget"})
 			return
 		}
-		st := probeOne(client, url)
+		// Проба через authedDo: сервисы с сохранёнными creds (например,
+		// AdGuard Home) показываются как running, а не auth_required.
+		resp, err := authedDo(client, bridgeDirVar, id, http.MethodGet, url)
+		if err != nil {
+			add(ServiceState{ID: id, Name: name, State: "absent"})
+			return
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
+		resp.Body.Close()
+
+		st := classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 		st.ID, st.Name = id, name
 		add(st)
 	}

@@ -29,7 +29,15 @@ func handleStats() {
 		cgiutil.WriteError("укажите id")
 		return
 	}
-	sp, err := bridge.ProxyStats(bridgeDirVarPath(), id)
+	var (
+		sp  *bridge.StatusProxy
+		err error
+	)
+	if cgiutil.GetQueryParam("block") == "status" {
+		sp, err = bridge.ProxyStatus(bridgeDirVarPath(), id)
+	} else {
+		sp, err = bridge.ProxyStats(bridgeDirVarPath(), id)
+	}
 	if err != nil {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
