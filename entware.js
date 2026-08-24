@@ -1920,7 +1920,7 @@ async function renderBridgeCardsOnStats() {
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
-            const rows = details[s.id] || [];
+            const det = details[s.id] || { tiles: [], rows: [], chips: [] };
             const isKoffe = s.id === 'koffe';
             return '<div class="stat-card" style="min-width:230px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
