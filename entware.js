@@ -1765,34 +1765,208 @@ async function openBridgeEditorBlank(editId, title, presetJson) {
             if (r.found) jsonText = r.json;
         } catch(e) {}
     }
-    renderBridgeEditor(title, editId || '', jsonText, !!editId && !!presetJson === false ? false : !!editId);
+    renderBridgeEditor(title, editId || '', jsonText);
 }
 
-async function openBridgeEditorFill(id, jsonText) {
-    renderBridgeEditor('Редактирование: ' + id, id, jsonText, true);
+function openBridgeEditorFill(id, jsonText) {
+    renderBridgeEditor('Редактирование: ' + id, id, jsonText);
 }
 
-function renderBridgeEditor(title, editId, jsonText, isExisting) {
+let bridgeProbeCache = null;
+let bridgeProbeTab = '';
+
+const BRIDGE_KEYS_HELP =
+    '<details style="margin-top:12px;"><summary style="cursor:pointer;font-weight:600;">Все ключи манифеста</summary>' +
+    '<table class="packages-table" style="margin-top:8px;">' +
+    '<thead><tr><th>Ключ</th><th>Назначение</th></tr></thead><tbody>' +
+    '<tr><td><code>id</code></td><td>латиница/цифры/-/_ до 32 симв., совпадает с именем файла</td></tr>' +
+    '<tr><td><code>name</code></td><td>название на карточке</td></tr>' +
+    '<tr><td><code>base</code></td><td>базовый адрес, остальные пути относительны него</td></tr>' +
+    '<tr><td><code>probe</code></td><td>{url, expect, method, body} — проверка «жив ли»</td></tr>' +
+    '<tr><td><code>status</code>/<code>stats</code></td><td>JSON-источники данных карточки</td></tr>' +
+    '<tr><td><code>extra</code></td><td>{имя: {url, slice_last}} — доп. источники (до 8)</td></tr>' +
+    '<tr><td><code>ports</code></td><td>кандидаты портов для авто-поиска</td></tr>' +
+    '<tr><td><code>fields[]</code></td><td>поля карточки (до 24): path · label · from (status/stats/имя extra) · type (bool, bytes, count, num, ms, dur, top) · tile · color · on/off</td></tr>' +
+    '<tr><td><code>actions[]</code></td><td>кнопки (до 10): id · label · method · url · body · confirm</td></tr>' +
+    '</tbody></table>' +
+    '<p style="font-size:0.82rem;color:var(--text-muted);">Адреса только http://127.0.0.1:порт… Логины/пароли приложений сюда НЕ вносятся — отдельный секретный файл через форму авторизации на карточке.</p></details>';
+
+function renderBridgeEditor(title, editId, jsonText) {
     const contentDiv = document.getElementById('content');
     contentDiv.innerHTML =
         '<h2><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=6#icon-file"/></svg> ' + escapeHtml(title) + '</h2>' +
-        '<p style="color:var(--text-muted);">JSON-манифест модуля. Поле <code>id</code> должно совпадать с именем файла. Подробности — во вкладке «Справка», раздел «Модули».</p>' +
-        '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">' +
-        '<label>ID файла: <input type="text" id="br-ed-id" class="settings-input" value="' + escapeHtml(editId) + '"' + (isExisting ? ' readonly style="background:var(--input-bg);"' : '') + '></label>' +
+        '<p style="color:var(--text-muted);">JSON-манифест модуля. Поле <code>id</code> должно совпадать с именем файла. Справа — сканер: он показывает, что отдают адреса сервиса, и позволяет добавить поля на карточку одним кликом.</p>' +
+        '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">' +
+        // Левая панель: редактор
+        '<div style="flex:1 1 420px;min-width:0;">' +
+        '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">' +
+        '<label>ID файла: <input type="text" id="br-ed-id" class="settings-input" value="' + escapeHtml(editId) + '"' + (editId ? ' readonly style="background:var(--input-bg);"' : '') + '></label>' +
         '<span id="br-ed-exists" style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
-        '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:320px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
+        '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:380px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
         '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
         '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeManifest()">Сохранить</button>' +
+        '<button class="packages-delete-btn" onclick="bridgeScanManifest()">Сканировать</button>' +
         '<button class="packages-delete-btn" style="background:#4a5568;" onclick="renderBridgeTab()">Отмена</button>' +
         '<span id="br-ed-status"></span></div>' +
-        '<div style="margin-top:14px;font-size:0.82rem;color:var(--text-muted);">' +
-        '<b>Подсказки по полям:</b><br>' +
-        '<code>id</code> — латиница/цифры/дефис, до 32 символов · ' +
-        '<code>base</code> — базовый адрес, остальные пути относительны него · ' +
-        '<code>probe</code> — адрес проверки «жив ли» (любой путь с ответом 200) · ' +
-        '<code>status</code>/<code>stats</code>/<code>extra</code> — JSON-адреса для карточки · ' +
-        '<code>actions[].confirm</code> — кнопка запросит повторный пароль.<br>' +
-        'Адреса только http://127.0.0.1:порт... Логины/пароли приложений сюда НЕ вносятся — для них отдельный секретный файл через форму авторизации на карточке.</div>';
+        BRIDGE_KEYS_HELP +
+        '</div>' +
+        // Правая панель: сканер
+        '<div style="flex:1 1 380px;min-width:0;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--card-bg,#1a202c);">' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">' +
+        '<b>Сканер</b>' +
+        '<button class="packages-delete-btn" style="padding:3px 10px;" onclick="bridgeScanManifest()">Опросить сервис</button>' +
+        '</div>' +
+        '<div id="br-scan-status" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">Нажмите «Сканировать» — панель опросит адреса из манифеста на 127.0.0.1 и покажет, какие поля можно добавить в <code>fields[]</code>.</div>' +
+        '<div id="br-probe-tabs" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>' +
+        '<div id="br-probe-body"></div>' +
+        '</div>' +
+        '</div>';
+    if (editId) bridgeScanManifest(); // авто-скан при открытии сохранённого модуля
+}
+
+function brSourceTitle(name) {
+    if (name === 'status') return 'status';
+    if (name === 'stats') return 'stats';
+    return name.replace(/^extra\./, 'extra: ');
+}
+
+function renderProbeResult(probe) {
+    const tabsDiv = document.getElementById('br-probe-tabs');
+    const bodyDiv = document.getElementById('br-probe-body');
+    const stDiv = document.getElementById('br-scan-status');
+    if (!tabsDiv || !bodyDiv) return;
+
+    let msg = '';
+    if (probe.valid) msg += '<span style="color:#38a169;">Манифест валиден.</span> ';
+    else if (probe.validation_error) msg += '<span style="color:#e53e3e;">Валидация: ' + escapeHtml(probe.validation_error) + '</span> ';
+    stDiv.innerHTML = msg || '';
+
+    const sources = probe.sources || [];
+    tabsDiv.style.display = sources.length ? 'flex' : 'none';
+    if (!sources.length && !msg) stDiv.innerHTML = 'Источники не найдены — добавьте <code>status</code>/<code>stats</code>.';
+
+    if (bridgeProbeTab === '' || !sources.some(s => s.name === bridgeProbeTab)) {
+        bridgeProbeTab = sources.length ? sources[0].name : '';
+    }
+    tabsDiv.innerHTML = sources.map(s => {
+        const active = s.name === bridgeProbeTab;
+        const bg = active ? '#3182ce' : '#4a5568';
+        return '<button class="packages-delete-btn" style="background:' + bg + ';padding:3px 10px;" onclick="switchProbeTab(\'' + escapeHtml(s.name) + '\')">' + escapeHtml(brSourceTitle(s.name)) + '</button>';
+    }).join('');
+
+    const cur = sources.find(s => s.name === bridgeProbeTab);
+    if (!cur) { bodyDiv.innerHTML = ''; return; }
+    let html = '';
+    if (probe.listen_ports && probe.listen_ports.length) {
+        const anyErr = sources.some(s => s.error);
+        if (anyErr) {
+            html += '<div style="font-size:0.8rem;margin-bottom:8px;">Открытые TCP-порты роутера (клик — подставить в <code>base</code>):</div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
+                probe.listen_ports.map(p => '<button class="packages-delete-btn" style="background:#4a5568;padding:2px 9px;font-size:0.78rem;" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>').join('') +
+                '</div>';
+        }
+    }
+    if (cur.url !== undefined) html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;"><code>' + escapeHtml(cur.url) + '</code></div>';
+    if (cur.http_code) html += '<div style="font-size:0.78rem;color:' + (cur.http_code < 400 ? '#38a169' : '#e53e3e') + ';margin-bottom:6px;">HTTP ' + cur.http_code + '</div>';
+    if (cur.error) {
+        html += '<div style="color:#e53e3e;font-size:0.85rem;">' + escapeHtml(cur.error) + '</div>';
+        bodyDiv.innerHTML = html;
+        return;
+    }
+    const paths = cur.paths || [];
+    if (!paths.length) {
+        html += '<div style="color:var(--text-muted);">Пустой ответ или нет JSON-полей.</div>';
+        bodyDiv.innerHTML = html;
+        return;
+    }
+    const added = addedFieldPaths();
+    html += '<div style="max-height:340px;overflow:auto;">';
+    for (const p of paths) {
+        const isAdded = added.indexOf(p.path) >= 0;
+        html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
+            '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
+            ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
+            (p.guess ? ' <span style="color:#63b3ed;font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
+            (isAdded
+                ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
+                : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeField(\'' + escapeHtml(p.path) + '\',\'' + escapeHtml(p.guess || '') + '\',\'' + escapeHtml(bridgeProbeTab) + '\')">+ поле</button>') +
+            '</div>';
+    }
+    html += '</div>';
+    bodyDiv.innerHTML = html;
+}
+
+function switchProbeTab(name) {
+    bridgeProbeTab = name;
+    if (bridgeProbeCache) renderProbeResult(bridgeProbeCache);
+}
+
+// setBridgeBasePort — подстановка порта из списка слушающих в base + перескан.
+function setBridgeBasePort(port) {
+    let m;
+    try {
+        m = JSON.parse(document.getElementById('br-ed-json').value);
+    } catch(e) {
+        Toast.show('Сначала исправьте JSON манифеста');
+        return;
+    }
+    m.base = 'http://127.0.0.1:' + port;
+    document.getElementById('br-ed-json').value = JSON.stringify(m, null, 2);
+    Toast.show('base = http://127.0.0.1:' + port);
+    bridgeScanManifest();
+}
+
+// addedFieldPaths — пути уже прописанные в fields[] редактора.
+function addedFieldPaths() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        return (m.fields || []).map(f => f.path);
+    } catch(e) { return []; }
+}
+
+// addBridgeField вставляет запись в fields[] текста манифеста в редакторе.
+function addBridgeField(path, guess, source) {
+    let m;
+    try {
+        m = JSON.parse(document.getElementById('br-ed-json').value);
+    } catch(e) {
+        Toast.show('Сначала исправьте JSON манифеста');
+        return;
+    }
+    if (!Array.isArray(m.fields)) m.fields = [];
+    if (m.fields.some(f => f.path === path)) { Toast.show('Поле уже добавлено'); return; }
+    if (m.fields.length >= 24) { Toast.show('Достигнут лимит полей (24)'); return; }
+    const segs = path.split('.');
+    const key = segs[segs.length - 1];
+    const f = { path: path, label: key.replace(/_/g, ' ') };
+    if (source && source !== 'status') f.from = source.replace(/^extra\./, '');
+    if (guess) f.type = guess;
+    if (guess === 'bool' || guess === 'num' || guess === 'bytes' || guess === 'ms') f.tile = true;
+    m.fields.push(f);
+    document.getElementById('br-ed-json').value = JSON.stringify(m, null, 2);
+    Toast.show('Поле «' + path + '» добавлено в fields');
+    if (bridgeProbeCache) renderProbeResult(bridgeProbeCache);
+}
+
+async function bridgeScanManifest(isRetry) {
+    const raw = document.getElementById('br-ed-json').value;
+    const st = document.getElementById('br-scan-status');
+    if (st) st.innerHTML = 'Опрос сервиса…';
+    try {
+        const res = await apiPost('/bridge_probe.cgi', 'body=' + encodeURIComponent(raw));
+        if (res.status !== 'ok') {
+            // упёрлись в rate-limit сразу после клика по порту — тихо повторяем через секунду
+            if (!isRetry && /Слишком часто/.test(res.message || '')) {
+                setTimeout(() => bridgeScanManifest(true), 1100);
+                return;
+            }
+            throw new Error(res.message || res.error || res.status);
+        }
+        bridgeProbeCache = res.probe || {};
+        renderProbeResult(bridgeProbeCache);
+    } catch(e) {
+        if (st) st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>';
+    }
 }
 
 async function saveBridgeManifest() {

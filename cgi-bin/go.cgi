@@ -114,7 +114,7 @@ cgi-bin)
 		ENDPOINT="$name" exec "$(go_bin rdp)" ;;
 	telegram_config|telegram_test)
 		ENDPOINT="$name" exec "$(go_bin telegram)" ;;
-	bridge_auth|bridge_card|bridge_delete|bridge_discover|bridge_manifest|bridge_prefs|bridge_action|bridge_save|bridge_stats|bridge_watch)
+	bridge_auth|bridge_card|bridge_delete|bridge_discover|bridge_manifest|bridge_prefs|bridge_action|bridge_save|bridge_stats|bridge_watch|bridge_probe)
 		ENDPOINT="$name" exec "$(go_bin bridge)" ;;
 	*)
 		echo "Content-type: text/plain"

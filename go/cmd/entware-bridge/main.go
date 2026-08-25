@@ -45,6 +45,8 @@ func main() {
 		handleManifestSave()
 	case "bridge_delete":
 		handleManifestDelete()
+	case "bridge_probe":
+		handleProbe()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}

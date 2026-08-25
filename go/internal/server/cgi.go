@@ -61,7 +61,7 @@ var flatDispatch = map[string]string{
 	"bridge_discover": "bridge", "bridge_status": "bridge", "bridge_action": "bridge",
 	"bridge_auth": "bridge", "bridge_delete": "bridge", "bridge_manifest": "bridge",
 	"bridge_prefs": "bridge", "bridge_save": "bridge", "bridge_stats": "bridge",
-	"bridge_card": "bridge", "bridge_watch": "bridge",
+	"bridge_card": "bridge", "bridge_watch": "bridge", "bridge_probe": "bridge",
 }
 
 // subdirDispatch — подкаталоги /entware-cgi/<dir>/<name>.cgi.
