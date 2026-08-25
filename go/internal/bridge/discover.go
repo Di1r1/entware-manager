@@ -213,10 +213,10 @@ func Discover(bridgeDir string) []ServiceState {
 			}
 			// Порты-кандидаты манифеста (native/entware): первый не-absent выигрывает.
 			if len(m.Ports) > 0 {
-				var best ServiceState
+				best := ServiceState{State: "absent"}
 				for _, port := range m.Ports {
 					resp, err := authedDo(client, bridgeDirVar, m.ID, http.MethodGet,
-						fmt.Sprintf("http://127.0.0.1:%d%s", port, u.Path), "")
+						fmt.Sprintf("http://127.0.0.1:%d%s?%s", port, u.Path, u.RawQuery), "")
 					if err != nil {
 						continue
 					}
