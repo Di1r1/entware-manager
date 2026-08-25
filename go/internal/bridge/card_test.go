@@ -77,3 +77,19 @@ func stringsSplit(s string) []string {
 	out = append(out, cur)
 	return out
 }
+
+func TestFormatValueStringNumbers(t *testing.T) {
+	// Netdata отдаёт числа строками: "1039433728" → 991.3 МБ, "3" → 3
+	if got := formatValue("1039433728", "bytes"); got != "991.3 МБ" {
+		t.Errorf("bytes из строки: %q (ожидался \"991.3 МБ\")", got)
+	}
+	if got := formatValue("3", "num"); got != "3" {
+		t.Errorf("num из строки: %q", got)
+	}
+	if got := formatValue("12", "count"); got != "12" {
+		t.Errorf("count из строки: %q", got)
+	}
+	if got := formatValue("abc", "bytes"); got != "" {
+		t.Errorf("нестрока-число должна дать пусто: %q", got)
+	}
+}

@@ -1857,14 +1857,23 @@ function renderProbeResult(probe) {
     const cur = sources.find(s => s.name === bridgeProbeTab);
     if (!cur) { bodyDiv.innerHTML = ''; return; }
     let html = '';
+    // Порты показываем всегда после сканирования: можно вернуться
+    // и переключить порт даже после удачной подстановки.
     if (probe.listen_ports && probe.listen_ports.length) {
-        const anyErr = sources.some(s => s.error);
-        if (anyErr) {
-            html += '<div style="font-size:0.8rem;margin-bottom:8px;">Открытые TCP-порты роутера (клик — подставить в <code>base</code>):</div>' +
-                '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
-                probe.listen_ports.map(p => '<button class="packages-delete-btn" style="background:#4a5568;padding:2px 9px;font-size:0.78rem;" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>').join('') +
-                '</div>';
-        }
+        const curPort = currentBasePort();
+        html += '<div style="font-size:0.8rem;margin-bottom:6px;">Открытые TCP-порты роутера (клик — подставить в <code>base</code>):</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
+            probe.listen_ports.map(p => {
+                const active = p === curPort;
+                return '<button class="packages-delete-btn" style="background:' + (active ? '#3182ce' : '#4a5568') + ';padding:2px 9px;font-size:0.78rem;' + (active ? 'outline:1px solid #63b3ed;' : '') + '" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>';
+            }).join('') +
+            '</div>';
+    }
+    const sug = probe.suggestions || [];
+    if (sug.length) {
+        html += '<div style="font-size:0.85rem;margin-bottom:10px;">Похоже, на этом порту работает:' +
+            sug.map(s => '<button class="packages-delete-btn" style="background:#2ecc71;padding:3px 10px;" onclick="applyBridgeSuggestion(\'' + escapeHtml(s.path) + '\')">' + escapeHtml(s.service) + ' <span style="font-family:monospace;font-size:0.75rem;">' + escapeHtml(s.path) + '</span></button>').join(' ') +
+            '</div>';
     }
     if (cur.url !== undefined) html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;"><code>' + escapeHtml(cur.url) + '</code></div>';
     if (cur.http_code) html += '<div style="font-size:0.78rem;color:' + (cur.http_code < 400 ? '#38a169' : '#e53e3e') + ';margin-bottom:6px;">HTTP ' + cur.http_code + '</div>';
@@ -1880,10 +1889,15 @@ function renderProbeResult(probe) {
         return;
     }
     const added = addedFieldPaths();
-    html += '<div style="max-height:340px;overflow:auto;">';
+    if (cur.total && cur.total > paths.length) {
+        html += '<div style="font-size:0.78rem;color:#e6a23c;margin-bottom:4px;">Показано ' + paths.length + ' из ' + cur.total + ' путей (лимит сканера). Ищите нужное через фильтр ниже.</div>';
+    }
+    html += '<input type="text" id="br-probe-filter" class="settings-input" placeholder="Фильтр по пути… (например: ram)" style="width:100%;margin-bottom:6px;font-size:12px;" oninput="filterProbeRows()">';
+    html += '<div id="br-probe-count" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;"></div>';
+    html += '<div style="max-height:340px;overflow:auto;" id="br-probe-list">';
     for (const p of paths) {
         const isAdded = added.indexOf(p.path) >= 0;
-        html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
+        html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
             ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
             (p.guess ? ' <span style="color:#63b3ed;font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
@@ -1896,9 +1910,49 @@ function renderProbeResult(probe) {
     bodyDiv.innerHTML = html;
 }
 
+// filterProbeRows — фильтр списка путей сканера по подстроке (без перерисовки).
+function filterProbeRows() {
+    const q = (document.getElementById('br-probe-filter') || {}).value || '';
+    const needle = q.trim().toLowerCase();
+    let shown = 0, all = 0;
+    document.querySelectorAll('#br-probe-list .br-probe-row').forEach(function(row) {
+        all++;
+        const ok = !needle || row.getAttribute('data-path').indexOf(needle) >= 0;
+        row.style.display = ok ? 'flex' : 'none';
+        if (ok) shown++;
+    });
+    const cnt = document.getElementById('br-probe-count');
+    if (cnt) cnt.innerHTML = needle ? 'Найдено: ' + shown + ' из ' + all : '';
+}
+
 function switchProbeTab(name) {
     bridgeProbeTab = name;
     if (bridgeProbeCache) renderProbeResult(bridgeProbeCache);
+}
+
+// currentBasePort — порт из base текущего текста манифеста (для подсветки).
+function currentBasePort() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        const mo = (m.base || '').match(/:(\d+)\s*\/?$/);
+        return mo ? parseInt(mo[1], 10) : null;
+    } catch(e) { return null; }
+}
+
+// applyBridgeSuggestion — подстановка найденного API-пути в status/probe.
+function applyBridgeSuggestion(path) {
+    let m;
+    try {
+        m = JSON.parse(document.getElementById('br-ed-json').value);
+    } catch(e) {
+        Toast.show('Сначала исправьте JSON манифеста');
+        return;
+    }
+    m.status = { url: path };
+    if (!m.probe || !m.probe.url) m.probe = { url: path };
+    document.getElementById('br-ed-json').value = JSON.stringify(m, null, 2);
+    Toast.show('status = ' + path);
+    bridgeScanManifest();
 }
 
 // setBridgeBasePort — подстановка порта из списка слушающих в base + перескан.

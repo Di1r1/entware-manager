@@ -215,8 +215,10 @@ func Discover(bridgeDir string) []ServiceState {
 			if len(m.Ports) > 0 {
 				best := ServiceState{State: "absent"}
 				for _, port := range m.Ports {
-					resp, err := authedDo(client, bridgeDirVar, m.ID, http.MethodGet,
-						fmt.Sprintf("http://127.0.0.1:%d%s?%s", port, u.Path, u.RawQuery), "")
+					resp, err := authedDo(client, bridgeDirVar, m.ID,
+						m.Probe.MethodOrGET(),
+						fmt.Sprintf("http://127.0.0.1:%d%s?%s", port, u.Path, u.RawQuery),
+						m.Probe.Body)
 					if err != nil {
 						continue
 					}
@@ -232,8 +234,9 @@ func Discover(bridgeDir string) []ServiceState {
 				add(best)
 				return
 			}
-			// Обычный манифест без портов-кандидатов — пробуем resolved URL.
-			resp, err := authedDo(client, bridgeDirVar, m.ID, http.MethodGet, u.String(), "")
+			// Обычный манифест без портов-кандидатов — пробуем resolved URL
+			// с методом/телом из probe (aria2 и другие JSON-RPC отвечают только на POST).
+			resp, err := authedDo(client, bridgeDirVar, m.ID, m.Probe.MethodOrGET(), u.String(), m.Probe.Body)
 			if err != nil {
 				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", HasManifest: true})
 				return

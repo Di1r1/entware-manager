@@ -19,7 +19,7 @@ func findPath(paths []ProbePath, path string) *ProbePath {
 }
 
 func TestFlattenJSON(t *testing.T) {
-	var out []ProbePath
+	pc := &pathCollector{}
 	body := map[string]interface{}{
 		"version":             "1.2.3",
 		"protection_enabled":  true,
@@ -29,7 +29,8 @@ func TestFlattenJSON(t *testing.T) {
 		"total":               map[string]interface{}{"queries": float64(42)},
 		"top_clients":         []interface{}{map[string]interface{}{"ya.ru": float64(500)}},
 	}
-	flattenJSON("", body, 0, &out)
+	flattenJSON("", body, 0, pc)
+	out := pc.paths
 	if len(out) < 8 {
 		t.Fatalf("мало путей: %d", len(out))
 	}
@@ -65,10 +66,13 @@ func TestFlattenJSONLimits(t *testing.T) {
 	for i := 0; i < maxProbePaths+20; i++ {
 		big["k"+string(rune('a'+i%26))+itoa(i)] = float64(i)
 	}
-	var out []ProbePath
-	flattenJSON("", big, 0, &out)
-	if len(out) > maxProbePaths {
-		t.Errorf("лимит %d превышен: %d", maxProbePaths, len(out))
+	pc := &pathCollector{}
+	flattenJSON("", big, 0, pc)
+	if len(pc.paths) > maxProbePaths {
+		t.Errorf("лимит %d превышен: %d", maxProbePaths, len(pc.paths))
+	}
+	if pc.total <= len(pc.paths) {
+		t.Errorf("total должен считать все пути: total=%d paths=%d", pc.total, len(pc.paths))
 	}
 }
 
@@ -220,5 +224,48 @@ func TestReachableFromLoopback(t *testing.T) {
 		if got := reachableFromLoopback(c.hex); got != c.want {
 			t.Errorf("reachableFromLoopback(%q) = %v, ждём %v", c.hex, got, c.want)
 		}
+	}
+}
+
+// TestProbeSuggestions — порт отвечает (404 на мусорный путь), но данные
+// не получены → сканер предлагает известный API-путь Netdata.
+func TestProbeSuggestions(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/info" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"version":"v1.33.1","ram_total":"1024"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	tmpl := `{"id":"t","name":"T","base":"` + srv.URL + `","probe":{"url":"/"},"status":{"url":"/api/status"}}`
+	res := ProbeManifestData([]byte(tmpl))
+	if len(res.Suggestions) == 0 {
+		t.Fatalf("подсказок нет: %+v", res)
+	}
+	found := false
+	for _, s := range res.Suggestions {
+		if s.Service == "Netdata" && s.Path == "/api/v1/info" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("нет подсказки Netdata: %+v", res.Suggestions)
+	}
+
+	// рабочий манифест — подсказки не нужны
+	ok := `{"id":"t2","name":"T","base":"` + srv.URL + `","probe":{"url":"/api/v1/info"},"status":{"url":"/api/v1/info"}}`
+	res2 := ProbeManifestData([]byte(ok))
+	if len(res2.Suggestions) != 0 {
+		t.Errorf("лишние подсказки при рабочих источниках: %+v", res2.Suggestions)
+	}
+
+	// мёртвый порт — подсказки не ищем
+	dead := `{"id":"t3","name":"T","base":"http://127.0.0.1:1","probe":{"url":"/"},"status":{"url":"/x"}}`
+	res3 := ProbeManifestData([]byte(dead))
+	if len(res3.Suggestions) != 0 {
+		t.Errorf("подсказки для недоступного порта: %+v", res3.Suggestions)
 	}
 }

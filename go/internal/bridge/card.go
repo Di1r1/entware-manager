@@ -214,6 +214,10 @@ func formatValue(v interface{}, typ string) string {
 			return strconv.Itoa(len(t))
 		case float64:
 			return strconv.Itoa(int(t))
+		case string:
+			if f, err := strconv.ParseFloat(strings.TrimSpace(t), 64); err == nil {
+				return strconv.Itoa(int(f))
+			}
 		}
 		return "0"
 	case "bytes":
@@ -247,8 +251,15 @@ func toF(v interface{}) float64 {
 }
 
 func toFloat(v interface{}) (float64, bool) {
-	f, ok := v.(float64)
-	return f, ok
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case string:
+		// некоторые сервисы (Netdata) отдают числа строками
+		f, err := strconv.ParseFloat(strings.TrimSpace(t), 64)
+		return f, err == nil
+	}
+	return 0, false
 }
 
 // humanBytesServer — человекочитаемый размер для серверных плиток.
