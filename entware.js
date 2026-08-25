@@ -1848,6 +1848,32 @@ async function bridgeKoffeRows() {
     return {rows: rows};
 }
 
+function renderBridgeTile(t) {
+    return '<div class="bd-tile"><div class="bd-tile-label">' + escapeHtml(t.label) + '</div>' +
+        '<div class="bd-tile-value"' + (t.color ? ' style="color:' + t.color + ';"' : '') + '>' +
+        escapeHtml(t.value) + '</div></div>';
+}
+
+var trTilesTimer = null;
+var trTilesBusy = false;
+
+// startTrTilesTimer — скорости Transmission каждые 5 сек без перерисовки страницы.
+function startTrTilesTimer() {
+    if (trTilesTimer) clearInterval(trTilesTimer);
+    trTilesTimer = setInterval(async () => {
+        if (!document.getElementById('tr-tiles-box')) { clearInterval(trTilesTimer); return; }
+        if (trTilesBusy) return;
+        trTilesBusy = true;
+        try {
+            const res = await apiGet('/bridge_card.cgi?id=transmission');
+            if (res.status === 'ok' && res.card && res.card.tiles) {
+                document.getElementById('tr-tiles-box').innerHTML =
+                    res.card.tiles.map(renderBridgeTile).join('');
+            }
+        } catch(e) {} finally { trTilesBusy = false; }
+    }, 5000);
+}
+
 // Детальная строка для карточки на Статистике — из статуса приложения.
 // bridgeTopEntries — имена из массива {"ключ": число} (AGH stats), топ N.
 // Ключи показываются целиком: полные домены и IP-адреса без обрезки
@@ -2046,18 +2072,29 @@ async function renderBridgeCardsOnStats() {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
             const det = details[s.id] || { tiles: [], rows: [], chips: [] };
             const isKoffe = s.id === 'koffe';
+            const isTr = s.id === 'transmission';
+            // Плитки Transmission — в отдельный контейнер для живого обновления
+            let htmlBody = '';
+            if (isTr) {
+                htmlBody += '<div class="bd-tiles" id="tr-tiles-box">' +
+                    det.tiles.map(renderBridgeTile).join('') + '</div>';
+            }
+            htmlBody += renderBridgeDetails({ tiles: [], rows: det.rows, chips: det.chips });
             return '<div class="stat-card" style="min-width:230px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
                 escapeHtml(s.name) +
                 '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
                 '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
-                renderBridgeDetails(det) +
+                htmlBody +
                 (isKoffe ? '<div id="koffe-spark-box"></div>' : '') +
                 '</div>';
         }).join('') + '</div></div>';
     statsContent.insertAdjacentHTML('afterend', html);
 
     bindBridgeCards(document.getElementById('bridge-stats-zone'));
+
+    // Живые плитки Transmission: обновление каждые 5 сек
+    if (details['transmission']) startTrTilesTimer();
 
     // Живой спарклайн Koffe: первичный рендер + обновление каждые 10 сек
     if (koffeHistData && koffeHistData.length >= 3) {
@@ -2071,10 +2108,7 @@ async function renderBridgeCardsOnStats() {
 function renderBridgeDetails(d) {
     let html = '';
     if (d.tiles && d.tiles.length) {
-        html += '<div class="bd-tiles">' + d.tiles.map(t =>
-            '<div class="bd-tile"><div class="bd-tile-label">' + escapeHtml(t.label) + '</div>' +
-            '<div class="bd-tile-value"' + (t.color ? ' style="color:' + t.color + ';"' : '') + '>' +
-            escapeHtml(t.value) + '</div></div>').join('') + '</div>';
+        html += '<div class="bd-tiles">' + d.tiles.map(renderBridgeTile).join('') + '</div>';
     }
     if (d.chips && d.chips.length) {
         html += '<div class="bd-chips">' + d.chips.map(c =>
