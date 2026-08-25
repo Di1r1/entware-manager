@@ -2076,10 +2076,13 @@ async function renderBridgeCardsOnStats() {
             // Плитки Transmission — в отдельный контейнер для живого обновления
             let htmlBody = '';
             if (isTr) {
+                // Плитки Transmission — в отдельный контейнер живого обновления
                 htmlBody += '<div class="bd-tiles" id="tr-tiles-box">' +
                     det.tiles.map(renderBridgeTile).join('') + '</div>';
+                htmlBody += renderBridgeDetails({ tiles: [], rows: det.rows, chips: det.chips });
+            } else {
+                htmlBody += renderBridgeDetails(det);
             }
-            htmlBody += renderBridgeDetails({ tiles: [], rows: det.rows, chips: det.chips });
             return '<div class="stat-card" style="min-width:230px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
                 escapeHtml(s.name) +
