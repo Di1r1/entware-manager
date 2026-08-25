@@ -1467,6 +1467,9 @@ function renderBridgeCard(svc, prefs) {
         escapeHtml(svc.id) + '" data-action="' + escapeHtml(a.id) + '"' +
         (a.confirm ? ' data-confirm="1"' : '') + '>' + escapeHtml(a.label) + '</button>'
     ).join(' ') : '';
+    const builtinIds = ['koffe','adguard','ttyd','transmission','syncthing'];
+    const canDelete = svc.has_manifest && builtinIds.indexOf(svc.id) === -1;
+    const deleteHtml = canDelete ? '<button class="packages-delete-btn bridge-delete" style="background:#c0392b;padding:4px 10px;font-size:0.8rem;" data-delete-id="' + escapeHtml(svc.id) + '">Удалить</button>' : '';
     return '<div class="stat-card" style="min-width:230px;' + dimStyle + '">' +
         '<h4 style="margin:0 0 6px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
         '<span>' + escapeHtml(svc.name) + '</span>' +
@@ -1478,7 +1481,7 @@ function renderBridgeCard(svc, prefs) {
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
         '<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--text-muted);">' +
         '<input type="checkbox" class="bridge-notif" data-id="' + escapeHtml(svc.id) + '"' + (notif ? ' checked' : '') + '> уведомления</label>' +
-        actionsHtml + '</div></div>';
+        actionsHtml + deleteHtml + '</div></div>';
 }
 
 function bindBridgeCards(container) {
@@ -1522,6 +1525,21 @@ function bindBridgeCards(container) {
                     'id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action) +
                     '&password=' + encodeURIComponent(password));
                 if (res.status === 'ok') Toast.show('Выполнено (' + (res.result && res.result.raw || 'ok') + ')');
+                else Toast.show(res.message || res.status);
+            } catch(e) { Toast.show('Ошибка: ' + e.message); }
+            btn.disabled = false;
+        });
+    });
+    container.querySelectorAll('.bridge-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.deleteId;
+            if (!confirm('Удалить модуль «' + id + '»? Файл bridge/' + id + '.json будет удалён.')) return;
+            const password = prompt('Пароль панели:');
+            if (!password) return;
+            btn.disabled = true;
+            try {
+                const res = await apiPost('/bridge_delete.cgi', 'id=' + encodeURIComponent(id) + '&password=' + encodeURIComponent(password));
+                if (res.status === 'ok') { Toast.show('Удалён'); renderBridgeTab(); }
                 else Toast.show(res.message || res.status);
             } catch(e) { Toast.show('Ошибка: ' + e.message); }
             btn.disabled = false;

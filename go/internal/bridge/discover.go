@@ -55,10 +55,11 @@ func BuiltInCatalog() []CatalogEntry {
 
 // ServiceState — состояние одного сервиса в выдаче discovery.
 type ServiceState struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	State  string `json:"state"` // running | auth_required | absent
-	Detail string `json:"detail,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	State       string `json:"state"` // running | auth_required | absent | disabled
+	Detail      string `json:"detail,omitempty"`
+	HasManifest bool   `json:"has_manifest,omitempty"` // карточка из файла-манифеста (можно удалить)
 }
 
 // bridgeDirVar — каталог манифестов (переопределяется для тестов).
@@ -142,30 +143,6 @@ func Discover(bridgeDir string) []ServiceState {
 	client := clientBridge()
 	deadline := time.Now().Add(discoverBudget)
 
-	run := func(id, name, url string) {
-		if !IsEnabled(id) {
-			add(ServiceState{ID: id, Name: name, State: "disabled"})
-			return
-		}
-		if time.Now().After(deadline) {
-			add(ServiceState{ID: id, Name: name, State: "absent", Detail: "budget"})
-			return
-		}
-		// Проба через authedDo: сервисы с сохранёнными creds (например,
-		// AdGuard Home) показываются как running, а не auth_required.
-		resp, err := authedDo(client, bridgeDirVar, id, http.MethodGet, url, "")
-		if err != nil {
-			add(ServiceState{ID: id, Name: name, State: "absent"})
-			return
-		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
-		resp.Body.Close()
-
-		st := classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
-		st.ID, st.Name = id, name
-		add(st)
-	}
-
 	// Манифесты пользователя главнее каталога: если id совпал — проба каталога
 	// пропускается (иначе дубликаты карточек, найдено живым тестом).
 	manifests := ListManifests(bridgeDir)
@@ -176,6 +153,14 @@ func Discover(bridgeDir string) []ServiceState {
 
 	for _, e := range BuiltInCatalog() {
 		if catalogIDs[e.ID] {
+			continue
+		}
+		if !IsEnabled(e.ID) {
+			add(ServiceState{ID: e.ID, Name: e.Name, State: "disabled"})
+			continue
+		}
+		if time.Now().After(deadline) {
+			add(ServiceState{ID: e.ID, Name: e.Name, State: "absent", Detail: "budget"})
 			continue
 		}
 		wg.Add(1)
@@ -211,11 +196,19 @@ func Discover(bridgeDir string) []ServiceState {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
+			if !IsEnabled(m.ID) {
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "disabled", HasManifest: true})
+				return
+			}
+			if time.Now().After(deadline) {
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: "budget", HasManifest: true})
+				return
+			}
 			// Относительные probe-URL резолвим от базы через гейт
 			// (иначе http.NewRequest отклонит "?action=..." → ложное absent).
 			u, err := ValidateBridgeURL(m.Probe.URL, m.Base)
 			if err != nil {
-				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error()})
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error(), HasManifest: true})
 				return
 			}
 			// Порты-кандидаты манифеста (native/entware): первый не-absent выигрывает.
@@ -235,10 +228,22 @@ func Discover(bridgeDir string) []ServiceState {
 					}
 				}
 				best.ID, best.Name = m.ID, m.Name
+				best.HasManifest = true
 				add(best)
 				return
 			}
-			run(m.ID, m.Name, u.String())
+			// Обычный манифест без портов-кандидатов — пробуем resolved URL.
+			resp, err := authedDo(client, bridgeDirVar, m.ID, http.MethodGet, u.String(), "")
+			if err != nil {
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", HasManifest: true})
+				return
+			}
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeBody))
+			resp.Body.Close()
+			st := classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+			st.ID, st.Name = m.ID, m.Name
+			st.HasManifest = true
+			add(st)
 		}(m)
 	}
 
