@@ -1848,10 +1848,10 @@ function renderProbeResult(probe) {
     if (bridgeProbeTab === '' || !sources.some(s => s.name === bridgeProbeTab)) {
         bridgeProbeTab = sources.length ? sources[0].name : '';
     }
-    tabsDiv.innerHTML = sources.map(s => {
+    tabsDiv.innerHTML = sources.map((s, i) => {
         const active = s.name === bridgeProbeTab;
         const bg = active ? '#3182ce' : '#4a5568';
-        return '<button class="packages-delete-btn" style="background:' + bg + ';padding:3px 10px;" onclick="switchProbeTab(\'' + escapeHtml(s.name) + '\')">' + escapeHtml(brSourceTitle(s.name)) + '</button>';
+        return '<button class="packages-delete-btn" style="background:' + bg + ';padding:3px 10px;" onclick="switchProbeTabAt(' + i + ')">' + escapeHtml(brSourceTitle(s.name)) + '</button>';
     }).join('');
 
     const cur = sources.find(s => s.name === bridgeProbeTab);
@@ -1895,7 +1895,8 @@ function renderProbeResult(probe) {
     html += '<input type="text" id="br-probe-filter" class="settings-input" placeholder="Фильтр по пути… (например: ram)" style="width:100%;margin-bottom:6px;font-size:12px;" oninput="filterProbeRows()">';
     html += '<div id="br-probe-count" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;"></div>';
     html += '<div style="max-height:340px;overflow:auto;" id="br-probe-list">';
-    for (const p of paths) {
+    for (let pi = 0; pi < paths.length; pi++) {
+        const p = paths[pi];
         const isAdded = added.indexOf(p.path) >= 0;
         html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
@@ -1903,7 +1904,7 @@ function renderProbeResult(probe) {
             (p.guess ? ' <span style="color:#63b3ed;font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
             (isAdded
                 ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
-                : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeField(\'' + escapeHtml(p.path) + '\',\'' + escapeHtml(p.guess || '') + '\',\'' + escapeHtml(bridgeProbeTab) + '\')">+ поле</button>') +
+                : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeFieldAt(' + pi + ')">+ поле</button>') +
             '</div>';
     }
     html += '</div>';
@@ -1923,6 +1924,15 @@ function filterProbeRows() {
     });
     const cnt = document.getElementById('br-probe-count');
     if (cnt) cnt.innerHTML = needle ? 'Найдено: ' + shown + ' из ' + all : '';
+}
+
+// switchProbeTabAt — переключение вкладки по индексу кэша (без строк в onclick,
+// кворум F1: ключи JSON сканируемого сервиса произвольны).
+function switchProbeTabAt(i) {
+    const sources = (bridgeProbeCache && bridgeProbeCache.sources) || [];
+    if (!sources[i]) return;
+    bridgeProbeTab = sources[i].name;
+    renderProbeResult(bridgeProbeCache);
 }
 
 function switchProbeTab(name) {
@@ -1976,6 +1986,15 @@ function addedFieldPaths() {
         const m = JSON.parse(document.getElementById('br-ed-json').value);
         return (m.fields || []).map(f => f.path);
     } catch(e) { return []; }
+}
+
+// addBridgeFieldAt — вставка поля по индексу пути в кэше текущей вкладки
+// (кворум F1: без передачи строк сервиса через inline-JS).
+function addBridgeFieldAt(idx) {
+    const cur = ((bridgeProbeCache || {}).sources || []).find(s => s.name === bridgeProbeTab);
+    const p = cur && cur.paths ? cur.paths[idx] : null;
+    if (!p) return;
+    addBridgeField(p.path, p.guess || '', bridgeProbeTab);
 }
 
 // addBridgeField вставляет запись в fields[] текста манифеста в редакторе.

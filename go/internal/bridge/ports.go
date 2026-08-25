@@ -52,17 +52,66 @@ func LoopbackListeningPorts() []int {
 }
 
 // reachableFromLoopback — hex-адрес из /proc/net/tcp(6): true для
-// 127.0.0.1 / 0.0.0.0 (tcp4, little-endian) и ::1 / :: (tcp6).
+// 127.0.0.1 / 0.0.0.0 (tcp4) и ::1 / :: (tcp6).
+// tcp6-строка — 4 u32-слова: на little-endian (arm64/mipsel) каждое слово
+// побайтово перевёрнуто (::1 = …01000000), на big-endian (mips) — прямая
+// запись (::1 = …00000001); допускаем оба представления.
 func reachableFromLoopback(hexIP string) bool {
 	switch len(hexIP) {
-	case 8: // IPv4, little-endian: 0100007F = 127.0.0.1
+	case 8: // IPv4: 0100007F = 127.0.0.1 (little-endian), 00000000 = 0.0.0.0
 		return hexIP == "0100007F" || hexIP == "00000000"
-	case 32: // IPv6 big-endian
-		allZero := strings.Trim(hexIP, "0") == ""
-		return allZero || strings.HasSuffix(hexIP, "1") && strings.Trim(hexIP[:len(hexIP)-1], "0") == ""
+	case 32:
+		return ipv6IsSpecialLE(hexIP) || ipv6IsSpecialBE(hexIP)
 	default:
 		return false
 	}
+}
+
+// ipv6IsSpecialBE — прямое прочтение пар hex (big-endian ядро).
+func ipv6IsSpecialBE(h string) bool {
+	var b [16]byte
+	for i := 0; i < 16; i++ {
+		v, err := strconv.ParseUint(h[i*2:i*2+2], 16, 8)
+		if err != nil {
+			return false
+		}
+		b[i] = byte(v)
+	}
+	return v6AllZero(b) || v6Loopback(b)
+}
+
+// ipv6IsSpecialLE — слова по 8 hex как little-endian u32 (x86/arm64/mipsel).
+func ipv6IsSpecialLE(h string) bool {
+	var b [16]byte
+	for w := 0; w < 4; w++ {
+		v, err := strconv.ParseUint(h[w*8:(w+1)*8], 16, 64)
+		if err != nil {
+			return false
+		}
+		b[w*4+0] = byte(v)
+		b[w*4+1] = byte(v >> 8)
+		b[w*4+2] = byte(v >> 16)
+		b[w*4+3] = byte(v >> 24)
+	}
+	return v6AllZero(b) || v6Loopback(b)
+}
+
+func v6AllZero(b [16]byte) bool {
+	for _, x := range b {
+		if x != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func v6Loopback(b [16]byte) bool {
+	for i := 0; i < 15; i++ {
+		if b[i] != 0 {
+			return false
+		}
+	}
+	return b[15] == 1
 }
 
 // describeDialError — человекочитаемая причина неудачного подключения.
