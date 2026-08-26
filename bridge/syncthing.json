@@ -1,6 +1,8 @@
 {
   "id": "syncthing",
   "name": "Syncthing",
+  "init": "syncthing",
+  "process": ["syncthing"],
   "base": "http://127.0.0.1:8384",
   "probe": {
     "url": "/"

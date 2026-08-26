@@ -1027,6 +1027,49 @@ else
 	fi
 fi
 
+# --- NDM fs.d хуки для bridge-модулей с init (автозапуск на Keenetic) ---
+# На Keenetic автозапуск идёт через /opt/etc/ndm/fs.d/, а не через rc.unslung.
+# bridge/*.json с полем "init" → генерируем хук S{N}name.sh в fs.d.
+BRIDGE_DIR="$TARGET_DIR/bridge"
+NDM_FSD="/opt/etc/ndm/fs.d"
+if [ -d "$BRIDGE_DIR" ] && [ -d "$NDM_FSD" ]; then
+	for mf in "$BRIDGE_DIR"/*.json; do
+		[ -f "$mf" ] || continue
+		# извлекаем init и id (BusyBox grep -o)
+		init_name=$(grep -o '"init"[[:space:]]*:[[:space:]]*"[^"]*"' "$mf" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
+		mod_id=$(grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' "$mf" 2>/dev/null | head -1 | sed 's/.*: *"//;s/"//')
+		[ -z "$init_name" ] && continue
+		[ -z "$mod_id" ] && continue
+		# ищем существующий init-скрипт в /opt/etc/init.d/
+		init_script=""
+		for candidate in /opt/etc/init.d/S*"${init_name}" ; do
+			[ -x "$candidate" ] && init_script="$candidate" && break
+		done
+		[ -z "$init_script" ] && continue
+		hook_file="$NDM_FSD/S50${mod_id}.sh"
+		if [ ! -f "$hook_file" ]; then
+			cat > "$hook_file" <<HOOKEOF
+#!/bin/sh
+case "\$1" in
+    start|restore)
+        $init_script start
+        ;;
+    stop)
+        $init_script stop
+        ;;
+    restart)
+        $init_script restart
+        ;;
+esac
+HOOKEOF
+			chmod 755 "$hook_file"
+			ok "NDM fs.d хук: $mod_id → $(basename "$init_script")"
+		else
+			ok "NDM fs.d хук: $mod_id (уже существует)"
+		fi
+	done
+fi
+
 # --- Автозапуск демонов мониторинга (S85entware-watchdogs) ---
 if [ -f "$SELF_DIR/Install/S85entware-watchdogs" ]; then
 	ln -sf "$TARGET_DIR/Install/S85entware-watchdogs" "/opt/etc/init.d/S85entware-watchdogs" 2>/dev/null
