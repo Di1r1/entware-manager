@@ -1990,13 +1990,15 @@ function renderProbeResult(probe) {
     for (let pi = 0; pi < paths.length; pi++) {
         const p = paths[pi];
         const isAdded = added.indexOf(p.path) >= 0;
+        const numericGuess = /^(bool|num|bytes|ms|count)$/.test(p.guess || '');
         html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
             ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
             (p.guess ? ' <span style="color:var(--accent);font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
             (isAdded
                 ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
-                : '<button class="packages-delete-btn" style="background:var(--btn-success);padding:2px 8px;font-size:0.75rem;" onclick="addBridgeFieldAt(' + pi + ')">+ поле</button>') +
+                : '<label style="display:flex;align-items:center;gap:3px;font-size:0.7rem;color:var(--text-muted);white-space:nowrap;"><input type="checkbox" class="br-tile-cb" data-tile-pi="' + pi + '"' + (numericGuess ? ' checked' : '') + '> плитка</label>' +
+                  '<button class="packages-delete-btn" style="background:var(--btn-success);padding:2px 8px;font-size:0.75rem;" onclick="addBridgeFieldAt(' + pi + ')">+ поле</button>') +
             '</div>';
     }
     html += '</div>';
@@ -2267,16 +2269,21 @@ function addedFieldPaths() {
 }
 
 // addBridgeFieldAt — вставка поля по индексу пути в кэше текущей вкладки
-// (кворум F1: без передачи строк сервиса через inline-JS).
+// (кворум F1: без передачи строк сервиса через inline-JS). Чекбокс «плитка»
+// (data-tile-pi) задаёт, показывать ли значение крупной плиткой на карточке.
 function addBridgeFieldAt(idx) {
     const cur = ((bridgeProbeCache || {}).sources || []).find(s => s.name === bridgeProbeTab);
     const p = cur && cur.paths ? cur.paths[idx] : null;
     if (!p) return;
-    addBridgeField(p.path, p.guess || '', bridgeProbeTab);
+    var bodyDiv = document.getElementById('br-probe-body');
+    var cb = bodyDiv && bodyDiv.querySelector('input.br-tile-cb[data-tile-pi="' + idx + '"]');
+    var numericGuess = /^(bool|num|bytes|ms|count)$/.test(p.guess || '');
+    var tile = cb ? cb.checked : numericGuess;
+    addBridgeField(p.path, p.guess || '', bridgeProbeTab, tile);
 }
 
 // addBridgeField вставляет запись в fields[] текста манифеста в редакторе.
-function addBridgeField(path, guess, source) {
+function addBridgeField(path, guess, source, tile) {
     let m;
     try {
         m = JSON.parse(document.getElementById('br-ed-json').value);
@@ -2292,7 +2299,7 @@ function addBridgeField(path, guess, source) {
     const f = { path: path, label: key.replace(/_/g, ' ') };
     if (source && source !== 'status') f.from = source.replace(/^extra\./, '');
     if (guess) f.type = guess;
-    if (guess === 'bool' || guess === 'num' || guess === 'bytes' || guess === 'ms') f.tile = true;
+    if (tile) f.tile = true;
     m.fields.push(f);
     document.getElementById('br-ed-json').value = JSON.stringify(m, null, 2);
     Toast.show('Поле «' + path + '» добавлено в fields');
