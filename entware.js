@@ -1481,6 +1481,10 @@ function renderBridgeCard(svc, prefs) {
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
         '<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--text-muted);">' +
         '<input type="checkbox" class="bridge-notif" data-id="' + escapeHtml(svc.id) + '"' + (notif ? ' checked' : '') + '> уведомления</label>' +
+        (svc.can_ctl
+            ? '<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--text-muted);" title="Показать кнопки Старт/Стоп/Рестарт на карточке модуля">' +
+              '<input type="checkbox" class="bridge-control" data-id="' + escapeHtml(svc.id) + '"' + (p.control === true ? ' checked' : '') + '> управление</label>'
+            : '') +
         actionsHtml + deleteHtml + '</div></div>';
 }
 
@@ -1509,6 +1513,48 @@ function bindBridgeCards(container) {
             }
         });
     });
+    // Галочка «управление»: разрешает кнопки Старт/Стоп/Рестарт на Статистике
+    container.querySelectorAll('.bridge-control').forEach(cb => {
+        cb.addEventListener('change', async () => {
+            if (cb.checked && !confirm('Разрешить управление сервисом «' + cb.dataset.id + '» из панели? Кнопки Старт/Стоп/Рестарт появятся на карточке и будут требовать пароль панели.')) {
+                cb.checked = false;
+                return;
+            }
+            try {
+                await saveBridgePref(cb.dataset.id, 'control', cb.checked);
+                Toast.show('Управление «' + cb.dataset.id + '»: ' + (cb.checked ? 'разрешено' : 'запрещено'));
+            } catch(e) {
+                Toast.show('Ошибка: ' + e.message);
+                cb.checked = !cb.checked;
+            }
+        });
+    });
+    // Кнопки управления init.d на карточках Статистики
+    container.querySelectorAll('[data-ctl-op]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.ctlId, op = btn.dataset.ctlOp;
+            const text = btn.dataset.confirm
+                ? op === 'stop' ? 'Остановить сервис «' + id + '»? Повторите пароль панели:'
+                : 'Перезапустить сервис «' + id + '»? Повторите пароль панели:'
+                : 'Пароль панели:';
+            const password = prompt(text);
+            if (!password) return;
+            btn.disabled = true;
+            try {
+                const res = await apiPost('/bridge_ctl.cgi',
+                    'id=' + encodeURIComponent(id) + '&op=' + encodeURIComponent(op) +
+                    '&password=' + encodeURIComponent(password));
+                if (res.status === 'ok') {
+                    Toast.show('Выполнено: ' + op);
+                    setTimeout(refreshProcsCpu, 1500); // обновить аптайм/CPU после действия
+                } else {
+                    const out = res.output ? '\n' + res.output : '';
+                    Toast.show((res.message || res.error || res.status || 'ошибка') + out);
+                }
+            } catch(e) { Toast.show('Ошибка: ' + e.message); }
+            btn.disabled = false;
+        });
+    });
     container.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.bridgeId, action = btn.dataset.action;
@@ -1525,7 +1571,7 @@ function bindBridgeCards(container) {
                     'id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action) +
                     '&password=' + encodeURIComponent(password));
                 if (res.status === 'ok') Toast.show('Выполнено (' + (res.result && res.result.raw || 'ok') + ')');
-                else Toast.show(res.message || res.status);
+                else Toast.show(res.message || res.error || res.status || "error");
             } catch(e) { Toast.show('Ошибка: ' + e.message); }
             btn.disabled = false;
         });
@@ -1540,7 +1586,7 @@ function bindBridgeCards(container) {
             try {
                 const res = await apiPost('/bridge_delete.cgi', 'id=' + encodeURIComponent(id) + '&password=' + encodeURIComponent(password));
                 if (res.status === 'ok') { Toast.show('Удалён'); renderBridgeTab(); }
-                else Toast.show(res.message || res.status);
+                else Toast.show(res.message || res.error || res.status || "error");
             } catch(e) { Toast.show('Ошибка: ' + e.message); }
             btn.disabled = false;
         });
@@ -1558,14 +1604,16 @@ async function loadBridgePrefs() {
 }
 
 async function saveBridgePref(id, field, value) {
-    // prefs хранятся парами enabled/notifications — читаем текущие и обновляем поле
+    // prefs хранятся тройкой enabled/notifications/control — читаем текущие
+    // и обновляем одно поле, остальные передаём как есть.
     const p = (bridgePrefsCache && bridgePrefsCache[id]) || {};
     const body = 'id=' + encodeURIComponent(id) +
         '&enabled=' + (field === 'enabled' ? String(value) : String(p.enabled !== false)) +
-        '&notifications=' + (field === 'notifications' ? String(value) : String(!!p.notifications));
+        '&notifications=' + (field === 'notifications' ? String(value) : String(!!p.notifications)) +
+        '&control=' + (field === 'control' ? String(value) : String(p.control === true));
     const res = await apiPost('/bridge_prefs.cgi', body);
-    if (res.status !== 'ok') throw new Error(res.message || res.status);
-    bridgePrefsCache[id] = { enabled: res.enabled, notifications: res.notifications };
+    if (res.status !== 'ok') throw new Error(res.message || res.error || res.status || 'ошибка');
+    bridgePrefsCache[id] = { enabled: res.enabled, notifications: res.notifications, control: res.control };
 }
 
 async function renderBridgeTab() {
@@ -1709,7 +1757,7 @@ async function saveBridgeAuth(id) {
             '&password=' + encodeURIComponent(panelPass));
         st.innerHTML = res.status === 'ok'
             ? '<span style="color:#38a169;">Сохранено</span>'
-            : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.status) + '</span>';
+            : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
         if (res.status === 'ok') Toast.show('Учётные данные «' + id + '» сохранены');
     } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
 }
@@ -1722,7 +1770,7 @@ function bindAghToggle() {
         try {
             const res = await apiPost('/bridge_action.cgi',
                 'id=adguard&action=protection_toggle&password=' + encodeURIComponent(password));
-            Toast.show(res.status === 'ok' ? 'Применено (' + ((res.result||{}).raw||'ok') + ')' : (res.message || res.status));
+            Toast.show(res.status === 'ok' ? 'Применено (' + ((res.result||{}).raw||'ok') + ')' : (res.message || res.error || res.status || "error"));
             setTimeout(loadAdGuardZone, 1200);
         } catch(e) { Toast.show('Ошибка: ' + e.message); this.disabled = false; }
     });
@@ -1786,7 +1834,7 @@ const BRIDGE_KEYS_HELP =
     '<tr><td><code>status</code>/<code>stats</code></td><td>JSON-источники данных карточки</td></tr>' +
     '<tr><td><code>extra</code></td><td>{имя: {url, slice_last}} — доп. источники (до 8)</td></tr>' +
     '<tr><td><code>ports</code></td><td>кандидаты портов для авто-поиска</td></tr>' +
-    '<tr><td><code>process</code></td><td>детект без веб-порта: имена процессов демона (до 4), например <code>["frpc"]</code>. Статус — только по процессу, адреса не нужны; поля карточки по-прежнему берутся из status/stats/extra</td></tr>' +
+    '<tr><td><code>process</code></td><td>детект без веб-порта: имена процессов демона (до 24), например <code>["frpc"]</code>. Статус — только по процессу, адреса не нужны; карточка сама покажет PID и память каждого процесса, поля из status/stats/extra добавляются как обычно</td></tr>' +
     '<tr><td><code>fields[]</code></td><td>поля карточки (до 24): path · label · from (status/stats/имя extra) · type (bool, bytes, count, num, ms, dur, top) · tile · color · on/off</td></tr>' +
     '<tr><td><code>actions[]</code></td><td>кнопки (до 10): id · label · method · url · body · confirm</td></tr>' +
     '</tbody></table>' +
@@ -1802,11 +1850,11 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<div style="flex:1 1 420px;min-width:0;">' +
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">' +
         '<label>ID файла: <input type="text" id="br-ed-id" class="settings-input" value="' + escapeHtml(editId) + '"' + (editId ? ' readonly style="background:var(--input-bg);"' : '') + '></label>' +
+        '<span style="font-size:0.75rem;color:var(--text-muted);">строчные латинские: a-z, 0-9, «-», «_»</span>' +
         '<span id="br-ed-exists" style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
         '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:380px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
         '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
         '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeManifest()">Сохранить</button>' +
-        '<button class="packages-delete-btn" onclick="bridgeScanManifest()">Сканировать</button>' +
         '<button class="packages-delete-btn" style="background:#4a5568;" onclick="renderBridgeTab()">Отмена</button>' +
         '<span id="br-ed-status"></span></div>' +
         BRIDGE_KEYS_HELP +
@@ -1815,14 +1863,25 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<div style="flex:1 1 380px;min-width:0;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--card-bg,#1a202c);">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">' +
         '<b>Сканер</b>' +
-        '<button class="packages-delete-btn" style="padding:3px 10px;" onclick="bridgeScanManifest()">Опросить сервис</button>' +
+        [['service', 'Опросить сервис'], ['procs', 'Процессы'], ['modules', 'Модули']].map(x =>
+            '<button class="packages-delete-btn" style="padding:3px 10px;background:' +
+            (x[0] === 'service' ? '#3182ce' : '#4a5568') + ';" data-scan-tab="' + x[0] + '"' +
+            ' onclick="switchScannerTab(\'' + x[0] + '\')">' + x[1] + '</button>').join(' ') +
         '</div>' +
-        '<div id="br-scan-status" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">Нажмите «Сканировать» — панель опросит адреса из манифеста на 127.0.0.1 и покажет, какие поля можно добавить в <code>fields[]</code>.</div>' +
+        '<div id="br-scan-status" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">Три режима сканера (запускаются кнопками выше):<br>' +
+        '<b>Опросить сервис</b> — проверяет веб-адреса из манифеста (status/stats/extra) и показывает поля, которые можно добавить на карточку.<br>' +
+        '<b>Процессы</b> — живые демоны роутера: имя добавляется в <code>process[]</code> манифеста кликом «+ в process». Так собираются модули без веб-интерфейса: впишите <code>id</code>/название, добавьте процессы, сохраните.<br>' +
+        '<b>Модули</b> — список сохранённых модулей: открыть любой в редакторе или создать новый.</div>' +
         '<div id="br-probe-tabs" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>' +
         '<div id="br-probe-body"></div>' +
         '</div>' +
         '</div>';
-    if (editId) bridgeScanManifest(); // авто-скан при открытии сохранённого модуля
+    // Сброс состояния сканера: каждый вход в редактор начинается с подсказки
+    // «Три режима сканера», ничего не опрашивается автоматически.
+    bridgeProbeTab = '';
+    bridgeProbeCache = null;
+    bridgeProcCache = null;
+    bridgeProcMode = 'attach';
 }
 
 function brSourceTitle(name) {
@@ -1965,6 +2024,182 @@ function editorManifestHasProcess() {
     } catch(e) { return false; }
 }
 
+// ===== Сканер процессов (детект без веб-порта) =====
+
+let bridgeProcCache = null;
+// bridgeProcMode — 'attach': добавление имени в process[] текущего манифеста;
+// 'create': выбор процесса для нового модуля (кнопка «Добавить модуль»).
+// create включается ТОЛЬКО явным «+ Новый модуль» из вкладки «Модули» сканера.
+let bridgeProcMode = 'attach';
+
+// bridgeScanProcesses — список живых процессов роутера из /proc.
+async function bridgeScanProcesses() {
+    const st = document.getElementById('br-scan-status');
+    const bodyDiv = document.getElementById('br-probe-body');
+    const tabsDiv = document.getElementById('br-probe-tabs');
+    if (!bodyDiv) return;
+    tabsDiv.style.display = 'none';
+    if (st) st.innerHTML = 'Читаю процессы…';
+    try {
+        const res = await apiGet('/bridge_processes.cgi');
+        bridgeProcCache = res.processes || [];
+        if (st) st.innerHTML = '';
+        renderProcList('');
+    } catch(e) {
+        if (st) st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>';
+    }
+}
+
+// renderProcList — строки процессов; onclick только по индексу кэша
+// (кворум F1: имена из /proc не передаются строками в inline-JS).
+function renderProcList(filter) {
+    const bodyDiv = document.getElementById('br-probe-body');
+    if (!bodyDiv || !bridgeProcCache) return;
+    const needle = (filter || '').trim().toLowerCase();
+    const create = bridgeProcMode === 'create';
+    const added = create ? [] : addedProcessNames();
+    let html = '<div style="font-size:0.8rem;margin-bottom:6px;">' +
+        (create
+            ? 'Выберите процесс — по нему будет создан новый модуль:'
+            : 'Живые процессы роутера («+» добавит имя в <code>process[]</code>):') + '</div>' +
+        '<input type="text" id="br-proc-filter" class="settings-input" placeholder="Фильтр… (например: xray)" style="width:100%;margin-bottom:6px;font-size:12px;" oninput="filterProcRows()">' +
+        '<div style="max-height:340px;overflow:auto;" id="br-proc-list">';
+    let shown = 0;
+    for (let i = 0; i < bridgeProcCache.length; i++) {
+        const p = bridgeProcCache[i];
+        if (needle && p.name.toLowerCase().indexOf(needle) < 0) continue;
+        shown++;
+        const isAdded = !create && added.indexOf(p.name) >= 0;
+        html += '<div class="br-probe-row" data-name="' + escapeHtml(p.name.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
+            '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) +
+            (p.pids > 1 ? ' <span style="color:var(--text-muted);">×' + p.pids + '</span>' : '') + '</div>' +
+            (isAdded
+                ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
+                : create
+                    ? '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 9px;font-size:0.75rem;" onclick="createModuleFromProcessAt(' + i + ')">Добавить модуль</button>'
+                    : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeProcessAt(' + i + ')">+ в process</button>') +
+            '</div>';
+    }
+    html += '</div>';
+    if (!shown) html += '<div style="color:var(--text-muted);">Ничего не найдено.</div>';
+    bodyDiv.innerHTML = html;
+}
+
+// filterProcRows — фильтр списка процессов по подстроке (без перерисовки,
+// чтобы не терять фокус в поле фильтра).
+function filterProcRows() {
+    const q = (document.getElementById('br-proc-filter') || {}).value || '';
+    const needle = q.trim().toLowerCase();
+    document.querySelectorAll('#br-proc-list .br-probe-row').forEach(function(row) {
+        const ok = !needle || row.getAttribute('data-name').indexOf(needle) >= 0;
+        row.style.display = ok ? 'flex' : 'none';
+    });
+}
+
+// addedProcessNames — имена уже прописанные в process[] редактора.
+function addedProcessNames() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        return Array.isArray(m.process) ? m.process : [];
+    } catch(e) { return []; }
+}
+
+// addBridgeProcessAt — добавление имени процесса по индексу кэша.
+function addBridgeProcessAt(i) {
+    const p = (bridgeProcCache || [])[i];
+    if (!p) return;
+    let m;
+    try {
+        m = JSON.parse(document.getElementById('br-ed-json').value);
+    } catch(e) {
+        Toast.show('Сначала исправьте JSON манифеста');
+        return;
+    }
+    if (!Array.isArray(m.process)) m.process = [];
+    if (m.process.indexOf(p.name) >= 0) { Toast.show('Уже добавлено'); return; }
+    if (m.process.length >= 24) { Toast.show('Достигнут лимит имён (24)'); return; }
+    m.process.push(p.name);
+    document.getElementById('br-ed-json').value = JSON.stringify(m, null, 2);
+    Toast.show('«' + p.name + '» добавлен в process[]');
+    renderProcList((document.getElementById('br-proc-filter') || {}).value || '');
+}
+
+// createModuleFromProcessAt — каркас нового модуля из выбранного процесса:
+// id из имени (нижний регистр), name и process[1] уже заполнены — осталось
+// поправить название и нажать «Сохранить». Доступен только в create-режиме.
+function createModuleFromProcessAt(i) {
+    if (bridgeProcMode !== 'create') return;
+    const p = (bridgeProcCache || [])[i];
+    if (!p) return;
+    bridgeProcMode = 'attach'; // редактор пересобирается — вернуть обычный режим
+    const id = p.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'myservice';
+    const json = JSON.stringify({ id: id, name: p.name, process: [p.name] }, null, 2);
+    renderBridgeEditor('Новый модуль', '', json);
+    Toast.show('Каркас «' + p.name + '» готов: впишите название и нажмите «Сохранить»');
+}
+
+// ===== Вкладки сканера: Опросить сервис / Процессы / Модули =====
+
+// switchScannerTab — переключение режима правой панели с подсветкой кнопок.
+function switchScannerTab(tab) {
+    document.querySelectorAll('[data-scan-tab]').forEach(b => {
+        b.style.background = b.dataset.scanTab === tab ? '#3182ce' : '#4a5568';
+    });
+    if (tab === 'service') bridgeScanManifest();
+    else if (tab === 'procs') bridgeScanProcesses();
+    else renderSavedModules();
+}
+
+// renderSavedModules — список сохранённых модулей: открыть в редакторе
+// или создать новый. Клик по индексу кэша discovery (кворум F1).
+async function renderSavedModules() {
+    const st = document.getElementById('br-scan-status');
+    const bodyDiv = document.getElementById('br-probe-body');
+    const tabsDiv = document.getElementById('br-probe-tabs');
+    if (!bodyDiv) return;
+    tabsDiv.style.display = 'none';
+    bodyDiv.innerHTML = '<div class="loading-spinner" style="margin:12px 0;"></div>';
+    try {
+        const services = await bridgeDiscover();
+        let html = '<div style="font-size:0.8rem;margin-bottom:6px;">Модули роутера (кнопка справа открывает манифест в редакторе):</div>' +
+            '<div style="max-height:340px;overflow:auto;">';
+        services.forEach((s, i) => {
+            const [lbl] = BRIDGE_STATE_LABELS[s.state] || [s.state];
+            const color = s.state === 'running' ? '#38a169' : (s.state === 'auth_required' ? '#d69e2e' : '#718096');
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
+                '<div style="flex:1;min-width:0;">' + escapeHtml(s.name) +
+                ' <span style="color:' + color + ';font-size:0.78rem;white-space:nowrap;">' + escapeHtml(lbl) + '</span></div>' +
+                '<button class="packages-delete-btn" style="background:#4a5568;padding:2px 9px;font-size:0.75rem;" onclick="openModuleFromListAt(' + i + ')">Открыть</button></div>';
+        });
+        html += '</div>';
+        if (!services.length) html += '<div style="color:var(--text-muted);">Пока нет ни одного модуля.</div>';
+        html += '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+            '<button class="packages-delete-btn" style="background:#2ecc71;padding:3px 12px;" onclick="openNewModuleWizard()">+ Новый модуль</button>' +
+            '<span style="font-size:0.78rem;color:var(--text-muted);">выберете живой процесс из списка — каркас манифеста создастся сам</span></div>';
+        bodyDiv.innerHTML = html;
+        if (st) st.innerHTML = '';
+    } catch(e) {
+        if (st) st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>';
+        bodyDiv.innerHTML = '';
+    }
+}
+
+// openModuleFromListAt — открыть модуль из кэша discovery по индексу.
+function openModuleFromListAt(i) {
+    const s = (bridgeDiscoverCache || [])[i];
+    if (!s || !s.id) return;
+    openBridgeEditor(s.id);
+}
+
+// openNewModuleWizard — «+ Новый модуль»: редактор + список живых процессов
+// в create-режиме (кнопка «Добавить модуль» у каждой строки). Явное исключение
+// из правила «открытие редактора = только подсказка».
+function openNewModuleWizard() {
+    renderBridgeEditor('Новый модуль', '', BRIDGE_TEMPLATE);
+    bridgeProcMode = 'create';
+    bridgeScanProcesses();
+}
+
 // applyBridgeSuggestion — подстановка найденного API-пути в status/probe.
 function applyBridgeSuggestion(path) {
     let m;
@@ -2061,6 +2296,13 @@ async function bridgeScanManifest(isRetry) {
 async function saveBridgeManifest() {
     const id = document.getElementById('br-ed-id').value.trim();
     const raw = document.getElementById('br-ed-json').value;
+    // сервер всё равно отклонит, но объясним сразу и по-человечески
+    if (!/^[a-z0-9_-]{1,32}$/.test(id)) {
+        document.getElementById('br-ed-status').innerHTML =
+            '<span style="color:#e53e3e;">ID — только строчные латинские буквы, цифры, «-» или «_» (например: ' +
+            escapeHtml(id.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 32) || 'myservice') + ')</span>';
+        return;
+    }
     const password = prompt('Пароль панели:');
     if (!password) return;
     const st = document.getElementById('br-ed-status');
@@ -2073,7 +2315,7 @@ async function saveBridgeManifest() {
             st.innerHTML = '<span style="color:#38a169;">Сохранено</span>';
             setTimeout(renderBridgeTab, 800);
         } else {
-            st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.status) + '</span>';
+            st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
         }
     } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
 }
@@ -2319,7 +2561,9 @@ async function renderBridgeCardsOnStats() {
     let services = [];
     try {
         services = (await bridgeDiscover())
-            .filter(s => s.state === 'running')
+            .filter(s => s.state === 'running'
+                // модули с управлением показываем всегда — чтобы запустить остановленный
+                || (s.can_ctl && bridgePrefsCache[s.id] && bridgePrefsCache[s.id].control === true))
             .filter(s => { const p = bridgePrefsCache && bridgePrefsCache[s.id]; return !p || p.enabled !== false; });
     } catch (e) { return; }
     if (!services.length) return;
@@ -2341,7 +2585,8 @@ async function renderBridgeCardsOnStats() {
                 details[svc.id] = {
                     tiles: d.tiles || [],
                     rows: [...extraRows, ...(d.rows || [])],
-                    chips: d.chips || []
+                    chips: d.chips || [],
+                    procs: d.procs || []
                 };
             }
         } catch(e) { /* нет данных — покажем только статус */ }
@@ -2351,7 +2596,7 @@ async function renderBridgeCardsOnStats() {
         '<svg class="icon" width="20" height="20"><use href="/entware-manager/icons.svg?v=6#icon-modules"/></svg> Модули</h3>' +
         '<div class="stats-grid">' + services.map(s => {
             const [label, color] = BRIDGE_STATE_LABELS[s.state] || [s.state, '#718096'];
-            const det = details[s.id] || { tiles: [], rows: [], chips: [] };
+            const det = details[s.id] || { tiles: [], rows: [], chips: [], procs: [] };
             const isKoffe = s.id === 'koffe';
             const isTr = s.id === 'transmission';
             // Плитки Transmission — в отдельный контейнер для живого обновления
@@ -2364,11 +2609,26 @@ async function renderBridgeCardsOnStats() {
             } else {
                 htmlBody += renderBridgeDetails(det);
             }
+            // Живые числа process-модуля (аптайм/CPU) — отдельный контейнер
+            if (det.procs.length) {
+                htmlBody += '<div class="bridge-details" id="procs-' + escapeHtml(s.id) + '">' +
+                    renderProcStatRows(det.procs, null) + '</div>';
+            }
+            // Кнопки управления init.d — только при включённой галочке «управление»
+            const ctlOn = s.can_ctl && (bridgePrefsCache[s.id] || {}).control === true;
+            if (ctlOn) {
+                htmlBody += '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' +
+                    [['start', 'Старт'], ['stop', 'Стоп', '1'], ['restart', 'Рестарт', '1']].map(x =>
+                        '<button class="packages-delete-btn" style="background:#4a5568;padding:3px 10px;font-size:0.8rem;" data-ctl-id="' +
+                        escapeHtml(s.id) + '" data-ctl-op="' + x[0] + '"' + (x[2] ? ' data-confirm="1"' : '') + '>' + x[1] + '</button>'
+                    ).join(' ') + '</div>';
+            }
             return '<div class="stat-card" style="min-width:230px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">' +
                 escapeHtml(s.name) +
                 '<span style="color:' + color + ';font-size:0.85em;">●</span></div>' +
                 '<div style="color:' + color + ';font-weight:600;font-size:0.85rem;margin-bottom:6px;">' + label + '</div>' +
+                (s.detail ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(s.detail) + '</div>' : '') +
                 htmlBody +
                 (isKoffe ? '<div id="koffe-spark-box"></div>' : '') +
                 '</div>';
@@ -2380,12 +2640,75 @@ async function renderBridgeCardsOnStats() {
     // Живые плитки Transmission: обновление каждые 5 сек
     if (details['transmission']) startTrTilesTimer();
 
+    // Аптайм/CPU process-модулей: обновление каждые 5 сек
+    if (Object.values(details).some(d => d.procs && d.procs.length)) startProcsCpuTimer();
+
     // Живой спарклайн Koffe: первичный рендер + обновление каждые 10 сек
     if (koffeHistData && koffeHistData.length >= 3) {
         const box = document.getElementById('koffe-spark-box');
         if (box) box.innerHTML = koffeSparkSVG(koffeHistData);
     }
     startKoffeSparkTimer();
+}
+
+// ===== Живые числа process-модулей на Статистике =====
+
+function fmtUpSec(sec) {
+    sec = Number(sec) || 0;
+    if (sec < 60) return Math.floor(sec) + ' сек';
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+    if (d) return d + ' дн' + (h ? ' ' + h + ' ч' : '');
+    if (h) return h + ' ч' + (m ? ' ' + m + ' мин' : '');
+    return m + ' мин';
+}
+
+// renderProcStatRows — строки «имя | аптайм · CPU»; pctMap[name] подставляет
+// вычисленный клиентом процент, иначе «…» (первый замер).
+function renderProcStatRows(procs, pctMap) {
+    return (procs || []).map(p => {
+        const raw = pctMap && pctMap[p.name] !== undefined ? pctMap[p.name] : null;
+        const pct = raw === null ? '…' : raw;
+        return '<div class="bd-row"><span class="bd-label">' + escapeHtml(p.name) + '</span>' +
+            '<span class="bd-value">аптайм ' + fmtUpSec(p.uptime_s) + ' · CPU ' + pct + '</span></div>';
+    }).join('');
+}
+
+let procsCpuPrev = {};   // "id|name" -> { ts, ticks } — предыдущий замер CPU
+let procsCpuTimer = null;
+
+async function refreshProcsCpu() {
+    const zone = document.getElementById('bridge-stats-zone');
+    if (!zone) { stopProcsCpuTimer(); return; }
+    for (const box of zone.querySelectorAll('[id^="procs-"]')) {
+        const id = box.id.slice(6);
+        try {
+            const res = await apiGet('/bridge_card.cgi?id=' + encodeURIComponent(id));
+            if (!res || res.status !== 'ok' || !res.card || !res.card.procs) continue;
+            const now = Date.now();
+            const pctMap = {};
+            for (const p of (res.card.procs || [])) {
+                const key = id + '|' + p.name;
+                const prev = procsCpuPrev[key];
+                if (prev && now > prev.ts) {
+                    const pct = Math.max(0, (Number(p.cpu_ticks) - prev.ticks) / ((now - prev.ts) / 1000) / 100 * 100);
+                    pctMap[p.name] = (Math.round(pct * 10) / 10).toString().replace('.', ',') + '%';
+                }
+                procsCpuPrev[key] = { ts: now, ticks: Number(p.cpu_ticks) || 0 };
+            }
+            box.innerHTML = renderProcStatRows(res.card.procs, pctMap);
+        } catch(e) { /* сервис мог упасть — повторим в следующий тик */ }
+    }
+}
+
+function startProcsCpuTimer() {
+    if (procsCpuTimer) return;
+    procsCpuTimer = setInterval(refreshProcsCpu, 5000);
+}
+
+function stopProcsCpuTimer() {
+    if (procsCpuTimer) clearInterval(procsCpuTimer);
+    procsCpuTimer = null;
+    procsCpuPrev = {};
 }
 
 // Рендер структурированных деталей моста (плитки чисел + ряды + чипы).
@@ -3000,7 +3323,7 @@ function saveThresholds() {
         if (res.status === 'ok') {
             statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Пороги сохранены</span>';
         } else {
-            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(res.message || res.status) + '</span>';
+            statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
         }
     }).catch(function(err) {
         statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(err.message) + '</span>';
@@ -3040,7 +3363,7 @@ function saveTelegramConfig() {
             document.getElementById('tg-token').value = '';
             loadTelegramConfig();
         } else {
-            showTgStatus('Ошибка: ' + escapeHtml(res.message || res.status), true);
+            showTgStatus('Ошибка: ' + escapeHtml(res.message || res.error || res.status || "error"), true);
         }
     }).catch(function(err) {
         showTgStatus('Ошибка: ' + escapeHtml(err.message), true);
@@ -3050,7 +3373,7 @@ function saveTelegramConfig() {
 function testTelegram() {
     showTgStatus('Отправка теста...', false);
     apiPost('/telegram_test.cgi', '').then(function(res) {
-        showTgStatus(res.status === 'ok' ? '✓ Тестовое сообщение отправлено' : 'Ошибка: ' + escapeHtml(res.message || res.status), res.status !== 'ok');
+        showTgStatus(res.status === 'ok' ? '✓ Тестовое сообщение отправлено' : 'Ошибка: ' + escapeHtml(res.message || res.error || res.status || "error"), res.status !== 'ok');
     }).catch(function(err) {
         showTgStatus('Ошибка: ' + escapeHtml(err.message), true);
     });
@@ -3293,7 +3616,7 @@ async function saveTLSConfig() {
             tlsStatus(res.message || 'Готово', false);
             setTimeout(() => location.reload(), 2500);
         } else {
-            tlsStatus(res.message || res.status, true);
+            tlsStatus(res.message || res.error || res.status || "error", true);
         }
     } catch(err) {
         tlsStatus('Ошибка: ' + err.message, true);

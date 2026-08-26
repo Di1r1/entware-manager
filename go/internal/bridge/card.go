@@ -33,6 +33,7 @@ type CardData struct {
 	Rows  []CardRow  `json:"rows,omitempty"`
 	State string     `json:"state,omitempty"` // текущее состояние из discovery
 	Name  string     `json:"name,omitempty"`
+	Procs []ProcStat `json:"procs,omitempty"` // живые числа process-модуля
 }
 
 // fetchJSON — GET/POST эндпоинта с authedDo; возврат распарсенного тела.
@@ -108,6 +109,14 @@ func BuildCard(dir, id string) (*CardData, error) {
 		} else {
 			card.Rows = append(card.Rows, CardRow{Label: f.Label, Value: value})
 		}
+	}
+
+	// process-модуль без полей не должен быть «немой» карточкой:
+	// по каждому имени — живые PID и память (ProcessDetails пропускает
+	// имена без процесса; поля из fields[] идут выше).
+	if len(m.Process) > 0 {
+		card.Rows = append(card.Rows, ProcessDetails(m.Process)...)
+		card.Procs = ProcessStats(m.Process)
 	}
 
 	return card, nil

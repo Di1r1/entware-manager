@@ -13,14 +13,20 @@
 package bridge
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // procRoot — корень procfs (инъекция для тестов).
 var procRoot = "/proc"
+
+// timeNow — точка времени (инъекция для тестов).
+var timeNow = time.Now().Unix
 
 const maxProcScan = 4096 // защита от аномально огромного /proc
 
@@ -118,4 +124,162 @@ func readProcFile(path string) string {
 		return ""
 	}
 	return string(data)
+}
+
+// ProcInfo — агрегированный процесс для сканера манифеста.
+type ProcInfo struct {
+	Name string `json:"name"`
+	Pids int    `json:"pids,omitempty"`
+}
+
+// ProcStat — числа живых процессов одного имени из manifest.process
+// для карточки: аптайм старейшего процесса и суммарные CPU-тики
+// (utime+stime; клиент считает % по дельте между опросами).
+type ProcStat struct {
+	Name     string `json:"name"`
+	Pids     int    `json:"pids"`
+	UptimeS  int64  `json:"uptime_s,omitempty"`
+	CPUTicks int64  `json:"cpu_ticks,omitempty"`
+}
+
+// hz — тактовая частота ядра для /proc/<pid>/stat (стандарт CONFIG_HZ=100).
+const hz = 100
+
+// procStatCore — starttime (поле 22) и utime+stime (поля 14+15) процесса.
+func procStatCore(pid int) (starttime uint64, cpuTicks int64) {
+	stat := readProcFile(filepath.Join(procRoot, strconv.Itoa(pid), "stat"))
+	if i := strings.LastIndex(stat, ")"); i >= 0 {
+		fields := strings.Fields(stat[i+1:])
+		// fields[0]=state(3), fields[11]=utime(14), fields[12]=stime(15),
+		// fields[19]=starttime(22)
+		if len(fields) > 19 {
+			utime, _ := strconv.ParseInt(fields[11], 10, 64)
+			stime, _ := strconv.ParseInt(fields[12], 10, 64)
+			start, _ := strconv.ParseUint(fields[19], 10, 64)
+			return start, utime + stime
+		}
+	}
+	return 0, 0
+}
+
+// bootTime — btime из /proc/stat (unix-время загрузки).
+func bootTime() int64 {
+	for _, line := range strings.Split(readProcFile(filepath.Join(procRoot, "stat")), "\n") {
+		if strings.HasPrefix(line, "btime ") {
+			v, _ := strconv.ParseInt(strings.TrimSpace(line[6:]), 10, 64)
+			return v
+		}
+	}
+	return 0
+}
+
+// ProcessStats — сводка по каждому имени из manifest.process.
+// Имена без живого процесса пропускаются.
+func ProcessStats(names []string) []ProcStat {
+	snap := snapshotProcs()
+	now := timeNow()
+	bt := bootTime()
+	var out []ProcStat
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		pids := matchProcs(snap, []string{name})
+		if len(pids) == 0 {
+			continue
+		}
+		ps := ProcStat{Name: name, Pids: len(pids)}
+		for _, pid := range pids {
+			start, ticks := procStatCore(pid)
+			ps.CPUTicks += ticks
+			if up := now - (bt + int64(start)/hz); up > ps.UptimeS && start > 0 {
+				ps.UptimeS = up
+			}
+		}
+		out = append(out, ps)
+	}
+	return out
+}
+
+const maxProcessList = 128
+
+// procRSSkb — резидентная память процесса в КБ (поле 2 statm × размер страницы).
+func procRSSkb(pid int) int64 {
+	statm := readProcFile(filepath.Join(procRoot, strconv.Itoa(pid), "statm"))
+	fields := strings.Fields(statm)
+	if len(fields) < 2 {
+		return 0
+	}
+	pages, err := strconv.ParseInt(fields[1], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return pages * int64(os.Getpagesize()) / 1024
+}
+
+// ProcessDetails — строки карточки для process-модуля: по каждому имени
+// из манифеста — живые PID (до 5) и суммарная память. Имена без процесса
+// пропускаются (их отсутствие видно по статусу «не установлен»).
+func ProcessDetails(names []string) []CardRow {
+	snap := snapshotProcs()
+	var rows []CardRow
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		pids := matchProcs(snap, []string{name})
+		if len(pids) == 0 {
+			continue
+		}
+		memKB := int64(0)
+		for _, pid := range pids {
+			memKB += procRSSkb(pid)
+		}
+		shown := pids
+		more := ""
+		if len(shown) > 5 {
+			shown = shown[:5]
+			more = fmt.Sprintf(" …+%d", len(pids)-5)
+		}
+		pidStrs := make([]string, len(shown))
+		for i, pid := range shown {
+			pidStrs[i] = strconv.Itoa(pid)
+		}
+		value := fmt.Sprintf("%d проц. · PID %s%s · %s",
+			len(pids), strings.Join(pidStrs, ", "), more,
+			humanBytesServer(float64(memKB*1024)))
+		rows = append(rows, CardRow{Label: name, Value: value})
+	}
+	return rows
+}
+
+// ListProcesses — живые процессы роутера, агрегированные по имени
+// (сканер «Процессы» в редакторе манифеста). Имя — basename(argv[0]),
+// т.е. то самое полное имя, которое пишется в process[]; comm — фолбэк.
+// Ядро-треды (пустой cmdline) и зомби исключены.
+func ListProcesses() []ProcInfo {
+	snap := snapshotProcs()
+	agg := map[string]int{}
+	for _, pe := range snap {
+		if procArgv0(pe.pid) == "" {
+			continue // ядро-тред: cmdline пуст
+		}
+		name := filepath.Base(procArgv0(pe.pid))
+		if name == "" || name == "." || name == "/" {
+			name = pe.comm
+		}
+		if name == "" {
+			continue
+		}
+		agg[name]++
+	}
+	out := make([]ProcInfo, 0, len(agg))
+	for n, c := range agg {
+		out = append(out, ProcInfo{Name: n, Pids: c})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	if len(out) > maxProcessList {
+		out = out[:maxProcessList]
+	}
+	return out
 }

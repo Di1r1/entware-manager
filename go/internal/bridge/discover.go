@@ -60,6 +60,7 @@ type ServiceState struct {
 	State       string `json:"state"` // running | auth_required | absent | disabled
 	Detail      string `json:"detail,omitempty"`
 	HasManifest bool   `json:"has_manifest,omitempty"` // карточка из файла-манифеста (можно удалить)
+	CanCtl      bool   `json:"can_ctl,omitempty"`      // манифест задаёт init → доступны кнопки управления
 }
 
 // bridgeDirVar — каталог манифестов (переопределяется для тестов).
@@ -207,13 +208,13 @@ func Discover(bridgeDir string) []ServiceState {
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			if !IsEnabled(m.ID) {
-				add(ServiceState{ID: m.ID, Name: m.Name, State: "disabled", HasManifest: true})
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "disabled", HasManifest: true, CanCtl: m.Init != ""})
 				return
 			}
 			// process-детект: процесс = источник истины, probe игнорируется
 			// полностью (кворум v1.15.7). auth_required у таких модулей не бывает.
 			if len(m.Process) > 0 {
-				st := ServiceState{ID: m.ID, Name: m.Name, HasManifest: true}
+				st := ServiceState{ID: m.ID, Name: m.Name, HasManifest: true, CanCtl: m.Init != ""}
 				if pids := matchProcs(procSnap, m.Process); len(pids) > 0 {
 					st.State = "running"
 					st.Detail = fmt.Sprintf("PID %d", pids[0])
@@ -235,7 +236,7 @@ func Discover(bridgeDir string) []ServiceState {
 			// (иначе http.NewRequest отклонит "?action=..." → ложное absent).
 			u, err := ValidateBridgeURL(m.Probe.URL, m.Base)
 			if err != nil {
-				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error(), HasManifest: true})
+				add(ServiceState{ID: m.ID, Name: m.Name, State: "absent", Detail: err.Error(), HasManifest: true, CanCtl: m.Init != ""})
 				return
 			}
 			// Порты-кандидаты манифеста (native/entware): первый не-absent выигрывает.
@@ -258,6 +259,7 @@ func Discover(bridgeDir string) []ServiceState {
 				}
 				best.ID, best.Name = m.ID, m.Name
 				best.HasManifest = true
+				best.CanCtl = m.Init != ""
 				add(best)
 				return
 			}
@@ -273,6 +275,7 @@ func Discover(bridgeDir string) []ServiceState {
 			st := classify(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 			st.ID, st.Name = m.ID, m.Name
 			st.HasManifest = true
+			st.CanCtl = m.Init != ""
 			add(st)
 		}(m)
 	}

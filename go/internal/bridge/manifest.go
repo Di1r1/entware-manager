@@ -27,7 +27,7 @@ const (
 var idRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
 const (
-	maxProcessNames = 4
+	maxProcessNames = 24
 	procNamePattern = `[a-zA-Z0-9._-]{1,64}`
 )
 
@@ -88,6 +88,10 @@ type Manifest struct {
 	// HTTP-probe игнорируется полностью (кворум v1.15.7: процесс = источник
 	// истины). Поля карточки status/stats/extra работают как раньше.
 	Process []string `json:"process,omitempty"`
+	// Init — имя сервиса в /opt/etc/init.d (S??имя/K??имя) для кнопок
+	// старт/стоп/рестарт. Выполняется ТОЛЬКО при включённой галочке
+	// «управление» в настройках модуля (prefs.control, fail-closed).
+	Init string `json:"init,omitempty"`
 }
 
 // AuthCreds — секретный файл <id>.auth.json (0600), НИКОГДА не попадает в ответы.
@@ -147,6 +151,9 @@ func ValidateManifest(m *Manifest) error {
 		if !procNameRe.MatchString(p) {
 			return fmt.Errorf("process[%d]: имя %q не подходит под %s", i, p, procNamePattern)
 		}
+	}
+	if m.Init != "" && !initNameRe.MatchString(m.Init) {
+		return fmt.Errorf("init: имя %q не подходит под %s", m.Init, procNamePattern)
 	}
 	for i, f := range m.Fields {
 		if f.Path == "" || len(f.Path) > 128 {

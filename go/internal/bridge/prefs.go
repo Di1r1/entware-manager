@@ -14,6 +14,10 @@ import (
 type ModulePrefs struct {
 	Enabled       bool `json:"enabled"`
 	Notifications bool `json:"notifications"`
+	// Control — явное разрешение на управление сервисом (init.d start/stop/
+	// restart) из панели. По умолчанию false, fail-closed: без галочки
+	// «управление» кнопки не отображаются, bridge_ctl отказывает.
+	Control bool `json:"control,omitempty"`
 }
 
 type prefsFile struct {

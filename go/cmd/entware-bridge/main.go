@@ -47,6 +47,10 @@ func main() {
 		handleManifestDelete()
 	case "bridge_probe":
 		handleProbe()
+	case "bridge_processes":
+		handleProcesses()
+	case "bridge_ctl":
+		handleCtl()
 	default:
 		cgiutil.WriteError("неизвестный эндпоинт")
 	}
@@ -75,12 +79,15 @@ func handlePrefs() {
 		m := pf.Modules[id]
 		m.Enabled = params["enabled"] != "false"
 		m.Notifications = params["notifications"] != "false"
+		if v, ok := params["control"]; ok && v != "" {
+			m.Control = v == "true" // отсутствует в запросе → сохраняем прежнее
+		}
 		pf.Modules[id] = m
 		if err := bridge.SavePrefs(pf); err != nil {
 			cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "не удалось сохранить"})
 			return
 		}
-		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "id": id, "enabled": m.Enabled, "notifications": m.Notifications})
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "id": id, "enabled": m.Enabled, "notifications": m.Notifications, "control": m.Control})
 		return
 	}
 	// GET
@@ -132,6 +139,75 @@ func handleWatch() {
 	})
 }
 
+// handleCtl — POST: управление сервисом модуля через init.d
+// {id, op=start|stop|restart, password}. Рубежи: пароль панели + Origin,
+// rate-limit, manifest.init задан, prefs.control включён (галочка
+// «управление»), скрипт найден в /opt/etc/init.d.
+func handleCtl() {
+	if !cgiutil.IsPOST() {
+		cgiutil.NotAllowed()
+		return
+	}
+	if auth.IsCrossSiteOrigin() {
+		cgiutil.WriteError(auth.CrossSiteDeny)
+		return
+	}
+	params := cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())
+	id, op := params["id"], params["op"]
+	password := params["password"]
+	if id == "" || password == "" || !bridge.ValidID(id) {
+		cgiutil.WriteError("нужны id, op и password")
+		return
+	}
+	switch op {
+	case "start", "stop", "restart":
+	default:
+		cgiutil.WriteError("недопустимое действие: " + op)
+		return
+	}
+	if !auth.CheckPassword(password) {
+		time.Sleep(500 * time.Millisecond)
+		cgiutil.WriteError("Неверный пароль")
+		return
+	}
+	if !bridge.RateLimitAction(id, "ctl_"+op, 3*time.Second) {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Слишком часто — подождите пару секунд"})
+		return
+	}
+	m, err := bridge.LoadManifest(bridgeDirVarPath(), id)
+	if err != nil {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
+		return
+	}
+	if m.Init == "" {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "модуль не задаёт init — управление недоступно"})
+		return
+	}
+	if !bridge.ControlAllowed(id) {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "включите галочку «управление» на карточке модуля (вкладка Модули)"})
+		return
+	}
+	script := bridge.FindInitScript(m.Init)
+	if script == "" {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "скрипт " + m.Init + " не найден в /opt/etc/init.d"})
+		return
+	}
+	out, execErr := bridge.RunInitAction(script, op)
+	if execErr != nil {
+		cgiutil.WriteJSON(map[string]interface{}{
+			"status":  "error",
+			"message": "ошибка выполнения: " + execErr.Error(),
+			"output":  out,
+		})
+		return
+	}
+	cgiutil.WriteJSON(map[string]interface{}{
+		"status": "ok",
+		"op":     op,
+		"output": out,
+	})
+}
+
 func handleDiscover() {
 	if !cgiutil.IsGET() {
 		cgiutil.NotAllowed()
@@ -141,6 +217,19 @@ func handleDiscover() {
 	cgiutil.WriteJSON(map[string]interface{}{
 		"status":   "ok",
 		"services": services,
+	})
+}
+
+// handleProcesses — GET: живые процессы роутера для сканера манифеста.
+// Чтение /proc — пароль не нужен, достаточно сессии (гейт go.cgi/server).
+func handleProcesses() {
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
+		return
+	}
+	cgiutil.WriteJSON(map[string]interface{}{
+		"status":    "ok",
+		"processes": bridge.ListProcesses(),
 	})
 }
 
