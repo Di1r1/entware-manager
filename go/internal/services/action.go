@@ -58,6 +58,7 @@ func HandleServiceAction() {
 	switch action {
 	case "start", "stop", "restart":
 		cmd := exec.Command(script, action)
+		cmd.Env = append(os.Environ(), "HOME=/opt/root", "PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin")
 		err := cmd.Run()
 		if err == nil {
 			logAction("INFO", fmt.Sprintf("Служба %s: %s", name, action))

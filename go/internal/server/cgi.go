@@ -208,6 +208,7 @@ func buildCGIEnv(r *http.Request, endpoint string) []string {
 		"QUERY_STRING=" + r.URL.RawQuery,
 		"REMOTE_ADDR=" + cgiutil.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.Header.Get("X-Real-IP")),
 		"PATH=" + cgiPath,
+		"HOME=/opt/root",
 		"GATEWAY_INTERFACE=CGI/1.1",
 		"SERVER_SOFTWARE=entware-server",
 		"SCRIPT_NAME=" + r.URL.Path,
