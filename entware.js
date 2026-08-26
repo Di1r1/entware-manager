@@ -2158,9 +2158,11 @@ function createModuleFromProcessAt(i) {
     if (!p) return;
     bridgeProcMode = 'attach'; // редактор пересобирается — вернуть обычный режим
     const id = p.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'myservice';
-    const json = JSON.stringify({ id: id, name: p.name, process: [p.name] }, null, 2);
+    const m = { id: id, name: p.name, process: [p.name] };
+    if (p.init) m.init = p.init;
+    const json = JSON.stringify(m, null, 2);
     renderBridgeEditor('Новый модуль', '', json);
-    Toast.show('Каркас «' + p.name + '» готов: впишите название и нажмите «Сохранить»');
+    Toast.show('Каркас «' + p.name + '» готов' + (p.init ? ' (init: ' + escapeHtml(p.init) + ')' : '') + ': впишите base/status и нажмите «Сохранить»');
 }
 
 // ===== Вкладки сканера: Опросить сервис / Процессы / Модули =====

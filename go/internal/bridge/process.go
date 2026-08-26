@@ -130,6 +130,7 @@ func readProcFile(path string) string {
 type ProcInfo struct {
 	Name string `json:"name"`
 	Pids int    `json:"pids,omitempty"`
+	Init string `json:"init,omitempty"` // имя init-скрипта, если найден в /opt/etc/init.d/
 }
 
 // ProcStat — числа живых процессов одного имени из manifest.process
@@ -203,6 +204,32 @@ func ProcessStats(names []string) []ProcStat {
 
 const maxProcessList = 128
 
+// ListInitScripts — базовые имена init-скриптов в /opt/etc/init.d/.
+// Стрипает префиксы S##/K## и возвращает уникальные имена (для детекта
+// в ListProcesses: если процесс совпадает по имени → auto-init).
+func ListInitScripts() map[string]bool {
+	names := make(map[string]bool)
+	entries, err := os.ReadDir(initDirVar)
+	if err != nil {
+		return names
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		n := e.Name()
+		base := n
+		if len(n) > 3 && (n[0] == 'S' || n[0] == 'K') &&
+			n[1] >= '0' && n[1] <= '9' && n[2] >= '0' && n[2] <= '9' {
+			base = n[3:]
+		}
+		if base != "" {
+			names[base] = true
+		}
+	}
+	return names
+}
+
 // procRSSkb — резидентная память процесса в КБ (поле 2 statm × размер страницы).
 func procRSSkb(pid int) int64 {
 	statm := readProcFile(filepath.Join(procRoot, strconv.Itoa(pid), "statm"))
@@ -257,6 +284,7 @@ func ProcessDetails(names []string) []CardRow {
 // (сканер «Процессы» в редакторе манифеста). Имя — basename(argv[0]),
 // т.е. то самое полное имя, которое пишется в process[]; comm — фолбэк.
 // Ядро-треды (пустой cmdline) и зомби исключены.
+// Если в /opt/etc/init.d/ есть скрипт с таким именем — поле Init заполнено.
 func ListProcesses() []ProcInfo {
 	snap := snapshotProcs()
 	agg := map[string]int{}
@@ -273,9 +301,14 @@ func ListProcesses() []ProcInfo {
 		}
 		agg[name]++
 	}
+	initScripts := ListInitScripts()
 	out := make([]ProcInfo, 0, len(agg))
 	for n, c := range agg {
-		out = append(out, ProcInfo{Name: n, Pids: c})
+		pi := ProcInfo{Name: n, Pids: c}
+		if initScripts[n] {
+			pi.Init = n
+		}
+		out = append(out, pi)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	if len(out) > maxProcessList {

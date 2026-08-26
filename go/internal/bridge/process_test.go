@@ -354,3 +354,48 @@ func TestProcessStats(t *testing.T) {
 		t.Errorf("uptime_s = %d, want %d", ps.UptimeS, wantUp)
 	}
 }
+
+// ListInitScripts: сканирует init.d, возвращает базовые имена без S##/K##.
+func TestListInitScripts(t *testing.T) {
+	old := initDirVar
+	initDirVar = t.TempDir()
+	t.Cleanup(func() { initDirVar = old })
+	writeExec := func(name string) {
+		os.WriteFile(filepath.Join(initDirVar, name), []byte("#!/bin/sh\n"), 0755)
+	}
+	writeExec("S92syncthing")
+	writeExec("S99adguardhome")
+	writeExec("K01dead")
+	writeExec("bare") // без префикса
+	names := ListInitScripts()
+	for _, want := range []string{"syncthing", "adguardhome", "dead", "bare"} {
+		if !names[want] {
+			t.Errorf("init-скрипт %q не найден в ListInitScripts", want)
+		}
+	}
+	// S## префиксы не должны попадать как отдельные имена
+	if names["S92syncthing"] {
+		t.Error("полное имя файла не должно попадать в map")
+	}
+}
+
+// ListProcesses: поле Init заполнено для процесса с совпадающим init-скриптом.
+func TestListProcessesInit(t *testing.T) {
+	withProcRoot(t, t.TempDir())
+	mkProc(t, 1000, "syncthing", `1000 (syncthing) S 1`, "/opt/bin/syncthing")
+	mkProc(t, 1001, "lighttpd", `1001 (lighttpd) S 1`, "/opt/sbin/lighttpd")
+	old := initDirVar
+	initDirVar = t.TempDir()
+	t.Cleanup(func() { initDirVar = old })
+	os.WriteFile(filepath.Join(initDirVar, "S92syncthing"), []byte("#!/bin/sh\n"), 0755)
+	// lighttpd НЕТ init-скрипта в тесте
+	list := ListProcesses()
+	for _, p := range list {
+		if p.Name == "syncthing" && p.Init != "syncthing" {
+			t.Errorf("syncthing: Init = %q, want \"syncthing\"", p.Init)
+		}
+		if p.Name == "lighttpd" && p.Init != "" {
+			t.Errorf("lighttpd: Init = %q, want пусто (нет init-скрипта)", p.Init)
+		}
+	}
+}
