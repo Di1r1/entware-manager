@@ -1463,13 +1463,13 @@ function renderBridgeCard(svc, prefs) {
         : localStorage.getItem(bridgeNotifKey(svc.id)) !== 'off';
     const dimStyle = enabled ? '' : 'opacity:0.55;';
     const actionsHtml = enabled ? (svc.actions || []).map(a =>
-        '<button class="packages-delete-btn" style="background:#4a5568;padding:4px 10px;font-size:0.8rem;" data-bridge-id="' +
+        '<button class="packages-delete-btn" style="background:var(--btn-muted);padding:4px 10px;font-size:0.8rem;" data-bridge-id="' +
         escapeHtml(svc.id) + '" data-action="' + escapeHtml(a.id) + '"' +
         (a.confirm ? ' data-confirm="1"' : '') + '>' + escapeHtml(a.label) + '</button>'
     ).join(' ') : '';
     const builtinIds = ['koffe','adguard','ttyd','transmission','syncthing'];
     const canDelete = svc.has_manifest && builtinIds.indexOf(svc.id) === -1;
-    const deleteHtml = canDelete ? '<button class="packages-delete-btn bridge-delete" style="background:#c0392b;padding:4px 10px;font-size:0.8rem;" data-delete-id="' + escapeHtml(svc.id) + '">Удалить</button>' : '';
+    const deleteHtml = canDelete ? '<button class="packages-delete-btn bridge-delete" style="background:var(--btn-danger);padding:4px 10px;font-size:0.8rem;" data-delete-id="' + escapeHtml(svc.id) + '">Удалить</button>' : '';
     return '<div class="stat-card" style="min-width:230px;' + dimStyle + '">' +
         '<h4 style="margin:0 0 6px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
         '<span>' + escapeHtml(svc.name) + '</span>' +
@@ -1636,9 +1636,9 @@ async function renderBridgeTab() {
         const prefs = bridgePrefsCache;
         html += '<div class="stats-grid" id="bridge-grid">' + services.map(s => renderBridgeCard(s, prefs)).join('') + '</div>';
     }
-    html += '<button class="packages-delete-btn" style="background:#4a5568;margin-top:16px;" onclick="renderBridgeTab()">' +
+    html += '<button class="packages-delete-btn" style="background:var(--btn-muted);margin-top:16px;" onclick="renderBridgeTab()">' +
         '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Пересканировать</button>' +
-        '<button class="packages-delete-btn" style="margin-top:16px;background:#4a5568;" onclick="openBridgeEditor()">' +
+        '<button class="packages-delete-btn" style="margin-top:16px;background:var(--btn-muted);" onclick="openBridgeEditor()">' +
         '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-file"/></svg> Манифесты</button>';
     contentDiv.innerHTML = html;
     bindBridgeCards(contentDiv);
@@ -1710,7 +1710,7 @@ async function loadAdGuardZone() {
         zone.innerHTML =
             '<div class="stat-card" style="min-width:280px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:6px;">AdGuard Home' +
-            '<button class="packages-delete-btn" style="background:#4a5568;padding:4px 12px;font-size:0.8rem;" data-agh="toggle">' +
+            '<button class="packages-delete-btn" style="background:var(--btn-muted);padding:4px 12px;font-size:0.8rem;" data-agh="toggle">' +
             (st.protection_enabled ? 'Выключить защиту' : 'Включить защиту') + '</button></div>' +
             '<div class="bridge-details">' +
             rows.map(rw =>
@@ -1718,7 +1718,7 @@ async function loadAdGuardZone() {
                 '<span class="bd-value"' + (rw.color ? ' style="color:' + rw.color + ';"' : '') + '>' +
                 escapeHtml(rw.value) + '</span></div>').join('') +
             '</div>' +
-            '<button class="packages-delete-btn" style="background:#4a5568;margin-top:8px;" onclick="loadAdGuardZone()">' +
+            '<button class="packages-delete-btn" style="background:var(--btn-muted);margin-top:8px;" onclick="loadAdGuardZone()">' +
             '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить</button>' +
             '</div>';
         bindAghToggle();
@@ -1734,7 +1734,7 @@ function bridgeAuthFormHTML(id, name) {
         '<input type="text" id="ba-user-' + id + '" class="settings-input" placeholder="Логин" style="width:100%;margin-bottom:6px;">' +
         '<input type="password" id="ba-pass-' + id + '" class="settings-input" placeholder="Пароль" style="width:100%;margin-bottom:6px;">' +
         '<input type="password" id="ba-panel-' + id + '" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
-        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeAuth(\'' + id + '\')">Сохранить</button>' +
+        '<button class="packages-delete-btn" style="background:var(--btn-success);" onclick="saveBridgeAuth(\'' + id + '\')">Сохранить</button>' +
         '<span id="ba-st-' + id + '"></span></div>';
 }
 
@@ -1854,8 +1854,8 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<span id="br-ed-exists" style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
         '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:380px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
         '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
-        '<button class="packages-delete-btn" style="background:#2ecc71;" onclick="saveBridgeManifest()">Сохранить</button>' +
-        '<button class="packages-delete-btn" style="background:#4a5568;" onclick="renderBridgeTab()">Отмена</button>' +
+        '<button class="packages-delete-btn" style="background:var(--btn-success);" onclick="saveBridgeManifest()">Сохранить</button>' +
+        '<button class="packages-delete-btn" style="background:var(--btn-muted);" onclick="renderBridgeTab()">Отмена</button>' +
         '<span id="br-ed-status"></span></div>' +
         BRIDGE_KEYS_HELP +
         '</div>' +
@@ -1865,7 +1865,7 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<b>Сканер</b>' +
         [['service', 'Опросить сервис'], ['procs', 'Процессы'], ['modules', 'Модули']].map(x =>
             '<button class="packages-delete-btn" style="padding:3px 10px;background:' +
-            (x[0] === 'service' ? '#3182ce' : '#4a5568') + ';" data-scan-tab="' + x[0] + '"' +
+            (x[0] === 'service' ? 'var(--accent)' : 'var(--btn-muted)') + ';" data-scan-tab="' + x[0] + '"' +
             ' onclick="switchScannerTab(\'' + x[0] + '\')">' + x[1] + '</button>').join(' ') +
         '</div>' +
         '<div id="br-scan-status" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">Три режима сканера (запускаются кнопками выше):<br>' +
@@ -1905,7 +1905,7 @@ function renderProbeResult(probe) {
     tabsDiv.style.display = sources.length ? 'flex' : 'none';
     if (!sources.length && editorManifestHasProcess()) {
         // process-only манифест: адресов нет — детект идёт по процессу
-        msg += '<span style="color:#63b3ed;">Детект по процессу: статус берётся из запущенного демона, адреса не опрашиваются.</span> ';
+        msg += '<span style="color:var(--accent);">Детект по процессу: статус берётся из запущенного демона, адреса не опрашиваются.</span> ';
     } else if (!sources.length && !msg) {
         stDiv.innerHTML = 'Источники не найдены — добавьте <code>status</code>/<code>stats</code>.';
         return;
@@ -1917,7 +1917,7 @@ function renderProbeResult(probe) {
     }
     tabsDiv.innerHTML = sources.map((s, i) => {
         const active = s.name === bridgeProbeTab;
-        const bg = active ? '#3182ce' : '#4a5568';
+        const bg = active ? 'var(--accent)' : 'var(--btn-muted)';
         return '<button class="packages-delete-btn" style="background:' + bg + ';padding:3px 10px;" onclick="switchProbeTabAt(' + i + ')">' + escapeHtml(brSourceTitle(s.name)) + '</button>';
     }).join('');
 
@@ -1932,14 +1932,14 @@ function renderProbeResult(probe) {
             '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
             probe.listen_ports.map(p => {
                 const active = p === curPort;
-                return '<button class="packages-delete-btn" style="background:' + (active ? '#3182ce' : '#4a5568') + ';padding:2px 9px;font-size:0.78rem;' + (active ? 'outline:1px solid #63b3ed;' : '') + '" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>';
+                return '<button class="packages-delete-btn" style="background:' + (active ? 'var(--accent)' : 'var(--btn-muted)') + ';padding:2px 9px;font-size:0.78rem;' + (active ? 'outline:1px solid var(--accent);' : '') + '" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>';
             }).join('') +
             '</div>';
     }
     const sug = probe.suggestions || [];
     if (sug.length) {
         html += '<div style="font-size:0.85rem;margin-bottom:10px;">Похоже, на этом порту работает:' +
-            sug.map(s => '<button class="packages-delete-btn" style="background:#2ecc71;padding:3px 10px;" onclick="applyBridgeSuggestion(\'' + escapeHtml(s.path) + '\')">' + escapeHtml(s.service) + ' <span style="font-family:monospace;font-size:0.75rem;">' + escapeHtml(s.path) + '</span></button>').join(' ') +
+            sug.map(s => '<button class="packages-delete-btn" style="background:var(--btn-success);padding:3px 10px;" onclick="applyBridgeSuggestion(\'' + escapeHtml(s.path) + '\')">' + escapeHtml(s.service) + ' <span style="font-family:monospace;font-size:0.75rem;">' + escapeHtml(s.path) + '</span></button>').join(' ') +
             '</div>';
     }
     if (cur.url !== undefined) html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;"><code>' + escapeHtml(cur.url) + '</code></div>';
@@ -1968,10 +1968,10 @@ function renderProbeResult(probe) {
         html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
             ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
-            (p.guess ? ' <span style="color:#63b3ed;font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
+            (p.guess ? ' <span style="color:var(--accent);font-size:11px;">[' + escapeHtml(p.guess) + ']</span>' : '') + '</div>' +
             (isAdded
                 ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
-                : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeFieldAt(' + pi + ')">+ поле</button>') +
+                : '<button class="packages-delete-btn" style="background:var(--btn-success);padding:2px 8px;font-size:0.75rem;" onclick="addBridgeFieldAt(' + pi + ')">+ поле</button>') +
             '</div>';
     }
     html += '</div>';
@@ -2076,8 +2076,8 @@ function renderProcList(filter) {
             (isAdded
                 ? '<span style="color:#38a169;font-size:0.8rem;">добавлено</span>'
                 : create
-                    ? '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 9px;font-size:0.75rem;" onclick="createModuleFromProcessAt(' + i + ')">Добавить модуль</button>'
-                    : '<button class="packages-delete-btn" style="background:#2ecc71;padding:2px 8px;font-size:0.75rem;" onclick="addBridgeProcessAt(' + i + ')">+ в process</button>') +
+                    ? '<button class="packages-delete-btn" style="background:var(--btn-success);padding:2px 9px;font-size:0.75rem;" onclick="createModuleFromProcessAt(' + i + ')">Добавить модуль</button>'
+                    : '<button class="packages-delete-btn" style="background:var(--btn-success);padding:2px 8px;font-size:0.75rem;" onclick="addBridgeProcessAt(' + i + ')">+ в process</button>') +
             '</div>';
     }
     html += '</div>';
@@ -2143,7 +2143,7 @@ function createModuleFromProcessAt(i) {
 // switchScannerTab — переключение режима правой панели с подсветкой кнопок.
 function switchScannerTab(tab) {
     document.querySelectorAll('[data-scan-tab]').forEach(b => {
-        b.style.background = b.dataset.scanTab === tab ? '#3182ce' : '#4a5568';
+        b.style.background = b.dataset.scanTab === tab ? 'var(--accent)' : 'var(--btn-muted)';
     });
     if (tab === 'service') bridgeScanManifest();
     else if (tab === 'procs') bridgeScanProcesses();
@@ -2169,12 +2169,12 @@ async function renderSavedModules() {
             html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
                 '<div style="flex:1;min-width:0;">' + escapeHtml(s.name) +
                 ' <span style="color:' + color + ';font-size:0.78rem;white-space:nowrap;">' + escapeHtml(lbl) + '</span></div>' +
-                '<button class="packages-delete-btn" style="background:#4a5568;padding:2px 9px;font-size:0.75rem;" onclick="openModuleFromListAt(' + i + ')">Открыть</button></div>';
+                '<button class="packages-delete-btn" style="background:var(--btn-muted);padding:2px 9px;font-size:0.75rem;" onclick="openModuleFromListAt(' + i + ')">Открыть</button></div>';
         });
         html += '</div>';
         if (!services.length) html += '<div style="color:var(--text-muted);">Пока нет ни одного модуля.</div>';
         html += '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
-            '<button class="packages-delete-btn" style="background:#2ecc71;padding:3px 12px;" onclick="openNewModuleWizard()">+ Новый модуль</button>' +
+            '<button class="packages-delete-btn" style="background:var(--btn-success);padding:3px 12px;" onclick="openNewModuleWizard()">+ Новый модуль</button>' +
             '<span style="font-size:0.78rem;color:var(--text-muted);">выберете живой процесс из списка — каркас манифеста создастся сам</span></div>';
         bodyDiv.innerHTML = html;
         if (st) st.innerHTML = '';
@@ -2619,7 +2619,7 @@ async function renderBridgeCardsOnStats() {
             if (ctlOn) {
                 htmlBody += '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' +
                     [['start', 'Старт'], ['stop', 'Стоп', '1'], ['restart', 'Рестарт', '1']].map(x =>
-                        '<button class="packages-delete-btn" style="background:#4a5568;padding:3px 10px;font-size:0.8rem;" data-ctl-id="' +
+                        '<button class="packages-delete-btn" style="background:var(--btn-muted);padding:3px 10px;font-size:0.8rem;" data-ctl-id="' +
                         escapeHtml(s.id) + '" data-ctl-op="' + x[0] + '"' + (x[2] ? ' data-confirm="1"' : '') + '>' + x[1] + '</button>'
                     ).join(' ') + '</div>';
             }
