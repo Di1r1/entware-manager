@@ -26,6 +26,13 @@ const (
 
 var idRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
+const (
+	maxProcessNames = 4
+	procNamePattern = `[a-zA-Z0-9._-]{1,64}`
+)
+
+var procNameRe = regexp.MustCompile(`^` + procNamePattern + `$`)
+
 var sourceNameRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
 type Endpoint struct {
@@ -76,6 +83,11 @@ type Manifest struct {
 	Ports   []int                     `json:"ports,omitempty"`  // кандидаты портов base (native/entware установки)
 	Fields  []FieldDef                `json:"fields,omitempty"` // универсальные поля карточки сканера
 	Actions []Action                  `json:"actions,omitempty"`
+	// Process — имена процессов для детекта без веб-порта (демоны init.d).
+	// Если задано, discovery и watch определяют живость ТОЛЬКО по процессу,
+	// HTTP-probe игнорируется полностью (кворум v1.15.7: процесс = источник
+	// истины). Поля карточки status/stats/extra работают как раньше.
+	Process []string `json:"process,omitempty"`
 }
 
 // AuthCreds — секретный файл <id>.auth.json (0600), НИКОГДА не попадает в ответы.
@@ -102,7 +114,12 @@ func ValidateManifest(m *Manifest) error {
 	if len(m.Name) == 0 || len(m.Name) > 64 {
 		return fmt.Errorf("имя пустое или длиннее 64")
 	}
-	if _, err := ValidateBridgeURL(m.Probe.URL, m.Base); err != nil {
+	// probe обязателен только для HTTP-модулей: process-детекту адрес не нужен
+	if m.Probe.URL == "" {
+		if len(m.Process) == 0 {
+			return fmt.Errorf("probe: пустой url (или задайте process для детекта по процессу)")
+		}
+	} else if _, err := ValidateBridgeURL(m.Probe.URL, m.Base); err != nil {
 		return fmt.Errorf("probe: %w", err)
 	}
 	if m.Status != nil {
@@ -121,6 +138,14 @@ func ValidateManifest(m *Manifest) error {
 	for _, p := range m.Ports {
 		if p < 1 || p > 65535 {
 			return fmt.Errorf("порт %d вне диапазона 1–65535", p)
+		}
+	}
+	if len(m.Process) > maxProcessNames {
+		return fmt.Errorf("process: имён больше %d", maxProcessNames)
+	}
+	for i, p := range m.Process {
+		if !procNameRe.MatchString(p) {
+			return fmt.Errorf("process[%d]: имя %q не подходит под %s", i, p, procNamePattern)
 		}
 	}
 	for i, f := range m.Fields {

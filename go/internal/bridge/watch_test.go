@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -127,5 +128,54 @@ func TestWatchStatePersistsAcrossRuns(t *testing.T) {
 	w := st.Modules["svc"]
 	if w == nil || !w.Up {
 		t.Fatalf("state не сохранился между вызовами: %+v", st.Modules)
+	}
+}
+
+// P1 кворума v1.15.7: process-модуль без probe не должен давать ложный down.
+// Живой процесс (сам тест) → running; несуществующее имя → absent, но
+// первый проход — база без алертов.
+func TestWatchProcessModuleNoFalseDown(t *testing.T) {
+	dir := t.TempDir()
+	SetBridgeDir(dir)
+	t.Cleanup(func() { SetBridgeDir("/opt/web_entware/bridge") })
+	self := os.Getpid()
+	selfComm := strings.TrimSpace(readProcFile(filepath.Join(procRoot, strconv.Itoa(self), "comm")))
+	if selfComm == "" {
+		t.Skip("нет доступа к /proc")
+	}
+	os.WriteFile(filepath.Join(dir, "procm.json"),
+		[]byte(`{"id":"procm","name":"Proc Module","process":["`+selfComm+`"]}`), 0644)
+	os.WriteFile(filepath.Join(dir, "procx.json"),
+		[]byte(`{"id":"procx","name":"Proc Missing","process":["tochno-net-est"]}`), 0644)
+	os.WriteFile(filepath.Join(dir, "_prefs.json"),
+		[]byte(`{"modules":{"procm":{"enabled":true,"notifications":true},"procx":{"enabled":true,"notifications":true}}}`), 0600)
+	watchStateDir = filepath.Join(t.TempDir(), "st")
+	watchLogDir = t.TempDir()
+	t.Cleanup(func() {
+		watchStateDir = "/tmp/entware/bridge"
+		watchLogDir = "/tmp/entware/logs"
+	})
+
+	// первый проход — база, событий быть не должно ни для кого
+	if evs := RunWatch(dir); len(evs) != 0 {
+		t.Fatalf("первый проход дал события: %v", evs)
+	}
+	st := loadWatchState()
+	if w := st.Modules["procm"]; w == nil || !w.Up {
+		t.Errorf("живой process-модуль должен быть up: %+v", w)
+	}
+	// отсутствующий процесс: absent, но алерт только после 2 неудач;
+	// первый проход уже был базой (up=true по факту absent? нет — база берёт up из пробы)
+	if w := st.Modules["procx"]; w != nil && w.Up && w.Fails > 0 {
+		t.Errorf("неожиданное состояние procx: %+v", w)
+	}
+	// второй проход: procx набирает fails=1 — алерта ещё нет
+	if evs := RunWatch(dir); len(evs) != 0 {
+		t.Fatalf("fails=1 не должен давать событие: %v", evs)
+	}
+	// procm остаётся up без событий
+	st = loadWatchState()
+	if w := st.Modules["procm"]; w == nil || !w.Up || w.Fails != 0 {
+		t.Errorf("живой модуль испортил состояние: %+v", w)
 	}
 }

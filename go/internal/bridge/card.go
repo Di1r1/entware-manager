@@ -114,13 +114,18 @@ func BuildCard(dir, id string) (*CardData, error) {
 }
 
 // pickEndpoint — эндпоинт-источник по имени поля.
+// Пустой Probe (process-модуль без адреса) — не источник: вернём nil,
+// иначе fetchJSON отдавал бы ошибку валидации вместо тихого пропуска.
 func pickEndpoint(m *Manifest, from string) *Endpoint {
 	switch from {
 	case "", "status":
 		if m.Status != nil {
 			return m.Status
 		}
-		return &m.Probe
+		if m.Probe.URL != "" {
+			return &m.Probe
+		}
+		return nil
 	case "stats":
 		return m.Stats
 	}
@@ -130,7 +135,10 @@ func pickEndpoint(m *Manifest, from string) *Endpoint {
 	if m.Status != nil {
 		return m.Status
 	}
-	return &m.Probe
+	if m.Probe.URL != "" {
+		return &m.Probe
+	}
+	return nil
 }
 
 // lookupPath идёт по точечному пути в карте/массиве.

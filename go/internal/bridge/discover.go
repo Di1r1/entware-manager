@@ -151,6 +151,16 @@ func Discover(bridgeDir string) []ServiceState {
 		catalogIDs[m.ID] = true
 	}
 
+	// Один снимок процессов на весь проход (P2 кворума v1.15.7): горутины
+	// манифестов с process-детектом читают готовый слайс.
+	var procSnap []procEntry
+	for _, m := range manifests {
+		if len(m.Process) > 0 {
+			procSnap = snapshotProcs()
+			break
+		}
+	}
+
 	for _, e := range BuiltInCatalog() {
 		if catalogIDs[e.ID] {
 			continue
@@ -198,6 +208,23 @@ func Discover(bridgeDir string) []ServiceState {
 			defer func() { <-sem }()
 			if !IsEnabled(m.ID) {
 				add(ServiceState{ID: m.ID, Name: m.Name, State: "disabled", HasManifest: true})
+				return
+			}
+			// process-детект: процесс = источник истины, probe игнорируется
+			// полностью (кворум v1.15.7). auth_required у таких модулей не бывает.
+			if len(m.Process) > 0 {
+				st := ServiceState{ID: m.ID, Name: m.Name, HasManifest: true}
+				if pids := matchProcs(procSnap, m.Process); len(pids) > 0 {
+					st.State = "running"
+					st.Detail = fmt.Sprintf("PID %d", pids[0])
+					if len(pids) > 1 {
+						st.Detail += fmt.Sprintf(" (+%d)", len(pids)-1)
+					}
+				} else {
+					st.State = "absent"
+					st.Detail = "процесс не найден"
+				}
+				add(st)
 				return
 			}
 			if time.Now().After(deadline) {
@@ -323,6 +350,10 @@ func ProxyStatus(dir, id string) (*StatusProxy, error) {
 	}
 	ep := m.Status
 	if ep == nil {
+		if m.Probe.URL == "" {
+			// process-модуль без адреса: не ошибка валидации, а честное «нет данных»
+			return &StatusProxy{Error: "у модуля нет HTTP-источника статуса"}, nil
+		}
 		ep = &m.Probe
 	}
 	return proxyEndpoint(dir, id, ep)

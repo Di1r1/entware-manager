@@ -107,6 +107,16 @@ func RunWatch(dir string) []string {
 		results = map[string]string{} // id → состояние пробы
 	)
 
+	// Один снимок процессов на проход, если хоть один модуль на process-детекте
+	// (иначе пустой probe давал ложные «упал» — P1 кворума v1.15.7).
+	var procSnap []procEntry
+	for id := range prefs.Modules {
+		if mf, err := LoadManifest(dir, id); err == nil && len(mf.Process) > 0 {
+			procSnap = snapshotProcs()
+			break
+		}
+	}
+
 	for id, m := range prefs.Modules {
 		if !m.Enabled || !m.Notifications {
 			continue // выключенные или без уведомлений не мониторим
@@ -115,12 +125,23 @@ func RunWatch(dir string) []string {
 			continue
 		}
 		wg.add(1)
-		go func(id string) {
+		go func(id string, snap []procEntry) {
 			defer wg.done()
 			mf, err := LoadManifest(dir, id)
 			if err != nil {
 				mu.lock()
 				results[id] = "absent"
+				mu.unlock()
+				return
+			}
+			// process-детект: как в discovery — probe игнорируется полностью.
+			if len(mf.Process) > 0 {
+				state := "absent"
+				if len(matchProcs(snap, mf.Process)) > 0 {
+					state = "running"
+				}
+				mu.lock()
+				results[id] = state
 				mu.unlock()
 				return
 			}
@@ -149,7 +170,7 @@ func RunWatch(dir string) []string {
 			mu.lock()
 			results[id] = state
 			mu.unlock()
-		}(id)
+		}(id, procSnap)
 	}
 	wg.wait()
 

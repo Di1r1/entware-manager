@@ -41,7 +41,13 @@ func DiscoverState(dir, id string) string {
 		}
 		return best.State
 	}
-	// манифестный сервис: считаем живым, если файл есть
+	// манифестный сервис: process-детект или «жив, раз файл есть»
+	if m, err := LoadManifest(dir, id); err == nil && len(m.Process) > 0 {
+		if pids := matchProcs(snapshotProcs(), m.Process); len(pids) > 0 {
+			return "running"
+		}
+		return "absent"
+	}
 	if HasManifestFile(dir, id) {
 		return "running"
 	}

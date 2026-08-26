@@ -1786,6 +1786,7 @@ const BRIDGE_KEYS_HELP =
     '<tr><td><code>status</code>/<code>stats</code></td><td>JSON-источники данных карточки</td></tr>' +
     '<tr><td><code>extra</code></td><td>{имя: {url, slice_last}} — доп. источники (до 8)</td></tr>' +
     '<tr><td><code>ports</code></td><td>кандидаты портов для авто-поиска</td></tr>' +
+    '<tr><td><code>process</code></td><td>детект без веб-порта: имена процессов демона (до 4), например <code>["frpc"]</code>. Статус — только по процессу, адреса не нужны; поля карточки по-прежнему берутся из status/stats/extra</td></tr>' +
     '<tr><td><code>fields[]</code></td><td>поля карточки (до 24): path · label · from (status/stats/имя extra) · type (bool, bytes, count, num, ms, dur, top) · tile · color · on/off</td></tr>' +
     '<tr><td><code>actions[]</code></td><td>кнопки (до 10): id · label · method · url · body · confirm</td></tr>' +
     '</tbody></table>' +
@@ -1843,7 +1844,14 @@ function renderProbeResult(probe) {
 
     const sources = probe.sources || [];
     tabsDiv.style.display = sources.length ? 'flex' : 'none';
-    if (!sources.length && !msg) stDiv.innerHTML = 'Источники не найдены — добавьте <code>status</code>/<code>stats</code>.';
+    if (!sources.length && editorManifestHasProcess()) {
+        // process-only манифест: адресов нет — детект идёт по процессу
+        msg += '<span style="color:#63b3ed;">Детект по процессу: статус берётся из запущенного демона, адреса не опрашиваются.</span> ';
+    } else if (!sources.length && !msg) {
+        stDiv.innerHTML = 'Источники не найдены — добавьте <code>status</code>/<code>stats</code>.';
+        return;
+    }
+    stDiv.innerHTML = msg;
 
     if (bridgeProbeTab === '' || !sources.some(s => s.name === bridgeProbeTab)) {
         bridgeProbeTab = sources.length ? sources[0].name : '';
@@ -1947,6 +1955,14 @@ function currentBasePort() {
         const mo = (m.base || '').match(/:(\d+)\s*\/?$/);
         return mo ? parseInt(mo[1], 10) : null;
     } catch(e) { return null; }
+}
+
+// editorManifestHasProcess — задан ли process[] в тексте манифеста редактора.
+function editorManifestHasProcess() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        return Array.isArray(m.process) && m.process.length > 0;
+    } catch(e) { return false; }
 }
 
 // applyBridgeSuggestion — подстановка найденного API-пути в status/probe.
