@@ -2162,7 +2162,7 @@ function createModuleFromProcessAt(i) {
     if (p.init) m.init = p.init;
     const json = JSON.stringify(m, null, 2);
     renderBridgeEditor('Новый модуль', '', json);
-    Toast.show('Каркас «' + p.name + '» готов' + (p.init ? ' (init: ' + escapeHtml(p.init) + ')' : '') + ': впишите base/status и нажмите «Сохранить»');
+    Toast.show('Каркас «' + p.name + '» готов' + (p.init ? ' (init: ' + escapeHtml(p.init) + ')' : '') + ': впишите base/status и нажмите «Сохранить»' + (p.init ? '' : '. Для кнопок Старт/Стоп создайте init-скрипт (см. Справка)'));
 }
 
 // ===== Вкладки сканера: Опросить сервис / Процессы / Модули =====
