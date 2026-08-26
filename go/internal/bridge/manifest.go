@@ -163,9 +163,9 @@ func ValidateManifest(m *Manifest) error {
 			return fmt.Errorf("field[%d]: пустая или длинная label", i)
 		}
 		switch f.Type {
-		case "", "bool", "bytes", "count", "num", "ms", "dur", "top":
+		case "", "bool", "bytes", "count", "num", "ms", "dur", "top", "kbs":
 		default:
-			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count, num, ms, dur, top)", i, f.Type)
+			return fmt.Errorf("field[%d]: неизвестный тип %q (допустимы bool, bytes, count, num, ms, dur, top, kbs)", i, f.Type)
 		}
 		if f.From != "" && !sourceNameRe.MatchString(f.From) {
 			return fmt.Errorf("field[%d]: плохое имя источника %q", i, f.From)

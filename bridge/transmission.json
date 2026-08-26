@@ -41,13 +41,15 @@
     },
     {
       "path": "arguments.downloadSpeed",
-      "label": "Загрузка (Б/с)",
+      "label": "Загрузка",
+      "type": "kbs",
       "tile": true,
       "color": "#8b5cf6"
     },
     {
       "path": "arguments.uploadSpeed",
-      "label": "Отдача (Б/с)",
+      "label": "Отдача",
+      "type": "kbs",
       "tile": true,
       "color": "#38a169"
     },

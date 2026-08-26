@@ -1835,7 +1835,7 @@ const BRIDGE_KEYS_HELP =
     '<tr><td><code>extra</code></td><td>{имя: {url, slice_last}} — доп. источники (до 8)</td></tr>' +
     '<tr><td><code>ports</code></td><td>кандидаты портов для авто-поиска</td></tr>' +
     '<tr><td><code>process</code></td><td>детект без веб-порта: имена процессов демона (до 24), например <code>["frpc"]</code>. Статус — только по процессу, адреса не нужны; карточка сама покажет PID и память каждого процесса, поля из status/stats/extra добавляются как обычно</td></tr>' +
-    '<tr><td><code>fields[]</code></td><td>поля карточки (до 24): path · label · from (status/stats/имя extra) · type (bool, bytes, count, num, ms, dur, top) · tile · color · on/off</td></tr>' +
+    '<tr><td><code>fields[]</code></td><td>поля карточки (до 24): path · label · from (status/stats/имя extra) · type (bool, bytes, count, num, ms, dur, top, kbs — Б/с → КБ/с) · tile · color · on/off</td></tr>' +
     '<tr><td><code>actions[]</code></td><td>кнопки (до 10): id · label · method · url · body · confirm</td></tr>' +
     '</tbody></table>' +
     '<p style="font-size:0.82rem;color:var(--text-muted);">Адреса только http://127.0.0.1:порт… Логины/пароли приложений сюда НЕ вносятся — отдельный секретный файл через форму авторизации на карточке.</p></details>';
@@ -1876,12 +1876,14 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<div id="br-probe-body"></div>' +
         '</div>' +
         '</div>';
-    // Сброс состояния сканера: каждый вход в редактор начинается с подсказки
-    // «Три режима сканера», ничего не опрашивается автоматически.
+    // Сброс состояния сканера: новый редактор начинается с чистого кэша.
     bridgeProbeTab = '';
     bridgeProbeCache = null;
     bridgeProcCache = null;
     bridgeProcMode = 'attach';
+    // Существующий модуль: сразу автоопрос адресов (как раньше) — поля и
+    // порты доступны без лишнего клика. Новый/«+ Новый модуль» — подсказка.
+    if (editId) bridgeScanManifest();
 }
 
 function brSourceTitle(name) {

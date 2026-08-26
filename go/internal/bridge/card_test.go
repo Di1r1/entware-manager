@@ -93,3 +93,16 @@ func TestFormatValueStringNumbers(t *testing.T) {
 		t.Errorf("нестрока-число должна дать пусто: %q", got)
 	}
 }
+
+// kbs: байты/с → КБ/с (Transmission отдаёт Б/с).
+func TestFormatValueKbs(t *testing.T) {
+	if got := formatValue(float64(15360), "kbs"); got != "15 КБ/с" {
+		t.Errorf("kbs: %q, want \"15 КБ/с\"", got)
+	}
+	if got := formatValue("2048", "kbs"); got != "2 КБ/с" {
+		t.Errorf("kbs из строки: %q", got)
+	}
+	if got := formatValue("abc", "kbs"); got != "" {
+		t.Errorf("нестрока-число должна дать пусто: %q", got)
+	}
+}

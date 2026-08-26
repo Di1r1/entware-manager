@@ -243,6 +243,13 @@ func formatValue(v interface{}, typ string) string {
 			return ""
 		}
 		return humanBytesServer(f)
+	case "kbs":
+		// скорость: байты/с → КБ/с (Transmission и подобные отдают Б/с)
+		f, ok := toFloat(v)
+		if !ok {
+			return ""
+		}
+		return groupInt(int64(f/1024)) + " КБ/с"
 	}
 	// текст/число как есть
 	switch t := v.(type) {
