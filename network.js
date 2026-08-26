@@ -35,6 +35,10 @@ const NETWORK = {
                         <span class="toggle-slider"></span>
                         <span>Автозапуск при загрузке</span>
                     </label>
+                    <label class="service-watch-toggle" title="Скрыть неизвестные интерфейсы" style="margin-left:auto;">
+                        <input type="checkbox" id="hide-unknown-ifaces" style="display: none;">
+                        <span class="toggle-slider"></span>
+                    </label>
                 </div>
             </div>
             <div id="network-tabs">
@@ -43,10 +47,7 @@ const NETWORK = {
                 <button class="tab-button" data-tab="arp" id="tab-btn-arp">ARP</button>
                 <button class="tab-button" data-tab="wifi" id="tab-btn-wifi">Wi-Fi</button>
                 <button class="tab-button" data-tab="events" id="tab-btn-events">События</button>
-                <label class="tab-toggle" title="Скрыть неизвестные интерфейсы">
-                    <input type="checkbox" id="hide-unknown-ifaces" style="display: none;">
-                    <span class="toggle-slider"></span>
-                </label>
+                <button id="refresh-wifi" class="packages-delete-btn" style="margin-left:auto;display:none;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить</button>
             </div>
             <div id="network-content">
                 <div id="tab-interfaces" class="tab-content active">
@@ -199,6 +200,11 @@ const NETWORK = {
     async loadWifi() {
         const tbody = document.getElementById('wifi-tbody');
         if (!tbody) return;
+        const btn = document.getElementById('refresh-wifi');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновление…';
+        }
         try {
             const data = await apiGet('/network/wifi.cgi');
             const clients = data.clients || [];
@@ -221,6 +227,11 @@ const NETWORK = {
             }).join('');
         } catch(e) {
             tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger-color);">Ошибка загрузки: ' + escapeHtml(e.message) + '</td></tr>';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-refresh"/></svg> Обновить';
+            }
         }
     },
 
@@ -309,6 +320,7 @@ const NETWORK = {
         document.getElementById('network-restart')?.addEventListener('click', () => this.doAction('restart'));
         document.getElementById('network-autostart')?.addEventListener('change', (e) => this.saveAutostart(e.target.checked));
         document.getElementById('refresh-events')?.addEventListener('click', () => this.loadEvents());
+        document.getElementById('refresh-wifi')?.addEventListener('click', () => this.loadWifi());
         
         document.getElementById('hide-unknown-ifaces')?.addEventListener('change', () => {
             this.loadInterfaces();
@@ -330,6 +342,7 @@ const NETWORK = {
             { tbody: 'interfaces-tbody', types: ['string', 'string', 'ip', 'string', 'string', 'speed'] },
             { tbody: 'routes-tbody', types: ['ip', 'ip', 'string', 'number'] },
             { tbody: 'arp-tbody', types: ['ip', 'string', 'string', 'string', 'string'] },
+            { tbody: 'wifi-tbody', types: ['string', 'ip', 'string', 'number', 'string', 'number', 'string'] },
         ];
 
         tables.forEach(cfg => {
@@ -392,6 +405,10 @@ function switchNetworkTab(btn, tabName) {
     if (tabName === 'wifi' && typeof NETWORK !== 'undefined') {
         NETWORK.loadWifi();
     }
-    
+
+    // Кнопка «Обновить» видна только на вкладке Wi-Fi
+    const rw = document.getElementById('refresh-wifi');
+    if (rw) rw.style.display = tabName === 'wifi' ? '' : 'none';
+
     NETWORK.currentTab = tabName;
 }
