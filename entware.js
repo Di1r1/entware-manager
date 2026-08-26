@@ -447,6 +447,7 @@ async function loadTab(tabName) {    const ver = window.APP_VERSION || 'loading.
             initStatsTabs();
             loadNetworkStatus();
             setTimeout(() => { renderLinksOnStats(); renderBridgeCardsOnStats(); enableTableSorting(); }, 100);
+            startCpuLive();
         }
         Menu.setActiveTab(tabName);
     } catch (err) {
@@ -475,6 +476,28 @@ function initHelpSearch() {
             items.forEach(el2 => el2.style.display = !q || match ? '' : 'none');
         });
     });
+}
+
+// startCpuLive — живое обновление карточки CPU каждые 5 секунд:
+// cpu.cgi отдаёт HTML-фрагмент содержимого карточки (замер 350 мс на стороне
+// роутера). Таймер сам останавливается, когда уходишь со страницы Статистики.
+let cpuLiveTimer = null;
+function startCpuLive() {
+    stopCpuLive();
+    cpuLiveTimer = setInterval(async () => {
+        const box = document.getElementById('cpuCard');
+        if (!box) { stopCpuLive(); return; }
+        try {
+            const resp = await apiFetch('/cpu.cgi'); // apiFetch сам добавляет _=Date.now()
+            if (!resp.ok) return;
+            const html = await resp.text();
+            if (html && document.getElementById('cpuCard')) box.innerHTML = html;
+        } catch(e) { /* роутер мог моргнуть — попробуем в следующий тик */ }
+    }, 5000);
+}
+function stopCpuLive() {
+    if (cpuLiveTimer) clearInterval(cpuLiveTimer);
+    cpuLiveTimer = null;
 }
 
 function initStatsTabs() {

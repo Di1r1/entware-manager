@@ -1097,6 +1097,7 @@ input[type="checkbox"] {
 }
 .stat-card.system h3 { border-bottom-color: var(--accent); }
 .stat-card.memory h3 { border-bottom-color: var(--accent); }
+.stat-card.cpu h3 { border-bottom-color: var(--accent); }
 .stat-card.tmpfs h3 { border-bottom-color: var(--accent); }
 .stat-card.packages h3 { border-bottom-color: var(--accent-dark); }
 .stat-card.disk h3 { border-bottom-color: var(--accent-dark); }
@@ -1376,6 +1377,102 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
     text-overflow: ellipsis;
 }
 .stat-card.memory .top-mem td:last-child {
+    text-align: right;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.stat-card.cpu {
+    padding: 1.5rem;
+}
+.stat-card.cpu h3 {
+    margin-bottom: 0.8rem;
+}
+.stat-card.cpu .stat-table {
+    font-size: 0.85rem;
+}
+.stat-card.cpu .stat-table td {
+    white-space: normal;
+    padding: 0.3rem 0.5rem;
+    vertical-align: middle;
+}
+.stat-card.cpu .stat-table td:last-child {
+    text-align: right;
+}
+.stat-card.cpu .top-mem-wrapper {
+    margin-top: 8px;
+    border-radius: 8px;
+    min-width: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform;
+    position: relative;
+    z-index: 1;
+}
+.stat-card.cpu .top-mem-wrapper:hover {
+    transform: translateY(-6px) scale(1.01);
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-normal:hover {
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3), 0 20px 40px -8px rgba(var(--accent-rgb), 0.5) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-normal:hover td {
+    background: rgba(var(--accent-rgb), 0.12) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-normal:hover th {
+    background: rgba(var(--accent-rgb), 0.06) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-warning:hover {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 20px 40px -8px rgba(245, 158, 11, 0.5) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-warning:hover td {
+    background: rgba(245, 158, 11, 0.12) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-warning:hover th {
+    background: rgba(245, 158, 11, 0.06) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-critical:hover {
+    box-shadow: 0 0 0 2px rgba(229, 62, 62, 0.3), 0 20px 40px -8px rgba(229, 62, 62, 0.5) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-critical:hover td {
+    background: rgba(229, 62, 62, 0.12) !important;
+}
+.stat-card.cpu .top-mem-wrapper.top-mem-critical:hover th {
+    background: rgba(229, 62, 62, 0.06) !important;
+}
+.stat-card.cpu .top-mem {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+.stat-card.cpu .top-mem th {
+    font-weight: 400;
+    color: var(--text-muted);
+    padding: 4px 0.5rem 2px;
+    text-align: left;
+    font-size: 0.7rem;
+    background: transparent;
+    text-transform: none;
+    letter-spacing: normal;
+}
+.stat-card.cpu .top-mem td {
+    padding: 2px 0.5rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.stat-card.cpu .top-mem tr:nth-child(even) td {
+    background-color: var(--table-row-even);
+}
+.stat-card.cpu .top-mem td:first-child {
+    font-weight: 500;
+    color: var(--text-secondary);
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.stat-card.cpu .top-mem td:last-child {
     text-align: right;
     font-weight: 600;
     font-family: 'Courier New', monospace;

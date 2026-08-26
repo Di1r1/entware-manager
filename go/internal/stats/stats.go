@@ -408,6 +408,7 @@ func renderHTML(sys SysInfo, mem MemInfo, topProcs []TopProc, pkgInstalled, pkgA
 
 	renderSysCard(&b, sys)
 	renderMemCard(&b, mem, topProcs)
+	renderCPUCard(&b, collectCPU())
 	renderPkgCard(&b, pkgInstalled, pkgAvail, changes)
 	renderDiskCard(&b, disk)
 

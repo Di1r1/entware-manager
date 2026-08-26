@@ -21,6 +21,8 @@ func main() {
 	switch ep {
 	case "stats":
 		stats.Handle()
+	case "cpu":
+		stats.HandleCPU()
 	case "version":
 		stats.HandleVersion()
 	case "help":

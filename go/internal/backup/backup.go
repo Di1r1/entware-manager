@@ -36,6 +36,13 @@ var configs = []configFile{
 	{Path: "logger/config.json"},
 }
 
+// secretDest — файлы, которые при восстановлении обязаны получить 0600
+// (хеш пароля панели, токен бота, пароли приложений моста, его настройки).
+func secretDest(dest string) bool {
+	return dest == "auth_config.json" || dest == "telegram_config.json" ||
+		dest == "bridge/_prefs.json" || strings.HasSuffix(dest, ".auth.json")
+}
+
 // BuildArchive собирает архив бэкапа конфигурации в памяти
 // (конфиги + список пакетов + info). Экспортировано для чат-бота.
 func BuildArchive() ([]byte, error) {
@@ -52,6 +59,33 @@ func BuildArchive() ([]byte, error) {
 		if data, err := os.ReadFile(src); err == nil {
 			os.WriteFile(dst, data, 0644)
 		}
+	}
+
+	// Мост сервисов: пользовательские манифесты, секреты приложений
+	// (*.auth.json) и настройки (галочки уведомлений/управления).
+	if bridges, err := os.ReadDir(filepath.Join(webRoot, "bridge")); err == nil {
+		for _, e := range bridges {
+			if e.IsDir() || filepath.Ext(e.Name()) != ".json" || strings.HasSuffix(e.Name(), ".tmp") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(webRoot, "bridge", e.Name()))
+			if err != nil {
+				continue
+			}
+			os.WriteFile(filepath.Join(tmpDir, "bridge_"+e.Name()), data, 0600)
+		}
+	}
+
+	// Секреты панели: хеш пароля и токен Telegram-бота.
+	for _, name := range []string{"auth_config.json", "telegram_config.json"} {
+		if data, err := os.ReadFile(filepath.Join(webRoot, name)); err == nil {
+			os.WriteFile(filepath.Join(tmpDir, name), data, 0600)
+		}
+	}
+
+	// Пользовательские источники системных логов логгера.
+	if data, err := os.ReadFile(filepath.Join(webRoot, "logger", "system_sources.json")); err == nil {
+		os.WriteFile(filepath.Join(tmpDir, "logger_system_sources.json"), data, 0644)
 	}
 
 	pkgList, _ := exec.Command("opkg", "list-installed").Output()
@@ -171,35 +205,47 @@ func HandleRestore() {
 		os.WriteFile(filepath.Join(tmpDir, name), data, 0644)
 	}
 
-	restoreFile := func(tmpName, destRel string) error {
-		src := filepath.Join(tmpDir, tmpName)
-		if _, err := os.Stat(src); err != nil {
-			return err
-		}
-		dst := filepath.Join(webRoot, destRel)
-		os.MkdirAll(filepath.Dir(dst), 0755)
-		data, _ := os.ReadFile(src)
-		return os.WriteFile(dst, data, 0644)
-	}
-
-	type restoreMap struct {
-		tmpName string
-		dest    string
-	}
-
-	restoreList := []restoreMap{
-		{"links.json", "links.json"},
-		{"monitor_config.json", "monitor_config.json"},
-		{"network_config.json", "network_config.json"},
-		{"service_config.json", "service_config.json"},
-		{"logger_config.json", "logger/config.json"},
-	}
-
+	// Восстановление: плоские имена архива → пути в webRoot.
+	// Старые имена (links/monitor/...) совместимы; новые — мост (bridge_*),
+	// секреты панели и источники логов. Секреты получают 0600.
 	var restored []string
-	for _, rm := range restoreList {
-		if err := restoreFile(rm.tmpName, rm.dest); err == nil {
-			restored = append(restored, rm.dest)
+	entries, _ := os.ReadDir(tmpDir)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
 		}
+		name := e.Name()
+		var dest string
+		switch name {
+		case "links.json", "monitor_config.json", "network_config.json", "service_config.json",
+			"auth_config.json", "telegram_config.json":
+			dest = name
+		case "logger_config.json":
+			dest = "logger/config.json"
+		case "logger_system_sources.json":
+			dest = "logger/system_sources.json"
+		default:
+			if strings.HasPrefix(name, "bridge_") && strings.HasSuffix(name, ".json") &&
+				len(name) > len("bridge_") {
+				dest = "bridge/" + strings.TrimPrefix(name, "bridge_")
+			} else {
+				continue // неизвестная запись — пропускаем
+			}
+		}
+		data, err := os.ReadFile(filepath.Join(tmpDir, name))
+		if err != nil {
+			continue
+		}
+		dst := filepath.Join(webRoot, dest)
+		os.MkdirAll(filepath.Dir(dst), 0755)
+		mode := os.FileMode(0644)
+		if secretDest(dest) {
+			mode = 0600
+		}
+		if err := os.WriteFile(dst, data, mode); err != nil {
+			continue
+		}
+		restored = append(restored, dest)
 	}
 
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")

@@ -167,3 +167,103 @@ func TestBuildArchive(t *testing.T) {
 		t.Error("архив не gzip")
 	}
 }
+
+// Мост и секреты панели входят в бэкап (v1.16.4), при восстановлении
+// получают 0600.
+func TestBackupBridgeAndSecrets(t *testing.T) {
+	sandbox := t.TempDir()
+	oldWebRoot := webRoot
+	webRoot = filepath.Join(sandbox, "web")
+	t.Cleanup(func() { webRoot = oldWebRoot })
+
+	os.MkdirAll(filepath.Join(webRoot, "bridge"), 0755)
+	os.MkdirAll(filepath.Join(webRoot, "logger"), 0755)
+	os.WriteFile(filepath.Join(webRoot, "version.json"), []byte(`{"version":"test"}`), 0644)
+	os.WriteFile(filepath.Join(webRoot, "links.json"), []byte(`[]`), 0644)
+	os.WriteFile(filepath.Join(webRoot, "bridge", "myapp.json"), []byte(`{"id":"myapp"}`), 0644)
+	os.WriteFile(filepath.Join(webRoot, "bridge", "myapp.auth.json"), []byte(`{}`), 0600)
+	os.WriteFile(filepath.Join(webRoot, "bridge", "_prefs.json"), []byte(`{}`), 0600)
+	os.WriteFile(filepath.Join(webRoot, "auth_config.json"), []byte(`{"enabled":true}`), 0600)
+	os.WriteFile(filepath.Join(webRoot, "logger", "system_sources.json"), []byte(`[]`), 0644)
+	// мусор не должен попасть в архив
+	os.WriteFile(filepath.Join(webRoot, "bridge", "broken.tmp"), []byte("x"), 0644)
+
+	data, err := BuildArchive()
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	gr, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := tar.NewReader(gr)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		names[h.Name] = true
+	}
+	want := []string{"bridge_myapp.json", "bridge_myapp.auth.json",
+		"bridge__prefs.json", "auth_config.json", "logger_system_sources.json"}
+	for _, n := range want {
+		if !names[n] {
+			t.Errorf("в архиве нет %s (есть: %v)", n, names)
+		}
+	}
+	if names["broken.tmp"] {
+		t.Error(".tmp не должен попадать в архив")
+	}
+}
+
+// Секретные назначения получают 0600 при восстановлении.
+func TestSecretDest(t *testing.T) {
+	yes := []string{"auth_config.json", "telegram_config.json", "bridge/_prefs.json",
+		"bridge/x.auth.json", "bridge/a.b.auth.json"}
+	no := []string{"links.json", "bridge/myapp.json", "logger/config.json", "bridge/x.json"}
+	for _, d := range yes {
+		if !secretDest(d) {
+			t.Errorf("%q: ожидался secret", d)
+		}
+	}
+	for _, d := range no {
+		if secretDest(d) {
+			t.Errorf("%q: не должен быть secret", d)
+		}
+	}
+}
+
+// Roundtrip restore: bridge_* уезжают в bridge/, секреты — 0600.
+func TestRestoreBridgeFiles(t *testing.T) {
+	archive := buildArchive(t, []struct {
+		name     string
+		typeflag byte
+		data     string
+		size     int64
+	}{
+		{"bridge_myapp.json", tar.TypeReg, `{"id":"myapp"}`, 0},
+		{"bridge_myapp.auth.json", tar.TypeReg, `{"password":"p"}`, 0},
+		{"bridge__prefs.json", tar.TypeReg, `{"modules":{}}`, 0},
+	})
+	out := runRestore(t, archive)
+	if !strings.Contains(out, `"status":"ok"`) || !strings.Contains(out, "bridge/myapp.json") {
+		t.Fatalf("restore failed: %s", out)
+	}
+	if _, err := os.Stat(filepath.Join(webRoot, "bridge", "myapp.json")); err != nil {
+		t.Errorf("манифест не восстановлен: %v", err)
+	}
+	for _, secret := range []string{"bridge/myapp.auth.json", "bridge/_prefs.json"} {
+		fi, err := os.Stat(filepath.Join(webRoot, filepath.FromSlash(secret)))
+		if err != nil {
+			t.Errorf("%s не восстановлен: %v", secret, err)
+			continue
+		}
+		if fi.Mode().Perm() != 0600 {
+			t.Errorf("%s: права %v, want 0600", secret, fi.Mode().Perm())
+		}
+	}
+}

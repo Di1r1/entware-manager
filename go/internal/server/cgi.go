@@ -35,7 +35,7 @@ var flatDispatch = map[string]string{
 	"available": "pkg", "packages": "pkg", "installed": "pkg", "install": "pkg", "remove": "pkg",
 	"upgrade": "pkg", "update": "pkg", "upgradable": "pkg", "api": "pkg",
 	// stats
-	"stats": "stats", "version": "stats", "help": "stats", "links_load": "stats",
+	"stats": "stats", "cpu": "stats", "version": "stats", "help": "stats", "links_load": "stats",
 	"links_save": "stats", "tmpfs": "stats", "tmpfs_clean": "stats", "view_file": "stats", "delete_file": "stats",
 	"auth_config": "stats", "auth_log": "stats", "tls_config": "stats", "crontab": "stats", "crontab_update": "stats",
 	"backup": "stats", "backup_restore": "stats", "update_check": "stats",

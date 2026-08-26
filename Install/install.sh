@@ -734,6 +734,19 @@ else
 		cp -a "$TARGET_DIR/backup" "$STAGE_DIR/" 2>/dev/null
 	fi
 
+	# Пользовательские данные каталогов целиком: пользовательские манифесты
+	# моста, секреты *.auth.json (0600, права сохранит cp -a), настройки
+	# уведомлений/управления (_prefs.json) и конфиги логгера.
+	# Штатные манифесты поставки обновятся ниже блоком «ставим только
+	# отсутствующие» (кворум v1.16.4 P1: без этого обновление с 1.15.x+
+	# стирало сервисы, пароли приложений и галочки).
+	for d in bridge logger; do
+		if [ -d "$TARGET_DIR/$d" ]; then
+			mkdir -p "$STAGE_DIR/$d"
+			cp -a "$TARGET_DIR/$d/." "$STAGE_DIR/$d/" 2>/dev/null
+		fi
+	done
+
 	# Атомарный swap: старая → .old, новая → на место
 	rm -rf "$OLD_DIR" 2>/dev/null
 	mv "$TARGET_DIR" "$OLD_DIR" 2>/dev/null || {
@@ -950,6 +963,10 @@ find "$TARGET_DIR" -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o
 # Секретные конфиги — строго 600 (blanket chmod 644 выше перетирает права,
 # а в них: хеш пароля и токен Telegram-бота; подтверждено живым тестом).
 chmod 600 "$TARGET_DIR/auth_config.json" "$TARGET_DIR/telegram_config.json" 2>/dev/null
+# Секреты моста (*.auth.json — пароли приложений) и его настройки (_prefs.json)
+# тоже строго 600: контракт Go (manifest.go/prefs.go), кворум v1.16.4 P1 —
+# blanket chmod 644 *.json выше их перетирал.
+chmod 600 "$TARGET_DIR"/bridge/*.auth.json "$TARGET_DIR"/bridge/_prefs.json 2>/dev/null || true
 find "$TARGET_DIR/cgi-bin" -type d -exec chmod 755 {} \; 2>/dev/null
 ok "Права доступа установлены"
 
@@ -1100,6 +1117,9 @@ fi
 # Проверка Go-бинарников
 echo "  ${BOLD}Go-бинарники:${NC}"
 GO_BINS="entware-bridge entware-logger entware-monitor entware-net entware-pkg entware-rdp entware-server entware-services entware-smart entware-stats entware-telegram"
+# Счётчик из самого списка: не отстанет при добавлении нового бинарника
+# (кворум v1.16.4: «Найдено 11 из 10» блокировало блок успеха установки).
+GO_TOTAL=$(echo $GO_BINS | wc -w)
 GO_OK=0
 for bin in $GO_BINS; do
 	if [ -x "$TARGET_DIR/cgi-bin/go/$bin" ]; then
@@ -1111,10 +1131,10 @@ for bin in $GO_BINS; do
 		fail "  $bin не найден в cgi-bin/go/"
 	fi
 done
-if [ $GO_OK -eq 10 ]; then
-	ok "  Все 10 бинарников ($GO_OK)"
+if [ "$GO_OK" -eq "$GO_TOTAL" ]; then
+	ok "  Все $GO_TOTAL бинарников"
 else
-	fail "  Найдено $GO_OK из 10 бинарников"
+	fail "  Найдено $GO_OK из $GO_TOTAL бинарников"
 fi
 
 # Проверка веб-файлов
