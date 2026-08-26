@@ -103,6 +103,12 @@ function debounce(func, delay) {
     };
 }
 
+// askPanelPassword — единый маскированный ввод пароля панели (как в файловом
+// менеджере). Возвращает Promise с введённым паролем; '' — отмена/пусто.
+function askPanelPassword(title) {
+    return new Promise(function(resolve) { Modal.promptPassword(title || 'Пароль панели:', resolve); });
+}
+
 function init() {
     contentDiv = document.getElementById('content');
     sidebar = document.getElementById('sidebar');
@@ -1556,17 +1562,11 @@ function bindBridgeCards(container) {
     container.querySelectorAll('[data-ctl-op]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.ctlId, op = btn.dataset.ctlOp;
-            const text = btn.dataset.confirm
-                ? op === 'stop' ? 'Остановить сервис «' + id + '»? Повторите пароль панели:'
-                : 'Перезапустить сервис «' + id + '»? Повторите пароль панели:'
-                : 'Пароль панели:';
-            const password = prompt(text);
-            if (!password) return;
+            if (btn.dataset.confirm && !confirm(op === 'stop' ? 'Остановить сервис «' + id + '»?' : 'Перезапустить сервис «' + id + '»?')) return;
             btn.disabled = true;
             try {
                 const res = await apiPost('/bridge_ctl.cgi',
-                    'id=' + encodeURIComponent(id) + '&op=' + encodeURIComponent(op) +
-                    '&password=' + encodeURIComponent(password));
+                    'id=' + encodeURIComponent(id) + '&op=' + encodeURIComponent(op));
                 if (res.status === 'ok') {
                     Toast.show('Выполнено: ' + op);
                     setTimeout(refreshProcsCpu, 1500); // обновить аптайм/CPU после действия
@@ -1583,9 +1583,9 @@ function bindBridgeCards(container) {
             const id = btn.dataset.bridgeId, action = btn.dataset.action;
             let password;
             if (btn.dataset.confirm) {
-                password = prompt('Повторите пароль панели для подтверждения:');
+                password = await askPanelPassword('Повторите пароль панели для подтверждения:');
             } else {
-                password = prompt('Пароль панели:');
+                password = await askPanelPassword('Пароль панели:');
             }
             if (!password) return;
             btn.disabled = true;
@@ -1603,7 +1603,7 @@ function bindBridgeCards(container) {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.deleteId;
             if (!confirm('Удалить модуль «' + id + '»? Файл bridge/' + id + '.json будет удалён.')) return;
-            const password = prompt('Пароль панели:');
+            const password = await askPanelPassword('Пароль панели:');
             if (!password) return;
             btn.disabled = true;
             try {
@@ -1788,7 +1788,7 @@ async function saveBridgeAuth(id) {
 function bindAghToggle() {
     document.querySelector('[data-agh="toggle"]')?.addEventListener('click', async function() {
         this.disabled = true;
-        const password = prompt('Повторите пароль панели для подтверждения:');
+        const password = await askPanelPassword('Повторите пароль панели для подтверждения:');
         if (!password) { this.disabled = false; return; }
         try {
             const res = await apiPost('/bridge_action.cgi',
@@ -2330,7 +2330,7 @@ async function saveBridgeManifest() {
             escapeHtml(id.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 32) || 'myservice') + ')</span>';
         return;
     }
-    const password = prompt('Пароль панели:');
+    const password = await askPanelPassword('Пароль панели:');
     if (!password) return;
     const st = document.getElementById('br-ed-status');
     st.innerHTML = 'Проверка и сохранение…';
@@ -3632,7 +3632,7 @@ async function loadTLSConfig() {
 }
 
 async function saveTLSConfig() {
-    const password = prompt('Пароль панели для подтверждения:');
+    const password = await askPanelPassword('Пароль панели для подтверждения:');
     if (!password) return;
     const enabled = document.getElementById('tls-enabled').checked ? 'true' : 'false';
     const port = document.getElementById('tls-port').value || '8443';

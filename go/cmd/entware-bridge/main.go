@@ -155,8 +155,8 @@ func handleCtl() {
 	params := cgiutil.ParseFormBody(cgiutil.ReadPOSTBody())
 	id, op := params["id"], params["op"]
 	password := params["password"]
-	if id == "" || password == "" || !bridge.ValidID(id) {
-		cgiutil.WriteError("нужны id, op и password")
+	if id == "" || !bridge.ValidID(id) {
+		cgiutil.WriteError("нужны id и op")
 		return
 	}
 	switch op {
@@ -165,10 +165,12 @@ func handleCtl() {
 		cgiutil.WriteError("недопустимое действие: " + op)
 		return
 	}
-	if !auth.CheckPassword(password) {
-		time.Sleep(500 * time.Millisecond)
-		cgiutil.WriteError("Неверный пароль")
-		return
+	if auth.Enabled() && !auth.SessionValid() {
+		if password == "" || !auth.CheckPassword(password) {
+			time.Sleep(500 * time.Millisecond)
+			cgiutil.WriteError("требуется авторизация (войдите в панель)")
+			return
+		}
 	}
 	if !bridge.RateLimitAction(id, "ctl_"+op, 3*time.Second) {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "Слишком часто — подождите пару секунд"})
