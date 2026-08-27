@@ -60,6 +60,15 @@ Description: Web panel for Entware management on Keenetic/Netcraze
 Depends: $DEPS
 EOF
 
+# conffiles — seed-манифесты моста: при opkg upgrade пользовательские
+    # правки через UI (koffe.json и др.) не затираются (opkg сохраняет).
+    cat > "$PKG_TMP/control/conffiles" <<'CONFEOF'
+/opt/web_entware/bridge/adguard.json
+/opt/web_entware/bridge/koffe.json
+/opt/web_entware/bridge/syncthing.json
+/opt/web_entware/bridge/transmission.json
+CONFEOF
+
     # postinst
     cat > "$PKG_TMP/control/postinst" <<'INSTEOF'
 #!/bin/sh
@@ -151,7 +160,7 @@ RMEEOF
 
     # control.tar.gz (с ./ префиксом — как в стандартных ipk)
     cd "$PKG_TMP/control"
-    tar -czf "$PKG_TMP/control.tar.gz" ./control ./postinst ./prerm
+    tar -czf "$PKG_TMP/control.tar.gz" ./control ./postinst ./prerm ./conffiles
     cd "$PKG_TMP"
 
     # data.tar.gz — файлы проекта в /opt/web_entware/

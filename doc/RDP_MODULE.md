@@ -3,7 +3,7 @@
 - Статус: **РЕАЛИЗОВАНО (бэкенд v1.08.7 + клиентские доработки), проверено на dev-роутере**
 - Дата анализа: 2026-08-10 · реализация: 2026-08-10
 - Агенты-аналитики: ewm-reviewer (архитектура), ewm-sec (безопасность), ewm-designer (фронтенд), ewm-busybox (сборка/деплой)
-- Базовый модуль: `github.com/nakagami/grdpwasm` (Go+WASM веб-RDP-клиент, GPL-3.0), форк в `/tmp/opencode/grdpwasm`
+- Базовый модуль: `github.com/nakagami/grdpwasm` (Go+WASM веб-RDP-клиент, GPL-3.0), форк в `/opt/tmp/grdpwasm`
 
 ---
 
@@ -150,7 +150,7 @@ Browser (WASM) ←WebSocket→ proxy (Go, на роутере) ←TCP→ RDP ser
 - Вендор grdpwasm + grdp в `vendor/` (вне основного `go.mod`), чтобы не тащить зависимости в entware-manager.
 
 ### Этап 1 — Пилот (проверка связки вручную на роутере)
-1. Клонировать grdpwasm в `/tmp/opencode/grdpwasm`.
+1. Клонировать grdpwasm в `/opt/tmp/grdpwasm`.
 2. Собрать **grdp-proxy** для arm64:
    ```
    cd grdpwasm/proxy && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o /tmp/grdp-proxy .

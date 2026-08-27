@@ -797,6 +797,19 @@ else
 	if ! verify_stage; then
 		fail "Staging повреждён — оставляю текущую рабочую версию"
 		rm -rf "$STAGE_DIR" 2>/dev/null
+		# В go-режиме миграция порт-хранителя уже выполнена до staging;
+		# возвращаем прежний 90-conf, чтобы lighttpd-пользователь не
+		# остался без панели (как в блоке отката после запуска сервера).
+		if [ "$PORT_SKIP" = "0" ] && [ -f "$BACKUP_DIR/opt/etc/lighttpd/conf.d/90-entware-manager.conf" ]; then
+			cp -a "$BACKUP_DIR/opt/etc/lighttpd/conf.d/90-entware-manager.conf" "$EWM_PORT_KEEPER" 2>/dev/null
+			if [ -x /opt/etc/init.d/S80lighttpd ]; then
+				/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1
+			else
+				p=$(lighttpd_pid | head -1)
+				[ -n "$p" ] && kill -HUP "$p" 2>/dev/null
+			fi
+			warn "90-entware-manager.conf восстановлен (откат после фейла staging)"
+		fi
 		exit 1
 	fi
 	touch "$STAGE_DIR/.stage_complete" 2>/dev/null

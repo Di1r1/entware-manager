@@ -500,6 +500,14 @@ func runUpdate(version, arch string) {
 			return
 		}
 		written, cerr := io.Copy(f, resp.Body)
+		// Сверка с Content-Length ДО закрытия body (защита от обрезанной загрузки).
+		if cerr == nil {
+			if cl := resp.Header.Get("Content-Length"); cl != "" {
+				if want, perr := strconv.ParseInt(cl, 10, 64); perr == nil && want > 0 && written != want {
+					cerr = fmt.Errorf("файл обрезан: Content-Length=%d, получено %d", want, written)
+				}
+			}
+		}
 		resp.Body.Close()
 		f.Close()
 		if cerr != nil {
@@ -509,7 +517,7 @@ func runUpdate(version, arch string) {
 		}
 		// Проверка целостности: ipk должен быть gzip-архивом >1КБ.
 		// Обрезанная загрузка приводила к «Malformed package file» у opkg.
-		if fi, perr := os.Stat(ipkPath); perr != nil || fi.Size() < 1024 || written < fi.Size() {
+		if fi, perr := os.Stat(ipkPath); perr != nil || fi.Size() < 1024 {
 			log("[ERROR] Загруженный файл повреждён или обрезан (" + cgiutil.HumanSize(written) + ")")
 			os.RemoveAll(tmpDir)
 			return

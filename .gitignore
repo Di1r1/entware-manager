@@ -5,11 +5,12 @@ tmp/
 *.ipk
 *.bak
 *.deb
+*.log
 .DS_Store
 cgi-bin/go/
 
 # Внешний форк grdpwasm (static/rdp/, ~10+ МБ WASM) — артефакт поставки,
-# не должен попадать в git. Сборка/деплой из /tmp/opencode/grdpwasm.
+# не должен попадать в git. Сборка/деплой из /opt/tmp/grdpwasm.
 static/
 
 RULES.md
