@@ -17,8 +17,6 @@ FAIL=0
 ok()  { PASS=$((PASS + 1)); echo "ok: $1"; }
 bad() { FAIL=$((FAIL + 1)); echo "FAIL: $1"; }
 
-SUBDIRS="network logger monitor service_watchdog"
-
 # ---------- извлечение источников ----------
 # flatDispatch (go-режим, cgi.go)
 flat_disp=$(awk '/var flatDispatch = map\[string\]string\{/,/^\}/' go/internal/server/cgi.go \
