@@ -4,6 +4,7 @@ tmp/
 *.tar.gz
 *.ipk
 *.bak
+*.deb
 .DS_Store
 cgi-bin/go/
 

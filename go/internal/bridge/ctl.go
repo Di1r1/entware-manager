@@ -71,7 +71,7 @@ func RunInitAction(script, op string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ctlTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, script, op)
-	cmd.Env = []string{"PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin"}
+	cmd.Env = append(os.Environ(), "HOME=/opt/root", "PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin")
 	out, err := cmd.CombinedOutput()
 	if len(out) > 512 {
 		out = out[:512]

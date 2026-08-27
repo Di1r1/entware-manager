@@ -2,12 +2,23 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
-## Unreleased
+## 1.16.8 (2026-08-28)
 
-### Диагностика прокси Telegram
+### Новое
 
 - **Утилита `tools/tg_proxy_detect.sh`** — находит рабочий локальный HTTP/SOCKS-прокси для Bot API (сканирует `mixed`-inbound `sing-box`/`awg-manager` и типовые порты, пробует `DIRECT` и `http://127.0.0.1:порт` против `api.telegram.org`, выдаёт готовую строку для поля «Прокси» и `chat_id` через `getUpdates`). BusyBox-совместима.
 - **Установка:** `install.sh` симлинкует `tools/*.sh` в `/opt/bin` (команда `tg_proxy_detect`); утилита попадает в `deploy/` (через `build-deploy.sh`) и в ipk (`build-ipk.sh`).
+
+### Исправления
+
+- **Карточка сервиса на Статистике могла не запускать init-сервис** (например, Syncthing): `bridge/ctl.go:RunInitAction` заменял окружение скрипта только на `PATH` без `HOME` — `syncthing serve` паниковал `HOME is not defined`, `rc.func` считал старт успешным, а процесс умирал. Приведено к эталону `services/action.go` (`append(os.Environ(), "HOME=/opt/root", "PATH=...")`). Из вкладки «Службы» и напрямую старт работал и раньше. Пересобран/задеплоен `entware-bridge`.
+- **Справка:** убрана кнопка «Назад» внизу страницы — справка открывается внутри панели, и `history.back()` уводил в файловый менеджер. Пересобран/задеплоен `entware-stats`.
+- **build-deploy.sh:** посторонние `*.deb` в корне проекта больше не попадают в `deploy/` и на роутер (добавлено в исключения и `.gitignore`).
+
+### Проверено
+
+- `make ci` зелёный (go vet/test, shellcheck, паритет диспетчеризации lighttpd↔go).
+- Живой тест на dev-роутере: stop/start Syncthing через `bridge_ctl` — процесс жив, в env нового процесса `HOME=/opt/root`; `tg_proxy_detect` находит рабочий прокси; справка без кнопки «Назад» (HTTP 200).
 
 ## 1.16.7 (2026-08-27)
 
