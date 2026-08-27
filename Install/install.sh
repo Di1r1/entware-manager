@@ -1132,6 +1132,16 @@ else
 	warn "шаблон S85entware-watchdogs не найден в $SELF_DIR/Install/"
 fi
 
+# --- Диагностические утилиты (tools/) доступными в PATH (/opt/bin) ---
+if [ -d "$TARGET_DIR/tools" ]; then
+	for t in "$TARGET_DIR/tools"/*.sh; do
+		[ -f "$t" ] || continue
+		name=$(basename "$t" .sh)
+		ln -sf "$t" "/opt/bin/$name" 2>/dev/null && chmod 755 "$t"
+	done
+	ok "Утилиты диагностики установлены в /opt/bin ($(ls "$TARGET_DIR/tools" 2>/dev/null | wc -l) шт.)"
+fi
+
 if lighttpd_http_ok 8087; then
 	ok "менеджер доступен по HTTP"
 else

@@ -2,6 +2,13 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## Unreleased
+
+### Диагностика прокси Telegram
+
+- **Утилита `tools/tg_proxy_detect.sh`** — находит рабочий локальный HTTP/SOCKS-прокси для Bot API (сканирует `mixed`-inbound `sing-box`/`awg-manager` и типовые порты, пробует `DIRECT` и `http://127.0.0.1:порт` против `api.telegram.org`, выдаёт готовую строку для поля «Прокси» и `chat_id` через `getUpdates`). BusyBox-совместима.
+- **Установка:** `install.sh` симлинкует `tools/*.sh` в `/opt/bin` (команда `tg_proxy_detect`); утилита попадает в `deploy/` (через `build-deploy.sh`) и в ipk (`build-ipk.sh`).
+
 ## 1.16.7 (2026-08-27)
 
 ### Надёжная установка и обновление
