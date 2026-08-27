@@ -34,6 +34,9 @@ var configs = []configFile{
 	{Path: "network_config.json"},
 	{Path: "service_config.json"},
 	{Path: "logger/config.json"},
+	{Path: "rdp_config.json"},
+	{Path: "server_config.json"},
+	{Path: "version.json"},
 }
 
 // secretDest — файлы, которые при восстановлении обязаны получить 0600
@@ -218,7 +221,8 @@ func HandleRestore() {
 		var dest string
 		switch name {
 		case "links.json", "monitor_config.json", "network_config.json", "service_config.json",
-			"auth_config.json", "telegram_config.json":
+			"auth_config.json", "telegram_config.json", "rdp_config.json", "server_config.json",
+			"version.json":
 			dest = name
 		case "logger_config.json":
 			dest = "logger/config.json"

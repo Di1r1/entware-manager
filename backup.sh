@@ -62,6 +62,24 @@ else
     echo "⚠️  rc.local не найден — пропуск"
 fi
 
+# 2b. Сохраняем init-скрипты, conf.d (port-keeper) и хуки моста Keenetic
+echo "💾 Сохранение init-скриптов, conf.d и ndm-хуков..."
+for f in /opt/etc/init.d/S80entware-server /opt/etc/init.d/S85entware-watchdogs /opt/etc/init.d/S90grdp-proxy /opt/etc/lighttpd/conf.d/90-entware-manager.conf; do
+    if [ -f "$f" ]; then
+        cp "$f" "$BACKUP_DIR/$(basename "$f")_$APP_VERSION"
+        echo "✅ $(basename "$f") скопирован."
+    else
+        echo "⚠️  $(basename "$f") не найден — пропуск"
+    fi
+done
+if ls /opt/etc/ndm/fs.d/S50*.sh >/dev/null 2>&1; then
+    mkdir -p "$BACKUP_DIR/ndm_hooks"
+    cp /opt/etc/ndm/fs.d/S50*.sh "$BACKUP_DIR/ndm_hooks/" 2>/dev/null
+    echo "✅ ndm-хуки моста скопированы."
+else
+    echo "⚠️  ndm-хуки моста не найдены — пропуск"
+fi
+
 # 3. Копируем весь каталог веб-интерфейса
 echo "📂 Копирование /opt/web_entware ..."
 cp -a /opt/web_entware "$BACKUP_DIR/web_entware"
@@ -157,7 +175,7 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 === ШАГ 1. Распакуйте архив ===
    cd /opt/temp/backup
    # Используйте GNU tar (BusyBox не читает этот формат):
-   /opt/bin/tar -xzf $BACKUP_BASENAME.tar.gz
+    /opt/bin/tar -xzpf $BACKUP_BASENAME.tar.gz
    cd $BACKUP_BASENAME
 
 === ШАГ 2. Установка зависимостей ===
@@ -176,12 +194,20 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 
 Все файлы интерфейса будут восстановлены.
 
-=== ШАГ 4. Восстановление конфигураций (опционально) ===
-Если вы хотите вернуть старые настройки lighttpd и автозапуск:
+=== ШАГ 4. Восстановление конфигураций и автозапуска (опционально) ===
+Если вы хотите вернуть старые настройки lighttpd, conf.d и автозапуск:
 
    cp lighttpd.conf_$APP_VERSION /opt/etc/lighttpd/lighttpd.conf
    cp rc.local_$APP_VERSION /opt/etc/rc.local
    chmod +x /opt/etc/rc.local
+   # Init-скрипты панели (go-режим) и port-keeper conf.d:
+   cp S80entware-server_$APP_VERSION /opt/etc/init.d/S80entware-server
+   cp S85entware-watchdogs_$APP_VERSION /opt/etc/init.d/S85entware-watchdogs
+   cp S90grdp-proxy_$APP_VERSION /opt/etc/init.d/S90grdp-proxy
+   cp 90-entware-manager.conf_$APP_VERSION /opt/etc/lighttpd/conf.d/90-entware-manager.conf
+   chmod 755 /opt/etc/init.d/S80entware-server /opt/etc/init.d/S85entware-watchdogs /opt/etc/init.d/S90grdp-proxy
+   # Хуки моста Keenetic (ndm fs.d):
+   [ -d ndm_hooks ] && cp ndm_hooks/S50*.sh /opt/etc/ndm/fs.d/ 2>/dev/null && echo "ndm-хуки восстановлены"
 
 === ШАГ 5. Восстановление списка пакетов (опционально) ===
 Чтобы переустановить все пакеты:
@@ -191,24 +217,27 @@ cat > "$BACKUP_DIR/EntwareManager_restore_$APP_VERSION.txt" << INSTR
 Внимание: некоторые пакеты могут отсутствовать в текущих репозиториях.
 
 === ШАГ 6. Права доступа ===
-Убедитесь, что все CGI-скрипты исполняемые:
+Убедитесь, что все CGI-скрипты исполняемые, а секреты — 0600:
 
     chmod 755 /opt/web_entware/cgi-bin/*.cgi
     [ -d /opt/web_entware/cgi-bin/go ] && chmod 755 /opt/web_entware/cgi-bin/go/*
     [ -d /opt/web_entware/cgi-bin/monitor ] && chmod 755 /opt/web_entware/cgi-bin/monitor/*.cgi
     [ -d /opt/web_entware/cgi-bin/logger ] && chmod 755 /opt/web_entware/cgi-bin/logger/*.cgi
     [ -d /opt/web_entware/cgi-bin/network ] && chmod 755 /opt/web_entware/cgi-bin/network/*.cgi
-   [ -d /opt/web_entware/cgi-bin/service_watchdog ] && chmod 755 /opt/web_entware/cgi-bin/service_watchdog/*.cgi
-   chmod 755 /opt/web_entware/lib/*.sh
-   chmod 755 /opt/web_entware/watchdog.sh
-   chmod 755 /opt/web_entware/network_watchdog.sh
-   chmod 755 /opt/web_entware/service_watchdog.sh
-   chmod 755 /opt/web_entware/backup.sh
+    [ -d /opt/web_entware/cgi-bin/service_watchdog ] && chmod 755 /opt/web_entware/cgi-bin/service_watchdog/*.cgi
+    chmod 755 /opt/web_entware/lib/*.sh
+    chmod 755 /opt/web_entware/watchdog.sh
+    chmod 755 /opt/web_entware/network_watchdog.sh
+    chmod 755 /opt/web_entware/service_watchdog.sh
+    chmod 755 /opt/web_entware/backup.sh
+    # Секреты (пароль панели, токен бота, пароли приложений моста) — строго 0600:
+    chmod 600 /opt/web_entware/auth_config.json /opt/web_entware/telegram_config.json
+    chmod 600 /opt/web_entware/bridge/*.auth.json /opt/web_entware/bridge/_prefs.json
 
-=== ШАГ 7. Перезапуск lighttpd ===
-   if [ -x /opt/etc/init.d/S80entware-lighttpd ]; then
-      /opt/etc/init.d/S80entware-lighttpd restart
-   else
+=== ШАГ 7. Перезапуск сервиса ===
+   if [ -x /opt/etc/init.d/S80entware-server ]; then
+      /opt/etc/init.d/S80entware-server restart
+   elif [ -x /opt/etc/init.d/S80lighttpd ]; then
       /opt/etc/init.d/S80lighttpd restart
    fi
 

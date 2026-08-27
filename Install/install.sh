@@ -83,10 +83,19 @@ lighttpd_http_ok() {
 }
 
 # --- Есть ли хоть какой-то процесс lighttpd (в т.ч. чужой, напр. zapret) ---
-# Матч по ИМЕНИ процесса (без -f), иначе pgrep -f ловит любой шелл, в cmdline
-# которого встречается слово "lighttpd" (в т.ч. сам install.sh/grep).
+# BusyBox-безопасная проверка по /proc (без pgrep/kill -0, см. RULES §9).
+lighttpd_pid() {
+	for p in /proc/[0-9]*/cmdline; do
+		if tr '\0' ' ' < "$p" 2>/dev/null | grep -q "lighttpd"; then
+			echo "$p" | sed 's#/proc/##; s#/cmdline##'
+			return 0
+		fi
+	done
+	return 1
+}
+
 any_lighttpd_running() {
-	command -v pgrep >/dev/null 2>&1 && pgrep lighttpd >/dev/null 2>&1
+	[ -n "$(lighttpd_pid)" ]
 }
 
 # --- Жив ли наш entware-server (по pid-файлу + имени процесса) ---
@@ -775,7 +784,7 @@ else
 	exit 1
 fi
 
-rm -f "$TARGET_DIR/README.md" "$TARGET_DIR/LICENSE" "$TARGET_DIR/DEVLOG.md" "$TARGET_DIR/DEVICE.md" "$TARGET_DIR/BUILD.md" "$TARGET_DIR/RULES.md" "$TARGET_DIR/TECH_SPEC.md" "$TARGET_DIR/forum_post.md" "$TARGET_DIR/Makefile" "$TARGET_DIR/build-ipk.sh" "$TARGET_DIR/Install/Install.txt" "$TARGET_DIR/doc/NETWORK_PROMPT.md" "$TARGET_DIR/doc/IPK_BUILD.md" "$TARGET_DIR/conffiles" "$TARGET_DIR/control" "$TARGET_DIR/postinst" "$TARGET_DIR/prerm" 2>/dev/null || true
+rm -f "$TARGET_DIR/README.md" "$TARGET_DIR/LICENSE" "$TARGET_DIR/DEVLOG.md" "$TARGET_DIR/DEVICE.md" "$TARGET_DIR/BUILD.md" "$TARGET_DIR/RULES.md" "$TARGET_DIR/TECH_SPEC.md" "$TARGET_DIR/forum_post.md" "$TARGET_DIR/Makefile" "$TARGET_DIR/build-ipk.sh" "$TARGET_DIR/opencode.json" "$TARGET_DIR/Install/Install.txt" "$TARGET_DIR/doc/NETWORK_PROMPT.md" "$TARGET_DIR/doc/IPK_BUILD.md" "$TARGET_DIR/conffiles" "$TARGET_DIR/control" "$TARGET_DIR/postinst" "$TARGET_DIR/prerm" 2>/dev/null || true
 
 # Миграция links.json: прямые порты ttyd (8089/9089) теперь доступны через панель
 # (/htop/, /terminal/ — тот же origin, работает и в LAN, и через KeenDNS/Remote).
@@ -1017,8 +1026,7 @@ else
 				if [ -x /opt/etc/init.d/S80lighttpd ]; then
 					/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1
 				else
-					p=$(pgrep lighttpd 2>/dev/null | head -1)
-					[ -z "$p" ] && p=$(ps w 2>/dev/null | grep lighttpd | grep -v grep | awk 'NR==1{print $1}')
+					p=$(lighttpd_pid | head -1)
 					[ -n "$p" ] && kill -HUP "$p" 2>/dev/null
 				fi
 				ok "восстановлен прежний 90-entware-manager.conf"
