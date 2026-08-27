@@ -92,6 +92,7 @@ test:
 	done
 	@echo "=== Shell unit tests ==="
 	@sh "$(MAKEFILE_DIR)/test/migrate_tests.sh" 2>&1
+	@sh "$(MAKEFILE_DIR)/test/dispatch_parity.sh" 2>&1
 
 lint:
 	@echo "=== Go vet ==="
