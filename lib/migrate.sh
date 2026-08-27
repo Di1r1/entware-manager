@@ -19,6 +19,17 @@ EWM_LIGHTTPD_INIT="${EWM_LIGHTTPD_INIT:-/opt/etc/init.d/S80lighttpd}"
 
 PORT_KEEPER_MARKER="EM port-keeper: DO NOT DELETE"
 
+# BusyBox-безопасная проверка pid lighttpd по /proc (без pgrep/kill -0, см. RULES §9).
+lighttpd_pid() {
+	for p in /proc/[0-9]*/cmdline; do
+		if tr '\0' ' ' < "$p" 2>/dev/null | grep -q "lighttpd"; then
+			echo "$p" | sed 's#/proc/##; s#/cmdline##'
+			return 0
+		fi
+	done
+	return 1
+}
+
 # --- Эффективный server.port общего lighttpd (last-wins, main+conf.d, glob-порядок).
 # Наш 90-conf пропускается (он будет удалён/переписан). Scoped-блоки
 # ($HTTP[...], $SERVER["socket"]) пропускаются — это не глобальный порт.
@@ -181,8 +192,7 @@ migrate_is_portkeeper() {
 # "unknown config-key"), а это ломает koffe/web4static. Проверено на роутере.
 migrate_reload_lighttpd() {
 	local port="$1" pid i
-	pid=$(pgrep lighttpd 2>/dev/null | head -1)
-	[ -z "$pid" ] && pid=$(ps w 2>/dev/null | grep lighttpd | grep -v grep | awk 'NR==1{print $1}')
+	pid=$(lighttpd_pid | head -1)
 	[ -n "$pid" ] || return 0
 	if command -v lighttpd >/dev/null 2>&1; then
 		lighttpd -t -f "$EWM_LIGHTTPD_CONF" >/dev/null 2>&1 || return 1
