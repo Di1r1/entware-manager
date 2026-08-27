@@ -2,6 +2,23 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.9 (2026-08-28)
+
+### Новое
+
+- **Команда бота `/tgproxy`** — запускает `tools/tg_proxy_detect.sh` прямо из чата и возвращает рабочий локальный прокси для Bot API и `chat_id` (вывод обрезается до лимита Telegram). Добавлена в `cmdHelp()` и `defaultCommands()` (`go/internal/telegram/bot.go`).
+- **Справка (Telegram-уведомления, раздел «Прокси»):** добавлена инструкция запустить `sh /opt/web_entware/tools/tg_proxy_detect.sh` для авто-подбора прокси и `chat_id`, с отсылкой на `/tgproxy`. Изменён `go/internal/stats/help.html` (embed в `entware-stats`).
+- **Закреплённая клавиатура бота** сокращена до двух кнопок: `/log` и `/help` (`replyMarkupQuickCommands()` в `bot.go`).
+
+### Исправления
+
+- **`tg_proxy_detect.sh` ложно сообщал «chat_id не найден»** даже при корректно заданном `chat_id` в настройках: скрипт не читал это поле из `telegram_config.json`, а брал только из `getUpdates` (который пуст, если бот уже забрал сообщения). Добавлено чтение `.chat_id` из конфига и вывод его значения с пометкой, когда `getUpdates` пуст. Пересобран/задеплоен бинарник не требуется (shell-скрипт залит напрямую).
+
+### Проверено
+
+- `make ci` зелёный (go vet/test, shellcheck, паритет диспетчеризации lighttpd↔go).
+- Живой тест на dev-роутере: `entware-stats` (help.cgi) → 200, маркер `tg_proxy_detect.sh` присутствует; `entware-telegram` пересобран, один процесс бота, `/help` содержит `/tgproxy`, закреплённая клавиатура — только `/log` и `/help`; `tg_proxy_detect.sh` подхватывает `chat_id` из настроек.
+
 ## 1.16.8 (2026-08-28)
 
 ### Новое

@@ -276,7 +276,7 @@ func TestRecipients(t *testing.T) {
 
 func TestReplyMarkupQuickCommands(t *testing.T) {
 	j := replyMarkupQuickCommands()
-	if !strings.Contains(j, "/status") || !strings.Contains(j, "/help") {
+	if !strings.Contains(j, "/log") || !strings.Contains(j, "/help") {
 		t.Errorf("клавиатура без команд: %s", j)
 	}
 	if !strings.Contains(j, "resize_keyboard") || !strings.Contains(j, "is_persistent") {

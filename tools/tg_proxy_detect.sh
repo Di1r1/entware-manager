@@ -21,8 +21,10 @@ fi
 
 # Уже настроенный в панели прокси — пробуем его первым (приоритет).
 CFG_PROXY=""
+CFG_CHAT=""
 if [ -f "$CONFIG" ] && command -v jq >/dev/null 2>&1; then
   CFG_PROXY=$(jq -r '.proxy_url // ""' "$CONFIG" 2>/dev/null)
+  CFG_CHAT=$(jq -r '.chat_id // ""' "$CONFIG" 2>/dev/null)
 fi
 
 # --- Собрать кандидатов: mixed-inbound sing-box (HTTP+SOCKS одновременно) ---
@@ -92,6 +94,8 @@ if [ -n "$WORK" ]; then
   cid=$(echo "$up" | sed -n 's/.*"chat":{"id":\(-\{0,1\}[0-9][0-9]*\).*/\1/p' | head -1)
   if [ -n "$cid" ]; then
     echo ">>> chat_id = $cid"
+  elif [ -n "$CFG_CHAT" ]; then
+    echo ">>> chat_id = $CFG_CHAT (из настроек; getUpdates пуст — бот, вероятно, уже забрал сообщения)"
   else
     echo ">>> chat_id не найден: напишите боту любое сообщение и повторите скрипт."
   fi

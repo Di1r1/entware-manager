@@ -447,6 +447,7 @@ func defaultCommands() map[string]func(args []string) tgReply {
 		"/rotate":  func([]string) tgReply { return tgReply{text: execRotate()} },
 		"/backup":  func([]string) tgReply { return cmdBackup(&backupBusy) },
 		"/reboot":  cmdReboot,
+		"/tgproxy": func([]string) tgReply { return tgReply{text: cmdTgProxy()} },
 	}
 }
 
@@ -471,7 +472,8 @@ func cmdHelp() string {
 		"/service <имя> start|stop|restart — управление службой\n" +
 		"/pkg update — обновить списки пакетов\n" +
 		"/rotate — ротация логов сейчас\n" +
-		"/reboot — перезагрузка роутера"
+		"/reboot — перезагрузка роутера\n" +
+		"/tgproxy — найти рабочий прокси для Telegram и chat_id"
 }
 
 // buildDigest — ежедневная сводка (и команда /digest).
@@ -579,6 +581,27 @@ func execRotate() string {
 		lines = lines[len(lines)-5:]
 	}
 	return "🔄 Ротация логов выполнена:\n" + strings.Join(lines, "\n")
+}
+
+// cmdTgProxy — /tgproxy: запуск tools/tg_proxy_detect.sh для поиска рабочего
+// локального HTTP/SOCKS-прокси для Telegram Bot API и получения chat_id.
+func cmdTgProxy() string {
+	script := "/opt/web_entware/tools/tg_proxy_detect.sh"
+	if _, err := os.Stat(script); err != nil {
+		return "❌ tg_proxy_detect.sh не найден"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "sh", script).CombinedOutput()
+	if err != nil {
+		return "❌ Ошибка запуска tg_proxy_detect.sh: " + err.Error()
+	}
+	s := strings.TrimRight(string(out), "\n")
+	// Telegram limit 4096 символов — оставляем запас.
+	if len(s) > 3800 {
+		s = "...(обрезано)\n" + s[len(s)-3800:]
+	}
+	return s
 }
 
 // cmdReboot — /reboot с подтверждением через inline-кнопку.
@@ -979,9 +1002,6 @@ func handleCallback(cfg Config, cb *struct {
 // кнопки отправляют текст команды, маршрутизация обрабатывает как обычные.
 func replyMarkupQuickCommands() string {
 	rows := [][]string{
-		{"/status", "/temp"},
-		{"/ip", "/services"},
-		{"/devices", "/smart"},
 		{"/log", "/help"},
 	}
 	m := map[string]interface{}{
