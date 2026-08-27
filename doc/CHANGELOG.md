@@ -2,6 +2,20 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.6 (2026-08-27)
+
+### Syncthing + удобство моста + надёжность диспетчеризации
+
+- **Syncthing**: манифест `bridge/syncthing.json` с `init`/`process` — детект по процессу, управление Старт/Стоп/Рестарт, автозапуск через Keenetic NDM `fs.d` (хуки генерирует `install.sh` после сборки, `install.sh:NDM fs.d` вместо только `rc.unslung`).
+- **fix(server)**: `HOME=/opt/root` в `buildCGIEnv()` (`go/internal/server/cgi.go`) + defensive `cmd.Env` в `action.go` — Syncthing паниковал `HOME is not defined`, `rc.func` считал `done` по `pidof` до завершения паники.
+- **auto-init**: `bridge/process.go:ListInitScripts()` скан `/opt/etc/init.d/` (стрип `S##`/`K##`) + поле `ProcInfo.Init`; `ListProcesses()` заполняет его; `entware.js:createModuleFromProcessAt()` подставляет `init` в каркас манифеста. `help.html` — подсказка про авто-детект init.
+- **help + UX**: `help.html` секция «Как создать init-скрипт» (шаблон `S99`, префиксы), `entware.js` тост-подсказка если модуль без `init`; кэш `entware.js?v=138→139`.
+- **Унификация пароля + Старт/Стоп/Рестарт без пароля**: `askPanelPassword()` (`Modal.promptPassword`, `type=password`) — 6× `prompt()` заменены (действия модуля, удаление, AdGuard защита, сохранение манифеста, TLS); на Статистике `bridge_ctl.cgi` — `password` убран, `confirm()` для Стоп/Рестарт, бэкенд `handleCtl` → `auth.Enabled() && !SessionValid()` (сессия ИЛИ пароль), 500ms задержка на неверном пароле сохранена. Кэш `entware.js?v=139→140`. Кворум APPROVE.
+- **Плитка в сканере**: чекбокс «плитка» рядом с «+ поле» — `renderProbeResult`/`addBridgeFieldAt` (`br-tile-cb`, `data-tile-pi`), `tile=true` только если отмечен (дефолт для bool/num/bytes/ms/count), `help.html` документация. Кэш `entware.js?v=140→141`. Кворум APPROVE.
+- **Диспетчеризация lighttpd↔go**: `cgi-bin/go.cgi` + `build-deploy.sh` — добавлен `bridge_status` и `network_wifi` в flat-симлинки (404 в lighttpd-режиме, теперь 3 места согласованы); `test/dispatch_parity.sh` — тест паритета 72 flat + 4 subdir, ловит регрессию `go.cgi` vs `cgi.go flatDispatch` (в `make ci`).
+- **Бэкап/восстановление**: `backup.go` — `rdp_config.json`, `server_config.json`, `version.json` в архив; `backup.sh` — `S80/S85/S90`, `conf.d`, NDM-хуки моста + инструкция `tar -xp` с `0600` на секретах; `install.sh:lighttpd_pid()` без `pgrep` (RULES §9), `.gitignore` + `opencode.json` исключён.
+- **migrate.sh**: `lighttpd_pid()` вместо `pgrep` при перезагрузке lighttpd в миграции lighttpd→go (RULES §9).
+
 ## 1.16.5 (2026-08-26)
 
 ### Установка/обновление + бэкап учитывает мост и секреты
