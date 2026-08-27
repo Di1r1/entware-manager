@@ -193,7 +193,7 @@ if [ "$OPKG_POSTINST" != "1" ]; then
 		}
 	fi
 	echo "$$" > "$LOCK_DIR/pid" 2>/dev/null
-	trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT INT TERM
+	trap 'rm -rf "$LOCK_DIR" 2>/dev/null; [ -n "${STAGE_DIR:-}" ] && rm -rf "$STAGE_DIR" 2>/dev/null' EXIT INT TERM
 fi
 
 # --- opkg с таймаутом (защита от зависания при недоступном/медленном feed) ---
@@ -692,6 +692,40 @@ else
 	ok "общий lighttpd не тронут — конфликтов с nfqws/zapret нет"
 fi
 
+# Самовосстановление после прерванной установки (kill -9 посреди swap).
+# TARGET_DIR модифицируется только атомарными rename, поэтому, когда он
+# существует, он всегда целый. Если же его нет (убили между двумя mv),
+# возвращаем рабочую версию из .old либо завершаем swap по маркеру
+# .stage_complete — повторный запуск гарантированно приводит панель в
+# рабочее состояние без ручной чистки.
+self_heal_install() {
+	if [ -d "$TARGET_DIR" ]; then
+		[ -d "$STAGE_DIR" ] && rm -rf "$STAGE_DIR" 2>/dev/null
+		return 0
+	fi
+	if [ -d "$STAGE_DIR" ] && [ -f "$STAGE_DIR/.stage_complete" ]; then
+		mv "$STAGE_DIR" "$TARGET_DIR" 2>/dev/null && return 0
+	fi
+	if [ -d "$OLD_DIR" ]; then
+		mv "$OLD_DIR" "$TARGET_DIR" 2>/dev/null && return 0
+	fi
+	[ -d "$STAGE_DIR" ] && rm -rf "$STAGE_DIR" 2>/dev/null
+	return 0
+}
+
+# Минимальная проверка целостности собранного staging ДО подмены.
+verify_stage() {
+	[ -s "$STAGE_DIR/version.json" ] || return 1
+	[ -x "$STAGE_DIR/cgi-bin/go.cgi" ] || return 1
+	found=0
+	for b in "$STAGE_DIR/cgi-bin/go"/*/entware-server; do
+		[ -x "$b" ] && found=1 && break
+	done
+	[ "$found" = "1" ] || return 1
+	[ -L "$STAGE_DIR/cgi-bin/session.cgi" ] || return 1
+	return 0
+}
+
 # ========== 5. КОПИРОВАНИЕ ФАЙЛОВ ==========
 step "Копирование файлов"
 
@@ -708,6 +742,9 @@ else
 	# старой установки переносятся в новую — их нет в deploy/.
 	STAGE_DIR="$TARGET_DIR.new"
 	OLD_DIR="$TARGET_DIR.old"
+
+	# Самовосстановление после прерванной установки (kill -9 посреди swap).
+	self_heal_install
 
 	mkdir -p "$TARGET_DIR" || {
 		fail "Не удалось создать $TARGET_DIR"
@@ -755,6 +792,14 @@ else
 			cp -a "$TARGET_DIR/$d/." "$STAGE_DIR/$d/" 2>/dev/null
 		fi
 	done
+
+	# Проверка целостности staging ДО подмены (бинарники/симлинки/go.cgi).
+	if ! verify_stage; then
+		fail "Staging повреждён — оставляю текущую рабочую версию"
+		rm -rf "$STAGE_DIR" 2>/dev/null
+		exit 1
+	fi
+	touch "$STAGE_DIR/.stage_complete" 2>/dev/null
 
 	# Атомарный swap: старая → .old, новая → на место
 	rm -rf "$OLD_DIR" 2>/dev/null
