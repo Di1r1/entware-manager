@@ -1,7 +1,7 @@
 // Entware Manager - RDP-модуль (веб-RDP-клиент grdpwasm)
 // Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
-// Версия: 1.0 (интеграция UI, единый конфиг rdp_config.json)
-// Дата: 2026-08-10
+// Версия: 1.1 (конфиг через rdp_config.cgi, не напрямую файл)
+// Дата: 2026-08-28
 //
 // Изолированный модуль: отдельный файл, свой конфиг, не зависит от других вкладок.
 // Интеграция через общие механизмы панели (lib/utils.js, CSS-переменные, меню).
@@ -81,15 +81,15 @@ const RDP = {
 
     async loadConfig() {
         try {
-            const resp = await fetch('/entware-manager/rdp_config.json?_=' + Date.now());
-            if (!resp.ok) throw new Error(resp.statusText);
-            this.cfg = await resp.json();
+            const data = await apiGet('/rdp_config.cgi');
+            if (!data || data.status !== 'ok') throw new Error((data && data.message) || 'пустой ответ');
+            this.cfg = data;
             this.buildFrameUrl();
             this.showPortConfig();
             this.loadStatus();
         } catch (err) {
             const st = document.getElementById('rdpStatus');
-            if (st) st.innerHTML = '<p class="error">Не удалось прочитать rdp_config.json: ' + escapeHtml(err.message) + '</p>';
+            if (st) st.innerHTML = '<p class="error">Не удалось прочитать rdp_config.cgi: ' + escapeHtml(err.message) + '</p>';
         }
     },
 

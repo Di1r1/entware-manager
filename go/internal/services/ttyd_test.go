@@ -7,7 +7,7 @@ func TestIsTTYDOnPort(t *testing.T) {
 		cmdline string
 		port    int
 	}{
-		{"ttyd -p 8089 -W --permit-any-origin -c admin:x -i lo --base-path /htop htop", 8089},
+		{"ttyd -p 8089 -W -c admin:x -i lo --base-path /htop htop", 8089},
 		{"ttyd --port 9089 -c admin:x --base-path /terminal /opt/bin/bash", 9089},
 		{"ttyd --port=8089 -c admin:x /opt/bin/bash", 8089},
 		{"/opt/sbin/ttyd -p 8089 -c admin:x /opt/bin/bash", 8089},

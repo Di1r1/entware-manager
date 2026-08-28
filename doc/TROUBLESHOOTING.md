@@ -62,7 +62,7 @@
 
 ```sh
 ttyd -p 8089 -W htop &
-ttyd -p 9089 -W -c admin:YOUR_PASSWORD --permit-any-origin /opt/bin/bash &
+ttyd -p 9089 -W -c admin:YOUR_PASSWORD /opt/bin/bash &
 ```
 
 ## 6. Модуль «Защита» не стартует

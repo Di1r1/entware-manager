@@ -109,13 +109,17 @@ func startTTYD(port int, pass string, mode string) map[string]string {
 	}
 
 	var args []string
-	args = append(args, "-p", strconv.Itoa(port), "-W", "--permit-any-origin", "-c", "admin:"+pass)
+	args = append(args, "-p", strconv.Itoa(port), "-W", "-c", "admin:"+pass)
 
 	// Форк index.html: xterm.js 5.4 по Ctrl+V шлёт в PTY литеральный ^V
 	// (не вставляет). Свой index.html добавляет перехват Ctrl+V/Cmd+V/
 	// Shift+Insert → term.paste() (работает и по HTTP).
+	// -I добавляем ТОЛЬКО если файл существует: иначе ttyd падает с
+	// «Can not stat index.html» (ttyd 1.7.7 не принимает несуществующий).
 	if idx := ttydIndexHTML; idx != "" {
-		args = append(args, "-I", idx)
+		if _, err := os.Stat(idx); err == nil {
+			args = append(args, "-I", idx)
+		}
 	}
 
 	if port == 9089 {

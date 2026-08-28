@@ -2,6 +2,24 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.13 (2026-08-28)
+
+### Терминал: починка вставки Ctrl+V
+
+- **Корень бага:** начиная с v1.16.10 форк `index.html` ttyd (перехват вставки Ctrl+V через `term.paste()`) перестал попадать в сборку: дефолт `TTYD_FORK` указывал на `/opt/tmp/ttyd-fork.html`, а файл находился в `/tmp/opencode/ttyd-fork.html` (изменено в 9674ff4). В `dist`/`deploy` не было `static/ttyd/index.html` → ttyd запускался с `-I` на несуществующий файл и падал «Can not stat index.html», а при defensive-обходе — вставлял литеральный `^V`.
+- **Фикс:** форк закоммичен в репозиторий `tools/ttyd-fork.html` (731 КБ); `build-deploy.sh` берёт `$TTYD_FORK` (env) или `$PROJECT_DIR/tools/ttyd-fork.html` (fallback) → форк всегда в `deploy/static/ttyd/` → в dist и ipk. Проверено на роутере: `/terminal/` отдаёт форк с инъекцией `term.paste`, вставка Ctrl+V работает.
+- **`ttyd.go`:** убран `--permit-any-origin` (такого флага нет ни в одной версии ttyd — проверены README 1.6.3/1.7.7/main; ttyd игнорирует неизвестные опции, поэтому раньше «работал»). `-I` добавляется только если файл форка существует (`os.Stat`) — защита от падения на несуществующий путь.
+- `doc/TROUBLESHOOTING.md`: ручная команда запуска ttyd приведена к реальным флагам.
+
+### Страница RDP
+
+- `rdp.js` `loadConfig()` читает конфиг через `apiGet('/rdp_config.cgi')` вместо прямого `fetch('/entware-manager/rdp_config.json')` — прямой доступ к `*_config.json` закрыт (403 в lighttpd / 404 whitelist в go), из-за чего страница показывала «Не удалось прочитать rdp_config.json: Forbidden». Кэш `rdp.js?v=26 → v=27`.
+
+### Проверки
+
+- Полный прогон TEST_PLAN v1.9 (фазы 0/A/C/D/E/F/G/H/I) — PASS; конфиги пользователя (auth/telegram/rdp/server/bridge/секреты) md5 идентичны эталону после всех установок/миграций.
+- Кворум `ewm-approval` на правки — APPROVE; `make ci` зелёный.
+
 ## 1.16.12 (2026-08-28)
 
 ### Состав комплекта
