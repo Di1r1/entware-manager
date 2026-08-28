@@ -343,6 +343,27 @@ body {
     height: 32px;
 }
 
+.sidebar.collapsed .sidebar-btn {
+    justify-content: center;
+    padding: 8px 0;
+    margin: 4px 0 0;
+    border-radius: 8px;
+}
+.sidebar.collapsed .sidebar-btn-text {
+    display: none;
+}
+.sidebar.collapsed .sidebar-btn .icon {
+    width: 12px;
+    height: 12px;
+    color: var(--text-secondary);
+}
+.sidebar.collapsed .sidebar-btn:hover .icon {
+    color: var(--accent);
+}
+.sidebar.collapsed .sidebar-btn:hover {
+    background: var(--accent-soft);
+}
+
 /* Стили для табов */
 #network-tabs {
     display: flex;
@@ -683,12 +704,41 @@ body {
 }
 
 .sidebar-footer {
-    padding: 15px 20px;
+    padding: 3px 20px 15px;
     border-top: 1px solid var(--sidebar-border);
     font-size: 0.8rem;
     color: var(--text-muted);
     text-align: center;
     letter-spacing: 0.5px;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 8px;
+    margin: 2px 8px 0;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
+}
+.sidebar-btn:first-child {
+    margin-top: 0;
+}
+.sidebar-btn:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.sidebar-btn .icon {
+    color: var(--text-muted);
+    transition: color 0.2s;
+}
+.sidebar-btn:hover .icon {
+    color: var(--accent);
 }
 
 .content {

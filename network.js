@@ -88,9 +88,17 @@ const NETWORK = {
                 </div>
                 <div id="tab-wifi" class="tab-content">
                     <div class="packages-table-wrapper">
-                        <table class="packages-table">
+                        <table class="packages-table" style="table-layout: fixed;">
                             <thead>
-                                <tr><th>Имя</th><th>IP адрес</th><th>MAC адрес</th><th>Сигнал (dBm)</th><th>Стандарт</th><th>Скорость (Мбит/с)</th><th>Сегмент</th></tr>
+                                <tr>
+                                    <th style="width: 240px;">Имя</th>
+                                    <th style="width: 100px;">IP адрес</th>
+                                    <th style="width: 100px;">MAC адрес</th>
+                                    <th style="width: 60px;">Сигнал (dBm)</th>
+                                    <th style="width: 60px;">Стандарт</th>
+                                    <th style="width: 60px;">Мбит/с</th>
+                                    <th style="width: 60px;">Сегмент</th>
+                                </tr>
                             </thead>
                             <tbody id="wifi-tbody">
                                 <tr><td colspan="7">Загрузка...</td></tr>
@@ -200,6 +208,9 @@ const NETWORK = {
     async loadWifi() {
         const tbody = document.getElementById('wifi-tbody');
         if (!tbody) return;
+        const table = tbody.closest('table');
+        const sortCol = table?.dataset?.sortCol !== undefined ? parseInt(table.dataset.sortCol) : null;
+        const sortOrder = table?.dataset?.sortOrder || 'asc';
         const btn = document.getElementById('refresh-wifi');
         if (btn) {
             btn.disabled = true;
@@ -225,6 +236,9 @@ const NETWORK = {
                     <td>${escapeHtml(c.segment || '-')}</td>
                 </tr>`;
             }).join('');
+            if (sortCol !== null && typeof sortTableRows === 'function') {
+                sortTableRows(table, sortCol, 'string', sortOrder);
+            }
         } catch(e) {
             tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger-color);">Ошибка загрузки: ' + escapeHtml(e.message) + '</td></tr>';
         } finally {
