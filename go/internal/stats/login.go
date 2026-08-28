@@ -76,9 +76,27 @@ func HandleLogin() {
 }
 
 // HandleLogout обрабатывает logout.cgi (POST).
+// Безопасный логаут: требует валидную сессию и валидный Origin.
+// Раньше DestroySession() вызывался безусловно — любой POST без cookie
+// выкидывал залогиненного пользователя (CSRF-вектор «принудительный выход»).
 func HandleLogout() {
 	if os.Getenv("REQUEST_METHOD") != "POST" {
 		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Метод не поддерживается"})
+		return
+	}
+	if auth.IsCrossSiteOrigin() {
+		logAuthAction("WARN", "Выход из недоверенного источника (CSRF)")
+		writeAuthJSON(map[string]interface{}{"status": "error", "message": auth.CrossSiteDeny})
+		return
+	}
+	// Если панель открыта без пароля — сессии нет, логаут безвреден (no-op).
+	if !auth.Enabled() {
+		writeAuthJSON(map[string]interface{}{"status": "ok", "message": "Выход выполнен"})
+		return
+	}
+	token := auth.TokenFromHeader(os.Getenv("HTTP_COOKIE"))
+	if !auth.SessionValidCookie(token) {
+		writeAuthJSON(map[string]interface{}{"status": "error", "message": "Нет активной сессии"})
 		return
 	}
 	auth.DestroySession()

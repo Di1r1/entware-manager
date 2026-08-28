@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/bridge"
 	"entware-manager/internal/cgiutil"
 )
 
@@ -33,6 +34,13 @@ func HandleControl(action string) {
 	}
 	if !auth.CheckPassword(password) {
 		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Неверный пароль"})
+		return
+	}
+
+	// Rate-limit: не чаще раза в 2 секунды (тот же паттерн, что bridge_ctl 3с).
+	// Защита от «долбёжки» кнопки Старт/Стоп (Слишком часто).
+	if !bridge.RateLimitAction("rdp", action, 2*time.Second) {
+		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Слишком часто — подождите пару секунд"})
 		return
 	}
 

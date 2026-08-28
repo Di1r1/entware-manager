@@ -7,9 +7,11 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 // ConfigPath — путь к конфигу авторизации (переменная для тестов).
@@ -94,8 +96,11 @@ func Enabled() bool {
 // Правило: пустой Origin → allow (старые клиенты, curl);
 // иначе host(и port) из Origin должны совпадать с HTTP_HOST;
 // Sec-Fetch-Site=cross-site → deny.
+// При отказе пишет предупреждение в суточный лог панели
+// (/tmp/entware/logs/YYYY-MM-DD.log) — единая точка логирования всех CSRF-отказов.
 func IsCrossSiteOrigin() bool {
 	if sf := os.Getenv("HTTP_SEC_FETCH_SITE"); sf == "cross-site" {
+		logCSRF("Sec-Fetch-Site=cross-site")
 		return true
 	}
 	origin := os.Getenv("HTTP_ORIGIN")
@@ -103,6 +108,7 @@ func IsCrossSiteOrigin() bool {
 		return false
 	}
 	if origin == "null" {
+		logCSRF("Origin=null")
 		return true
 	}
 	host := strings.TrimSpace(os.Getenv("HTTP_HOST"))
@@ -111,10 +117,34 @@ func IsCrossSiteOrigin() bool {
 	}
 	originHost, ok := originHost(origin)
 	if !ok {
+		logCSRF("Origin без схемы: " + origin)
 		return true
 	}
 	// HTTP_HOST может содержать порт ("192.168.3.1:8087") — сравниваем полный.
-	return host != originHost
+	if host != originHost {
+		logCSRF("Origin=" + origin + " != Host=" + host)
+		return true
+	}
+	return false
+}
+
+// logCSRF пишет предупреждение о CSRF-отказе в суточный лог панели.
+// Формат совпадает с logAction/logAuthAction (таг [csrf]).
+func logCSRF(msg string) {
+	logDir := "/tmp/entware/logs"
+	logFile := fmt.Sprintf("%s/%s.log", logDir, time.Now().Format("2006-01-02"))
+	ts := time.Now().Format("2006-01-02 15:04:05")
+	ip := os.Getenv("REMOTE_ADDR")
+	if ip == "" {
+		ip = "0.0.0.0"
+	}
+	entry := fmt.Sprintf("[%s] [WARN] [%s] [%d] [csrf] %s\n", ts, ip, os.Getpid(), msg)
+	_ = os.MkdirAll(logDir, 0755)
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		f.WriteString(entry)
+		f.Close()
+	}
 }
 
 // originHost извлекает host[:port] из Origin (scheme://host[:port]).
