@@ -45,6 +45,7 @@ func HandleDeleteFile() {
 		fmt.Println(`{"status":"error","message":"Неверный пароль"}`)
 		return
 	}
+	logDeleteAction("INFO", fmt.Sprintf("Удаление (авторизация пройдена): %s", path))
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logDeleteAction("WARN", fmt.Sprintf("Попытка удаления несуществующего объекта: %s", path))

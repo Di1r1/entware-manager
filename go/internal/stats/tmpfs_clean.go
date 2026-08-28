@@ -183,6 +183,7 @@ func deleteTmpClean() {
 		jsonClean("Неверный пароль")
 		return
 	}
+	logDeleteAction("INFO", "Очистка tmpfs (авторизация пройдена)")
 
 	deleted := 0
 	for _, p := range paths {
