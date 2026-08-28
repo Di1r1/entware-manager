@@ -2,6 +2,15 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.12 (2026-08-28)
+
+### Состав комплекта
+
+- **Koffe-манифест исключён из поставки:** `bridge/koffe.json` снят с git-трекинга (локальный файл у владельца, `.gitignore`), убран из `deploy/` (build-deploy.sh) и из `conffiles` ipk (build-ipk.sh). При установке/апгрейде существующие на роутере личные манифесты (в т.ч. `koffe.json`) не трогаются — карточка и график Koffe продолжают работать по локальному манифесту.
+- В комплекте осталось 3 seed-манифеста: `adguard.json`, `syncthing.json`, `transmission.json`.
+- **План тестирования:** `doc/TEST_PLAN.md` §13 «Установка из standalone tar.gz-архива» + обязательный пункт в Definition of Done (файл локальный, gitignored).
+- **Проверки:** кворум `ewm-approval` — APPROVE (sec/CI/code/frontend PASS); `make ci` зелёный.
+
 ## 1.16.11 (2026-08-28)
 
 ### Видимость элементов светлой темы

@@ -27,6 +27,9 @@ links.json
 auth_config.json
 *_config.json
 logger/config.json
+
+# Koffe-манифест — личный (уникален у владельца), не в сборке и не в git
+bridge/koffe.json
 DEVICE.md
 DEVLOG.md
 go/entware-*

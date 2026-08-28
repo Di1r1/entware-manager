@@ -51,6 +51,8 @@ done
 # Удаляем dev-артефакты и пользовательские конфиги из deploy
 rm -rf "$DEPLOY_DIR/doc/local"
 rm -f "$DEPLOY_DIR/Install/Install.txt" "$DEPLOY_DIR/doc/NETWORK_PROMPT.md" "$DEPLOY_DIR/doc/IPK_BUILD.md" "$DEPLOY_DIR/doc/NETDATA_MANUAL.md" "$DEPLOY_DIR/logger/config.json" 2>/dev/null
+# koffe.json — личный манифест владельца: не в сборке (и не в git, см. .gitignore)
+rm -f "$DEPLOY_DIR/bridge/koffe.json" 2>/dev/null
 
 echo ""
 echo "=== Компиляция Go ==="

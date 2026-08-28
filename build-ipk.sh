@@ -61,10 +61,10 @@ Depends: $DEPS
 EOF
 
 # conffiles — seed-манифесты моста: при opkg upgrade пользовательские
-    # правки через UI (koffe.json и др.) не затираются (opkg сохраняет).
+    # правки через UI не затираются (opkg сохраняет). koffe.json — личный
+    # (исключён из сборки и git, см. .gitignore / build-deploy.sh).
     cat > "$PKG_TMP/control/conffiles" <<'CONFEOF'
 /opt/web_entware/bridge/adguard.json
-/opt/web_entware/bridge/koffe.json
 /opt/web_entware/bridge/syncthing.json
 /opt/web_entware/bridge/transmission.json
 CONFEOF
