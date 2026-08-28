@@ -4388,7 +4388,7 @@ function loadMonitorTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/monitor.js?v=4';
+    script.src = '/entware-manager/monitor.js?v=6';
     script.onload = () => {
         if (typeof initMonitorTab === 'function') initMonitorTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля защиты</p>';

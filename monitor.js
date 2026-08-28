@@ -50,9 +50,15 @@ const MONITOR = {
             <div id="monitor-processes">
                 <h3>Топ процессов по нагрузке CPU</h3>
                 <div class="packages-table-wrapper">
-                    <table class="packages-table">
+                    <table class="packages-table" style="table-layout: fixed;">
                         <thead>
-                            <tr><th>PID</th><th>%CPU</th><th>CPU время</th><th>Команда</th><th>Действие</th></tr>
+                            <tr>
+                                <th style="width: 80px;">PID</th>
+                                <th style="width: 80px;">%CPU</th>
+                                <th style="width: 120px;">CPU время</th>
+                                <th>Команда</th>
+                                <th style="width: 120px;">Действие</th>
+                            </tr>
                         </thead>
                         <tbody id="processes-tbody">
                             <tr><td colspan="5">Загрузка...</td></tr>

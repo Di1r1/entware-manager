@@ -199,6 +199,12 @@ html.night {
     --scrollbar-track: #2d3748;
 }
 
+html.night .monitor-toggle .toggle-slider,
+html.night .service-watch-toggle .toggle-slider,
+html.night #network-tabs .tab-toggle .toggle-slider {
+    background-color: var(--input-bg);
+}
+
 /* Ночные переопределения акцентов для пресетов */
 html.night[data-theme="ocean"] {
     --accent: #38bdf8;
