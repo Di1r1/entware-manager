@@ -2760,7 +2760,7 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     display: inline-block;
     width: 40px;
     height: 22px;
-    background-color: var(--input-bg, #4a5568);
+    background-color: var(--btn-muted);
     border-radius: 22px;
     transition: background-color 0.25s;
 }
@@ -2821,7 +2821,8 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     margin-bottom: 8px;
 }
 .bd-tile {
-    background: var(--input-bg);
+    background: var(--command-block-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 7px 9px;
 }

@@ -63,6 +63,32 @@ func TestLookupPath(t *testing.T) {
 	}
 }
 
+// TestLookupPathArrayIndex — пути от сканера с индексами массивов
+// (dns_addresses.2, top_clients.0.count), включая негативные случаи.
+func TestLookupPathArrayIndex(t *testing.T) {
+	src := map[string]interface{}{
+		"dns_addresses": []interface{}{"192.168.1.1", "8.8.8.8", "198.51.100.37"},
+		"top_clients": []interface{}{
+			map[string]interface{}{"host": "pc", "count": float64(900)},
+		},
+	}
+	if v, ok := lookupPath(src, stringsSplit("dns_addresses.2")); !ok || v != "198.51.100.37" {
+		t.Errorf("массив-индекс = %v %v, хочу 198.51.100.37", v, ok)
+	}
+	if v, ok := lookupPath(src, stringsSplit("top_clients.0.count")); !ok || v != float64(900) {
+		t.Errorf("массив-объект = %v %v", v, ok)
+	}
+	if _, ok := lookupPath(src, stringsSplit("dns_addresses.9")); ok {
+		t.Error("индекс за пределами массива найден")
+	}
+	if _, ok := lookupPath(src, stringsSplit("dns_addresses.x")); ok {
+		t.Error("нечисловой индекс найден")
+	}
+	if _, ok := lookupPath(src, stringsSplit("top_clients.0.missing")); ok {
+		t.Error("поле без ключа в элементе массива найдено")
+	}
+}
+
 func stringsSplit(s string) []string {
 	var out []string
 	cur := ""

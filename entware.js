@@ -392,6 +392,17 @@ async function openHelpTG() {
     return false;
 }
 
+// Открыть вкладку «Справка» и проскроллить к разделу «Модули» (манифесты).
+// Используется ссылкой из описания на странице редактора манифеста.
+async function openHelpBridge() {
+    try { await loadTab('help'); } catch (e) {}
+    setTimeout(function () {
+        var el = document.getElementById('bridge-help');
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 250);
+    return false;
+}
+
 async function loadTab(tabName) {    const ver = window.APP_VERSION || 'loading...';
     console.log(`[v${ver}] Загрузка вкладки:`, tabName);
     if (settingsInterval) clearInterval(settingsInterval);
@@ -1812,7 +1823,7 @@ const BRIDGE_TEMPLATE = `{
 function openBridgeEditor(editId) {
     const contentDiv = document.getElementById('content');
     let existingJson = BRIDGE_TEMPLATE;
-    let title = 'Новый модуль';
+    let title = 'Новый модуль - Альфа тест';
     if (editId) {
         title = 'Редактирование: ' + editId;
     }
@@ -1867,7 +1878,8 @@ function renderBridgeEditor(title, editId, jsonText) {
     const contentDiv = document.getElementById('content');
     contentDiv.innerHTML =
         '<h2><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=6#icon-file"/></svg> ' + escapeHtml(title) + '</h2>' +
-        '<p style="color:var(--text-muted);">JSON-манифест модуля. Поле <code>id</code> должно совпадать с именем файла. Справа — сканер: он показывает, что отдают адреса сервиса, и позволяет добавить поля на карточку одним кликом.</p>' +
+        '<p style="color:var(--text-muted);">JSON-манифест модуля. Поле <code>id</code> должно совпадать с именем файла. Справа — сканер: он показывает, что отдают адреса сервиса, и позволяет добавить поля на карточку одним кликом. ' +
+        '<a href="#" onclick="return openHelpBridge()" style="color:var(--accent);">Полная инструкция по работе с манифестом — во вкладке «Справка».</a></p>' +
         '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">' +
         // Левая панель: редактор
         '<div style="flex:1 1 420px;min-width:0;">' +
@@ -1883,7 +1895,7 @@ function renderBridgeEditor(title, editId, jsonText) {
         BRIDGE_KEYS_HELP +
         '</div>' +
         // Правая панель: сканер
-        '<div style="flex:1 1 380px;min-width:0;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--card-bg,#1a202c);">' +
+        '<div style="flex:1 1 380px;min-width:0;border:1px solid var(--border-color);border-radius:8px;padding:12px;background:var(--command-block-bg);">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">' +
         '<b>Сканер</b>' +
         [['service', 'Опросить сервис'], ['procs', 'Процессы'], ['modules', 'Модули']].map(x =>
@@ -2163,7 +2175,7 @@ function createModuleFromProcessAt(i) {
     const m = { id: id, name: p.name, process: [p.name] };
     if (p.init) m.init = p.init;
     const json = JSON.stringify(m, null, 2);
-    renderBridgeEditor('Новый модуль', '', json);
+    renderBridgeEditor('Новый модуль - Альфа тест', '', json);
     Toast.show('Каркас «' + p.name + '» готов' + (p.init ? ' (init: ' + escapeHtml(p.init) + ')' : '') + ': впишите base/status и нажмите «Сохранить»' + (p.init ? '' : '. Для кнопок Старт/Стоп создайте init-скрипт (см. Справка)'));
 }
 
@@ -2224,7 +2236,7 @@ function openModuleFromListAt(i) {
 // в create-режиме (кнопка «Добавить модуль» у каждой строки). Явное исключение
 // из правила «открытие редактора = только подсказка».
 function openNewModuleWizard() {
-    renderBridgeEditor('Новый модуль', '', BRIDGE_TEMPLATE);
+    renderBridgeEditor('Новый модуль - Альфа тест', '', BRIDGE_TEMPLATE);
     bridgeProcMode = 'create';
     bridgeScanProcesses();
 }
@@ -2295,8 +2307,16 @@ function addBridgeField(path, guess, source, tile) {
     if (m.fields.some(f => f.path === path)) { Toast.show('Поле уже добавлено'); return; }
     if (m.fields.length >= 24) { Toast.show('Достигнут лимит полей (24)'); return; }
     const segs = path.split('.');
-    const key = segs[segs.length - 1];
-    const f = { path: path, label: key.replace(/_/g, ' ') };
+    const last = segs[segs.length - 1];
+    let label;
+    if (/^\d+$/.test(last) && segs.length > 1) {
+        // элемент массива (сканер даёт путь вида dns_addresses.2):
+        // подписываем родительским ключом + индексом [2]
+        label = segs[segs.length - 2].replace(/_/g, ' ') + ' [' + last + ']';
+    } else {
+        label = last.replace(/_/g, ' ');
+    }
+    const f = { path: path, label: label };
     if (source && source !== 'status') f.from = source.replace(/^extra\./, '');
     if (guess) f.type = guess;
     if (tile) f.tile = true;

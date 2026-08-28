@@ -150,27 +150,32 @@ func pickEndpoint(m *Manifest, from string) *Endpoint {
 	return nil
 }
 
-// lookupPath идёт по точечному пути в карте/массиве.
+// lookupPath идёт по точечному пути в карте/массиве; числовой сегмент
+// трактуется как индекс массива (пути вида dns_addresses.2 от сканера).
 func lookupPath(src map[string]interface{}, parts []string) (interface{}, bool) {
 	if src == nil || len(parts) == 0 {
 		return nil, false
 	}
-	cur := src
-	for i, p := range parts {
-		next, ok := cur[p]
-		if !ok {
+	var cur interface{} = src
+	for _, p := range parts {
+		switch c := cur.(type) {
+		case map[string]interface{}:
+			next, ok := c[p]
+			if !ok {
+				return nil, false
+			}
+			cur = next
+		case []interface{}:
+			idx, err := strconv.Atoi(p)
+			if err != nil || idx < 0 || idx >= len(c) {
+				return nil, false
+			}
+			cur = c[idx]
+		default:
 			return nil, false
 		}
-		if i == len(parts)-1 {
-			return next, true
-		}
-		nextMap, ok := next.(map[string]interface{})
-		if !ok {
-			return nil, false
-		}
-		cur = nextMap
 	}
-	return nil, false
+	return cur, true
 }
 
 // formatValue приводит значение к читаемой строке согласно типу поля.
