@@ -519,7 +519,7 @@ body {
 
 /* === Стили шапки сайдбара (объединены из index.html) === */
 .sidebar-header {
-    padding: 20px 0 12px 12px !important;
+    padding: 12px 0 12px 12px !important;
     border-bottom: 1px solid var(--sidebar-border);
     display: flex;
     justify-content: space-between;
@@ -1121,6 +1121,14 @@ input[type="checkbox"] {
     .stats-hero {
         flex-direction: column;
         align-items: flex-start;
+    }
+    /* Monitor table - убираем фиксированные ширины на мобильных */
+    #processes-tbody th,
+    #processes-tbody td {
+        width: auto !important;
+    }
+    #monitor-processes .packages-table {
+        table-layout: auto !important;
     }
 }
 
@@ -2094,7 +2102,7 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
 .collapse-btn {
     position: absolute;
     right: -15px;
-    top: 28px !important;
+    top: 23px !important;
     width: 30px;
     height: 30px;
     border: none;
@@ -2169,7 +2177,7 @@ html.night .theme-toggle-edge:hover {
 .theme-toggle-edge {
     position: absolute;
     right: -15px;
-    top: 70px;
+    top: 65px;
     width: 30px;
     height: 30px;
     border: none;

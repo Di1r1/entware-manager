@@ -54,8 +54,8 @@ const MONITOR = {
                         <thead>
                             <tr>
                                 <th style="width: 80px;">PID</th>
-                                <th style="width: 80px;">%CPU</th>
-                                <th style="width: 120px;">CPU время</th>
+                                <th style="width: 100px;">%CPU</th>
+                                <th style="width: 140px;">CPU время</th>
                                 <th>Команда</th>
                                 <th style="width: 120px;">Действие</th>
                             </tr>
