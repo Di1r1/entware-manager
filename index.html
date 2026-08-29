@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#1a202c" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="/entware-manager/favicon.svg?v=2" type="image/svg+xml">
     <link rel="shortcut icon" href="/entware-manager/favicon.svg">
-    <link rel="stylesheet" href="/entware-manager/style.css?v=60">
+    <link rel="stylesheet" href="/entware-manager/style.css?v=65">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script>if (window.Theme) Theme.init();</script>
     <script src="/entware-manager/modal.js?v=4"></script>
@@ -18,6 +18,9 @@
 <body>
     <div class="app-container">
         <nav class="sidebar" id="sidebar">
+            <!-- Top restore zone (5px) -->
+            <div class="sidebar-restore-zone sidebar-restore-top" title="Показать заголовок"></div>
+            
             <div class="sidebar-header">
                 <h2>Entware Manager</h2>
                 <div class="sidebar-description">Управление пакетами и системой</div>
@@ -77,6 +80,9 @@
                 </a>
                 <span class="version" id="sidebarVersion"></span>
             </div>
+            
+            <!-- Bottom restore zone (5px) -->
+            <div class="sidebar-restore-zone sidebar-restore-bottom" title="Показать футер"></div>
         </nav>
         <main class="content">
             <div id="content"></div>
@@ -410,7 +416,7 @@
 
                     html += '<h4 style="margin:0 0 6px 0; font-size:1.1em; font-weight:700; color:var(--text-primary); text-shadow:0 2px 6px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.2);">CPU</h4>';
                     html += '<div style="text-align:center;">';
-                    html += '<canvas id="cpuChart" width="900" height="190" style="width:100%;"></canvas>';
+                    html += '<canvas id="cpuChart" width="900" height="130" style="width:100%;"></canvas>';
                     html += '</div>';
                     const minVal = Math.min(...temps);
                     const maxVal = Math.max(...temps);
@@ -451,7 +457,7 @@
 
                         html += '<h4 style="margin:0 0 6px 0; font-size:1.1em; font-weight:700; color:var(--text-primary); text-shadow:0 2px 6px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.2);">WiFi</h4>';
                         html += '<div style="text-align:center;">';
-                        html += '<canvas id="wifiChart2" width="900" height="190" style="width:100%;"></canvas>';
+                        html += '<canvas id="wifiChart2" width="900" height="130" style="width:100%;"></canvas>';
                         html += '</div>';
                         html += '<div class="temp-stats" id="wifiStats">';
                         html += '<div class="temp-stat"><div class="label" style="color:#3498db; text-shadow:0 1px 2px rgba(0,0,0,0.2);">WiFi0</div><div class="value" data-wifi="0" style="color:#3498db; text-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;">' + (now0 !== null ? now0 + '°C' : '—') + '</div></div>';
@@ -513,5 +519,74 @@
             <p id="loginError" class="error" style="display:none;margin-top:8px;"></p>
         </div>
     </div>
+<script>
+    // Auto-hide header/footer on menu hover
+    (function() {
+        const sidebar = document.getElementById('sidebar');
+        const menuContainer = document.querySelector('.menu-container');
+        const menu = document.getElementById('dynamic-menu');
+        const restoreTop = document.querySelector('.sidebar-restore-top');
+        const restoreBottom = document.querySelector('.sidebar-restore-bottom');
+        
+        if (!sidebar || !menuContainer) return;
+        
+        let hideTimeout;
+        let isHoveringMenu = false;
+        
+        function showHeaderFooter() {
+            clearTimeout(hideTimeout);
+            sidebar.classList.remove('menu-focused');
+        }
+        
+        function hideHeaderFooter() {
+            hideTimeout = setTimeout(() => {
+                if (isHoveringMenu) {
+                    sidebar.classList.add('menu-focused');
+                }
+            }, 150);
+        }
+        
+        // Mouse events
+        menuContainer.addEventListener('mouseenter', () => {
+            isHoveringMenu = true;
+            hideHeaderFooter();
+        });
+        
+        menuContainer.addEventListener('mouseleave', () => {
+            isHoveringMenu = false;
+            showHeaderFooter();
+        });
+        
+        // Also track menu itself for better coverage
+        if (menu) {
+            menu.addEventListener('mouseenter', () => {
+                isHoveringMenu = true;
+                hideHeaderFooter();
+            });
+            menu.addEventListener('mouseleave', () => {
+                isHoveringMenu = false;
+                showHeaderFooter();
+            });
+        }
+        
+        // Restore zones - immediately show header/footer on hover
+        if (restoreTop) {
+            restoreTop.addEventListener('mouseenter', showHeaderFooter);
+        }
+        if (restoreBottom) {
+            restoreBottom.addEventListener('mouseenter', showHeaderFooter);
+        }
+        
+        // Touch support - tap outside menu to show header/footer
+        document.addEventListener('click', (e) => {
+            if (sidebar.classList.contains('menu-focused') && 
+                !menuContainer.contains(e.target) &&
+                !document.querySelector('.sidebar-header').contains(e.target) &&
+                !document.querySelector('.sidebar-footer').contains(e.target)) {
+                sidebar.classList.remove('menu-focused');
+            }
+        });
+    })();
+</script>
 </body>
 </html>

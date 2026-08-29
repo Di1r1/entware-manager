@@ -686,21 +686,21 @@ body {
     padding: 10px 0;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-color: transparent transparent;
 }
 .menu {
     list-style: none;
     margin: 0;
 }
 .menu-container::-webkit-scrollbar {
-    width: 8px;
+    width: 0;
+    height: 0;
 }
 .menu-container::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
+    background: transparent;
 }
 .menu-container::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
+    background: transparent;
 }
 
 .sidebar-footer {
@@ -2906,6 +2906,90 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     gap: 5px;
     margin-top: 8px;
 }
+/* === Auto-hide header/footer on menu hover === */
+.sidebar.menu-focused .sidebar-header,
+.sidebar.menu-focused .sidebar-footer {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+    transform: translateY(-10px);
+}
+
+.sidebar.menu-focused .sidebar-footer {
+    transform: translateY(10px);
+}
+
+/* Invisible restore zones (10px at top/bottom of sidebar) */
+.sidebar-restore-zone {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 10px;
+    z-index: 200;
+    background: transparent;
+    cursor: default;
+}
+
+.sidebar-restore-top {
+    top: 0;
+}
+
+.sidebar-restore-bottom {
+    bottom: 0;
+}
+
+/* Ensure restore zones work even when menu-focused */
+.sidebar.menu-focused .sidebar-restore-zone {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    z-index: 300;
+    height: 10px;
+}
+
+.sidebar.menu-focused .sidebar-restore-top {
+    top: 0;
+}
+
+.sidebar.menu-focused .sidebar-restore-bottom {
+    bottom: 0;
+}
+
+.sidebar.menu-focused .menu-container {
+    flex: 1;
+    margin-top: -20px;
+    margin-bottom: -20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.sidebar.menu-focused .sidebar-header,
+.sidebar.menu-focused .sidebar-footer {
+    height: 0;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border: none;
+}
+
+/* Touch support - show on tap outside menu */
+@media (hover: none) and (pointer: coarse) {
+    .sidebar.menu-focused .sidebar-header,
+    .sidebar.menu-focused .sidebar-footer {
+        opacity: 1;
+        visibility: visible;
+        height: auto;
+        transform: none;
+    }
+    .sidebar.menu-focused .menu-container {
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+}
+
 .bd-chip {
     background: var(--accent-soft);
     color: var(--accent);
