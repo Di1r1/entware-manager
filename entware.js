@@ -4386,7 +4386,7 @@ function loadNetworkTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/network.js?v=16';
+    script.src = '/entware-manager/network.js?v=17';
     script.onload = () => {
         if (typeof initNetworkTab === 'function') initNetworkTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля сети</p>';

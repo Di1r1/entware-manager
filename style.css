@@ -2962,6 +2962,10 @@ body.auth-ready .app-container { animation: rdpFadeIn 0.2s ease; }
     margin-bottom: -20px;
     padding-top: 20px;
     padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
 }
 
 .sidebar.menu-focused .sidebar-header,

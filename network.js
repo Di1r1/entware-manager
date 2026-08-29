@@ -211,6 +211,8 @@ const NETWORK = {
         const table = tbody.closest('table');
         const sortCol = table?.dataset?.sortCol !== undefined ? parseInt(table.dataset.sortCol) : null;
         const sortOrder = table?.dataset?.sortOrder || 'asc';
+        // WiFi column types: Имя, IP адрес, MAC адрес, Сигнал (dBm), Стандарт, Мбит/с, Сегмент
+        const columnTypes = ['string', 'ip', 'string', 'number', 'string', 'number', 'string'];
         const btn = document.getElementById('refresh-wifi');
         if (btn) {
             btn.disabled = true;
@@ -237,7 +239,7 @@ const NETWORK = {
                 </tr>`;
             }).join('');
             if (sortCol !== null && typeof sortTableRows === 'function') {
-                sortTableRows(table, sortCol, 'string', sortOrder);
+                sortTableRows(table, sortCol, columnTypes[sortCol] || 'string', sortOrder);
             }
         } catch(e) {
             tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger-color);">Ошибка загрузки: ' + escapeHtml(e.message) + '</td></tr>';
