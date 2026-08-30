@@ -1981,7 +1981,7 @@ function renderProbeResult(probe) {
     if (probe.listen_ports && probe.listen_ports.length) {
         const curPort = currentBasePort();
         html += '<div style="font-size:0.8rem;margin-bottom:6px;">Открытые TCP-порты роутера (клик — подставить в <code>base</code>):</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
+            '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">' +
             probe.listen_ports.map(p => {
                 const active = p === curPort;
                 const hint = (probe.port_labels || {})[p];
@@ -2015,7 +2015,7 @@ function renderProbeResult(probe) {
     }
     html += '<input type="text" id="br-probe-filter" class="settings-input" placeholder="Фильтр по пути… (например: ram)" style="width:100%;margin-bottom:6px;font-size:12px;" oninput="filterProbeRows()">';
     html += '<div id="br-probe-count" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;"></div>';
-    html += '<div style="max-height:340px;overflow:auto;" id="br-probe-list">';
+    html += '<div id="br-probe-list">';
     for (let pi = 0; pi < paths.length; pi++) {
         const p = paths[pi];
         const isAdded = added.indexOf(p.path) >= 0;
@@ -2119,7 +2119,7 @@ function renderProcList(filter) {
             ? 'Выберите процесс — по нему будет создан новый модуль:'
             : 'Живые процессы роутера («+» добавит имя в <code>process[]</code>):') + '</div>' +
         '<input type="text" id="br-proc-filter" class="settings-input" placeholder="Фильтр… (например: xray)" style="width:100%;margin-bottom:6px;font-size:12px;" oninput="filterProcRows()">' +
-        '<div style="max-height:340px;overflow:auto;" id="br-proc-list">';
+        '<div id="br-proc-list">';
     let shown = 0;
     for (let i = 0; i < bridgeProcCache.length; i++) {
         const p = bridgeProcCache[i];
@@ -2220,7 +2220,7 @@ async function renderSavedModules() {
     try {
         const services = await bridgeDiscover();
         let html = '<div style="font-size:0.8rem;margin-bottom:6px;">Модули роутера (кнопка справа открывает манифест в редакторе):</div>' +
-            '<div style="max-height:340px;overflow:auto;">';
+            '<div>';
         services.forEach((s, i) => {
             const [lbl] = BRIDGE_STATE_LABELS[s.state] || [s.state];
             const color = s.state === 'running' ? '#38a169' : (s.state === 'auth_required' ? '#d69e2e' : '#718096');
