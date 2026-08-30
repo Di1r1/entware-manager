@@ -147,11 +147,16 @@ migrate_choose_portkeeper() {
 # прежнего 90-conf (mod_alias/mod_cgi/mod_proxy/mod_access) + модули, которых ждут
 # чужие conf.d (koffe alias/cgi, web4static) — иначе lighttpd начнёт игнорировать
 # alias.url/cgi.assign (WARNING "unknown config-key") и сервисы сломаются.
+# server.port пишем через ":=" (replace, lighttpd ≥1.4.46): повторное объявление
+# в общем conf.d (nfqws пишет server.port := 8088) с "=" давало фатальную ошибку
+# "Duplicate config variable" и lighttpd не стартовал.
 migrate_write_portkeeper() {
 	local port="$1" f mods
 	# Идемпотентность: уже такой порт-хранитель → не перезаписываем.
+	# Требуем форму ":=" — старый "server.port = N" переписывается в ":="
+	# (лечение установок ≤1.16.18, где "=" ломал lighttpd при соседстве с nfqws).
 	if migrate_is_portkeeper "$EWM_PORT_KEEPER" \
-		&& grep -q "^[[:space:]]*server\.port[[:space:]:=]*[[:space:]]*$port\$" "$EWM_PORT_KEEPER" 2>/dev/null; then
+		&& grep -q "^[[:space:]]*server\.port[[:space:]]*:=[[:space:]]*$port\$" "$EWM_PORT_KEEPER" 2>/dev/null; then
 		return 0
 	fi
 	mods=""
@@ -172,7 +177,7 @@ migrate_write_portkeeper() {
 		echo "# Entware Manager $PORT_KEEPER_MARKER — shared lighttpd stays on $port."
 		echo "# Панель EM переехала на entware-server:8087. Директив EM здесь нет."
 		printf '%s\n' "$mods" | sed '/^$/d' | sort -u
-		echo "server.port = $port"
+		echo "server.port := $port"
 	} > "$EWM_PORT_KEEPER.tmp.$$" 2>/dev/null && mv -f "$EWM_PORT_KEEPER.tmp.$$" "$EWM_PORT_KEEPER" 2>/dev/null
 }
 

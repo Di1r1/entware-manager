@@ -614,6 +614,18 @@ else
 	# стабильный порт-хранитель (8086), если необходимо: освобождаем 8087,
 	# не трогая чужие конфиги (koffe/web4static/nfqws2) и чужой server.port.
 
+	# Самолечение формы порт-хранителя (установки ≤1.16.18: server.port = N → := N).
+	# Выполняется и при PORT_SKIP=1 (entware-server уже на 8087): файл обновляется
+	# идемпотентно через migrate_write_portkeeper (требует форму ':='), модули
+	# сохраняются, чужие conf.d и работающий lighttpd не трогаются.
+	if migrate_is_portkeeper "$EWM_PORT_KEEPER"; then
+		PK_NOW=$(migrate_choose_portkeeper)
+		if [ -n "$PK_NOW" ]; then
+			migrate_write_portkeeper "$PK_NOW"
+			ok "90-entware-manager.conf: форма server.port обновлена на ':=' (:$PK_NOW)"
+		fi
+	fi
+
 	# S4: если 8087 занят ЧУЖИМ процессом (не нашим lighttpd и не entware-server)
 	# — ничего не трогаем (порт/lighttpd), только предупреждаем.
 	PORT_SKIP=0

@@ -125,7 +125,7 @@ rm -f "$T/conf.d"/*.conf
 printf 'server.port = 8086\n' > "$T/lighttpd.conf"
 migrate_write_portkeeper 8086
 rc_ok "write_portkeeper → is_portkeeper true" 0 $(migrate_is_portkeeper "$EWM_PORT_KEEPER"; echo $?)
-grep -q "server.port = 8086" "$EWM_PORT_KEEPER" && rc_ok "порт 8086 в файле" 0 0 || rc_ok "порт 8086 в файле" 1 0
+grep -q "server.port := 8086" "$EWM_PORT_KEEPER" && rc_ok "порт 8086 в файле (:=')" 0 0 || rc_ok "порт 8086 в файле (:=')" 1 0
 
 # не порт-хранитель (без маркера)
 printf 'server.port = 8087\n' > "$T/conf.d/90-entware-manager.conf"
@@ -164,7 +164,7 @@ migrate_write_portkeeper 8086
 for m in mod_alias mod_cgi mod_proxy; do
 	if grep -q "$m" "$EWM_PORT_KEEPER"; then PASS=$((PASS + 1)); echo "ok: модуль $m перенесён из старого 90-conf"; else FAIL=$((FAIL + 1)); echo "FAIL: модуль $m НЕ перенесён"; fi
 done
-grep -q "server.port = 8086" "$EWM_PORT_KEEPER" && PASS=$((PASS + 1)) || FAIL=$((FAIL + 1)); echo "  port 8086"
+grep -q "server.port := 8086" "$EWM_PORT_KEEPER" && PASS=$((PASS + 1)) || FAIL=$((FAIL + 1)); echo "  port 8086 (:=')"
 
 echo "=== идемпотентность ==="
 # повторная запись того же порт-хранителя — no-op (md5 не меняется)
@@ -175,6 +175,20 @@ if [ "$m1" = "$m2" ]; then PASS=$((PASS + 1)); echo "ok: повторная за
 # choose на существующем порт-хранителе возвращает его порт, даже если он «занят»
 printf '8086\n' > "$T/listens"
 assert_eq "choose на существующем порт-хранителе → 8086" "8086" "$(migrate_choose_portkeeper)"
+
+echo "=== healing: старый 'server.port = N' → ':=' ==="
+# порт-хранитель от установки ≤1.16.18 (форма "=") переписывается в ":="
+printf '8086\n' > "$T/listens"
+cat > "$EWM_PORT_KEEPER" <<EOF
+# Entware Manager $PORT_KEEPER_MARKER — shared lighttpd stays on 8086.
+server.port = 8086
+EOF
+migrate_write_portkeeper 8086
+if grep -q "server.port := 8086" "$EWM_PORT_KEEPER" && ! grep -q "server.port = 8086" "$EWM_PORT_KEEPER"; then
+	PASS=$((PASS + 1)); echo "ok: старый '=' переписан в ':='"
+else
+	FAIL=$((FAIL + 1)); echo "FAIL: старый '=' не переписан в ':='"
+fi
 
 echo "=== migrate_has_third_party_confd ==="
 rm -f "$T/conf.d"/*.conf
