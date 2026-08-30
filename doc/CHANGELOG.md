@@ -4,6 +4,28 @@
 
 ## 1.16.18 (2026-08-30)
 
+### Модули: честные статусы, единый источник «встроенный», сброс авторизации (кэш v161) — коммит `0600c28`
+
+- `go/internal/bridge/cardstate.go`: `DiscoverState` зеркалит `Discover` для манифест-модулей — process-детект, иначе веб-проба через `ValidateBridgeURL` + `classify` (ports-кандидаты, метод/тело probe); fallback «жив, раз файл есть» убран (пустой probe → absent). Статус карточки Статистики и вкладки Модули больше не расходится.
+- `go/internal/bridge/discover.go`: `ServiceState` += `builtin,omitempty`, `IsBuiltin()` — единый источник «встроенный»; `manifestio.go` гейт удаления → `IsBuiltin(id) && !HasManifestFile` (чисто-каталожный id не удаляется, override-манифест удаляется — каталог вернётся); `entware.js` массив `builtinIds` удалён, `canDelete = has_manifest && !builtin`.
+- `go/internal/bridge/session.go`: `ValidateAuthCreds` — cookie_login требует `login_url` относительным путём без `//`; basic/api_key — `login_url` запрещён; вызов в `handleAuthSave`.
+- `go/cmd/entware-bridge/stats_auth.go`: ветка `clear=1` в `bridge_auth` («Сбросить авторизацию»: `DeleteAuthFile` + `ClearSession`, идемпотентно) + кнопка в `bridgeAuthFormHTML`/`clearBridgeAuth`. Новых эндпоинтов нет.
+- Тесты: `discover_test.go` (`TestIsBuiltin`, `TestClassifyRedirect` 3xx→running, `TestDiscoverStateManifestWebProbe`/`…Process` через httptest), `TestValidateAuthCreds`.
+- Проверки: gofmt/vet/test, `make ci` 29+7 паритет 72 эндпоинтов, `node --check`; кворум APPROVE (+ финальная проверка по факту). Деплой на роутер: бинарник `fd924478…`, entware.js `012c53dc…`, index.html `293fe186…` (`?v=161`), прямые CGI-тесты (удаление встроенного → отказ, override → удаляется, сброс авторизации идемпотентен), auth_config восстановлен.
+
+### Модули: чистка моста, безопасное удаление, суточный журнал (кэш v160) — коммит `23e52bb`
+
+- `entware.js`: удалён мёртвый дубль `bridgeDiscover()`; `numericGuess` учитывает `dur` (обе места).
+- Удаление модуля (`handleManifestDelete`): вместе с манифестом удаляются `<id>.auth.json`, сессия приложения; `InvalidateCache()` после save/delete — список сразу актуален; тексты подтверждения предупреждают о стирании доступа.
+- `go/internal/bridge/discover.go`: `InvalidateCache()` (сброс 30с-кэша Discover).
+- Логи: `appendDailyLog` → экспорт `AppendDailyLog`; действия `bridge_ctl`/`bridge_action` пишутся в суточный журнал в формате `[bridge] Модуль «name»: …`.
+- `go/internal/bridge/card.go`: глобал `curField` убран → `formatValue(f *FieldDef, v, typ)` с nil-guard булевых полей; единый каталог манифестов через `BridgeDir()` (+ переопределение `EWM_BRIDGE_DIR`).
+- Проверки: gofmt/vet/test, `make ci` 29+7, кворум APPROVE (с условиями) + финальный по факту.
+
+### Модули: списки сканера и чипы портов без внутреннего скролла (кэш v158/v159) — коммит `8c9d779`
+
+- `entware.js`: убраны `max-height`/`overflow:auto` у чипов открытых TCP-портов, списка полей сканера, списка живых процессов и списка сохранённых модулей — контент показывается целиком, без внутренних полос прокрутки.
+
 ### Сканер манифеста: guess `kbs` и `top`, предупреждение init↔process
 
 - `go/internal/bridge/probe.go`: `guessNumType` распознаёт скорость (`speed`/`rate`/`download`/`upload`/`kbs`/`traffic`/`throughput`) → тип `kbs`; `appendArrayPaths` детектит top-массивы (одно-ключевые числовые объекты, `looksLikeTopArray`/`previewTopArray`) → guess `top` с превью «имя (N), …», остальные массивы остаются `count`.
