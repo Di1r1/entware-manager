@@ -82,6 +82,24 @@ var knownEndpoints = []struct {
 	{"/rpc", "Transmission"},
 }
 
+// commonAPIPaths — распространённые API-пути произвольных сервисов для
+// автоподбора, когда база отвечает, но ни один путь манифеста не дал JSON.
+// Первым найденный даёт кнопку «применить» в сканере (как knownEndpoints).
+var commonAPIPaths = []struct {
+	Path    string
+	Service string
+}{
+	{"/status", "статус"},
+	{"/api/status", "статус"},
+	{"/api", "API"},
+	{"/api/v1/status", "статус"},
+	{"/api/info", "инфо"},
+	{"/index.json", "индекс"},
+	{"/json", "JSON"},
+	{"/v1/status", "статус"},
+	{"/api/v1/info", "инфо"},
+}
+
 // ProbeManifestData сканирует источники данных по сырому тексту манифеста.
 // Мягкий разбор: даже невалидный (недоделанный) манифест отдаёт свои URL —
 // чтобы редактирование было итеративным. valid=true только при строгой валидации.
@@ -167,7 +185,9 @@ func ProbeManifestData(data []byte) *ProbeResult {
 	}
 	res.PortLabels = PortLabelsDict()
 	// Автоопределение сервиса: порт отвечает (HTTP есть), но данные
-	// ни по одному пути не получены — пробуем известные API-пути.
+	// ни по одному пути не получены — пробуем сигнатуры известных сервисов
+	// и распространённые API-пути. Известные идут первыми (подписанные),
+	// затем общие — так для произвольного сервиса сканер находит рабочий путь.
 	baseReachable := false
 	allFailed := len(res.Sources) > 0
 	for _, s := range res.Sources {
@@ -179,13 +199,20 @@ func ProbeManifestData(data []byte) *ProbeResult {
 		}
 	}
 	if baseReachable && allFailed {
-		for _, ke := range knownEndpoints {
-			if len(res.Suggestions) >= 3 {
+		candidates := append([]struct {
+			Path    string
+			Service string
+		}{}, knownEndpoints...)
+		candidates = append(candidates, commonAPIPaths...)
+		seen := map[string]bool{}
+		for _, ke := range candidates {
+			if len(res.Suggestions) >= 6 {
 				break
 			}
-			if pathAlreadyUsed(&m, ke.Path) {
+			if seen[ke.Path] || pathAlreadyUsed(&m, ke.Path) {
 				continue
 			}
+			seen[ke.Path] = true
 			u, err := ValidateBridgeURL(ke.Path, m.Base)
 			if err != nil {
 				continue
@@ -207,7 +234,11 @@ func ProbeManifestData(data []byte) *ProbeResult {
 	return res
 }
 
-// pathAlreadyUsed — путь уже прописан в одном из источников манифеста.
+// pathAlreadyUsed — путь уже ТОЧНО прописан в одном из источников манифеста.
+// Только точное совпадение (после срезания хвостового "/"): суффикс-сравнение
+// здесь вредно — манифест с неработающим /api/status не должен блокировать
+// подсказку рабочего /status (автоподбор запускается лишь когда все пути
+// манифеста не дали JSON).
 func pathAlreadyUsed(m *Manifest, path string) bool {
 	urls := []string{m.Probe.URL}
 	if m.Status != nil {
@@ -218,7 +249,8 @@ func pathAlreadyUsed(m *Manifest, path string) bool {
 	}
 	for _, u := range urls {
 		u = strings.TrimSuffix(u, "/")
-		if u == path || strings.HasSuffix(u, path) {
+		path = strings.TrimSuffix(path, "/")
+		if u == path {
 			return true
 		}
 	}

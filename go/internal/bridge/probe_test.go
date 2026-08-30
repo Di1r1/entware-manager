@@ -278,3 +278,33 @@ func TestProbeSuggestions(t *testing.T) {
 		t.Errorf("подсказки для недоступного порта: %+v", res3.Suggestions)
 	}
 }
+
+// TestProbeSuggestionsGeneric — неизвестный сервис отвечает JSON на общем пути
+// /status (не в knownEndpoints) → автоподбор commonAPIPaths предлагает его.
+func TestProbeSuggestionsGeneric(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/status" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"running":true,"mode":"tunnel"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	// шаблонный статус неверный (404) → ищем автоподбором
+	tmpl := `{"id":"t","name":"T","base":"` + srv.URL + `","probe":{"url":"/"},"status":{"url":"/api/status"}}`
+	res := ProbeManifestData([]byte(tmpl))
+	if len(res.Suggestions) == 0 {
+		t.Fatalf("generic-подсказок нет: %+v", res.Suggestions)
+	}
+	found := false
+	for _, s := range res.Suggestions {
+		if s.Path == "/status" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("нет подсказки /status (commonAPIPaths): %+v", res.Suggestions)
+	}
+}

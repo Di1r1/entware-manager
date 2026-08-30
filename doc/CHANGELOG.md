@@ -2,6 +2,26 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.21 (2026-08-30)
+
+### Сканер модулей: автоподбор API-пути
+
+- `go/internal/bridge/probe.go` (`ProbeManifestData`): когда база отвечает (HTTP есть),
+  но ни один путь манифеста не дал JSON, сканер теперь пробует не только сигнатуры
+  известных сервисов (`knownEndpoints`: Netdata/AGH/Syncthing/Transmission/qBittorrent/
+  Radarr/Sonarr), но и распространённые API-пути произвольных сервисов
+  (`commonAPIPaths`: `/status`, `/api/status`, `/api`, `/api/v1/status`, `/api/info`,
+  `/index.json`, `/json`, `/v1/status`). Первый рабочий путь предлагается кнопкой
+  «применить» в сканере — не нужно угадывать адрес API вручную.
+- Лимит подсказок поднят 3 → 6 (probe.go); дубли по пути исключаются.
+- `pathAlreadyUsed`: суффикс-сравнение заменено на точное — манифест с неработающим
+  `/api/status` больше не блокирует подсказку рабочего `/status` (диагностировано на
+  роутере: koffe на 9097 отдаёт JSON на `/status`, но `/api/status` → 400).
+- `test/migrate` — не затронуто. Новый тест `TestProbeSuggestionsGeneric` (probe_test.go):
+  неизвестный сервис отвечает JSON на `/status` → подсказка `/status` появляется.
+- Проверки: `go test ./internal/bridge/`, `go vet`, `gofmt`, `make ci`.
+  Деплой на роутер: `entware-bridge` (arm64) + живая проверка koffe `/status`.
+
 ## 1.16.20 (2026-08-30)
 
 ### Netdata — больше не встроенный модуль
