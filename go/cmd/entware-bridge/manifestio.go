@@ -90,8 +90,9 @@ func handleManifestDelete() {
 		return
 	}
 	// Встроенные сервисы каталога удалять нельзя — их карточки не из файлов.
-	switch id {
-	case "koffe", "adguard", "ttyd", "transmission", "syncthing", "netdata":
+	// Override-манифест с каталог-id удаляется: после удаления каталог
+	// восстановит карточку (HasManifestFile отличит этот кейс).
+	if bridge.IsBuiltin(id) && !bridge.HasManifestFile(bridgeDirVarPath(), id) {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "встроенный модуль нельзя удалить"})
 		return
 	}

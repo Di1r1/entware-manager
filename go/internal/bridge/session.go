@@ -32,6 +32,28 @@ func BridgeDir() string { return bridgeDirVar }
 // SetBridgeDir — переопределение для тестов.
 func SetBridgeDir(dir string) { bridgeDirVar = dir }
 
+// ValidateAuthCreds — согласованность учётных данных при сохранении из UI.
+// cookie_login логинится POST {"password":…} на login_url, который обязан быть
+// относительным путём (схема/хост берутся из базы манифеста на use-стороне
+// через ValidateBridgeURL, см. authedDo) — иначе невалидный адрес молча отдаст
+// 401. Для basic/api_key login_url не используется вовсе.
+func ValidateAuthCreds(credType, loginURL string) error {
+	switch credType {
+	case "cookie_login":
+		if loginURL == "" {
+			return fmt.Errorf("для cookie_login нужен login_url, например /api/login")
+		}
+		if !strings.HasPrefix(loginURL, "/") || strings.HasPrefix(loginURL, "//") {
+			return fmt.Errorf("login_url должен быть относительным путём, например /api/login")
+		}
+	case "basic", "api_key":
+		if loginURL != "" {
+			return fmt.Errorf("login_url нужен только для cookie_login")
+		}
+	}
+	return nil
+}
+
 // SaveAuth атомарно пишет секреты коннектора (0600).
 func SaveAuth(dir, id string, creds AuthCreds) error {
 	if !ValidID(id) {

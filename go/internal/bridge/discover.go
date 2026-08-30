@@ -62,6 +62,19 @@ type ServiceState struct {
 	Detail      string `json:"detail,omitempty"`
 	HasManifest bool   `json:"has_manifest,omitempty"` // карточка из файла-манифеста (можно удалить)
 	CanCtl      bool   `json:"can_ctl,omitempty"`      // манифест задаёт init → доступны кнопки управления
+	Builtin     bool   `json:"builtin,omitempty"`      // карточка из встроенного каталога (без файла)
+}
+
+// IsBuiltin — id из встроенного каталога. Чисто-каталожный (без файла-манифеста)
+// удалять нельзя; override-манифест с таким id удаляется (каталог вернётся) —
+// этот кейс различает вызывающий по HasManifestFile.
+func IsBuiltin(id string) bool {
+	for _, e := range BuiltInCatalog() {
+		if e.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // bridgeDirVar — каталог манифестов (переопределяется для тестов).
@@ -177,11 +190,11 @@ func Discover(bridgeDir string) []ServiceState {
 			continue
 		}
 		if !IsEnabled(e.ID) {
-			add(ServiceState{ID: e.ID, Name: e.Name, State: "disabled"})
+			add(ServiceState{ID: e.ID, Name: e.Name, State: "disabled", Builtin: true})
 			continue
 		}
 		if time.Now().After(deadline) {
-			add(ServiceState{ID: e.ID, Name: e.Name, State: "absent", Detail: "budget"})
+			add(ServiceState{ID: e.ID, Name: e.Name, State: "absent", Detail: "budget", Builtin: true})
 			continue
 		}
 		wg.Add(1)
@@ -206,7 +219,7 @@ func Discover(bridgeDir string) []ServiceState {
 					break
 				}
 			}
-			best.ID, best.Name = e.ID, e.Name
+			best.ID, best.Name, best.Builtin = e.ID, e.Name, true
 			add(best)
 		}(e)
 	}

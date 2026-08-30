@@ -178,3 +178,29 @@ func TestAuthedDo409RetriesWithBody(t *testing.T) {
 		t.Errorf("метод = %q", gotMethod)
 	}
 }
+
+func TestValidateAuthCreds(t *testing.T) {
+	// cookie_login: обязателен относительный путь
+	if err := ValidateAuthCreds("cookie_login", "/api/login"); err != nil {
+		t.Errorf("валидный path → %v", err)
+	}
+	if err := ValidateAuthCreds("cookie_login", ""); err == nil {
+		t.Errorf("пустой login_url должен отклоняться")
+	}
+	if err := ValidateAuthCreds("cookie_login", "http://127.0.0.1/api/login"); err == nil {
+		t.Errorf("абсолютный URL должен отклоняться")
+	}
+	if err := ValidateAuthCreds("cookie_login", "//evil.com/login"); err == nil {
+		t.Errorf("network-path reference должен отклоняться")
+	}
+	// basic/api_key: login_url не используется
+	if err := ValidateAuthCreds("basic", ""); err != nil {
+		t.Errorf("basic без login_url → %v", err)
+	}
+	if err := ValidateAuthCreds("basic", "/x"); err == nil {
+		t.Errorf("basic с login_url должен отклоняться")
+	}
+	if err := ValidateAuthCreds("api_key", "/x"); err == nil {
+		t.Errorf("api_key с login_url должен отклоняться")
+	}
+}

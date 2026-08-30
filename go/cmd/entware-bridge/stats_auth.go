@@ -66,9 +66,22 @@ func handleAuthSave() {
 		return
 	}
 
+	// Сброс авторизации: удаляем сохранённые секреты (<id>.auth.json) и
+	// сессию приложения (/tmp/entware/bridge/<id>.session). Идемпотентен.
+	if params["clear"] == "1" {
+		bridge.DeleteAuthFile(bridgeDirVarPath(), id)
+		bridge.ClearSession(bridgeDirVarPath(), id)
+		cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "message": "Учётные данные «" + id + "» сброшены"})
+		return
+	}
+
 	credType := params["cred_type"]
 	if credType != "basic" && credType != "cookie_login" && credType != "api_key" {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "cred_type должен быть basic или cookie_login"})
+		return
+	}
+	if err := bridge.ValidateAuthCreds(credType, params["login_url"]); err != nil {
+		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
 	creds := bridge.AuthCreds{

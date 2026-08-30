@@ -1514,8 +1514,7 @@ function renderBridgeCard(svc, prefs) {
         escapeHtml(svc.id) + '" data-action="' + escapeHtml(a.id) + '"' +
         (a.confirm ? ' data-confirm="1"' : '') + '>' + escapeHtml(a.label) + '</button>'
     ).join(' ') : '';
-    const builtinIds = ['koffe','adguard','ttyd','transmission','syncthing','netdata'];
-    const canDelete = svc.has_manifest && builtinIds.indexOf(svc.id) === -1;
+    const canDelete = svc.has_manifest && !svc.builtin;
     const deleteHtml = canDelete ? '<button class="packages-delete-btn bridge-delete" style="background:var(--btn-danger);padding:4px 10px;font-size:0.8rem;" data-delete-id="' + escapeHtml(svc.id) + '">Удалить</button>' : '';
     return '<div class="stat-card" style="min-width:230px;' + dimStyle + '">' +
         '<h4 style="margin:0 0 6px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
@@ -1776,6 +1775,7 @@ function bridgeAuthFormHTML(id, name) {
         '<input type="password" id="ba-pass-' + id + '" class="settings-input" placeholder="Пароль" style="width:100%;margin-bottom:6px;">' +
         '<input type="password" id="ba-panel-' + id + '" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
         '<button class="packages-delete-btn" style="background:var(--btn-success);" onclick="saveBridgeAuth(\'' + id + '\')">Сохранить</button>' +
+        '<button class="packages-delete-btn" style="background:var(--btn-muted);" onclick="clearBridgeAuth(\'' + id + '\')">Сбросить авторизацию</button>' +
         '<span id="ba-st-' + id + '"></span></div>';
 }
 
@@ -1800,6 +1800,23 @@ async function saveBridgeAuth(id) {
             ? '<span style="color:#38a169;">Сохранено</span>'
             : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
         if (res.status === 'ok') Toast.show('Учётные данные «' + id + '» сохранены');
+    } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
+}
+
+async function clearBridgeAuth(id) {
+    if (!confirm('Сбросить сохранённые учётные данные и сессию приложения «' + escapeHtml(id) + '»? Они будут удалены с роутера.')) return;
+    const panelPass = await askPanelPassword('Пароль панели:');
+    if (!panelPass) return;
+    const st = document.getElementById('ba-st-' + id);
+    if (!st) return;
+    st.innerHTML = 'Сброс…';
+    try {
+        const res = await apiPost('/bridge_auth.cgi',
+            'id=' + encodeURIComponent(id) + '&clear=1&password=' + encodeURIComponent(panelPass));
+        st.innerHTML = res.status === 'ok'
+            ? '<span style="color:#38a169;">Сброшено</span>'
+            : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
+        if (res.status === 'ok') Toast.show('Авторизация «' + escapeHtml(id) + '» сброшена');
     } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
 }
 
