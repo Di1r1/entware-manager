@@ -18,6 +18,8 @@ import (
 // достижимые с 127.0.0.1: слушатели на loopback или wildcard (0.0.0.0/[::]).
 // Порты, привязанные к конкретному внешнему адресу, не включаются —
 // подключение к ним с loopback отклоняется. Ошибка чтения procfs → пусто.
+// Внутренние порты самой панели исключаются: клик по ним в сканере ставил бы
+// base на панель (HTTP 302/404 вместо сервиса) — см. инцидент «порт 8087».
 func LoopbackListeningPorts() []int {
 	seen := map[int]bool{}
 	for _, f := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
@@ -41,6 +43,9 @@ func LoopbackListeningPorts() []int {
 			if err != nil || port < 1 || port > 65535 {
 				continue
 			}
+			if isPanelPort(int(port)) {
+				continue
+			}
 			seen[int(port)] = true
 		}
 	}
@@ -50,6 +55,21 @@ func LoopbackListeningPorts() []int {
 	}
 	sort.Ints(out)
 	return out
+}
+
+// isPanelPort — служебные порты самой панели Entware Manager, которые не
+// являются отдельными сервисами и не должны попадать в список-подсказку.
+func isPanelPort(port int) bool {
+	switch port {
+	case 8086, // общий lighttpd (порт-хранитель)
+		8087, // панель (entware-server)
+		8089, // htop (ttyd)
+		8443, // панель HTTPS
+		9089, // терминал (ttyd)
+		9099: // grdp-proxy (RDP)
+		return true
+	}
+	return false
 }
 
 // reachableFromLoopback — hex-адрес из /proc/net/tcp(6): true для

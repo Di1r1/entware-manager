@@ -32,3 +32,27 @@ func TestPortLabelsDictIsCopy(t *testing.T) {
 		t.Error("база должна содержать Netdata 19999")
 	}
 }
+
+func TestIsPanelPort(t *testing.T) {
+	for _, p := range []int{8086, 8087, 8089, 8443, 9089, 9099} {
+		if !isPanelPort(p) {
+			t.Errorf("isPanelPort(%d) = false, хочу true (внутренний порт панели)", p)
+		}
+	}
+	for _, p := range []int{22, 9097, 8080, 8384, 19999} {
+		if isPanelPort(p) {
+			t.Errorf("isPanelPort(%d) = true, хочу false (порт сервиса)", p)
+		}
+	}
+}
+
+// TestLoopbackListeningPortsExcludesPanel — внутренние порты панели не должны
+// попадать в список-подсказку (клик по ним ставил base на панель → 302/404).
+func TestLoopbackListeningPortsExcludesPanel(t *testing.T) {
+	ports := LoopbackListeningPorts()
+	for _, p := range ports {
+		if isPanelPort(p) {
+			t.Errorf("внутренний порт %d попал в подсказку", p)
+		}
+	}
+}

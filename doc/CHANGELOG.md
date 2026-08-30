@@ -2,6 +2,19 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.22 (2026-08-30)
+
+### Сканер модулей: исключены внутренние порты панели
+
+- `go/internal/bridge/ports.go` (`LoopbackListeningPorts`): из списка-подсказки
+  «Открытые TCP-порты» исключены служебные порты самой панели (`isPanelPort`):
+  8086 (общий lighttpd), 8087 (панель), 8089 (htop), 8443 (панель HTTPS),
+  9089 (терминал ttyd), 9099 (grdp-proxy RDP). Клик по ним раньше ставил `base`
+  на панель → HTTP 302/404 «ответ не является JSON» (инцидент на форуме).
+- `go/internal/bridge/ports_test.go`: `TestIsPanelPort`, `TestLoopbackListeningPortsExcludesPanel`.
+- Проверки: `go test ./internal/bridge/`, `go vet`, `gofmt`, `make ci`.
+  Деплой на роутер: `entware-bridge` (arm64) + живая проверка списка портов без 8087/9099.
+
 ## 1.16.21 (2026-08-30)
 
 ### Сканер модулей: автоподбор API-пути
