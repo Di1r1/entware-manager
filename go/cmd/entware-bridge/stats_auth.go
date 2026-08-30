@@ -11,7 +11,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"entware-manager/internal/auth"
@@ -90,8 +89,5 @@ func handleAuthSave() {
 }
 
 func bridgeDirVarPath() string {
-	if d := os.Getenv("EWM_BRIDGE_DIR"); d != "" {
-		return d
-	}
-	return "/opt/web_entware/bridge"
+	return bridge.BridgeDir()
 }

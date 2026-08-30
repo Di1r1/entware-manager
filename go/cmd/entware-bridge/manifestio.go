@@ -59,6 +59,7 @@ func handleManifestSave() {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
+	bridge.InvalidateCache()
 	if m, err := bridge.LoadManifest(bridgeDirVarPath(), id); err == nil {
 		if ws := bridge.ManifestWarnings(m); len(ws) > 0 {
 			cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "warnings": ws})
@@ -98,5 +99,10 @@ func handleManifestDelete() {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
+	// Вместе с манифестом удаляем секреты приложения и сохранённую cookie —
+	// иначе логин/пароль останутся на диске и «оживут» при пересоздании модуля.
+	bridge.DeleteAuthFile(bridgeDirVarPath(), id)
+	bridge.ClearSession(bridgeDirVarPath(), id)
+	bridge.InvalidateCache()
 	cgiutil.WriteJSON(map[string]interface{}{"status": "ok"})
 }

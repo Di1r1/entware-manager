@@ -99,8 +99,7 @@ func BuildCard(dir, id string) (*CardData, error) {
 		if !ok {
 			continue // поля нет в ответе — пропускаем строку
 		}
-		curField = &f
-		value := formatValue(val, f.Type)
+		value := formatValue(&f, val, f.Type)
 		if value == "" {
 			continue
 		}
@@ -179,20 +178,19 @@ func lookupPath(src map[string]interface{}, parts []string) (interface{}, bool) 
 }
 
 // formatValue приводит значение к читаемой строке согласно типу поля.
-var curField *FieldDef
-
-func formatValue(v interface{}, typ string) string {
+// f может быть nil (прямые тестовые вызовы) — on/off тогда игнорируются.
+func formatValue(f *FieldDef, v interface{}, typ string) string {
 	switch typ {
 	case "bool":
 		b, _ := v.(bool)
 		if b {
-			if curField.On != "" {
-				return curField.On
+			if f != nil && f.On != "" {
+				return f.On
 			}
 			return "да"
 		}
-		if curField.Off != "" {
-			return curField.Off
+		if f != nil && f.Off != "" {
+			return f.Off
 		}
 		return "нет"
 	case "dur":

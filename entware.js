@@ -1500,11 +1500,6 @@ function bridgeStateBadge(st) {
     return '<span style="color:' + color + ';font-weight:600;">' + escapeHtml(label) + '</span>';
 }
 
-async function bridgeDiscover() {
-    const data = await apiGet('/bridge_discover.cgi');
-    return data.services || [];
-}
-
 // Читаем настройки уведомлений из localStorage (Серверная часть — Этап 4).
 function bridgeNotifKey(id) { return 'bridge_notif_' + id; }
 
@@ -1625,7 +1620,7 @@ function bindBridgeCards(container) {
     container.querySelectorAll('.bridge-delete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.deleteId;
-            if (!confirm('Удалить модуль «' + id + '»? Файл bridge/' + id + '.json будет удалён.')) return;
+            if (!confirm('Удалить модуль «' + id + '»? Будут удалены файл bridge/' + id + '.json, сохранённые учётные данные (' + id + '.auth.json) и сессия приложения.')) return;
             const password = await askPanelPassword('Пароль панели:');
             if (!password) return;
             btn.disabled = true;
@@ -2019,7 +2014,7 @@ function renderProbeResult(probe) {
     for (let pi = 0; pi < paths.length; pi++) {
         const p = paths[pi];
         const isAdded = added.indexOf(p.path) >= 0;
-        const numericGuess = /^(bool|num|bytes|ms|count|top|kbs)$/.test(p.guess || '');
+        const numericGuess = /^(bool|num|bytes|ms|count|top|kbs|dur)$/.test(p.guess || '');
         html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
             ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
@@ -2306,7 +2301,7 @@ function addBridgeFieldAt(idx) {
     if (!p) return;
     var bodyDiv = document.getElementById('br-probe-body');
     var cb = bodyDiv && bodyDiv.querySelector('input.br-tile-cb[data-tile-pi="' + idx + '"]');
-    var numericGuess = /^(bool|num|bytes|ms|count|top|kbs)$/.test(p.guess || '');
+    var numericGuess = /^(bool|num|bytes|ms|count|top|kbs|dur)$/.test(p.guess || '');
     var tile = cb ? cb.checked : numericGuess;
     addBridgeField(p.path, p.guess || '', bridgeProbeTab, tile);
 }

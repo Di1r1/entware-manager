@@ -59,6 +59,16 @@ func ClearSession(dir, id string) {
 	os.Remove(sessionPath(dir, id))
 }
 
+// DeleteAuthFile удаляет секреты коннектора (<id>.auth.json, 0600).
+// Используется при удалении модуля, чтобы логин/пароль приложения не
+// оставались на диске.
+func DeleteAuthFile(dir, id string) {
+	if !ValidID(id) {
+		return
+	}
+	os.Remove(filepath.Join(dir, id+".auth.json"))
+}
+
 func loadSessionCookie(dir, id string) string {
 	data, err := os.ReadFile(sessionPath(dir, id))
 	if err != nil {

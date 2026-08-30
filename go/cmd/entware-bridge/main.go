@@ -10,6 +10,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -19,7 +20,13 @@ import (
 	"entware-manager/internal/cgiutil"
 )
 
-var bridgeDir = "/opt/web_entware/bridge"
+// init — единый источник каталога моста: env EWM_BRIDGE_DIR (тесты/оверрайд)
+// или значение по умолчанию из internal/bridge (BridgeDir()).
+func init() {
+	if d := os.Getenv("EWM_BRIDGE_DIR"); d != "" {
+		bridge.SetBridgeDir(d)
+	}
+}
 
 func main() {
 	switch os.Getenv("ENDPOINT") {
@@ -203,6 +210,8 @@ func handleCtl() {
 		})
 		return
 	}
+	bridge.AppendDailyLog(fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s»: выполнен %s через init.d",
+		time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), m.Name, op))
 	cgiutil.WriteJSON(map[string]interface{}{
 		"status": "ok",
 		"op":     op,
@@ -316,6 +325,8 @@ func handleAction() {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
+	bridge.AppendDailyLog(fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s»: действие «%s» выполнено",
+		time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), m.Name, act.Label))
 	cgiutil.WriteJSON(map[string]interface{}{
 		"status": "ok",
 		"result": res,

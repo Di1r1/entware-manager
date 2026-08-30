@@ -106,29 +106,29 @@ func stringsSplit(s string) []string {
 
 func TestFormatValueStringNumbers(t *testing.T) {
 	// Netdata отдаёт числа строками: "1039433728" → 991.3 МБ, "3" → 3
-	if got := formatValue("1039433728", "bytes"); got != "991.3 МБ" {
+	if got := formatValue(nil, "1039433728", "bytes"); got != "991.3 МБ" {
 		t.Errorf("bytes из строки: %q (ожидался \"991.3 МБ\")", got)
 	}
-	if got := formatValue("3", "num"); got != "3" {
+	if got := formatValue(nil, "3", "num"); got != "3" {
 		t.Errorf("num из строки: %q", got)
 	}
-	if got := formatValue("12", "count"); got != "12" {
+	if got := formatValue(nil, "12", "count"); got != "12" {
 		t.Errorf("count из строки: %q", got)
 	}
-	if got := formatValue("abc", "bytes"); got != "" {
+	if got := formatValue(nil, "abc", "bytes"); got != "" {
 		t.Errorf("нестрока-число должна дать пусто: %q", got)
 	}
 }
 
 // kbs: байты/с → КБ/с (Transmission отдаёт Б/с).
 func TestFormatValueKbs(t *testing.T) {
-	if got := formatValue(float64(15360), "kbs"); got != "15 КБ/с" {
+	if got := formatValue(nil, float64(15360), "kbs"); got != "15 КБ/с" {
 		t.Errorf("kbs: %q, want \"15 КБ/с\"", got)
 	}
-	if got := formatValue("2048", "kbs"); got != "2 КБ/с" {
+	if got := formatValue(nil, "2048", "kbs"); got != "2 КБ/с" {
 		t.Errorf("kbs из строки: %q", got)
 	}
-	if got := formatValue("abc", "kbs"); got != "" {
+	if got := formatValue(nil, "abc", "kbs"); got != "" {
 		t.Errorf("нестрока-число должна дать пусто: %q", got)
 	}
 }

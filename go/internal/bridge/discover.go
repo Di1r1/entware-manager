@@ -73,6 +73,15 @@ var (
 	cachedAt     time.Time
 )
 
+// InvalidateCache сбрасывает кэш Discover — вызывается после сохранения или
+// удаления манифеста, чтобы свежий модуль сразу появился/исчез на вкладке.
+func InvalidateCache() {
+	cacheMu.Lock()
+	cachedResult = nil
+	cachedAt = time.Time{}
+	cacheMu.Unlock()
+}
+
 // clientBridge — транспорт без редиректов и keep-alive.
 func clientBridge() *http.Client {
 	return &http.Client{

@@ -28,9 +28,9 @@ func ioCopyDiscard(resp *http.Response) {
 	}
 }
 
-// appendDailyLog пишет строку в суточный лог /tmp/entware/logs/<дата>.log
+// AppendDailyLog пишет строку в суточный лог /tmp/entware/logs/<дата>.log
 // (тот же файл, что читает telegram_gateway).
-func appendDailyLog(line string) {
+func AppendDailyLog(line string) {
 	os.MkdirAll(watchLogDir, 0755)
 	path := filepath.Join(watchLogDir, time.Now().Format("2006-01-02")+".log")
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

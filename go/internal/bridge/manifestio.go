@@ -74,7 +74,8 @@ func SaveManifestFile(dir, id string, data []byte) error {
 	return nil
 }
 
-// DeleteManifestFile удаляет файл манифеста (не .auth.json).
+// DeleteManifestFile удаляет файл манифеста <id>.json. Секреты и сессия
+// (<id>.auth.json, <id>.session) удаляются handler'ом отдельно.
 func DeleteManifestFile(dir, id string) error {
 	if !idRe.MatchString(id) {
 		return fmt.Errorf("плохой id")

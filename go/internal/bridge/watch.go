@@ -212,12 +212,12 @@ func RunWatch(dir string) []string {
 			case "down":
 				line := fmt.Sprintf("[%s] [WARN] [127.0.0.1] [%d] [bridge] Модуль «%s» перестал отвечать",
 					time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
-				appendDailyLog(line)
+				AppendDailyLog(line)
 				events = append(events, line)
 			case "recovery":
 				line := fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s» восстановился",
 					time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), name)
-				appendDailyLog(line)
+				AppendDailyLog(line)
 				events = append(events, line)
 			}
 		}
