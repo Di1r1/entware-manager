@@ -2107,7 +2107,7 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
     height: 30px;
     border: none;
     background: #4a5568;
-    color: #fbbf24;
+    color: var(--accent);
     border-radius: 50%;
     font-size: 16px;
     cursor: pointer;
@@ -2182,7 +2182,7 @@ html.night .theme-toggle-edge:hover {
     height: 30px;
     border: none;
     background: #4a5568;
-    color: #fbbf24;
+    color: var(--accent);
     border-radius: 50%;
     font-size: 16px;
     cursor: pointer;

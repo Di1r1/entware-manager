@@ -50,7 +50,6 @@ func BuiltInCatalog() []CatalogEntry {
 		{ID: "ttyd", Name: "Терминал ttyd", Ports: []int{7681}, Path: "/"},
 		{ID: "transmission", Name: "Transmission", Ports: []int{8090, 9091}, Path: "/transmission/rpc", StatusPath: "/transmission/rpc"},
 		{ID: "syncthing", Name: "Syncthing", Ports: []int{8384}, Path: "/"},
-		{ID: "netdata", Name: "Netdata", Ports: []int{19999}, Path: "/api/v1/info", Expect: "json", StatusPath: "/api/v1/info"},
 	}
 }
 

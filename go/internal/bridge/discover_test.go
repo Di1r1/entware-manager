@@ -10,7 +10,7 @@ import (
 )
 
 func TestIsBuiltin(t *testing.T) {
-	for _, id := range []string{"koffe", "adguard", "ttyd", "transmission", "syncthing", "netdata"} {
+	for _, id := range []string{"koffe", "adguard", "ttyd", "transmission", "syncthing"} {
 		if !IsBuiltin(id) {
 			t.Errorf("IsBuiltin(%q) = false, хочу true", id)
 		}

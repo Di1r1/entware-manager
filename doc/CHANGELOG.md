@@ -2,6 +2,31 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.20 (2026-08-30)
+
+### Netdata — больше не встроенный модуль
+
+- `go/internal/bridge/discover.go` (`BuiltInCatalog`): удалена карточка Netdata — карточка
+  исчезает со вкладки «Модули». Добавить сервис снова можно через сканер (подсказка
+  `/api/v1/info` в `probe.go` остаётся) — тогда это обычный модуль-манифест и его можно удалить.
+- `go/internal/bridge/discover_test.go` (`TestIsBuiltin`): `netdata` убран из списка встроенных.
+- Не трогаем: `probe.go` (подсказка сканера), `ports.go` (подпись порта 19999),
+  `stats/links.go` (ссылка в Статистике) — отдельные сущности.
+
+### Иконки кнопок темы — цвет по пресету
+
+- `style.css`: `.collapse-btn` и `.theme-toggle-edge` — `color: #fbbf24` (жёсткий жёлтый) →
+  `color: var(--accent)`. Иконки (chevron, sun/moon, наследуют `currentColor`) теперь
+  окрашиваются в акцентный цвет выбранного пресета (violet/ocean/forest/teal/amber/ruby/rose)
+  и его ночной вариант. Hover (белая иконка на `--accent-gradient`) без изменений.
+- Кэш: `index.html` `style.css?v=66` → `?v=67`.
+
+### Проверки
+
+- `go test ./internal/bridge/...`, `go vet`, `make ci` (migrate 30/0 + parity 7/0).
+- Деплой на dev-роутер: `entware-bridge` (arm64), `style.css`, `index.html`; проверка
+  `bridge_discover` без netdata, HTTP 200, маркер `color: var(--accent)` в кнопках.
+
 ## 1.16.19 (2026-08-30)
 
 ### Порт-хранитель lighttpd: `:=` вместо `=` (совместимость с nfqws)
