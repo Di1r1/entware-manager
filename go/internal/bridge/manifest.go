@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -202,6 +203,24 @@ func ValidateManifest(m *Manifest) error {
 		}
 	}
 	return nil
+}
+
+// ManifestWarnings — неблокирующие замечания к манифесту (показывает сканер
+// и редактор при сохранении; сохранение не блокируется). Сейчас одно правило:
+// init-скрипт обязан соответствовать хотя бы одному процессу из process[] —
+// иначе кнопки Старт/Стоп/Рестарт запустят чужой скрипт.
+func ManifestWarnings(m *Manifest) []string {
+	if m == nil || m.Init == "" || len(m.Process) == 0 {
+		return nil
+	}
+	for _, p := range m.Process {
+		if p == m.Init {
+			return nil
+		}
+	}
+	return []string{fmt.Sprintf(
+		"init %q не совпадает ни с одним процессом (%s) — кнопки Старт/Стоп/Рестарт запустят чужой скрипт",
+		m.Init, strings.Join(m.Process, ", "))}
 }
 
 // LoadManifest читает и валидирует манифест по id (защита от path traversal:

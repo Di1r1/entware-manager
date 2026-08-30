@@ -1519,7 +1519,7 @@ function renderBridgeCard(svc, prefs) {
         escapeHtml(svc.id) + '" data-action="' + escapeHtml(a.id) + '"' +
         (a.confirm ? ' data-confirm="1"' : '') + '>' + escapeHtml(a.label) + '</button>'
     ).join(' ') : '';
-    const builtinIds = ['koffe','adguard','ttyd','transmission','syncthing'];
+    const builtinIds = ['koffe','adguard','ttyd','transmission','syncthing','netdata'];
     const canDelete = svc.has_manifest && builtinIds.indexOf(svc.id) === -1;
     const deleteHtml = canDelete ? '<button class="packages-delete-btn bridge-delete" style="background:var(--btn-danger);padding:4px 10px;font-size:0.8rem;" data-delete-id="' + escapeHtml(svc.id) + '">Удалить</button>' : '';
     return '<div class="stat-card" style="min-width:230px;' + dimStyle + '">' +
@@ -1948,6 +1948,9 @@ function renderProbeResult(probe) {
     let msg = '';
     if (probe.valid) msg += '<span style="color:#38a169;">Манифест валиден.</span> ';
     else if (probe.validation_error) msg += '<span style="color:#e53e3e;">Валидация: ' + escapeHtml(probe.validation_error) + '</span> ';
+    if (probe.warnings && probe.warnings.length) {
+        msg += '<span style="color:#e6a23c;">Внимание: ' + escapeHtml(probe.warnings.join(' ')) + '</span> ';
+    }
     stDiv.innerHTML = msg || '';
 
     const sources = probe.sources || [];
@@ -1981,7 +1984,9 @@ function renderProbeResult(probe) {
             '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:96px;overflow:auto;">' +
             probe.listen_ports.map(p => {
                 const active = p === curPort;
-                return '<button class="packages-delete-btn" style="background:' + (active ? 'var(--accent)' : 'var(--btn-muted)') + ';padding:2px 9px;font-size:0.78rem;' + (active ? 'outline:1px solid var(--accent);' : '') + '" onclick="setBridgeBasePort(' + p + ')">' + p + '</button>';
+                const hint = (probe.port_labels || {})[p];
+                return '<button class="packages-delete-btn" style="background:' + (active ? 'var(--accent)' : 'var(--btn-muted)') + ';padding:2px 9px;font-size:0.78rem;line-height:1.2;' + (active ? 'outline:1px solid var(--accent);' : '') + '" title="' + escapeHtml(hint || 'Порт без подписи в базе') + '" onclick="setBridgeBasePort(' + p + ')">' + p +
+                    (hint ? ' <span style="font-size:0.62rem;color:var(--text-muted);font-weight:400;">' + escapeHtml(hint) + '</span>' : '') + '</button>';
             }).join('') +
             '</div>';
     }
@@ -2014,7 +2019,7 @@ function renderProbeResult(probe) {
     for (let pi = 0; pi < paths.length; pi++) {
         const p = paths[pi];
         const isAdded = added.indexOf(p.path) >= 0;
-        const numericGuess = /^(bool|num|bytes|ms|count)$/.test(p.guess || '');
+        const numericGuess = /^(bool|num|bytes|ms|count|top|kbs)$/.test(p.guess || '');
         html += '<div class="br-probe-row" data-path="' + escapeHtml(p.path.toLowerCase()) + '" style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);">' +
             '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;" title="' + escapeHtml(p.path) + '">' + escapeHtml(p.path) +
             ' <span style="color:var(--text-muted);">' + escapeHtml(p.preview) + '</span>' +
@@ -2301,7 +2306,7 @@ function addBridgeFieldAt(idx) {
     if (!p) return;
     var bodyDiv = document.getElementById('br-probe-body');
     var cb = bodyDiv && bodyDiv.querySelector('input.br-tile-cb[data-tile-pi="' + idx + '"]');
-    var numericGuess = /^(bool|num|bytes|ms|count)$/.test(p.guess || '');
+    var numericGuess = /^(bool|num|bytes|ms|count|top|kbs)$/.test(p.guess || '');
     var tile = cb ? cb.checked : numericGuess;
     addBridgeField(p.path, p.guess || '', bridgeProbeTab, tile);
 }
@@ -2378,7 +2383,10 @@ async function saveBridgeManifest() {
             'id=' + encodeURIComponent(id) + '&body=' + encodeURIComponent(raw) +
             '&password=' + encodeURIComponent(password));
         if (res.status === 'ok') {
-            st.innerHTML = '<span style="color:#38a169;">Сохранено</span>';
+            st.innerHTML = '<span style="color:#38a169;">Сохранено</span>' +
+                ((res.warnings && res.warnings.length)
+                    ? ' <span style="color:#e6a23c;">Внимание: ' + escapeHtml(res.warnings.join(' ')) + '</span>'
+                    : '');
             setTimeout(renderBridgeTab, 800);
         } else {
             st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';

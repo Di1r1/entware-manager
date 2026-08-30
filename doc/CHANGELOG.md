@@ -2,6 +2,27 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.18 (2026-08-30)
+
+### Сканер манифеста: guess `kbs` и `top`, предупреждение init↔process
+
+- `go/internal/bridge/probe.go`: `guessNumType` распознаёт скорость (`speed`/`rate`/`download`/`upload`/`kbs`/`traffic`/`throughput`) → тип `kbs`; `appendArrayPaths` детектит top-массивы (одно-ключевые числовые объекты, `looksLikeTopArray`/`previewTopArray`) → guess `top` с превью «имя (N), …», остальные массивы остаются `count`.
+- `ProbeResult` += `warnings` (неблокирующие замечания) и `port_labels`; `ProbeManifestData` заполняет оба.
+- `go/internal/bridge/manifest.go`: `ManifestWarnings` — предупреждение, если `init` не совпал ни с одним `process` (реальный кейс xray `init:"syncthing"`); сохраняет манифест не блокирует.
+- `entware.js`: regex `numericGuess` расширен (`top|kbs`, 2 места) — такие поля сразу чек-плитка; `renderProbeResult` и `saveBridgeManifest` показывают предупреждения.
+
+### Подписи портов и каталог
+
+- `go/internal/bridge/ports.go`: `portHints` (26 известных портов: SSH, DNS, SMB, Syncthing, Transmission RPC/Web, Netdata 19999, Koffe 9097 и др.), `PortLabel`/`PortLabelsDict` (отдаётся копией, защита от мутации). LoopbackListeningPorts/describeDialError/describeHTTPError из HEAD-версии восстановлены без изменений.
+- `bridge_discover` и `bridge_probe` отдают `port_labels`; чипы портов в сканере подписаны.
+- `go/internal/bridge/discover.go`: `BuiltInCatalog` += Netdata (19999, `/api/v1/info`); deny-list встроенных модулей в `manifestio.go` и `entware.js` += `netdata`.
+
+### Проверки и деплой
+
+- Новые тесты: `probe_guess_test.go`, `ports_test.go`; `TestFlattenJSON` обновлён под top (top_clients → top, негативные кейсы ports_list/grouped → count).
+- `gofmt -l .` — 0 файлов; `go test ./internal/bridge/`, `go vet`, `node --check`, `make ci` (29 + паритет 7/7) — зелёные; кворум APPROVE.
+- Деплой на роутер: `entware-bridge` (md5 `68095285af…`), `entware.js` (md5 `c3ef0154…`), `index.html` (`?v=157`); HTTP 200, маркеры и `server.log` чистые; живой `bridge_probe` на xray.json возвращает warnings.
+
 ## 1.16.17 (2026-08-30)
 
 ### Справка «Модули — как добавить свой сервис»

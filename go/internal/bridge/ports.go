@@ -2,7 +2,8 @@
 //
 // Список слушающих TCP-портов из /proc/net/tcp(6) — для подсказки в сканере
 // манифеста: пользователь видит, какие порты реально открыты на роутере,
-// и может вставить порт в base одним кликом.
+// и может вставить порт в base одним кликом. Плюс база подписей известных
+// портов (portHints) — помогает опознать сервис по номеру порта.
 package bridge
 
 import (
@@ -142,4 +143,51 @@ func describeHTTPError(code int) string {
 	default:
 		return "HTTP " + strconv.Itoa(code)
 	}
+}
+
+// portHints — база известных портов: порт → короткая подпись сервиса.
+// Список намеренно консервативный — только порты с уверенной привязкой.
+var portHints = map[int]string{
+	22:    "SSH",
+	53:    "DNS",
+	80:    "HTTP (веб-интерфейс)",
+	139:   "SMB (NetBIOS)",
+	222:   "SSH (Entware)",
+	443:   "HTTPS",
+	445:   "SMB",
+	1080:  "SOCKS-прокси",
+	1081:  "SOCKS-прокси",
+	1900:  "SSDP (UPnP)",
+	3702:  "WS-Discovery",
+	51413: "BitTorrent (Transmission)",
+	6800:  "aria2 RPC",
+	7681:  "ttyd (терминал)",
+	8080:  "AdGuard / веб-сервис",
+	8086:  "InfluxDB",
+	8087:  "Панель Entware Manager",
+	8090:  "Transmission Web UI",
+	8123:  "Home Assistant",
+	8384:  "Syncthing (веб)",
+	8443:  "Панель Entware Manager (HTTPS)",
+	9091:  "Transmission RPC",
+	9097:  "Веб-панель (Koffe)",
+	10051: "Zabbix-агент",
+	19999: "Netdata",
+	22000: "Syncthing (синхронизация)",
+}
+
+// PortLabel — короткая подпись известного порта ("", если не в базе).
+func PortLabel(port int) string {
+	return portHints[port]
+}
+
+// PortLabelsDict — копия всей базы подписей для предзаполнения в UI
+// (отдаётся в bridge_discover и bridge_probe один раз; карта возвращается
+// копией, чтобы вызывающий не мог мутировать исходник).
+func PortLabelsDict() map[int]string {
+	out := make(map[int]string, len(portHints))
+	for p, l := range portHints {
+		out[p] = l
+	}
+	return out
 }

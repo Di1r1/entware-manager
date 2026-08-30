@@ -59,6 +59,12 @@ func handleManifestSave() {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
+	if m, err := bridge.LoadManifest(bridgeDirVarPath(), id); err == nil {
+		if ws := bridge.ManifestWarnings(m); len(ws) > 0 {
+			cgiutil.WriteJSON(map[string]interface{}{"status": "ok", "warnings": ws})
+			return
+		}
+	}
 	cgiutil.WriteJSON(map[string]interface{}{"status": "ok"})
 }
 
@@ -84,7 +90,7 @@ func handleManifestDelete() {
 	}
 	// Встроенные сервисы каталога удалять нельзя — их карточки не из файлов.
 	switch id {
-	case "koffe", "adguard", "ttyd", "transmission", "syncthing":
+	case "koffe", "adguard", "ttyd", "transmission", "syncthing", "netdata":
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": "встроенный модуль нельзя удалить"})
 		return
 	}

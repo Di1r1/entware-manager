@@ -217,8 +217,9 @@ func handleDiscover() {
 	}
 	services := bridge.Discover(bridgeDirVarPath())
 	cgiutil.WriteJSON(map[string]interface{}{
-		"status":   "ok",
-		"services": services,
+		"status":      "ok",
+		"services":    services,
+		"port_labels": bridge.PortLabelsDict(),
 	})
 }
 

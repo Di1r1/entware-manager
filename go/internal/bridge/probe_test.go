@@ -28,6 +28,8 @@ func TestFlattenJSON(t *testing.T) {
 		"inBytesTotal":        float64(1073741824),
 		"total":               map[string]interface{}{"queries": float64(42)},
 		"top_clients":         []interface{}{map[string]interface{}{"ya.ru": float64(500)}},
+		"ports_list":          []interface{}{float64(8080), float64(9091)},
+		"grouped":             []interface{}{map[string]interface{}{"site": "ya.ru", "n": float64(5)}},
 	}
 	flattenJSON("", body, 0, pc)
 	out := pc.paths
@@ -53,11 +55,17 @@ func TestFlattenJSON(t *testing.T) {
 	if p := findPath(out, "total.queries"); p == nil || p.Preview != "42" {
 		t.Errorf("total.queries: %+v", p)
 	}
-	if p := findPath(out, "top_clients"); p == nil || p.Guess != "count" {
+	if p := findPath(out, "top_clients"); p == nil || p.Guess != "top" || p.Preview != "ya.ru (500)…" {
 		t.Errorf("top_clients: %+v", p)
 	}
 	if p := findPath(out, "top_clients.0.ya.ru"); p == nil || p.Preview != "500" {
 		t.Errorf("top_clients.0.ya.ru: %+v", p)
+	}
+	if p := findPath(out, "ports_list"); p == nil || p.Guess != "count" {
+		t.Errorf("ports_list: %+v (массив скаляров — ожидался count)", p)
+	}
+	if p := findPath(out, "grouped"); p == nil || p.Guess != "count" {
+		t.Errorf("grouped: %+v (объект с 2 ключами — ожидался count)", p)
 	}
 }
 

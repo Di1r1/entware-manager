@@ -64,8 +64,10 @@ type ProbeSuggestion struct {
 type ProbeResult struct {
 	Valid           bool              `json:"valid"`
 	ValidationError string            `json:"validation_error,omitempty"`
+	Warnings        []string          `json:"warnings,omitempty"` // неблокирующие замечания (напр. init≠process)
 	Sources         []ProbeSource     `json:"sources,omitempty"`
 	ListenPorts     []int             `json:"listen_ports,omitempty"` // подсказка: открытые TCP-порты роутера
+	PortLabels      map[int]string    `json:"port_labels,omitempty"`  // база подписей известных портов
 	Suggestions     []ProbeSuggestion `json:"suggestions,omitempty"`  // известные API-пути, отвечающие на этой базе
 }
 
@@ -100,6 +102,7 @@ func ProbeManifestData(data []byte) *ProbeResult {
 			return res
 		}
 	}
+	res.Warnings = ManifestWarnings(&m)
 
 	client := clientBridge()
 	add := func(name string, ep *Endpoint) {
@@ -162,6 +165,7 @@ func ProbeManifestData(data []byte) *ProbeResult {
 	if ports := LoopbackListeningPorts(); len(ports) > 0 && len(ports) <= 48 {
 		res.ListenPorts = ports
 	}
+	res.PortLabels = PortLabelsDict()
 	// Автоопределение сервиса: порт отвечает (HTTP есть), но данные
 	// ни по одному пути не получены — пробуем известные API-пути.
 	baseReachable := false
@@ -265,7 +269,11 @@ func appendArrayPaths(path string, arr []interface{}, depth int, out *pathCollec
 	if path == "" || out.total >= hardPathScanCap {
 		return
 	}
-	out.add(ProbePath{Path: path, Preview: strconv.Itoa(len(arr)) + " эл.", Guess: "count"})
+	guess, preview := "count", strconv.Itoa(len(arr))+" эл."
+	if looksLikeTopArray(arr, probeArrayPeek) {
+		guess, preview = "top", previewTopArray(arr)
+	}
+	out.add(ProbePath{Path: path, Preview: preview, Guess: guess})
 	n := len(arr)
 	if n > probeArrayPeek {
 		n = probeArrayPeek
@@ -286,6 +294,57 @@ func appendArrayPaths(path string, arr []interface{}, depth int, out *pathCollec
 		}
 		appendScalar(p, item, out)
 	}
+}
+
+// looksLikeTopArray — массив одно-ключевых объектов со числами
+// (кандидат type=top; просматриваются первые limit элементов).
+func looksLikeTopArray(arr []interface{}, limit int) bool {
+	if len(arr) == 0 {
+		return false
+	}
+	if len(arr) > limit {
+		arr = arr[:limit]
+	}
+	for _, it := range arr {
+		m, ok := it.(map[string]interface{})
+		if !ok || len(m) != 1 {
+			return false
+		}
+		for _, v := range m {
+			if _, ok := v.(float64); !ok {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// previewTopArray — пример содержимого top-массива: "ytlh (300), …".
+func previewTopArray(arr []interface{}) string {
+	var b strings.Builder
+	count := 0
+	for _, it := range arr {
+		if count >= 2 {
+			break
+		}
+		m, ok := it.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for k, v := range m {
+			if f, ok := v.(float64); ok {
+				if b.Len() > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(k + " (" + groupInt(int64(f)) + ")")
+			}
+		}
+		count++
+	}
+	if b.Len() == 0 {
+		return strconv.Itoa(len(arr)) + " эл."
+	}
+	return b.String() + "…"
 }
 
 func appendScalar(path string, v interface{}, out *pathCollector) {
@@ -316,7 +375,7 @@ func appendScalar(path string, v interface{}, out *pathCollector) {
 	}
 }
 
-// guessNumType — грубая эвристика типа по имени ключа: bytes/ms/dur/num.
+// guessNumType — грубая эвристика типа по имени ключа: bytes/ms/dur/kbs/num.
 func guessNumType(path string, f float64) string {
 	low := strings.ToLower(path)
 	last := low
@@ -331,6 +390,8 @@ func guessNumType(path string, f float64) string {
 			return "ms"
 		}
 		return "dur"
+	case containsAny(last, "speed", "rate", "download", "upload", "kbs", "traffic", "throughput"):
+		return "kbs"
 	default:
 		return "num"
 	}
