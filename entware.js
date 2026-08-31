@@ -3285,7 +3285,7 @@ async function renderSettingsTab() {
                 </button>
             </div>
             <div id="update-status" style="margin-top: 8px;"></div>
-            <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 150px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
+            <pre id="update-log" style="background: var(--pre-bg); padding: 0.5rem; height: 300px; overflow-y: auto; margin-top: 8px; display:none; font-size: 0.85rem;"></pre>
         </div>
         </div>
     <div class="em-tab-panel active" id="em-panel-notifications">
