@@ -338,6 +338,8 @@ func TestProcessStats(t *testing.T) {
 
 	mkProcFull(t, 900, "xray", "/opt/bin/xray", 250) // 2.5 сек CPU
 	mkProcFull(t, 901, "xray", "/opt/bin/xray", 150)
+	mkProcStatm(t, 900, 256) // 256 страниц × 4096 = 1 МБ
+	mkProcStatm(t, 901, 128) // 512 КБ
 	stats := ProcessStats([]string{"xray", "net-takogo"})
 	if len(stats) != 1 {
 		t.Fatalf("want 1 ProcStat, got %v", stats)
@@ -348,6 +350,9 @@ func TestProcessStats(t *testing.T) {
 	}
 	if ps.CPUTicks != 400 {
 		t.Errorf("cpu_ticks = %d, want 400", ps.CPUTicks)
+	}
+	if ps.MemKB != 1536 { // (256+128) страниц × 4096 / 1024
+		t.Errorf("mem_kb = %d, want 1536", ps.MemKB)
 	}
 	wantUp := int64(100000 - 50000 - 1)
 	if ps.UptimeS != wantUp {

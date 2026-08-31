@@ -1880,6 +1880,9 @@ function openBridgeEditorFill(id, jsonText) {
 
 let bridgeProbeCache = null;
 let bridgeProbeTab = '';
+// ID редактируемого манифеста ('' = новый модуль, create-режим). Определяет,
+// показывать ли inline-форму авторизации прямо в сканере при 401/403.
+let bridgeEditingId = '';
 
 const BRIDGE_KEYS_HELP =
     '<details style="margin-top:12px;"><summary style="cursor:pointer;font-weight:600;">Все ключи манифеста</summary>' +
@@ -1899,6 +1902,7 @@ const BRIDGE_KEYS_HELP =
     '<p style="font-size:0.82rem;color:var(--text-muted);">Адреса только http://127.0.0.1:порт… Логины/пароли приложений сюда НЕ вносятся — отдельный секретный файл через форму авторизации на карточке.</p></details>';
 
 function renderBridgeEditor(title, editId, jsonText) {
+    bridgeEditingId = editId || '';
     const contentDiv = document.getElementById('content');
     contentDiv.innerHTML =
         '<h2><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=7#icon-file"/></svg> ' + escapeHtml(title) + '</h2>' +
@@ -1949,6 +1953,85 @@ function brSourceTitle(name) {
     if (name === 'status') return 'status';
     if (name === 'stats') return 'stats';
     return name.replace(/^extra\./, 'extra: ');
+}
+
+// editorManifestId/Name — безопасное чтение id/name из JSON редактора.
+// Невалидный JSON → '' (auth-форма не показывается, остаётся сообщение об ошибке).
+// id дополнительно проверяется по ValidID (^[a-z0-9_-]{1,32}$) — зеркально
+// backend-проверке при сохранении карточки: недопустимый id возвращает '',
+// чтобы опасная строка не попала в DOM/onclick (XSS-защита).
+function editorManifestId() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        const id = (m && typeof m.id === 'string') ? m.id : '';
+        return /^[a-z0-9_-]{1,32}$/.test(id) ? id : '';
+    } catch(e) { return ''; }
+}
+
+function editorManifestName() {
+    try {
+        const m = JSON.parse(document.getElementById('br-ed-json').value);
+        return (m && typeof m.name === 'string') ? m.name : '';
+    } catch(e) { return ''; }
+}
+
+// bridgeScannerAuthHTML — inline-форма авторизации прямо в сканере (create-режим),
+// id берётся из m.id манифеста — тот же id, что будет при сохранении карточки.
+function bridgeScannerAuthHTML(id, name) {
+    // id экранируем для надёжности при вставке в атрибуты/onclick (XSS-защита);
+    // editorManifestId уже валидирует по ValidID, здесь — второй рубеж.
+    const eid = escapeHtml(id || '');
+    return '<div class="stat-card" style="max-width:420px;margin-top:10px;">' +
+        '<b>Ввести логин/пароль</b><p style="margin-top:6px;margin-bottom:8px;">«' + escapeHtml(name || id) +
+        '» требует авторизацию. Введите данные от его веб-интерфейса — они сохранятся на роутере (файл 0600) и будут применены сразу.</p>' +
+        '<input type="text" id="sa-user-' + eid + '" class="settings-input" placeholder="Логин" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="sa-pass-' + eid + '" class="settings-input" placeholder="Пароль" style="width:100%;margin-bottom:6px;">' +
+        '<input type="password" id="sa-panel-' + eid + '" class="settings-input" placeholder="Пароль панели EM" style="width:100%;margin-bottom:8px;">' +
+        '<button class="packages-delete-btn" style="background:var(--btn-success);" onclick="saveScannerAuth(\'' + eid + '\')">Сохранить</button>' +
+        '<button class="packages-delete-btn" style="background:var(--btn-muted);" onclick="clearScannerAuth(\'' + eid + '\')">Сбросить</button>' +
+        '<span id="sa-st-' + eid + '"></span></div>';
+}
+
+// saveScannerAuth — как saveBridgeAuth, но для формы в сканере: после успеха
+// вызывает re-scan (authedDo подхватит creds из <id>.auth.json) — карточка
+// заполняется сразу, без ухода в Модули.
+async function saveScannerAuth(id) {
+    const user = document.getElementById('sa-user-' + id).value.trim();
+    const appPass = document.getElementById('sa-pass-' + id).value;
+    const panelPass = document.getElementById('sa-panel-' + id).value;
+    const st = document.getElementById('sa-st-' + id);
+    if (!user || !appPass || !panelPass) { st.innerHTML = '<span style="color:#e53e3e;">Заполните все поля</span>'; return; }
+    st.innerHTML = 'Сохранение…';
+    try {
+        const res = await apiPost('/bridge_auth.cgi',
+            'id=' + encodeURIComponent(id) + '&cred_type=basic&username=' + encodeURIComponent(user) +
+            '&app_password=' + encodeURIComponent(appPass) +
+            '&password=' + encodeURIComponent(panelPass));
+        if (res.status === 'ok') {
+            st.innerHTML = '<span style="color:#38a169;">Сохранено — опрашиваю сервис…</span>';
+            Toast.show('Учётные данные «' + id + '» сохранены');
+            setTimeout(() => bridgeScanManifest(true), 400);
+        } else {
+            st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
+        }
+    } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
+}
+
+async function clearScannerAuth(id) {
+    if (!confirm('Сбросить сохранённые учётные данные и сессию приложения «' + escapeHtml(id) + '»? Они будут удалены с роутера.')) return;
+    const panelPass = await askPanelPassword('Пароль панели:');
+    if (!panelPass) return;
+    const st = document.getElementById('sa-st-' + id);
+    if (!st) return;
+    st.innerHTML = 'Сброс…';
+    try {
+        const res = await apiPost('/bridge_auth.cgi',
+            'id=' + encodeURIComponent(id) + '&clear=1&password=' + encodeURIComponent(panelPass));
+        st.innerHTML = res.status === 'ok'
+            ? '<span style="color:#38a169;">Сброшено</span>'
+            : '<span style="color:#e53e3e;">' + escapeHtml(res.message || res.error || res.status || "error") + '</span>';
+        if (res.status === 'ok') setTimeout(() => bridgeScanManifest(true), 400);
+    } catch(e) { st.innerHTML = '<span style="color:#e53e3e;">' + escapeHtml(e.message) + '</span>'; }
 }
 
 function renderProbeResult(probe) {
@@ -2012,6 +2095,15 @@ function renderProbeResult(probe) {
     if (cur.http_code) html += '<div style="font-size:0.78rem;color:' + (cur.http_code < 400 ? '#38a169' : '#e53e3e') + ';margin-bottom:6px;">HTTP ' + cur.http_code + '</div>';
     if (cur.error) {
         html += '<div style="color:#e53e3e;font-size:0.85rem;">' + escapeHtml(cur.error) + '</div>';
+        // Новый модуль (create-режим) + сервис требует авторизацию: показываем
+        // inline-форму прямо в сканере — оперативное добавление, без ухода в Модули.
+        // В edit-режиме и для остальных ошибок — прежнее поведение.
+        if (cur.http_code === 401 || cur.http_code === 403) {
+            const authId = editorManifestId();
+            if (bridgeEditingId === '' && authId) {
+                html += bridgeScannerAuthHTML(authId, editorManifestName());
+            }
+        }
         bodyDiv.innerHTML = html;
         return;
     }
@@ -2692,6 +2784,18 @@ async function renderBridgeCardsOnStats() {
                 htmlBody += '<div class="bd-tiles" id="tr-tiles-box">' +
                     det.tiles.map(renderBridgeTile).join('') + '</div>';
                 htmlBody += renderBridgeDetails({ tiles: [], rows: det.rows, chips: det.chips });
+            } else if (det.procs.length) {
+                // process-модуль: пользовательские fields (плитки/строки/чипы
+                // из манифеста, напр. uptime, байты, ID) показываем как у
+                // сканера, плюс сводные плитки Процессы/Память из живых
+                // данных. Аптайм/CPU одиночного процесса — плитками в живом
+                // блоке ниже (renderProcStatRows), нескольких — строками.
+                const totalPids = det.procs.reduce((a, p) => a + (p.pids || 0), 0);
+                const totalMem = det.procs.reduce((a, p) => a + (p.mem_kb || 0) * 1024, 0);
+                const tiles = (det.tiles || []).slice();
+                tiles.push({ label: 'Процессы', value: String(totalPids) });
+                if (totalMem) tiles.push({ label: 'Память', value: fmtBytesJS(totalMem) });
+                htmlBody += renderBridgeDetails({ tiles: tiles, rows: det.rows || [], chips: det.chips || [] });
             } else {
                 htmlBody += renderBridgeDetails(det);
             }
@@ -2748,10 +2852,25 @@ function fmtUpSec(sec) {
     return m + ' мин';
 }
 
-// renderProcStatRows — строки «имя | аптайм · CPU»; pctMap[name] подставляет
-// вычисленный клиентом процент, иначе «…» (первый замер).
+// renderProcStatRows — для ОДНОГО процесса живой блок рендерится плитками
+// («Аптайм» + «CPU») в рамке, для нескольких — строками «имя | аптайм · CPU».
+// pctMap[name] подставляет вычисленный клиентом процент, иначе «…» (первый
+// замер). Вызывается и из статичного рендера, и из refreshProcsCpu (там
+// pctMap.fill и box.innerHTML = renderProcStatRows(...)), поэтому CPU-плитка
+// живого одиночного процесса обновляется каждые 5 секунд.
 function renderProcStatRows(procs, pctMap) {
-    return (procs || []).map(p => {
+    procs = procs || [];
+    if (procs.length === 1) {
+        const p = procs[0];
+        const raw = pctMap && pctMap[p.name] !== undefined ? pctMap[p.name] : null;
+        const pct = raw === null ? '…' : raw;
+        const tiles = [
+            { label: 'Аптайм', value: fmtUpSec(p.uptime_s) },
+            { label: 'CPU', value: pct }
+        ];
+        return '<div class="bd-tiles">' + tiles.map(renderBridgeTile).join('') + '</div>';
+    }
+    return procs.map(p => {
         const raw = pctMap && pctMap[p.name] !== undefined ? pctMap[p.name] : null;
         const pct = raw === null ? '…' : raw;
         return '<div class="bd-row"><span class="bd-label">' + escapeHtml(p.name) + '</span>' +

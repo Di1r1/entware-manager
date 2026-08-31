@@ -141,6 +141,7 @@ type ProcStat struct {
 	Pids     int    `json:"pids"`
 	UptimeS  int64  `json:"uptime_s,omitempty"`
 	CPUTicks int64  `json:"cpu_ticks,omitempty"`
+	MemKB    int64  `json:"mem_kb,omitempty"` // суммарная резидентная память (КБ)
 }
 
 // hz — тактовая частота ядра для /proc/<pid>/stat (стандарт CONFIG_HZ=100).
@@ -193,6 +194,7 @@ func ProcessStats(names []string) []ProcStat {
 		for _, pid := range pids {
 			start, ticks := procStatCore(pid)
 			ps.CPUTicks += ticks
+			ps.MemKB += procRSSkb(pid)
 			if up := now - (bt + int64(start)/hz); up > ps.UptimeS && start > 0 {
 				ps.UptimeS = up
 			}

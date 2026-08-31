@@ -2,6 +2,53 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.24 (2026-08-31)
+
+### Карточки process-модулей: память в плитке и разбивка аптайм/CPU для одного процесса
+
+- `go/internal/bridge/process.go` (`ProcStat`): добавлено поле `MemKB` (json `mem_kb`) —
+  суммарная резидентная память процесса (КБ); `ProcessStats` суммирует RSS по PID
+  через `procRSSkb`. Тест `TestProcessStats` расширен (2 процесса → ждёт `mem_kb=1536`).
+- `go/internal/bridge/card.go` (`BuildCard`): process-модулю больше не добавляется строка
+  `ProcessDetails` («2 проц · PID · память») в `card.Rows` — живые числа (PID/аптайм/CPU/
+  память) целиком уходят в `card.Procs`, клиент рисует их сам. `card.Rows` теперь только
+  пользовательские `fields` из манифеста (например, ID устройства, байты). Устранён дубль
+  «PID · память» внутри карточки.
+- `entware.js` (`renderBridgeCardsOnStats`): для process-модуля показываются пользовательские
+  `fields` (плитки/строки из манифеста) как у сканера, плюс сводные плитки «Процессы»/«Память»
+  из живых данных (не отбрасывая `fields` из описания).
+- `entware.js` (`renderProcStatRows`): для **одиночного** процесса живой блок рендерится
+  плитками «Аптайм» и «CPU» в рамке (обновляются каждые 5 сек через `refreshProcsCpu`);
+  для нескольких процессов — как раньше, строками «имя | аптайм · CPU».
+- `entware.js` (`editorManifestId`/`bridgeScannerAuthHTML`): id из манифеста в inline-форме
+  авторизации сканера (1.16.23) валидируется по `ValidID` (`^[a-z0-9_-]{1,32}$`, зеркально
+  save-проверке) и экранируется при вставке в атрибуты/onclick — закрыта XSS-уязвимость:
+  недопустимый id не попадает в DOM/onclick (auth-форма не показывается).
+- `index.html`: `entware.js?v=161` → `?v=167` (промежуточные bump'ы по ходу правок).
+- Проверки: `node -c`, `make ci` (go vet + shellcheck + go test, PASS 30/0 + parity 7/0),
+  деплой на роутер, md5 совпали, HTTP 200, `bridge_card.cgi` отдаёт поля и живые числа;
+  quorum ewm-approval (sec + reviewer + frontend-review) — APPROVE после закрытия XSS.
+
+## 1.16.23 (2026-08-30)
+
+### Сканер: inline-авторизация при создании защищённого модуля
+
+- `entware.js` (`renderProbeResult`): при HTTP 401/403 в create-режиме (новый модуль,
+  `bridgeEditingId === ''`) форма «Логин/Пароль/Пароль панели» показывается прямо
+  в панели сканера — оперативное добавление, без ухода во вкладку «Модули».
+  Для уже сохранённых модулей (edit-режим) поведение прежнее: авторизация — на карточке.
+- Новые функции: `editorManifestId`, `editorManifestName` (JSON.parse в try/catch —
+  невалидный манифест не показывает форму), `bridgeScannerAuthHTML`,
+  `saveScannerAuth` (после сохранения вызывает `bridgeScanManifest(true)` — повторный
+  probe подхватывает creds из `<id>.auth.json», карточка заполняется сразу),
+  `clearScannerAuth`.
+- Глобальная `bridgeEditingId` задаётся в `renderBridgeEditor`.
+- id берётся из `m.id` манифеста (`ValidID` regex `^[a-z0-9_-]{1,32}$`), auth пишется
+  через существующий `bridge_auth.cgi` (POST body, Origin-чек, файл 0600).
+- `index.html`: `entware.js?v=161` → `?v=162`.
+- Проверки: `node -c`, `make ci` (go vet + shellcheck + go test), деплой на роутер
+  + живая проверка flow (новый модуль → 8080 → 401 → форма → авторизация → данные).
+
 ## 1.16.22 (2026-08-30)
 
 ### Сканер модулей: исключены внутренние порты панели

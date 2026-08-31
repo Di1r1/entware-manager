@@ -110,11 +110,11 @@ func BuildCard(dir, id string) (*CardData, error) {
 		}
 	}
 
-	// process-модуль без полей не должен быть «немой» карточкой:
-	// по каждому имени — живые PID и память (ProcessDetails пропускает
-	// имена без процесса; поля из fields[] идут выше).
+	// process-модуль: живые числа (PID/аптайм/CPU/память) клиент берёт из
+	// card.Procs и рисует сам (плитки + живой блок) — ProcessDetails больше
+	// не дублируется в card.Rows (это был второй источник «PID · память»,
+	// пересекающийся с карточкой; см. renderBridgeCardsOnStats).
 	if len(m.Process) > 0 {
-		card.Rows = append(card.Rows, ProcessDetails(m.Process)...)
 		card.Procs = ProcessStats(m.Process)
 	}
 

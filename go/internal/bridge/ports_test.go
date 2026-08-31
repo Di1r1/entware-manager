@@ -1,7 +1,10 @@
 // Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 package bridge
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 func TestPortLabel(t *testing.T) {
 	cases := map[int]string{
@@ -53,6 +56,26 @@ func TestLoopbackListeningPortsExcludesPanel(t *testing.T) {
 	for _, p := range ports {
 		if isPanelPort(p) {
 			t.Errorf("внутренний порт %d попал в подсказку", p)
+		}
+	}
+}
+
+// TestDescribeHTTPError — человекочитаемые причины для 4xx/5xx.
+// Особый акцент: 401/403 упоминают авторизацию (сценарий пользователя —
+// сканирование порта 8080 AdGuard, требующего логин/пароль).
+func TestDescribeHTTPError(t *testing.T) {
+	cases := map[int]string{
+		http.StatusUnauthorized:        "HTTP 401 — сервис требует авторизацию (задайте логин/пароль через форму на карточке модуля)",
+		http.StatusForbidden:           "HTTP 403 — сервис требует авторизацию (задайте логин/пароль через форму на карточке модуля)",
+		http.StatusNotFound:            "HTTP 404 — путь не найден, проверьте адрес в манифесте",
+		http.StatusMethodNotAllowed:    "HTTP 405 — неверный метод для этого пути",
+		http.StatusInternalServerError: "HTTP 500",
+		http.StatusBadGateway:          "HTTP 502",
+		http.StatusFound:               "HTTP 302",
+	}
+	for code, want := range cases {
+		if got := describeHTTPError(code); got != want {
+			t.Errorf("describeHTTPError(%d)=%q, хотим %q", code, got, want)
 		}
 	}
 }
