@@ -520,7 +520,7 @@
         </div>
     </div>
 <script>
-    // Auto-hide header/footer on menu hover
+    // Автоскрытие заголовка/футера при наведении на меню (только когда меню не помещается)
     (function() {
         const sidebar = document.getElementById('sidebar');
         const menuContainer = document.querySelector('.menu-container');
@@ -533,6 +533,18 @@
         let hideTimeout;
         let isHoveringMenu = false;
         
+        function debounce(fn, delay) {
+            let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+        }
+        
+        function checkMenuOverflow() {
+            if (!menu || !menuContainer || !sidebar) return false;
+            const containerHeight = menuContainer.clientHeight;
+            const menuHeight = menu.scrollHeight;
+            // Буфер 10px — защита от дрожания на границе
+            return menuHeight > containerHeight + 10;
+        }
+        
         function showHeaderFooter() {
             clearTimeout(hideTimeout);
             sidebar.classList.remove('menu-focused');
@@ -540,13 +552,13 @@
         
         function hideHeaderFooter() {
             hideTimeout = setTimeout(() => {
-                if (isHoveringMenu) {
+                if (isHoveringMenu && checkMenuOverflow()) {
                     sidebar.classList.add('menu-focused');
                 }
             }, 150);
         }
         
-        // Mouse events
+        // События мыши
         menuContainer.addEventListener('mouseenter', () => {
             isHoveringMenu = true;
             hideHeaderFooter();
@@ -557,7 +569,7 @@
             showHeaderFooter();
         });
         
-        // Also track menu itself for better coverage
+        // Также отслеживаем само меню для лучшего покрытия
         if (menu) {
             menu.addEventListener('mouseenter', () => {
                 isHoveringMenu = true;
@@ -569,7 +581,7 @@
             });
         }
         
-        // Restore zones - immediately show header/footer on hover
+        // Зоны восстановления — мгновенно показывают заголовок/футер при наведении
         if (restoreTop) {
             restoreTop.addEventListener('mouseenter', showHeaderFooter);
         }
@@ -577,7 +589,7 @@
             restoreBottom.addEventListener('mouseenter', showHeaderFooter);
         }
         
-        // Touch support - tap outside menu to show header/footer
+        // Тач: тап вне меню — показать заголовок/футер
         document.addEventListener('click', (e) => {
             if (sidebar.classList.contains('menu-focused') && 
                 !menuContainer.contains(e.target) &&
@@ -586,6 +598,13 @@
                 sidebar.classList.remove('menu-focused');
             }
         });
+        
+        // Перепроверка при resize (смена разрешения/масштаба)
+        window.addEventListener('resize', debounce(() => {
+            if (sidebar.classList.contains('menu-focused') && !checkMenuOverflow()) {
+                sidebar.classList.remove('menu-focused');
+            }
+        }, 200));
     })();
 </script>
 </body>
