@@ -74,10 +74,13 @@ for i in "${!ARCH_NAMES[@]}"; do
     echo ""
     echo "  [$arch_name] (GOARCH=$goarch${goflags:+ $goflags})"
 
+    # Hardening метаданных (Уровень 1): -trimpath убирает локальные пути
+    # сборки, -buildvcs=false — штампы VCS, пустой -buildid — ид сборки.
+    # Поведение бинарников не меняется; UPX и проверки — как раньше.
     for cmd in entware-pkg entware-stats entware-net entware-logger entware-services entware-monitor entware-smart entware-server entware-rdp entware-telegram entware-bridge; do
         echo -n "    $cmd... "
         out="$DEPLOY_DIR/cgi-bin/go/$dir_name/$cmd"
-        env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" "./cmd/$cmd/" 2>&1
+        env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o "$out" "./cmd/$cmd/" 2>&1
         echo "OK ($(du -h "$out" | cut -f1))"
     done
 done
@@ -139,7 +142,8 @@ if [ -d "$GRDP_FORK/proxy" ] && [ -f "$GRDP_FORK/static/index.html" ]; then
         fi
         echo -n "  [grdp-proxy $arch_name]... "
         out="$DEPLOY_DIR/cgi-bin/go/$arch_name/grdp-proxy"
-        ( cd "$GRDP_FORK" && env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -ldflags="-s -w" -o "$out" ./proxy/ ) 2>&1 && {
+        # Те же hardening-флаги, что и для entware-* (см. выше).
+        ( cd "$GRDP_FORK" && env GOOS=linux GOARCH="$goarch" CGO_ENABLED=0 $goflags go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o "$out" ./proxy/ ) 2>&1 && {
             "$UPX" -9 "$out" -o "$out.tmp" 2>/dev/null && mv "$out.tmp" "$out" || true
             echo "OK ($(du -h "$out" | cut -f1))"
         } || echo "FAIL"
