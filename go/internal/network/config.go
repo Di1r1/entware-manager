@@ -67,7 +67,7 @@ func handleConfigPost() {
 		return
 	}
 
-	if err := os.WriteFile(ConfigFile, []byte(data), 0644); err != nil {
+	if err := cgiutil.WriteFileAtomic(ConfigFile, []byte(data), 0644); err != nil {
 		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
 		return
 	}

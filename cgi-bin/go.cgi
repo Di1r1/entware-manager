@@ -52,15 +52,18 @@ go_bin() {
 # Токен сравнивается с HTTP_COOKIE (constant-time через cmp).
 SESSION_FILE="/opt/var/run/panel_session"
 SESSION_TTL_SECONDS=86400
+# jq — явный путь (проверка зависимостей требует jq в /opt/bin)
+JQ_BIN=/opt/bin/jq
+[ -x "$JQ_BIN" ] || JQ_BIN=jq
 
 auth_gate() {
 	case "$name" in
 	login|logout|session|bridge_watch) return 0 ;;
 	esac
 	[ -f /opt/web_entware/auth_config.json ] || return 0
-	ENABLED=$(jq -r '.enabled // false' /opt/web_entware/auth_config.json 2>/dev/null)
+	ENABLED=$($JQ_BIN -r '.enabled // false' /opt/web_entware/auth_config.json 2>/dev/null)
 	[ "$ENABLED" = "true" ] || return 0
-	HASH=$(jq -r '.password_hash // .password // ""' /opt/web_entware/auth_config.json 2>/dev/null)
+	HASH=$($JQ_BIN -r '.password_hash // .password // ""' /opt/web_entware/auth_config.json 2>/dev/null)
 	[ -n "$HASH" ] || return 0
 
 	[ -f "$SESSION_FILE" ] || { echo_401; exit 1; }

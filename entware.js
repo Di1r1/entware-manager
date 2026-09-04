@@ -162,15 +162,15 @@ function startPanelWidgets() {
                 // Версия всегда кликабельна → ведёт на текущий релиз на GitHub.
                 const vEsc = escapeHtml(data.version);
                 sidebarVersion.innerHTML =
-                    `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${vEsc}" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">v${vEsc}</a>`;
+                    `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${vEsc}" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;">v${vEsc}</a>`;
             }
             fetch('/entware-cgi/update_check.cgi').then(r => r.json()).then(upd => {
                 if (upd.has_update && sidebarVersion) {
                     const curEsc = escapeHtml(upd.current);
                     const latEsc = escapeHtml(upd.latest);
                     sidebarVersion.innerHTML =
-                        `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${curEsc}" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">v${curEsc}</a>` +
-                        ` → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${latEsc}" target="_blank" rel="noopener" style="color:#2ecc71;text-decoration:none;">v${latEsc}</a>`;
+                        `<a href="https://github.com/Di1r1/entware-manager/releases/tag/v${curEsc}" target="_blank" rel="noopener noreferrer" style="color:var(--text-muted);text-decoration:none;">v${curEsc}</a>` +
+                        ` → <a href="https://github.com/Di1r1/entware-manager/releases/tag/v${latEsc}" target="_blank" rel="noopener noreferrer" style="color:#2ecc71;text-decoration:none;">v${latEsc}</a>`;
                 }
             }).catch(function(){});
         })
@@ -939,7 +939,7 @@ async function loadHtopContent() {
         if (htop.state === 'running') {
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/htop/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=7#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/htop/" target="_blank" rel="noopener noreferrer" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=7#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe id="htopFrame" src="/htop/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay"></iframe>
             `;
@@ -978,7 +978,7 @@ async function loadTerminalContent() {
             title.textContent = 'Терминал (' + modeLabel + ')';
             container.innerHTML = `
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="/terminal/" target="_blank" rel="noopener" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=7#icon-link"/></svg> Открыть в новой вкладке</a>
+                    <a href="/terminal/" target="_blank" rel="noopener noreferrer" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=7#icon-link"/></svg> Открыть в новой вкладке</a>
                 </div>
                 <iframe id="terminalFrame" src="/terminal/" width="100%" height="600" style="border: none; border-radius: 8px;" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
             `;
@@ -3923,6 +3923,10 @@ window.saveAuthConfig = async function() {
 
         try {
             const data = await apiPost('/auth_config.cgi', formData.toString());
+            if (!data || data.status !== 'ok') {
+                statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml((data && (data.message || data.error)) || 'Неизвестная ошибка') + '</span>';
+                return;
+            }
             statusEl.innerHTML = '<span style="color:#2ecc71;">✓ Настройки сохранены</span>';
             document.getElementById('filemgrPass').value = '';
             document.getElementById('filemgrPassConfirm').value = '';

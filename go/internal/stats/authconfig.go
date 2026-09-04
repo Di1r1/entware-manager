@@ -135,7 +135,7 @@ func handleAuthConfigPost() {
 
 	data, _ := json.MarshalIndent(newCfg, "", "    ")
 	data = append(data, '\n')
-	if err := os.WriteFile(authConfigPath, data, 0600); err != nil {
+	if err := cgiutil.WriteFileAtomic(authConfigPath, data, 0600); err != nil {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Println(`{"status":"error","message":"Не удалось сохранить настройки"}`)
 		return

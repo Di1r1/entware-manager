@@ -62,12 +62,14 @@ EOF
 
 clean_old_pids() {
     if [ -f "$PID_STATE" ] && command -v jq >/dev/null 2>&1; then
-        # BusyBox-совместимый расчёт даты через epoch (поддержан в date -d @epoch)
-        cutoff=$(date -d "@$(($(date +%s) - HISTORY_DAYS*86400))" +"%Y-%m-%d %H:%M:%S" 2>/dev/null)
-        if [ -z "$cutoff" ]; then
+        # Порог — полночь N дней назад (date_days_ago из lib/common.sh,
+        # чистый POSIX без GNU date -d, которого может не быть в BusyBox)
+        cutoff_day=$(date_days_ago "$HISTORY_DAYS" 2>/dev/null)
+        if [ -z "$cutoff_day" ]; then
             # Fallback: не удалять старые записи
             return
         fi
+        cutoff="$cutoff_day 00:00:00"
 
         temp_file="${PID_STATE}.tmp"
         jq --arg cutoff "$cutoff" 'to_entries | map(select(.value.last_seen > $cutoff)) | from_entries' "$PID_STATE" > "$temp_file" 2>/dev/null

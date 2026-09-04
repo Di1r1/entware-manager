@@ -10,6 +10,9 @@ SOURCE_DIR="/tmp/entware/logs"
 TARGET_DIR="/opt/var/log/entware"
 mkdir -p "$TARGET_DIR"
 
+# date_days_ago() — из общих функций (чистый POSIX, без GNU date -d)
+. /opt/web_entware/lib/common.sh 2>/dev/null || true
+
 # Выводит "ROTATED|путь|размер" для переданного файла.
 report() {
     [ -f "$1" ] || return 0
@@ -18,7 +21,7 @@ report() {
 }
 
 # 1. Ежедневные логи
-yesterday=$(date -d "@$(($(date +%s) - 86400))" +%Y-%m-%d 2>/dev/null)
+yesterday=$(date_days_ago 1 2>/dev/null)
 src="$SOURCE_DIR/$yesterday.log"
 if [ -f "$src" ]; then
     cp "$src" "$TARGET_DIR/" 2>/dev/null && rm -f "$src"

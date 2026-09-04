@@ -126,6 +126,21 @@ func unhex(c byte) int {
 	return -1
 }
 
+// WriteFileAtomic атомарно записывает файл: данные пишутся во временный
+// файл в том же каталоге, затем temp переименовывается поверх целевого.
+// При ошибке переименования временный файл удаляется.
+func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
 // HumanSize форматирует размер в человеко-читаемый вид (B/K/M/G), как в UI панели.
 func HumanSize(size int64) string {
 	switch {

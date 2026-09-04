@@ -40,9 +40,21 @@ func HandleAuthLog() {
 	}
 
 	now := time.Now()
+	entries, failed24h := collectAuthEntries(now)
+
+	cgiutil.WriteJSON(map[string]interface{}{
+		"status":     "ok",
+		"entries":    entries,
+		"failed_24h": failed24h,
+	})
+}
+
+// collectAuthEntries собирает записи из вчерашнего и сегодняшнего логов.
+// Порядок файлов вчера→сегодня + общий разворот = свежие сверху.
+func collectAuthEntries(now time.Time) ([]authLogEntry, int) {
 	files := []string{
-		filepath.Join(logsDir, now.Format("2006-01-02")+".log"),
 		filepath.Join(logsDir, now.AddDate(0, 0, -1).Format("2006-01-02")+".log"),
+		filepath.Join(logsDir, now.Format("2006-01-02")+".log"),
 	}
 
 	var entries []authLogEntry
@@ -68,7 +80,7 @@ func HandleAuthLog() {
 		fh.Close()
 	}
 
-	// свежие сверху (файлы читались сегодня→вчера, внутри — по порядку)
+	// свежие сверху
 	reverseEntries(entries)
 	if len(entries) > maxAuthLogEntries {
 		entries = entries[:maxAuthLogEntries]
@@ -76,12 +88,7 @@ func HandleAuthLog() {
 	if entries == nil {
 		entries = []authLogEntry{}
 	}
-
-	cgiutil.WriteJSON(map[string]interface{}{
-		"status":     "ok",
-		"entries":    entries,
-		"failed_24h": failed24h,
-	})
+	return entries, failed24h
 }
 
 // parseAuthLine разбирает строку лога login.cgi.

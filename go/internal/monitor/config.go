@@ -24,11 +24,11 @@ func HandleConfig() {
 			// Auto-migrate: add max_processes/autostart if missing
 			if _, ok := data["max_processes"]; !ok {
 				data["max_processes"] = 200
-				saveConfigToFile(data)
+				_ = saveConfigToFile(data)
 			}
 			if _, ok := data["autostart"]; !ok {
 				data["autostart"] = false
-				saveConfigToFile(data)
+				_ = saveConfigToFile(data)
 			}
 		}
 		cgiutil.WriteJSON(data)
@@ -52,7 +52,10 @@ func HandleConfig() {
 			return
 		}
 
-		saveConfigToFile(cfg)
+		if err := saveConfigToFile(cfg); err != nil {
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
+			return
+		}
 
 		// Send HUP to watchdog daemon
 		if pidData, err := os.ReadFile(monitorPIDFile); err == nil {
@@ -83,12 +86,12 @@ func readConfigFromFile() map[string]interface{} {
 	return cfg
 }
 
-func saveConfigToFile(cfg map[string]interface{}) {
+func saveConfigToFile(cfg map[string]interface{}) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return
+		return err
 	}
-	os.WriteFile(monitorConfigFile, data, 0644)
+	return cgiutil.WriteFileAtomic(monitorConfigFile, data, 0644)
 }
 
 func defaultConfig() map[string]interface{} {

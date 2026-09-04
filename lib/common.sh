@@ -20,13 +20,15 @@ pid_is_alive() {
     return 0
 }
 
-# --- Поиск PID по паттерну cmdline (pgrep или fallback на ps) ---
+# --- Поиск PID по паттерну cmdline (ps — основной путь, pgrep — ускорение) ---
+# ps — всегда есть (BusyBox/procps), pgrep может отсутствовать или отличаться
+# поведением между сборками, поэтому он только fallback.
 find_pids() {
     local pattern="$1"
-    if command -v pgrep >/dev/null 2>&1; then
-        pgrep -f "$pattern" 2>/dev/null
-    else
+    if command -v ps >/dev/null 2>&1; then
         ps w 2>/dev/null | grep -v grep | grep -E "$pattern" | awk '{print $1}'
+    elif command -v pgrep >/dev/null 2>&1; then
+        pgrep -f "$pattern" 2>/dev/null
     fi
 }
 
@@ -106,4 +108,36 @@ daemon_status() {
     }
     echo "Not running"
     exit 1
+}
+
+# --- Дата N дней назад (YYYY-MM-DD), чистый POSIX ---
+# date_days_ago [N] — без GNU date -d (его может не быть в BusyBox).
+# Арифметика через юлианский день: корректно переходит через границы
+# месяцев и лет, включая високосные. Нужны только date +%Y/%m/%d.
+date_days_ago() {
+    local n="${1:-1}"
+    local y m d
+    y=$(date +%Y 2>/dev/null) || return 1
+    m=$(date +%m 2>/dev/null) || return 1
+    d=$(date +%d 2>/dev/null) || return 1
+    # Убрать ведущие нули: POSIX $(( )) считает 08/09 ошибкой восьмеричной системы
+    m=${m#0}
+    d=${d#0}
+    local a yy mm jdn b c dd e mon day
+    a=$(( (14 - m) / 12 ))
+    yy=$(( y + 4800 - a ))
+    mm=$(( m + 12 * a - 3 ))
+    jdn=$(( d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045 - n ))
+    a=$(( jdn + 32044 ))
+    b=$(( (4 * a + 3) / 146097 ))
+    c=$(( a - (146097 * b) / 4 ))
+    dd=$(( (4 * c + 3) / 1461 ))
+    e=$(( c - (1461 * dd) / 4 ))
+    mon=$(( (5 * e + 2) / 153 ))
+    day=$(( e - (153 * mon + 2) / 5 + 1 ))
+    y=$(( 100 * b + dd - 4800 + (mon / 10) ))
+    m=$(( mon + 3 - 12 * (mon / 10) ))
+    [ "$m" -lt 10 ] && m="0$m"
+    [ "$day" -lt 10 ] && day="0$day"
+    printf '%s-%s-%s\n' "$y" "$m" "$day"
 }

@@ -69,7 +69,10 @@ func HandleConfig() {
 			logSystemEvent("INFO", msg+" (было: enabled="+fmt.Sprintf("%v", oldCfg.Enabled)+")")
 		}
 
-		os.WriteFile(configFile, body, 0644)
+		if err := cgiutil.WriteFileAtomic(configFile, body, 0644); err != nil {
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Failed to write config"})
+			return
+		}
 		cgiutil.WriteJSON(map[string]string{"status": "ok"})
 		return
 	}

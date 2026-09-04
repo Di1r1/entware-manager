@@ -92,6 +92,34 @@ func TestHandleAuthLog(t *testing.T) {
 	}
 }
 
+func TestCollectAuthEntriesOrder(t *testing.T) {
+	dir := t.TempDir()
+	logsDir = dir
+	defer func() { logsDir = "/tmp/entware/logs" }()
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	yContent := "[" + yesterday.Format("2006-01-02") + " 20:00:00] [WARN] [10.0.0.1] [1] [login.cgi] Неверный пароль при входе\n"
+	tContent := "[" + now.Format("2006-01-02") + " 08:00:00] [INFO] [10.0.0.2] [2] [login.cgi] Успешный вход\n" +
+		"[" + now.Format("2006-01-02") + " 09:00:00] [INFO] [10.0.0.3] [3] [login.cgi] Успешный вход\n"
+	if err := os.WriteFile(filepath.Join(dir, yesterday.Format("2006-01-02")+".log"), []byte(yContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, now.Format("2006-01-02")+".log"), []byte(tContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := collectAuthEntries(now)
+	if len(entries) != 3 {
+		t.Fatalf("записей = %d, хочу 3", len(entries))
+	}
+	// свежие сверху: сегодня 09:00, сегодня 08:00, вчера 20:00
+	want := []string{"10.0.0.3", "10.0.0.2", "10.0.0.1"}
+	for i, w := range want {
+		if entries[i].IP != w {
+			t.Errorf("entries[%d].IP = %q, хочу %q", i, entries[i].IP, w)
+		}
+	}
+}
+
 func TestIsWithin24h(t *testing.T) {
 	now := time.Date(2026, 8, 23, 12, 0, 0, 0, time.Local)
 	dayAgo := now.Add(-24 * time.Hour)

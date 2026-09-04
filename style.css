@@ -519,11 +519,13 @@ body {
 
 /* === Стили шапки сайдбара (объединены из index.html) === */
 .sidebar-header {
-    padding: 12px 0 12px 12px !important;
+    padding: 12px 8px !important;
     border-bottom: 1px solid var(--sidebar-border);
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    text-align: center;
     flex-wrap: wrap;
 }
 .sidebar-header h2 {
@@ -534,9 +536,9 @@ body {
     background-clip: text;
     font-weight: 700;
     letter-spacing: -0.5px;
-    margin-right: 10px;
+    margin-right: 0;
     margin-bottom: 0 !important;
-    margin-left: -4px !important;
+    margin-left: 0 !important;
 }
 .sidebar-header .datetime {
     font-size: 0.8rem;
@@ -555,6 +557,7 @@ body {
     margin-bottom: 4px !important;
     text-align: center;
     line-height: 1.3;
+    width: 100%;
 }
 
 .sidebar.collapsed .sidebar-header .sidebar-description {
@@ -567,6 +570,7 @@ body {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
     line-height: 1.3;
+    width: 100%;
 }
 /* Свёрнутое состояние */
 .sidebar.collapsed .sidebar-header {

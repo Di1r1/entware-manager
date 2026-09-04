@@ -2,6 +2,25 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.27 (2026-09-04)
+
+### Надёжность сохранения настроек, честные ошибки, порядок входов, центровка шапки
+
+**Исправления:**
+- `entware.js` (`saveAuthConfig/doSave`): ответ `auth_config.cgi` теперь проверяется (`data.status === 'ok'`) — при неверном текущем пароле показывается реальная ошибка бэкенда вместо вводящего в заблуждение «Настройки сохранены»; поля и флаг `AUTH_CURRENTLY_ENABLED` меняются только при успехе.
+- `go/internal/stats/authlog.go`: таблица попыток входа читала логи «сегодня→вчера» и переворачивала весь список — вчерашние записи всплывали сверху. Сбор вынесена в `collectAuthEntries()` (вчера→сегодня + разворот) — свежие сверху. Добавлен тест `TestCollectAuthEntriesOrder`.
+- `index.html`: `javascript:void(0)` заменён на `href="#"` + `return false` (2 кнопки сайдбара).
+- `entware.js`: `rel="noopener"` → `rel="noopener noreferrer"` (5 внешних ссылок).
+
+**Технические:**
+- Новый общий хелпер `cgiutil.WriteFileAtomic()` (temp+rename, чистка tmp при ошибке); на него переведены прямые записи конфигов: `stats/authconfig.go`, `logger/config.go`, `monitor/config.go`, `network/config.go`, `services/watchdog_config.go`. `logger`/`monitor` теперь возвращают ошибку записи вместо молчаливого `ok`. (4 файла из исходного списка review — `manifestio`, `watch`, `cache`, `tls` — уже были атомарными, проверено по факту.)
+- `lib/common.sh`: новый `date_days_ago()` (чистый POSIX через юлианский день, сверен с GNU date на 20 смещениях) — `logger/scripts/rotate.sh` и `service_watchdog.sh` больше не используют GNU `date -d @epoch`; `find_pids()` — `ps` основной путь, `pgrep` fallback.
+- `cgi-bin/go.cgi`: `$JQ_BIN` (`/opt/bin/jq` с fallback); `telegram_gateway.sh`: `$CURL` вместо голого `curl`.
+- `style.css`: `.sidebar-header` — колонка по центру (заголовок, описание, дата, температуры).
+- Кэш: `entware.js?v=168→169→170`, `style.css?v=67→68` (только `index.html` ссылается).
+
+**Проверено:** `make ci` PASS (vet/shellcheck/test, 30 shell + 7 parity); `node --check`; `gofmt` чисто; деплой на dev-роутер (13 файлов + пересобранный `entware-stats`), md5 = deploy/, HTTP 200/401 без 500, маркеры на месте; `date_days_ago` на BusyBox ash = GNU date; живой POST `logger_config` → ok без `.tmp`; живой HTTP-тест входа и таблицы входов.
+
 ## 1.16.26 (2026-08-31)
 
 ### Скрытие виджета CPU температуры при отсутствии датчика
