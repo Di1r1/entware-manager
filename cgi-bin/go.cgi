@@ -101,7 +101,7 @@ auth_gate
 case "$dir" in
 cgi-bin)
 	case "$name" in
-	available|packages|installed|install|remove|upgrade|update|upgradable|api)
+	available|packages|installed|install|remove|upgrade|update|upgradable|api|packages_log)
 		ENDPOINT="$name" exec "$(go_bin pkg)" ;;
 	cpu|stats|version|help|links_load|links_save|tmpfs|tmpfs_clean|view_file|delete_file|auth_config|auth_log|tls_config|crontab|crontab_update|backup|backup_restore|update_check|update_run|update_status|prepare_offline|login|logout|session)
 		ENDPOINT="$name" exec "$(go_bin stats)" ;;

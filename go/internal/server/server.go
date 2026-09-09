@@ -81,7 +81,12 @@ func LoadConfig() Config {
 func NewHandler() http.Handler {
 	registerProxyBackends()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/entware-manager/", handleStatic)
+
+	// Классическая панель: статика из /opt/web_entware.
+	mux.HandleFunc("/entware-manager/", handleStaticClassic)
+	mux.HandleFunc("/static/", handleStaticClassic)
+
+	// Нативный обработчик CGI для go-режима (/entware-cgi/...).
 	mux.HandleFunc("/entware-cgi/", handleCGI)
 	// Прокси встроенных сервисов на едином origin 8087 (см. proxy.go).
 	// Гейт сессии: если пароль панели настроен, прокси доступны только

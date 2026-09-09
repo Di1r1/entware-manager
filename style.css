@@ -397,6 +397,12 @@ body {
     align-items: center;
     gap: 8px;
 }
+/* Табы логов («Действия менеджера» / «Системные логи»): активный чуть темнее
+   акцентного стиля. filter вместо цвета — работает на любом пресете и дне/ночи. */
+#tab-manager.active,
+#tab-system.active {
+    filter: brightness(0.75);
+}
 #network-tabs .tab-toggle .toggle-slider {
     position: relative;
     display: inline-block;

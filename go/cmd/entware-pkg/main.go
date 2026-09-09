@@ -42,6 +42,8 @@ func main() {
 		packages.Upgradable()
 	case "api":
 		packages.HandleAPI()
+	case "packages_log":
+		packages.HandlePackagesLog()
 	default:
 		cgiutil.WriteError("unknown endpoint: " + ep)
 	}

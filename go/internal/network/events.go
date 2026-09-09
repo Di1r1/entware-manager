@@ -17,6 +17,8 @@ type LogEvent struct {
 	Details   string `json:"details"`
 }
 
+const maxFallbackDays = 30
+
 func HandleEvents() {
 	if !cgiutil.IsGET() {
 		cgiutil.NotAllowed()
@@ -24,13 +26,18 @@ func HandleEvents() {
 	}
 
 	limit := 20
-	if l := GetParam("limit"); l != "" {
+	if l := cgiutil.GetParam("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 {
 			limit = v
 		}
 	}
 
-	events := parseLogFile("network", limit)
+	tag := cgiutil.GetParam("tag")
+	if tag == "" {
+		tag = "network"
+	}
+
+	events := parseLogFile(tag, limit)
 	if events == nil {
 		events = []LogEvent{}
 	}
@@ -38,14 +45,27 @@ func HandleEvents() {
 }
 
 func parseLogFile(tag string, limit int) []LogEvent {
+	// Пробуем текущий день
 	logPath := filepath.Join(LogDir, time.Now().Format("2006-01-02")+".log")
 	data, err := os.ReadFile(logPath)
 	if err != nil {
-		return nil
+		// Фолбэк: ищем за последние maxFallbackDays
+		for d := 1; d <= maxFallbackDays; d++ {
+			date := time.Now().AddDate(0, 0, -d).Format("2006-01-02")
+			logPath = filepath.Join(LogDir, date+".log")
+			data, err = os.ReadFile(logPath)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return nil
+		}
 	}
 
 	lines := strings.Split(string(data), "\n")
 	tagPattern := "[" + strings.ToLower(tag) + "]"
+	matchAll := tag == "all"
 
 	var matched []string
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -53,7 +73,8 @@ func parseLogFile(tag string, limit int) []LogEvent {
 		if line == "" {
 			continue
 		}
-		if strings.Contains(strings.ToLower(line), tagPattern) {
+		lower := strings.ToLower(line)
+		if matchAll || strings.Contains(lower, tagPattern) {
 			matched = append(matched, line)
 			if len(matched) >= limit {
 				break
@@ -74,6 +95,10 @@ func parseLogLine(line, tag string) LogEvent {
 		if idx2 := strings.Index(line[idx1:], "]"); idx2 >= 0 {
 			ts = strings.TrimSpace(line[idx1+1 : idx1+idx2])
 		}
+	}
+
+	if tag == "all" {
+		return parseGenericLine(line, ts)
 	}
 
 	tagBracket := "[" + tag + "]"
@@ -115,4 +140,31 @@ func parseLogLine(line, tag string) LogEvent {
 		Event:     event,
 		Details:   details,
 	}
+}
+
+func parseGenericLine(line, ts string) LogEvent {
+	level := "INFO"
+	lower := strings.ToLower(line)
+	for _, l := range []string{"error", "warn", "info"} {
+		if strings.Contains(lower, "["+l+"]") {
+			level = strings.ToUpper(l)
+			break
+		}
+	}
+	var b strings.Builder
+	depth := 0
+	for _, r := range line {
+		switch {
+		case r == '[':
+			depth++
+		case r == ']' && depth > 0:
+			depth--
+		case depth == 0:
+			b.WriteRune(r)
+		}
+	}
+	text := strings.TrimSpace(b.String())
+	text = strings.ReplaceAll(text, "(", "")
+	text = strings.ReplaceAll(text, ")", "")
+	return LogEvent{Timestamp: ts, Level: level, Event: text}
 }
