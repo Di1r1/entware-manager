@@ -34,6 +34,12 @@ func HandleStatus() {
 		return
 	}
 
+	cgiutil.WriteJSON(CollectStatus())
+}
+
+// CollectStatus — чистое значение для dashboard.cgi.
+// Форма ровно та, что отдаёт monitor/status.cgi.
+func CollectStatus() StatusResponse {
 	daemonStatus := "stopped"
 	daemonPID := ""
 
@@ -51,11 +57,11 @@ func HandleStatus() {
 		topProcs = []Process{}
 	}
 
-	cgiutil.WriteJSON(StatusResponse{
+	return StatusResponse{
 		DaemonStatus: daemonStatus,
 		DaemonPID:    daemonPID,
 		Processes:    topProcs,
-	})
+	}
 }
 
 func readPIDFile() (int, error) {

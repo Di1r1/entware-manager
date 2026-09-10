@@ -18,12 +18,17 @@ func HandleTemperature() {
 		return
 	}
 
+	cgiutil.WriteJSON(CollectTemperature())
+}
+
+// CollectTemperature — чистое значение для dashboard.cgi.
+// Форма ровно та, что отдаёт temperature.cgi.
+func CollectTemperature() map[string]interface{} {
 	temp := readCPUTemp()
 	if temp != "" {
-		cgiutil.WriteJSON(map[string]interface{}{"temperature": temp})
-	} else {
-		cgiutil.WriteJSON(map[string]interface{}{"temperature": nil})
+		return map[string]interface{}{"temperature": temp}
 	}
+	return map[string]interface{}{"temperature": nil}
 }
 
 func readCPUTemp() string {

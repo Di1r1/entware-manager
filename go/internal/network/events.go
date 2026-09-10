@@ -2,6 +2,7 @@ package network
 
 import (
 	"entware-manager/internal/cgiutil"
+	"entware-manager/internal/packages"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -37,11 +38,42 @@ func HandleEvents() {
 		tag = "network"
 	}
 
+	events := CollectEvents(tag, limit)
+	cgiutil.WriteJSON(map[string][]LogEvent{"events": events})
+}
+
+// CollectEvents — чистое значение для dashboard.cgi и network_events.cgi.
+// tag=packages читает package_changes.log (п. 3.1/2.2 запроса NOC, вариант Б).
+func CollectEvents(tag string, limit int) []LogEvent {
+	if tag == "packages" {
+		return collectPackageEvents(limit)
+	}
 	events := parseLogFile(tag, limit)
 	if events == nil {
 		events = []LogEvent{}
 	}
-	cgiutil.WriteJSON(map[string][]LogEvent{"events": events})
+	return events
+}
+
+// collectPackageEvents маппит записи журнала пакетов в общий формат событий.
+// Level: success → INFO, прочее → WARN; Service всегда "packages".
+func collectPackageEvents(limit int) []LogEvent {
+	entries := packages.CollectPackageLog(limit)
+	events := make([]LogEvent, 0, len(entries))
+	for _, e := range entries {
+		level := "INFO"
+		if e.Status != "" && e.Status != "success" {
+			level = "WARN"
+		}
+		events = append(events, LogEvent{
+			Timestamp: e.Timestamp,
+			Level:     level,
+			Service:   "packages",
+			Event:     e.Action,
+			Details:   e.Package,
+		})
+	}
+	return events
 }
 
 func parseLogFile(tag string, limit int) []LogEvent {

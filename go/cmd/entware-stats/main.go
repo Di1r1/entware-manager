@@ -69,6 +69,8 @@ func main() {
 		stats.HandleLogout()
 	case "session":
 		stats.HandleSession()
+	case "dashboard":
+		stats.HandleDashboard()
 	default:
 		fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 		fmt.Printf("<p class='error'>unknown endpoint: %s</p>", ep)

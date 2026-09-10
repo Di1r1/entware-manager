@@ -21,6 +21,17 @@ func HandleVersion() {
 	os.Stdout.Write(data)
 }
 
+// CollectVersion — сырые байты version.json для dashboard.cgi.
+// Форма ровно та, что отдаёт version.cgi; при отсутствии/битом файле —
+// заглушка unknown (и валидный JSON, чтобы не ломать общий ответ).
+func CollectVersion() []byte {
+	data, err := os.ReadFile("/opt/web_entware/version.json")
+	if err != nil || !json.Valid(data) {
+		return []byte(`{"version":"unknown","date":"unknown"}`)
+	}
+	return data
+}
+
 func HandleHelp() {
 	version := "unknown"
 	dateStr := "?"

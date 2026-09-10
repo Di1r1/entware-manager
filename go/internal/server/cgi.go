@@ -41,7 +41,7 @@ var flatDispatch = map[string]string{
 	"auth_config": "stats", "auth_log": "stats", "tls_config": "stats", "crontab": "stats", "crontab_update": "stats",
 	"backup": "stats", "backup_restore": "stats", "update_check": "stats",
 	"update_run": "stats", "update_status": "stats", "prepare_offline": "stats",
-	"login": "stats", "logout": "stats", "session": "stats",
+	"login": "stats", "logout": "stats", "session": "stats", "dashboard": "stats",
 	// net
 	"network_interfaces": "net", "network_routes": "net", "network_arp": "net",
 	"network_status": "net", "network_stats": "net", "network_events": "net",

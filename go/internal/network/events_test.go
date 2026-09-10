@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"entware-manager/internal/packages"
 )
 
 func writeLogFile(t *testing.T, dir string, lines []string) {
@@ -54,6 +56,29 @@ func TestParseLogFile_ReturnsEvents(t *testing.T) {
 	}
 	if events[0].Level != "ERROR" {
 		t.Errorf("expected level ERROR, got '%s'", events[0].Level)
+	}
+}
+
+// tag=monitor работает тем же generic-фильтром [tag], что и network:
+// [monitor]-строки лежат в том же дневном логе (п. 3.1 запроса NOC).
+func TestParseLogFile_MonitorTag(t *testing.T) {
+	tmp := t.TempDir()
+	oldLogDir := LogDir
+	LogDir = tmp
+	defer func() { LogDir = oldLogDir }()
+
+	writeLogFile(t, tmp, []string{
+		`[2026-04-02 10:00:00] [INFO] [1.2.3.4] [1234] [network] dhcp renew (eth0)`,
+		`[2026-04-02 10:01:00] [INFO] [1.2.3.4] [1234] [monitor] watchdog started`,
+		`[2026-04-02 10:02:00] [WARN] [1.2.3.4] [1234] [monitor] high temp (58)`,
+	})
+
+	events := parseLogFile("monitor", 20)
+	if len(events) != 2 {
+		t.Fatalf("expected 2 monitor events, got %d", len(events))
+	}
+	if events[0].Level != "WARN" {
+		t.Errorf("expected newest level WARN, got '%s'", events[0].Level)
 	}
 }
 
@@ -161,4 +186,33 @@ func TestHandleEvents_OutputsJSON(t *testing.T) {
 
 func itoa(i int) string {
 	return string(rune('0' + i))
+}
+
+// tag=packages (п. 3.1/2.2 запроса NOC, вариант Б): читает package_changes.log,
+// Service всегда "packages", success → INFO, прочее → WARN, новые сверху.
+func TestCollectEvents_PackagesTag(t *testing.T) {
+	dir := t.TempDir()
+	old := packages.PackageChangesLog
+	packages.PackageChangesLog = filepath.Join(dir, "package_changes.log")
+	defer func() { packages.PackageChangesLog = old }()
+
+	data := "2026-08-28 19:44:20 | remove | 7-zip | success\n" +
+		"2026-08-28 19:46:12 | upgrade | curl | failed\n"
+	if err := os.WriteFile(packages.PackageChangesLog, []byte(data), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	events := CollectEvents("packages", 20)
+	if len(events) != 2 {
+		t.Fatalf("expected 2 package events, got %d", len(events))
+	}
+	if events[0].Service != "packages" || events[0].Event != "upgrade" || events[0].Details != "curl" {
+		t.Errorf("newest event broken: %+v", events[0])
+	}
+	if events[0].Level != "WARN" {
+		t.Errorf("expected WARN for failed, got '%s'", events[0].Level)
+	}
+	if events[1].Level != "INFO" || events[1].Event != "remove" {
+		t.Errorf("second event broken: %+v", events[1])
+	}
 }

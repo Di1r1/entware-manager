@@ -46,6 +46,44 @@ func HandleLog() {
 	if len(lines) > 200 {
 		start = len(lines) - 200
 	}
+	lines = lines[start:]
 
-	WriteText(strings.Join(lines[start:], "\n") + "\n")
+	// ?format=json для NOC (п. 2.4 запроса): [{timestamp, level, text}].
+	// Без параметра — plain-text как раньше.
+	if GetParam("format") == "json" {
+		cgiutil.WriteJSON(collectLogJSON(lines))
+		return
+	}
+
+	WriteText(strings.Join(lines, "\n") + "\n")
+}
+
+// logJSONEntry — одна строка лога для format=json.
+type logJSONEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	Text      string `json:"text"`
+}
+
+func collectLogJSON(lines []string) []logJSONEntry {
+	entries := make([]logJSONEntry, 0, len(lines))
+	for _, line := range lines {
+		t := strings.TrimSpace(line)
+		ts := ""
+		if idx1 := strings.Index(t, "["); idx1 >= 0 {
+			if idx2 := strings.Index(t[idx1:], "]"); idx2 >= 0 {
+				ts = strings.TrimSpace(t[idx1+1 : idx1+idx2])
+			}
+		}
+		level := "INFO"
+		lower := strings.ToLower(t)
+		for _, l := range []string{"error", "warn"} {
+			if strings.Contains(lower, "["+l+"]") {
+				level = strings.ToUpper(l)
+				break
+			}
+		}
+		entries = append(entries, logJSONEntry{Timestamp: ts, Level: level, Text: t})
+	}
+	return entries
 }

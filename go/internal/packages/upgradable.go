@@ -17,10 +17,15 @@ func Upgradable() {
 		return
 	}
 
+	cgiutil.WriteJSON(CollectUpgradable())
+}
+
+// CollectUpgradable — чистое значение для dashboard.cgi.
+// Форма ровно та, что отдаёт upgradable.cgi.
+func CollectUpgradable() []UpgradablePkg {
 	out, code := runOpkg("list-upgradable")
 	if code != 0 {
-		cgiutil.WriteJSON([]UpgradablePkg{})
-		return
+		return []UpgradablePkg{}
 	}
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
@@ -46,5 +51,5 @@ func Upgradable() {
 		}
 	}
 
-	cgiutil.WriteJSON(pkgs)
+	return pkgs
 }

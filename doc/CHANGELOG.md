@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+### Часть 3 NOC (дешёвое и полезное): tag=packages, format=json, tag=monitor
+
+- `network_events.cgi?tag=packages` (вариант Б из п. 2.2/3.1): читает хвост `package_changes.log`, маппит в общий формат событий (`service: "packages"`, `success → INFO`, прочее → WARN). NOC выкидывает `pkgLogCache`. Для тестов путь вынесен в `var PackageChangesLog`, тип записи экспортирован (`PkgLogEntry` + `CollectPackageLog`).
+- `monitor/log.cgi?format=json` (п. 2.4): JSON-массив `[{timestamp, level, text}]`, дефолт без параметра — plain-text как раньше (кап 200, новые сверху).
+- `tag=monitor` (п. 3.1): код не менялся — generic-фильтр `[tag]` уже покрывал; доказан юнит-тестом с фикстурой.
+- П. 3.3 (401 у dashboard): код не нужен — гейты обоих режимов уже закрывают `dashboard` без сессии; договорённость подтверждена.
+- Проверено: `make ci` PASS, новые юнит-тесты, живой локальный прогон (JSON/теги/plain-регрессия).
+
+### dashboard.cgi: пакетный эндпоинт для тика NOC (запрос DEVELOPER_REQUEST_BATCH.md)
+
+- Новый `GET /entware-cgi/dashboard.cgi` (группа `stats`): склейка 7 read-only подсборов в один JSON — `status`, `temperature`, `network_stats`, `update_check`, `upgradable`, `version`, `events` (`limit=30&tag=all` вшит внутрь). Все ключи всегда, провал подсбора — `null`. Тик NOC: ~7 fork+exec → 1.
+- Рефакторинг «выделить коллектор, хендлер — обёртка» без смены байта вывода: `monitor.CollectStatus/CollectTemperature`, `network.CollectNetworkStats/CollectEvents`, `packages.CollectUpgradable`, `stats.CollectVersion/CollectUpdateCheck(With)`. `wifi_temp` (RCI до 2×3с) в дашборд не входит — остаётся отдельным; `update_check` только через 60с-кэш, без живого fetch.
+- Маппинги в 3 местах: `cgi-bin/go.cgi` (stats-ветка) ↔ `go/internal/server/cgi.go` (`flatDispatch["dashboard"]="stats"`) ↔ `build-deploy.sh` (symlink). `classicWhitelist` не тронут (путь `/entware-cgi/`).
+- Проверено: `make ci` PASS (паритет 74 эндпоинта), юнит-тест формы (`dashboard_test.go`: 7 ключей + `null`-безопасность), живой локальный прогон через `entware-server` → 200, все ключи на месте.
+- Отклонение от G1 зафиксировано осознанно: `entware-stats` импортирует `monitor`/`network`/`packages` (циклов нет — проверено grep).
+
 ### Логи: активный таб чуть темнее
 
 - `style.css`: активный таб логов (`#tab-manager` / `#tab-system`) получил `filter: brightness(0.75)` — заметно темнее акцентного стиля. Фильтр вместо цвета: работает на любом пресете темы и дне/ночи.

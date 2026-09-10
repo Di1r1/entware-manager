@@ -50,22 +50,32 @@ func HandleUpdateCheck() {
 	}
 
 	current := getLocalVersion()
+	cgiutil.WriteJSON(CollectUpdateCheckWith(current))
+}
+
+// CollectUpdateCheck — чистое значение для dashboard.cgi (только кэш, без живого fetch).
+// Форма ровно та, что отдаёт update_check.cgi.
+func CollectUpdateCheck() UpdateCheckResponse {
+	return CollectUpdateCheckWith(getLocalVersion())
+}
+
+// CollectUpdateCheckWith — та же сборка при известном current (общая для хендлера и коллектора).
+func CollectUpdateCheckWith(current string) UpdateCheckResponse {
 	latest, err := getLatestVersionCached()
 	if err != nil {
-		cgiutil.WriteJSON(UpdateCheckResponse{
+		return UpdateCheckResponse{
 			Current:   current,
 			Latest:    current,
 			HasUpdate: false,
 			Error:     err.Error(),
-		})
-		return
+		}
 	}
 
-	cgiutil.WriteJSON(UpdateCheckResponse{
+	return UpdateCheckResponse{
 		Current:   current,
 		Latest:    latest,
 		HasUpdate: semverGreater(latest, current),
-	})
+	}
 }
 
 func HandleUpdateRun() {

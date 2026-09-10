@@ -47,7 +47,7 @@ type networkInfo struct {
 	Members string `json:"members"`
 }
 
-type statsResponse struct {
+type NetworkStatsResponse struct {
 	Interfaces []ifaceIP     `json:"interfaces"`
 	LAN        string        `json:"lan"`
 	WiFi       string        `json:"wifi"`
@@ -73,7 +73,21 @@ func HandleNetworkStats() {
 		}
 	}
 
-	resp := statsResponse{
+	resp := buildNetworkStats()
+
+	if body, err := json.Marshal(resp); err == nil {
+		cache.Put("network_stats", body)
+		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+		os.Stdout.Write(body)
+		return
+	}
+
+	cgiutil.WriteJSON(resp)
+}
+
+// buildNetworkStats — сборка ответа без кэша и HTTP (общая для хендлера и коллектора).
+func buildNetworkStats() NetworkStatsResponse {
+	resp := NetworkStatsResponse{
 		Interfaces: getInterfacesWithIPs(),
 		WiFiInfo:   getWiFiInfo(),
 		Ports:      getPhysicalPorts(),
@@ -84,14 +98,13 @@ func HandleNetworkStats() {
 	resp.WiFi = getWiFiStatus()
 	resp.WAN = getWANStatus()
 
-	if body, err := json.Marshal(resp); err == nil {
-		cache.Put("network_stats", body)
-		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
-		os.Stdout.Write(body)
-		return
-	}
+	return resp
+}
 
-	cgiutil.WriteJSON(resp)
+// CollectNetworkStats — чистое значение для dashboard.cgi.
+// Форма ровно та, что отдаёт network_stats.cgi (свежая сборка, без чтения/записи кэша).
+func CollectNetworkStats() NetworkStatsResponse {
+	return buildNetworkStats()
 }
 
 func getInterfacesWithIPs() []ifaceIP {
