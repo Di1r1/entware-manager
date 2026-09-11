@@ -2926,10 +2926,21 @@
       });
     });
   }
+  /* Контейнеры одного view: перенос между строками разрешён. */
+  function sameView(a, b) {
+    if (!a || !b) return false;
+    var va = a.closest ? a.closest('[id^="view-"]') : null;
+    var vb = b.closest ? b.closest('[id^="view-"]') : null;
+    if (!va && !vb) return true;
+    return !!va && va === vb;
+  }
   function cardOrderBoot() {
     cardBootIds();
     cardApplyOrder();
     var cards = document.querySelectorAll('.card');
+    Array.prototype.forEach.call(cards, function (el) {
+      if (el.parentElement) el.parentElement.dataset.dndcont = '1';
+    });
     Array.prototype.forEach.call(cards, function (el) {
       var head = el.querySelector(':scope > .panel-h, :scope > .c-head');
       if (!head || head.dataset.dnd) return;
@@ -2937,15 +2948,24 @@
       head.addEventListener('pointerdown', function (e) {
         if (e.button !== undefined && e.button !== 0) return;
         if (e.target.closest && e.target.closest('button,a,input,select,textarea,label')) return;
+        /* мышь: давим нативное выделение — иначе оно перехватывает drag;
+         * тач не трогаем (там скролл регулирует touch-action в CSS). */
+        if (!e.pointerType || e.pointerType === 'mouse') {
+          try { e.preventDefault(); } catch (err) {}
+        }
         var startX = e.clientX, startY = e.clientY;
         var dragging = false;
         var ph = null;
         var rect = null;
+        var srcCont = el.parentElement;
         var move = function (ev) {
           if (!dragging) {
             if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 6) return;
             dragging = true;
             rect = el.getBoundingClientRect();
+            /* захват указателя шапкой: move/up доходят даже за пределами
+             * окна — иначе отпуск кнопки теряется и карточка «зависает». */
+            try { head.setPointerCapture(e.pointerId); } catch (err) {}
             ph = document.createElement('div');
             ph.className = 'card-placeholder';
             ph.style.height = rect.height + 'px';
@@ -2963,10 +2983,20 @@
           el.style.top = (rect.top + ev.clientY - startY) + 'px';
           var under = document.elementFromPoint(ev.clientX, ev.clientY);
           var over = under && under.closest ? under.closest('.card') : null;
-          if (over && over !== el && over.parentElement === ph.parentElement && !over.classList.contains('card-placeholder')) {
+          if (over && over !== el && !over.classList.contains('card-placeholder')) {
+            var oc = over.parentElement, pc = ph.parentElement;
+            if (!oc || !pc) return;
+            /* чужой контейнер — только в том же view и только помеченный
+             * (статические карточки); динамические сетки не трогаем. */
+            if (oc !== pc && (!sameView(oc, pc) || !oc.dataset.dndcont || !pc.dataset.dndcont)) return;
             var r = over.getBoundingClientRect();
             var before = (ev.clientY - r.top) < r.height / 2;
-            over.parentElement.insertBefore(ph, before ? over : over.nextSibling);
+            oc.insertBefore(ph, before ? over : over.nextSibling);
+          } else if (!over && under && under.closest) {
+            /* пустое место контейнера — placeholder в конец (сброс туда же) */
+            var ec = under.closest('[data-dndcont]');
+            if (ec && sameView(ec, srcCont) && ph.parentElement !== ec) ec.appendChild(ph);
+            else if (ec && ph.parentElement === ec && ec.lastElementChild !== ph) ec.appendChild(ph);
           }
         };
         var up = function () {
@@ -2985,9 +3015,13 @@
           var cont = ph.parentElement;
           cont.insertBefore(el, ph);
           cont.removeChild(ph);
+          /* сохраняем оба затронутых контейнера (источник мог отдать карточку) */
           var map = cardOrderLoad();
-          var ids = contCards(cont).map(function (x) { return cardId(x); });
-          map[contKey(cont)] = ids;
+          [srcCont, cont].forEach(function (c) {
+            if (!c || !c.dataset.dndcont) return;
+            var ids = contCards(c).map(function (x) { return cardId(x); });
+            map[contKey(c)] = ids;
+          });
           cardOrderSave(map);
         };
         /* move/up — на document: без захвата указателя шапка перестаёт

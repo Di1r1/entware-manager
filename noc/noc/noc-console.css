@@ -388,10 +388,11 @@ body {
 .card-resizer.on::after { background: var(--accent); }
 
 /* перенос карточек: таскать за шапку (вид по умолчанию не меняет, только курсор) */
-.panel-h, .c-head { cursor: grab; }
+.panel-h, .c-head { cursor: grab; touch-action: pan-y; }
 body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
   cursor: grabbing;
   user-select: none;
+  touch-action: none;
 }
 .card-dragging {
   opacity: .9;
