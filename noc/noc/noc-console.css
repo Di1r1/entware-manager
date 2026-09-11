@@ -387,6 +387,25 @@ body {
 .card:hover .card-resizer::after,
 .card-resizer.on::after { background: var(--accent); }
 
+/* перенос карточек: таскать за шапку (вид по умолчанию не меняет, только курсор) */
+.panel-h, .c-head { cursor: grab; }
+body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
+  cursor: grabbing;
+  user-select: none;
+}
+.card-dragging {
+  opacity: .9;
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  pointer-events: none;
+}
+.card-placeholder {
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  box-sizing: border-box;
+}
+
 .c-head {
   font-weight: 700;
   margin-bottom: 10px;

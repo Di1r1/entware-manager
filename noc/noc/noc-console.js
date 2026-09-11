@@ -2808,9 +2808,17 @@
   function cardWSave(map) {
     try { localStorage.setItem(CARDW_KEY, JSON.stringify(map)); } catch (err) {}
   }
-  function cardId(el, idx) {
-    if (el.id) return 'id:' + el.id;
-    return 'ix:' + idx;
+  function cardId(el) {
+    return (el.dataset && el.dataset.nocid) || '';
+  }
+  /* Стабильные id: раздаются при каждой загрузке в порядке статического DOM
+   * (до применения порядка), поэтому переживают перестановки и перезагрузки. */
+  function cardBootIds() {
+    var n = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
+      if (el.id) el.dataset.nocid = 'id:' + el.id;
+      else el.dataset.nocid = 'ix:' + (n++);
+    });
   }
   function cardClamp(w, maxw) {
     w = Math.round(w);
@@ -2821,8 +2829,8 @@
   function cardResizeBoot() {
     var saved = cardWLoad();
     var cards = document.querySelectorAll('.card');
-    Array.prototype.forEach.call(cards, function (el, idx) {
-      var id = cardId(el, idx);
+    Array.prototype.forEach.call(cards, function (el) {
+      var id = cardId(el);
       var st = el.style;
       if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; }
       if (el.querySelector(':scope > .card-resizer')) return;
@@ -2865,9 +2873,133 @@
       });
     });
   }
+  /* ===== Card order: перенос за шапку, порядок запоминается ===== */
+  /* Только статические карточки (динамические сетки перерисовываются сами). */
+  var CORD_KEY = 'noc_cardorder';
+  function cardOrderLoad() {
+    try { return JSON.parse(localStorage.getItem(CORD_KEY) || '{}'); }
+    catch (err) { return {}; }
+  }
+  function cardOrderSave(map) {
+    try { localStorage.setItem(CORD_KEY, JSON.stringify(map)); } catch (err) {}
+  }
+  function contKey(cont) {
+    var anc = cont;
+    while (anc && anc !== document.body) {
+      if (anc.id) return 'id:' + anc.id;
+      anc = anc.parentElement;
+    }
+    var sibs = cont.parentElement ? cont.parentElement.children : [];
+    var ix = Array.prototype.indexOf.call(sibs, cont);
+    return 'ix:' + cont.tagName + ':' + ix;
+  }
+  function contCards(cont) {
+    var out = [];
+    Array.prototype.forEach.call(cont.children, function (x) {
+      if (x.classList && x.classList.contains('card')) out.push(x);
+    });
+    return out;
+  }
+  function cardApplyOrder() {
+    var saved = cardOrderLoad();
+    var keys = Object.keys(saved);
+    if (!keys.length) return;
+    var byId = {};
+    Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
+      byId[cardId(el)] = el;
+    });
+    Object.keys(saved).forEach(function (ck) {
+      var ids = saved[ck];
+      if (!ids || !ids.length) return;
+      var first = null;
+      ids.forEach(function (id) {
+        var el = byId[id];
+        if (el && el.parentElement && contKey(el.parentElement) === ck) {
+          if (!first) first = el;
+        }
+      });
+      if (!first) return;
+      var cont = first.parentElement;
+      ids.forEach(function (id) {
+        var el = byId[id];
+        if (el && el.parentElement === cont) cont.appendChild(el);
+      });
+    });
+  }
+  function cardOrderBoot() {
+    cardBootIds();
+    cardApplyOrder();
+    var cards = document.querySelectorAll('.card');
+    Array.prototype.forEach.call(cards, function (el) {
+      var head = el.querySelector(':scope > .panel-h, :scope > .c-head');
+      if (!head || head.dataset.dnd) return;
+      head.dataset.dnd = '1';
+      head.addEventListener('pointerdown', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        if (e.target.closest && e.target.closest('button,a,input,select,textarea,label')) return;
+        var startX = e.clientX, startY = e.clientY;
+        var dragging = false;
+        var ph = null;
+        var rect = null;
+        var move = function (ev) {
+          if (!dragging) {
+            if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 6) return;
+            dragging = true;
+            rect = el.getBoundingClientRect();
+            ph = document.createElement('div');
+            ph.className = 'card-placeholder';
+            ph.style.height = rect.height + 'px';
+            el.parentElement.insertBefore(ph, el);
+            el.classList.add('card-dragging');
+            document.body.classList.add('card-dragging');
+            el.style.position = 'fixed';
+            el.style.left = rect.left + 'px';
+            el.style.top = rect.top + 'px';
+            el.style.width = rect.width + 'px';
+            el.style.margin = '0';
+            el.style.zIndex = '50';
+          }
+          el.style.left = (rect.left + ev.clientX - startX) + 'px';
+          el.style.top = (rect.top + ev.clientY - startY) + 'px';
+          var under = document.elementFromPoint(ev.clientX, ev.clientY);
+          var over = under && under.closest ? under.closest('.card') : null;
+          if (over && over !== el && over.parentElement === ph.parentElement && !over.classList.contains('card-placeholder')) {
+            var r = over.getBoundingClientRect();
+            var before = (ev.clientY - r.top) < r.height / 2;
+            over.parentElement.insertBefore(ph, before ? over : over.nextSibling);
+          }
+        };
+        var up = function () {
+          head.removeEventListener('pointermove', move);
+          head.removeEventListener('pointerup', up);
+          head.removeEventListener('pointercancel', up);
+          if (!dragging) return;
+          el.classList.remove('card-dragging');
+          document.body.classList.remove('card-dragging');
+          el.style.position = '';
+          el.style.left = '';
+          el.style.top = '';
+          el.style.width = '';
+          el.style.margin = '';
+          el.style.zIndex = '';
+          var cont = ph.parentElement;
+          cont.insertBefore(el, ph);
+          cont.removeChild(ph);
+          var map = cardOrderLoad();
+          var ids = contCards(cont).map(function (x) { return cardId(x); });
+          map[contKey(cont)] = ids;
+          cardOrderSave(map);
+        };
+        head.addEventListener('pointermove', move);
+        head.addEventListener('pointerup', up);
+        head.addEventListener('pointercancel', up);
+      });
+    });
+  }
   var pkgSearch = document.getElementById('pkgSearch');
   if (pkgSearch) pkgSearch.oninput = function (e) { pkgState.q = e.target.value || ''; renderPkg(); };
   renderPkg();
+  cardOrderBoot();
   cardResizeBoot();
   (function evtBarBoot() {
     var cur = document.querySelector('#evtBar [data-f="' + evtFilter + '"]');

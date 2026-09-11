@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### NOC: перенос карточек за заголовок
+
+- JS `cardOrderBoot()` (+`cardBootIds` — стабильные id до применения порядка): pointerdown на `.panel-h`/`.c-head` (кнопки/ссылки/инпуты в шапке исключены), порог 6px, перетаскивание через fixed + placeholder, порядок по контейнерам в `localStorage.noc_cardorder`; только статические карточки (динамические сетки перерисовываются).
+- CSS: курсор grab/grabbing, `.card-dragging`, `.card-placeholder`; вид по умолчанию не меняется.
+- Рефактор: `cardId(el)` — из `dataset.nocid` (единый для resize и order).
+- Бамп: `noc-console.css?v=9→10`, `noc-console.js?v=21→22`.
+- Проверено: `node --check`, headless-тест apply/save порядка, деплой (md5, маркеры).
+
 ### NOC: изменение ширины карточек перетаскиванием
 
 - CSS: `.card{position:relative}` + `.card-resizer` (ручка 8px справа, акцент только при наведении — вид по умолчанию не меняется); JS `cardResizeBoot()` для всех `.card`: Pointer Events (capture), clamp 240px…ширина контейнера, память в `localStorage.noc_cardw` (id либо индекс), даблклик — сброс.
