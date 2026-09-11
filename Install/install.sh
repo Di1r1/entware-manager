@@ -930,6 +930,83 @@ else
 	ok "telegram_config.json уже есть"
 fi
 
+# ========== 5b. NOC (Entware Commander) — всегда вместе с панелью ==========
+# Исходники: $SELF_DIR/noc (зеркало /opt/entware-commander без симлинков
+# и конфигов). Код NOC перезаписываем целиком — пользовательских данных
+# внутри нет. Конфиги NOC (*_config.json) НИКОГДА не трогаем и не создаём:
+# их нет в поставке, демоны работают на дефолтах до первой настройки.
+step "Установка NOC (Entware Commander)"
+
+NOC_SRC="$SELF_DIR/noc"
+NOC_DIR="/opt/entware-commander"
+NOC_CONF_SRC="$NOC_SRC/lighttpd/91-entware-commander.conf"
+NOC_CONF_DST="/opt/etc/lighttpd/conf.d/91-entware-commander.conf"
+
+if [ ! -d "$NOC_SRC/noc" ]; then
+	warn "NOC: исходники $NOC_SRC/noc отсутствуют — панель ставится без NOC"
+else
+	mkdir -p "$NOC_DIR/noc/cgi-bin" "$NOC_DIR/lib" "$NOC_DIR/entware-manager/logger" 2>/dev/null || {
+		fail "NOC: не удалось создать $NOC_DIR"
+		exit 1
+	}
+
+	# Веб-консоль + локальный CGI (перезапись — код поставки)
+	cp -a "$NOC_SRC/noc/." "$NOC_DIR/noc/" 2>/dev/null || {
+		fail "NOC: не удалось скопировать веб-консоль"
+		exit 1
+	}
+	find "$NOC_DIR/noc" -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) -exec chmod 644 {} + 2>/dev/null || true
+	chmod 755 "$NOC_DIR/noc/cgi-bin/procs.cgi" 2>/dev/null || true
+
+	# Форк-утилиты NOC (свои копии, не дедуплицируем с панелью)
+	cp -a "$NOC_SRC/lib/common.sh" "$NOC_DIR/lib/common.sh" 2>/dev/null || true
+	cp -a "$NOC_SRC/network_watchdog.sh" "$NOC_DIR/network_watchdog.sh" 2>/dev/null || true
+	chmod 755 "$NOC_DIR/network_watchdog.sh" 2>/dev/null || true
+
+	# Мост в панель: Go-бинарники общие, статика — симлинки (как было вручную)
+	ln -sfn /opt/web_entware/cgi-bin/go "$NOC_DIR/cgi-bin/go" 2>/dev/null || true
+	ln -sfn /opt/web_entware/icons.svg "$NOC_DIR/entware-manager/icons.svg" 2>/dev/null || true
+	ln -sfn /opt/web_entware/theme.js "$NOC_DIR/entware-manager/theme.js" 2>/dev/null || true
+	ln -sfn /opt/web_entware/logger/style.css "$NOC_DIR/entware-manager/logger/style.css" 2>/dev/null || true
+	ok "NOC: файлы в $NOC_DIR (веб-консоль + мост в панель)"
+
+	# Lighttpd-конф NOC (алиас /entware-commander/, прокси /entware-cgi/ → 8087,
+	# локальный procs.cgi). Чужие conf.d не трогаем — только свой файл.
+	if [ -f "$NOC_CONF_SRC" ]; then
+		mkdir -p "$(dirname "$NOC_CONF_DST")" 2>/dev/null
+		cp -a "$NOC_CONF_SRC" "$NOC_CONF_DST" 2>/dev/null && ok "NOC: 91-entware-commander.conf установлен"
+	fi
+
+	# Валидация + мягкая перезагрузка lighttpd (держит 8086 с NOC)
+	if command -v lighttpd >/dev/null 2>&1; then
+		if [ -n "${LIGHTTPD_CONF:-}" ] && [ -f "$LIGHTTPD_CONF" ]; then
+			if lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
+				if [ -x /opt/etc/init.d/S80lighttpd ]; then
+					/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1 && ok "NOC: lighttpd перезапущен (8086)" || warn "NOC: не удалось перезапустить lighttpd — перезапусти вручную"
+				else
+					p=$(lighttpd_pid 2>/dev/null | head -1)
+					if [ -n "$p" ]; then
+						kill -HUP "$p" 2>/dev/null && ok "NOC: lighttpd перечитал конфиг (HUP)" || warn "NOC: HUP не удался — перезапусти lighttpd вручную"
+					else
+						warn "NOC: lighttpd не запущен — запусти вручную (S80lighttpd start)"
+					fi
+				fi
+			else
+				warn "NOC: lighttpd -t не прошёл — конфиг 91 проверь вручную"
+			fi
+		fi
+	fi
+
+	# Проверка доступности NOC (мягкая — не валим установку)
+	if command -v curl >/dev/null 2>&1; then
+		if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8086/entware-commander/noc/ 2>/dev/null)" = "200" ]; then
+			ok "NOC: отвечает на 8086 (200)"
+		else
+			warn "NOC: нет 200 на 8086/entware-commander/noc/ — проверь после перезапуска lighttpd"
+		fi
+	fi
+fi
+
 # ========== 6. ОПРЕДЕЛЕНИЕ АРХИТЕКТУРЫ ==========
 step "Настройка архитектуры"
 

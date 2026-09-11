@@ -50,6 +50,8 @@
 - `/tmp/entware/logs/` — текущие логи действий (volatile).
 - `/opt/var/log/entware/` — архив логов после ротации.
 - `/tmp/temp_history/` — история температур за последние 7 дней.
+- `/opt/entware-commander/` — NOC-консоль (исходники: `noc/` в корне проекта).
+- `/opt/entware-commander/noc/` — веб-консоль NOC (8086, алиас `/entware-commander/`).
 
 ## 4. Потоки данных
 
@@ -84,6 +86,13 @@
 2. История: POST `temp_history.cgi`/`wifi_temp_history.cgi`.
 3. Получение истории: GET `action=history`.
 4. UI строит графики на Canvas.
+
+### 4.6. NOC-консоль (порт 8086)
+
+1. Общий lighttpd (порт-хранитель 8086) отдаёт `/entware-commander/` из `/opt/entware-commander/`.
+2. API панели NOC получает same-origin через прокси `/entware-cgi/ → 127.0.0.1:8087` (пакетный `dashboard.cgi` — один тик вместо семи).
+3. Топ процессов — локальный `noc/cgi-bin/procs.cgi` (shell, без авторизации).
+4. Go-бинарники общие с панелью (`cgi-bin/go` — симлинк), статика панели — симлинки `entware-manager/`.
 
 ## 5. Принципы реализации
 

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ru" data-console="noc-dark" data-accent="violet">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entware Manager — NOC Console (бета)</title>
+<link rel="stylesheet" href="/entware-commander/noc/noc-console.css?v=7">
+</head>
+<body>
+<div class="noc">
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="tb-left">
+      <button class="rail-pin" id="railPin" title="Закрепить меню (Alt+M)">&#9776;</button>
+      <span class="tb-logo" title="Entware Manager">▣</span>
+      <span class="tb-title">Entware Manager <em class="tb-mock">бета</em></span>
+      <span class="tb-sep">|</span>
+      <span class="tb-host mono" id="tbHost" title="Хост">keenetic-ultra · 192.168.3.1</span>
+      <span class="tb-uptime mono" id="tbUptime" title="Аптайм">up 12д 04:31</span>
+    </div>
+    <div class="tb-right">
+      <span class="meter" title="CPU"><label>CPU</label><span class="bar"><i id="cpuBar" style="width:23%"></i></span><b class="mono" id="cpuVal">23%</b></span>
+      <span class="meter" title="RAM"><label>RAM</label><span class="bar"><i id="ramBar" style="width:61%"></i></span><b class="mono" id="ramVal">61%</b></span>
+      <span class="meter" title="Температура"><label>°C</label><b class="mono" id="tempVal">58°</b></span>
+      <span class="ver" id="verBadge"><span>v1.16.28</span><i class="upd" id="verUpd">→ v1.17.0</i></span>
+      <span class="dots" id="accentDots" title="Акцент"></span>
+      <span class="dots base" id="baseDots" title="База консоли"></span>
+      <button class="tb-btn" id="densityBtn" title="Плотность: комфорт / компакт">☰</button>
+      <button class="tb-btn kbd-btn" id="paletteBtn" title="Палитра команд">Ctrl+K</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- ===== RAIL ===== -->
+    <nav class="rail" id="rail">
+      <div class="rail-group"><span class="rg-title">Обзор</span>
+        <button class="ri active" data-tab="stats" data-name="Статистика"><i>▤</i><span>Статистика</span></button>
+      </div>
+      <div class="rail-group"><span class="rg-title">Система</span>
+        <button class="ri" data-tab="packages" data-name="Пакеты"><i>▦</i><span>Пакеты</span></button>
+        <button class="ri" data-tab="processes" data-name="Процессы"><i>≡</i><span>Процессы</span></button>
+        <button class="ri" data-tab="terminal" data-name="Терминал"><i>&gt;_</i><span>Терминал</span></button>
+        <button class="ri" data-tab="system-services" data-name="Службы и Cron"><i>⚙</i><span>Службы и Cron</span></button>
+      </div>
+      <div class="rail-group"><span class="rg-title">Сеть</span>
+        <button class="ri" data-tab="network" data-name="Сеть"><i>⋈</i><span>Сеть</span></button>
+        <button class="ri" data-tab="bridge" data-name="Модули"><i>▣</i><span>Модули</span></button>
+        <button class="ri" data-tab="smart" data-name="SMART"><i>◉</i><span>SMART</span></button>
+        <button class="ri" data-tab="rdp" data-name="RDP"><i>⧉</i><span>RDP</span></button>
+      </div>
+      <div class="rail-group"><span class="rg-title">Администрирование</span>
+        <button class="ri" data-tab="settings" data-name="Настройки"><i>✦</i><span>Настройки</span></button>
+        <button class="ri" data-tab="monitor" data-name="Защита"><i>⛨</i><span>Защита</span></button>
+        <button class="ri" data-tab="help" data-name="Справка"><i>?</i><span>Справка</span></button>
+        <button class="ri" data-tab="logs" data-name="Логи"><i>☰</i><span>Логи</span></button>
+      </div>
+      <div class="rail-foot mono" id="railFoot">13 вкладок · NOC v0.4 · 06.09</div>
+    </nav>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+      <div class="crumbs mono" id="crumbs">обзор / статистика</div>
+
+      <!-- ===== VIEW: STATS ===== -->
+      <div id="view-stats">
+        <div class="hero">
+          <div>
+            <h2>Статистика <span class="health-pill ok"><i class="live-dot"></i>healthy</span></h2>
+            <span class="mut mono" id="heroSub">keenetic-ultra · aarch64 · 4.9.119 · up 12д 04:31</span>
+          </div>
+          <span class="t-right">
+            <label class="chk mono" title="Показать блок модулей"><input type="checkbox" id="dashModsToggle" checked> Модули</label>
+            <button class="btn ghost" id="dashRefresh">↻ Обновить</button>
+          </span>
+        </div>
+
+        <!-- Unified resource strip -->
+        <div class="res-strip card" id="kpiRow">
+          <div class="res-cell" data-metric="cpu">
+            <div class="res-h"><label>CPU</label><span class="mut">4 cores</span></div>
+            <div class="res-body">
+              <div class="res-val mono"><b id="kpiCpu">23</b><small>%</small></div>
+              <svg class="spark" id="sparkCpu" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+            <div class="res-f mono mut">load 0.41 · 0.38 · 0.32</div>
+          </div>
+          <div class="res-cell" data-metric="ram">
+            <div class="res-h"><label>Memory</label><span class="mut">1015 МБ</span></div>
+            <div class="res-body">
+              <div class="res-val mono"><b id="kpiRam">61</b><small>%</small></div>
+              <svg class="spark" id="sparkRam" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+            <div class="res-f mono mut">used 622 · free 393 · swap 0</div>
+          </div>
+          <div class="res-cell" data-metric="disk">
+            <div class="res-h"><label>Storage</label><span class="mut">/opt</span></div>
+            <div class="res-body">
+              <div class="res-val mono"><b id="kpiDisk">38</b><small>%</small></div>
+              <svg class="spark" id="sparkDisk" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+            <div class="res-f mono mut">21.4 / 56.7 ГБ · sda1</div>
+          </div>
+          <div class="res-cell" data-metric="wan">
+            <div class="res-h"><label>WAN</label><span class="ok-t">up</span></div>
+            <div class="res-body">
+              <div class="res-val mono"><b id="kpiWan">94</b><small> Мбит</small></div>
+              <svg class="spark spark-wan" id="sparkWan" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+            <div class="res-f mono mut">↓ 12.4M · ↑ 3.1M · ppp0</div>
+          </div>
+          <div class="res-cell" data-metric="temp">
+            <div class="res-h"><label>Temp</label><span class="mut">sensors</span></div>
+            <div class="res-body">
+              <div class="res-val mono"><b id="kpiTemp">58</b><small>°</small></div>
+              <svg class="spark" id="sparkTemp" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+            <div class="res-f mono mut">CPU 58° · WiFi 61° / 59°</div>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="statsCols">
+          <div class="stats-main">
+
+            <!-- Twin tops: CPU + Memory -->
+            <div class="panel-row">
+              <div class="card panel panel-compact">
+                <div class="panel-h">
+                  <h3>Топ по CPU</h3>
+                  <span class="mut mono">7 · 7 с</span>
+                </div>
+                <table class="tbl mono tight compact-proc">
+                  <thead><tr><th class="l">PID</th><th class="l">Command</th><th>CPU</th><th>RSS</th><th>TIME+</th></tr></thead>
+                  <tbody id="topCpuBody">
+                    <tr><td class="l mut">8162</td><td class="l">xray run -c /opt/etc/xray/…</td><td>8.2%</td><td>41M</td><td>6д 02:11</td></tr>
+                    <tr><td class="l mut">8169</td><td class="l">AdGuardHome -c /opt/etc/…</td><td>3.7%</td><td>66M</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">9012</td><td class="l">entware-server :8087</td><td>1.1%</td><td>7M</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">9089</td><td class="l">ttyd -p 9089 /opt/bin/bash</td><td>0.4%</td><td>5M</td><td>04:51</td></tr>
+                    <tr><td class="l mut">7201</td><td class="l">lighttpd -f /opt/etc/lighttpd…</td><td>0.3%</td><td>4M</td><td>12д 04:30</td></tr>
+                    <tr><td class="l mut">6110</td><td class="l">dnsmasq -C /opt/etc/dnsmasq…</td><td>0.2%</td><td>2M</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">5304</td><td class="l">dropbear</td><td>0.1%</td><td>1M</td><td>12д+</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card panel panel-compact">
+                <div class="panel-h">
+                  <h3>Топ по памяти</h3>
+                  <span class="mut mono">7 · RSS · 7 с</span>
+                </div>
+                <table class="tbl mono tight compact-proc">
+                  <thead><tr><th class="l">PID</th><th class="l">Command</th><th>RSS</th><th>CPU</th><th>TIME+</th></tr></thead>
+                  <tbody id="topMemBody">
+                    <tr><td class="l mut">8169</td><td class="l">AdGuardHome -c /opt/etc/…</td><td>66M</td><td>3.7%</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">8840</td><td class="l">syncthing serve --no-…</td><td>52M</td><td>2.4%</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">8162</td><td class="l">xray run -c /opt/etc/xray/…</td><td>41M</td><td>8.2%</td><td>6д 02:11</td></tr>
+                    <tr><td class="l mut">9104</td><td class="l">transmission-daemon</td><td>18M</td><td>0.8%</td><td>3д 11:02</td></tr>
+                    <tr><td class="l mut">9012</td><td class="l">entware-server :8087</td><td>7M</td><td>1.1%</td><td>12д 04:31</td></tr>
+                    <tr><td class="l mut">9089</td><td class="l">ttyd -p 9089 /opt/bin/bash</td><td>5M</td><td>0.4%</td><td>04:51</td></tr>
+                    <tr><td class="l mut">7201</td><td class="l">lighttpd -f /opt/etc/lighttpd…</td><td>4M</td><td>0.3%</td><td>12д 04:30</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Services — horizontal under tops -->
+            <div class="card panel" id="statModCol">
+              <div class="panel-h">
+                <h3>Модули</h3>
+                <span class="mut mono" id="statModCnt">5 / 6</span>
+                <button class="btn sm ghost" id="statModsManage" style="margin-left:auto">Управление →</button>
+              </div>
+              <div id="statMods"></div>
+            </div>
+
+            <!-- Network interfaces + volumes -->
+            <div class="panel-row">
+              <div class="card panel">
+                <div class="panel-h">
+                  <h3>Интерфейсы</h3>
+                  <span class="mut mono" id="ifCnt">4 up</span>
+                </div>
+                <table class="tbl mono tight">
+                  <thead><tr><th class="l">IF</th><th class="l">State</th><th class="l">Address</th><th>RX</th><th>TX</th></tr></thead>
+                  <tbody id="ifBody">
+                    <tr><td class="l">br0</td><td class="ok-t">UP</td><td class="l mut">192.168.3.1/24</td><td>—</td><td>—</td></tr>
+                    <tr><td class="l">ppp0</td><td class="ok-t">UP</td><td class="l mut">95.105.×.×</td><td>88.1M</td><td>12.4M</td></tr>
+                    <tr><td class="l">ra0</td><td class="ok-t">UP</td><td class="l mut">2.4 GHz</td><td>88.1M</td><td>12.4M</td></tr>
+                    <tr><td class="l">rai0</td><td class="ok-t">UP</td><td class="l mut">5 GHz</td><td>21.7M</td><td>3.1M</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card panel">
+                <div class="panel-h">
+                  <h3>Тома</h3>
+                  <span class="mut mono">3 mount</span>
+                </div>
+                <div class="vol-list mono" id="volList">
+                  <div class="vol">
+                    <div class="vol-h"><b>/opt</b><span>21.4 / 56.7 ГБ</span><span class="mut">38%</span></div>
+                    <div class="prog"><i style="width:38%"></i></div>
+                    <div class="vol-f mut">sda1 · Flash · ext4</div>
+                  </div>
+                  <div class="vol">
+                    <div class="vol-h"><b>/tmp</b><span>135 / 496 М</span><span class="mut">27%</span></div>
+                    <div class="prog"><i style="width:27%"></i></div>
+                    <div class="vol-f mut">tmpfs · RAM <button class="btn sm ghost" onclick="toast('Очистка tmpfs — заглушка')">Очистить</button></div>
+                  </div>
+                  <div class="vol">
+                    <div class="vol-h"><b>rootfs</b><span>2.1 ГБ</span><span class="mut">29%</span></div>
+                    <div class="prog"><i style="width:29%"></i></div>
+                    <div class="vol-f mut">overlay · ro</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Updates + alerts strip -->
+            <div class="panel-row">
+              <div class="card panel">
+                <div class="panel-h">
+                  <h3>Обновления пакетов</h3>
+                  <span class="badge warn" id="updBadge">3</span>
+                  <button class="btn sm ghost" id="kpiPkgGo" style="margin-left:auto">Все пакеты →</button>
+                </div>
+                <div class="upd-list mono" id="updList">
+                  <div class="upd"><b>htop</b><span class="mut">3.3.0-1</span><span class="arrow">→</span><span class="warn-t">3.4.1-1</span></div>
+                  <div class="upd"><b>jq</b><span class="mut">1.7.1-1</span><span class="arrow">→</span><span class="warn-t">1.8.0-1</span></div>
+                  <div class="upd"><b>ttyd</b><span class="mut">1.7.7-1</span><span class="arrow">→</span><span class="warn-t">1.8.2-1</span></div>
+                </div>
+              </div>
+            </div>
+
+              <div class="seg mono evt-bar" id="evtBar">
+                <button class="sg active" data-f="all">Все</button><button class="sg" data-f="net">Сеть</button><button class="sg" data-f="svc">Службы</button><button class="sg" data-f="mon">Защита</button><button class="sg" data-f="auth">Входы</button><button class="sg" data-f="pkg">Пакеты</button>
+              </div>
+              <div class="card panel">
+                <div class="panel-h">
+                  <h3>События</h3>
+                  <span class="mut mono">журнал</span>
+                </div>
+                <div class="evt-list mono" id="evtList">
+                  <div class="evt"><span class="ts">08:14</span><span class="badge warn">WARN</span><span>opkg: 3 upgrades available</span></div>
+                  <div class="evt"><span class="ts">08:12</span><span class="badge ok">OK</span><span>watchdog: check ok</span></div>
+                  <div class="evt"><span class="ts">07:58</span><span class="badge warn">WARN</span><span>monitor: xray cpu 91% (1/3)</span></div>
+                  <div class="evt"><span class="ts">06:20</span><span class="badge ok">OK</span><span>entware-server restarted</span></div>
+                </div>
+              </div>
+
+          </div><!-- /stats-main -->
+        </div>
+      </div><!-- /view-stats -->
+
+      <!-- ===== VIEW: MODULES ===== -->
+      <div id="view-modules" hidden>
+        <div class="hero">
+          <div><h2>Модули <span class="verdict ok-t">5 из 6 включены</span></h2><span class="mut">подключение и управление · отображение — на Статистике</span></div>
+          <span class="t-right"><button class="btn ghost" id="scanBtn">Сканировать</button><button class="btn" id="newModBtn">+ Новый модуль</button></span>
+        </div>
+        <div class="toolbar">
+          <input class="t-search mono" id="modSearch" placeholder="Фильтр модулей…" autocomplete="off">
+          <span class="mut" id="modCount">6 модулей · 5 вкл</span>
+        </div>
+
+        <div class="scan card" id="scanPanel" hidden>
+          <div class="c-head">Сканер <span class="mut">порты · процессы · сервисы (заглушка)</span></div>
+          <div class="scan-tabs mono">
+            <button class="st active">порты <b>8</b></button>
+            <button class="st">процессы <b>5</b></button>
+            <button class="st">сервисы <b>6</b></button>
+          </div>
+          <table class="tbl mono">
+            <thead><tr><th>Порт</th><th>Сервис</th><th>Адрес</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>8080</td><td class="l">AdGuard Home</td><td class="l">192.168.3.1:8080</td><td><button class="btn sm">Открыть</button></td></tr>
+              <tr><td>9091</td><td class="l">Transmission</td><td class="l">192.168.3.1:9091</td><td><button class="btn sm">Открыть</button></td></tr>
+              <tr><td>8384</td><td class="l">Syncthing</td><td class="l">192.168.3.1:8384</td><td><button class="btn sm">Открыть</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <section class="grid mods" id="modGrid"></section>
+
+        <div class="toolbar" style="margin-top:12px"><span class="t-right" style="margin-left:0"><button class="btn ghost" onclick="toast('Пересканировать — заглушка')">Пересканировать</button><button class="btn ghost" onclick="toast('Редактор манифестов (ID + JSON + сканер: сервис/процессы/модули) — заглушка')">Манифесты</button></span></div>
+
+        <section class="grid two">
+          <div class="card"><div class="c-head">AdGuard Home <span class="ok-t">● защита включена</span></div>
+            <div class="tiles mono" style="grid-template-columns:repeat(4,1fr)"><div class="tile"><label>Версия</label><b>v0.107.65</b></div><div class="tile"><label>Запросов</label><b>12 408</b></div><div class="tile"><label>Заблокировано</label><b>18%</b></div><div class="tile"><label>DNS</label><b>4 мс</b></div></div>
+            <div class="mod-detail mono">Топ клиенты: phone 4 102 · laptop 3 377 · Топ блокировок: metrics.× 412</div>
+            <span><button class="btn sm ghost">Выключить защиту</button> <button class="btn sm ghost">Обновить</button></span></div>
+          <div class="card"><div class="c-head">Авторизация сервиса <span class="badge warn">нужна авторизация</span></div>
+            <div class="frm mono"><label>Логин сервиса<input value="admin"></label><label>Пароль сервиса<input type="password" value="********"></label><label>Пароль панели<input type="password" placeholder="для сохранения"></label>
+            <span><button class="btn sm">Сохранить</button> <button class="btn sm ghost">Сбросить авторизацию</button></span></div></div>
+        </section>
+      </div><!-- /view-modules -->
+
+      <!-- ===== VIEW: PACKAGES ===== -->
+      <div id="view-packages" hidden>
+        <div class="hero">
+          <div><h2>Пакеты <span class="verdict warn-t" id="pkgVerdictFull">3 обновления доступны</span></h2><span class="mut" id="pkgSubFull">184 уст. · 2 410 доступно · списки от сегодня 06:00</span></div>
+          <span class="t-right"><button class="btn ghost" id="pkgUpdateLists">Обновить списки</button><button class="btn" id="pkgUpgradeAll">Обновить всё</button><button class="btn ghost" id="pkgJournalBtn">Журнал</button></span>
+        </div>
+        <div class="toolbar">
+          <span class="seg mono" id="pkgSeg"><button class="sg active" data-pf="all">Все</button><button class="sg" data-pf="installed">Установленные</button><button class="sg" data-pf="upgrades">Обновления</button><button class="sg" data-pf="available">Доступные</button></span>
+          <input class="t-search mono" id="pkgSearch" placeholder="Поиск по названию…" autocomplete="off">
+        </div>
+        <div class="card mut mono" id="updateResult" style="margin-bottom:12px">Вывод операций появится здесь…</div>
+        <div class="card mono" id="pkgJournalFull" hidden style="margin-bottom:12px"><div class="c-head">Журнал установок и удалений</div><div id="pkgJournalFullBody" class="mut">Загрузка…</div></div>
+        <div class="card"><div class="mut" style="margin-bottom:6px">Клик по строке — информация о пакете. Сортировка — кликом по шапке.</div><table class="tbl mono">
+          <thead><tr><th data-ps="package">Пакет</th><th data-ps="version">Версия</th><th data-ps="date">Установлен</th><th>Статус</th><th>Действие</th></tr></thead>
+          <tbody id="pkgBody">
+            <tr onclick="toast('Модалка пакета htop — заглушка')"><td class="l">htop</td><td>3.3.0-1 → 3.4.1-1</td><td>2026-05-11</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
+            <tr onclick="toast('Модалка пакета jq — заглушка')"><td class="l">jq</td><td>1.7.1-1 → 1.8.0-1</td><td>2026-04-02</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
+            <tr onclick="toast('Модалка пакета ttyd — заглушка')"><td class="l">ttyd</td><td>1.7.7-1 → 1.8.2-1</td><td>2026-06-19</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
+            <tr><td class="l">bash</td><td>5.3-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost">Удалить</button></td></tr>
+            <tr><td class="l">lighttpd</td><td>1.4.79-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost">Удалить</button></td></tr>
+            <tr><td class="l">wireguard-tools</td><td>1.0.20210914-1</td><td>—</td><td><span class="badge">доступен</span></td><td><button class="btn sm">Установить</button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- ===== VIEW: PROCESSES ===== -->
+      <div id="view-processes" hidden>
+        <div class="hero">
+          <div><h2>Процессы <span class="verdict ok-t" id="procVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">сортировка по CPU · клик по команде — полный текст</span></div>
+          <span class="t-right"><button class="btn ghost" id="procRefreshBtn">Обновить</button></span>
+        </div>
+        <div class="card"><table class="tbl mono" id="procTable">
+          <thead><tr><th style="width:70px">PID</th><th class="l">CMD</th><th style="width:70px">%CPU</th><th style="width:80px">RSS</th><th style="width:90px">TIME+</th><th style="width:90px"></th></tr></thead>
+          <tbody id="procBody">
+            <tr><td colspan="6" class="mut">Загрузка…</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- ===== VIEW: TERMINAL ===== -->
+      <div id="view-terminal" hidden>
+        <div class="hero">
+          <div><h2>Терминал <span class="verdict ok-t" id="termVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">если не открывается — Настройки → Терминал</span></div>
+          <span class="t-right"><a class="btn ghost" id="termOpenLink" href="/terminal/" target="_blank" rel="noopener noreferrer" hidden>Открыть в новой вкладке</a><button class="btn ghost" id="termRefreshBtn">Обновить</button></span>
+        </div>
+        <div class="card" style="margin-bottom:12px"><div class="c-head">Статус ttyd <span class="mut">опрос каждые 10 с</span></div>
+        <table class="tbl mono"><thead><tr><th>Сервис</th><th>Порт</th><th>Состояние</th><th>PID</th><th>Режим</th></tr></thead><tbody id="termBody">
+          <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+        </tbody></table></div>
+        <div class="toolbar"><span class="mut">Режим:</span>
+          <span class="seg mono" id="termModeSeg"><button class="sg" data-tm="entware">Entware</button><button class="sg" data-tm="telnet">Telnet</button></span>
+        </div>
+        <div class="card" id="termFrameWrap"><div class="mut mono">Загрузка…</div></div>
+      </div>
+
+      <!-- ===== VIEW: SERVICES ===== -->
+      <div id="view-services" hidden>
+        <div class="hero">
+          <div><h2>Службы и Cron <span class="verdict ok-t" id="svcVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">init.d · автозапуск · события каждые 10 с</span></div>
+          <span class="t-right"><button class="btn ghost" id="svcRefreshBtn">Обновить</button></span>
+        </div>
+        <section class="grid two">
+        <div class="card"><div class="c-head">Мониторинг (watchdog) <span class="badge ok" id="svcWdBadge">…</span></div>
+          <div class="toolbar"><span class="t-right" style="margin-left:0"><button class="btn sm" id="svcWdStart">Запустить</button><button class="btn sm ghost" id="svcWdStop">Остановить</button><button class="btn sm ghost" id="svcWdRestart">Перезапустить</button></span></div>
+          <div class="frm mono">
+            <label class="chk"><input type="checkbox" id="svcAuto"> Автозапуск при загрузке</label>
+            <label class="chk"><input type="checkbox" id="svcCustom"> Кастомный список процессов</label>
+            <label id="svcWatchBox" hidden>Список процессов через запятую<input value="" id="svcWatchList"></label>
+            <label class="chk"><input type="checkbox" id="svcExcMode"> Исключения</label>
+            <label id="svcExcBox" hidden>Список исключений<input value="" id="svcExcList"></label>
+            <label class="chk"><input type="checkbox" id="svcAutoRestart"> Автоперезапуск при падении</label>
+            <span class="mut" id="svcWdMsg"></span>
+          </div>
+        </div>
+        <div class="card"><div class="c-head">Последние события <span class="mut">автообновление 10 с</span></div>
+          <table class="tbl mono"><tbody id="svcEventsBody">
+            <tr><td class="mut">Загрузка…</td></tr>
+          </tbody></table>
+        </div>
+        </section>
+        <div class="card"><div class="c-head">Службы <span class="mut">init.d · клик по PID — убить процесс</span></div>
+        <table class="tbl mono"><thead><tr><th>Служба</th><th>Статус</th><th>PID</th><th>Авто</th><th>Действия</th></tr></thead><tbody id="svcBody">
+          <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+        </tbody></table></div>
+        <section class="grid two">
+        <div class="card" style="margin-top:12px"><div class="c-head">Системный crontab</div>
+          <div class="frm mono"><textarea class="ta" rows="3" id="cronSysTa"></textarea>
+          <span><button class="btn sm" id="cronSysSave">Сохранить системный crontab</button> <span class="mut" id="cronSysMsg"></span></span></div></div>
+        <div class="card" style="margin-top:12px"><div class="c-head">Entware crontab</div>
+          <div class="frm mono"><textarea class="ta" rows="3" id="cronOptTa"></textarea>
+          <span><button class="btn sm" id="cronOptSave">Сохранить Entware crontab</button> <span class="mut" id="cronOptMsg"></span></span></div></div>
+        </section>
+      </div>
+
+      <!-- ===== VIEW: NETWORK ===== -->
+      <div id="view-network" hidden>
+        <div class="card" style="margin-bottom:12px"><div class="c-head">Демон сети <span class="badge ok" id="netBadge">…</span></div>
+          <div class="toolbar"><span class="t-right" style="margin-left:0"><button class="btn sm" id="netStartBtn">Запустить</button><button class="btn sm ghost" id="netStopBtn">Остановить</button><button class="btn sm ghost" id="netRestartBtn">Перезапустить</button></span>
+          <label class="chk mono"><input type="checkbox" id="netAuto"> Автозапуск при загрузке</label>
+          <label class="chk mono"><input type="checkbox" id="netHideUnknown"> Скрыть неизвестные интерфейсы</label>
+          <span class="mut" id="netMsg"></span></div>
+        </div>
+        <div data-sub="net">
+          <div class="toolbar"><span class="seg mono">
+            <button class="sg active" data-sp="if">Интерфейсы</button><button class="sg" data-sp="rt">Маршруты</button><button class="sg" data-sp="arp">ARP</button><button class="sg" data-sp="wf">Wi-Fi</button><button class="sg" data-sp="ev">События</button></span>
+            <span class="t-right"><button class="btn sm ghost" id="netRefreshBtn">Обновить</button></span>
+          </div>
+          <div class="card" data-pp="if"><table class="tbl mono"><thead><tr><th>Интерфейс</th><th>Состояние</th><th>IP адрес</th><th>MAC</th><th>Тип</th><th>Скорость</th></tr></thead><tbody id="netIfBody">
+            <tr><td colspan="6" class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+          <div class="card" data-pp="rt" hidden><table class="tbl mono"><thead><tr><th>Назначение</th><th>Шлюз</th><th>Интерфейс</th><th>Метрика</th></tr></thead><tbody id="netRtBody">
+            <tr><td colspan="4" class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+          <div class="card" data-pp="arp" hidden><table class="tbl mono"><thead><tr><th>IP адрес</th><th>Имя</th><th>MAC адрес</th><th>Интерфейс</th><th>Состояние</th></tr></thead><tbody id="netArpBody">
+            <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+          <div class="card" data-pp="wf" hidden><table class="tbl mono"><thead><tr><th>Имя</th><th>IP адрес</th><th>MAC адрес</th><th>Сигнал</th><th>Стандарт</th><th>Мбит/с</th><th>Сегмент</th></tr></thead><tbody id="netWfBody">
+            <tr><td colspan="7" class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+          <div class="card" data-pp="ev" hidden><table class="tbl mono"><tbody id="netEvBody">
+            <tr><td class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: SMART ===== -->
+      <div id="view-smart" hidden>
+        <div class="hero">
+          <div><h2>SMART <span class="verdict warn-t">1 диск с предупреждением</span></h2><span class="mut">2 диска · sda PASSED · sdb проверить</span></div>
+          <span class="t-right"><button class="btn ghost" onclick="toast('Обновить — заглушка')">Обновить</button></span>
+        </div>
+        <div class="toolbar">
+          <input class="t-search mono" placeholder="Поиск по модели/серийнику…" oninput="toast('Поиск — заглушка')">
+        </div>
+        <div class="card"><div class="mut" style="margin-bottom:6px">Клик: устройство — информация · размер — разделы · health — проверка · temp — тесты. Сортировка — по шапке.</div>
+        <table class="tbl mono"><thead><tr><th>Устройство</th><th>Модель</th><th>Серийный №</th><th>Размер</th><th>Тип</th><th>Health</th><th>Temp</th><th>Power-On</th></tr></thead><tbody>
+          <tr><td class="l"><a href="#" onclick="toast('Модалка «Информация» (smartctl) — заглушка');return false">/dev/sda</a></td><td class="l">SanDisk Ultra 64G</td><td class="l">4C53…9A21</td><td><a href="#" onclick="toast('Подстрока разделов уже раскрыта ниже');return false">56.7G</a></td><td>Flash</td><td><a href="#" onclick="toast('Модалка «Health» — заглушка');return false"><span class="badge ok">PASSED</span></a></td><td><a href="#" onclick="toast('Модалка «Самодиагностика» — см. карточку ниже');return false">41°</a></td><td>4 812 ч</td></tr>
+          <tr><td colspan="8" style="background:var(--bg)"><div class="mini-t">Использование разделов — /dev/sda</div>
+            <table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>
+            <tr><td class="l">/dev/sda1</td><td class="l">/opt</td><td>56.7G</td><td>21.4G</td><td>35.3G</td><td><span class="prog sm"><i style="width:38%"></i></span> 38%</td></tr>
+            </tbody></table></td></tr>
+          <tr><td class="l">/dev/sdb</td><td class="l">Seagate ST1000LM035</td><td class="l">WDE…44QZ</td><td>931G</td><td>HDD</td><td><span class="badge warn">Предупреждение</span></td><td class="warn-t">47°</td><td>21 306 ч</td></tr>
+        </tbody></table></div>
+        <section class="grid two">
+          <div class="card" style="margin-top:12px"><div class="c-head">Атрибуты SMART — /dev/sda <span class="mut">клик по имени — справка</span></div>
+            <table class="tbl mono"><thead><tr><th>ID</th><th>Имя атрибута</th><th>Value</th><th>Worst</th><th>Thresh</th><th>Raw</th><th>Статус</th></tr></thead><tbody>
+            <tr><td>5</td><td class="l"><a href="#" onclick="toast('Справка: перераспределённые сектора');return false">Reallocated_Sector_Ct</a></td><td>100</td><td>100</td><td>10</td><td>0</td><td class="ok-t">OK</td></tr>
+            <tr><td>9</td><td class="l">Power_On_Hours</td><td>95</td><td>95</td><td>0</td><td>4 812</td><td class="ok-t">OK</td></tr>
+            <tr><td>194</td><td class="l">Temperature_Celsius</td><td>59</td><td>51</td><td>0</td><td>41</td><td class="ok-t">OK</td></tr>
+            <tr><td>233</td><td class="l">Media_Wearout</td><td>88</td><td>88</td><td>10</td><td>—</td><td class="warn-t">важный</td></tr>
+            </tbody></table>
+            <div class="mut mono" style="margin-top:6px">Легенда: OK · Предупреждение · Критично · Критичный атрибут · Важный атрибут</div></div>
+          <div class="card" style="margin-top:12px"><div class="c-head">Самодиагностика — /dev/sda</div>
+            <div class="toolbar"><button class="btn sm" onclick="toast('Короткий тест запущен (автоопрос 5 с) — заглушка')">Короткий тест (~2 мин)</button><button class="btn sm ghost" onclick="toast('Полный тест — заглушка')">Полный (~60–120 мин)</button><button class="btn sm ghost" onclick="toast('Conveyance тест — заглушка')">Conveyance (~5 мин)</button></div>
+            <div class="kv mono"><span>Статус</span><b>Тест завершён · ошибок нет</b><span>Прогресс</span><b>100%</b></div></div>
+        </section>
+      </div>
+
+      <!-- ===== VIEW: RDP ===== -->
+      <div id="view-rdp" hidden>
+        <div class="hero">
+          <div><h2>RDP <span class="verdict ok-t" id="rdpVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">статус каждые 10 с · клиент: показать адрес</span></div>
+          <span class="t-right"><input type="password" id="rdpPass" class="t-search mono" placeholder="Пароль панели" autocomplete="off" style="width:150px"><button class="btn sm" id="rdpStartBtn" disabled>Запустить прокси</button><button class="btn ghost" id="rdpStopBtn" disabled>Остановить</button><a class="btn ghost" id="rdpOpenLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Открыть в новой вкладке</a></span>
+        </div>
+        <div class="card"><div class="c-head">Настройка порта <span class="mut">занятые: 8087 панель · 9089 ttyd</span></div>
+          <div class="frm mono" style="flex-direction:row;align-items:flex-end"><label>Порт прокси (1–65535)<input value="9199" id="rdpPort" style="width:120px"></label><button class="btn sm" id="rdpPortSave">Сохранить</button><span class="mut" id="rdpPortMsg"></span></div></div>
+        <div class="card"><div class="c-head">Встроенный клиент <span class="mut">/rdp/ · клик внутрь — захват клавиатуры и мыши · Win+Space — раскладка</span></div>
+          <div class="mut mono" id="rdpStatusLine">Загрузка…</div>
+          <div id="rdpFrameWrap" hidden><iframe id="rdpFrame" width="100%" height="480" style="border:none;border-radius:8px" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe></div></div>
+      </div>
+
+      <!-- ===== VIEW: SETTINGS ===== -->
+      <div id="view-settings" hidden>
+        <div data-sub="set">
+          <div class="toolbar"><span class="seg mono">
+            <button class="sg active" data-sp="term">🖥 Терминал и ссылки</button><button class="sg" data-sp="notif">🌐 Уведомления</button><button class="sg" data-sp="sec">🔒 Безопасность</button><button class="sg" data-sp="mnt">📦 Обслуживание</button></span>
+          </div>
+
+          <div data-pp="term">
+            <div class="card" style="margin-bottom:12px"><div class="c-head">Управление ttyd <span class="mut" id="setTtydMsg"></span></div>
+              <table class="tbl mono"><thead><tr><th>Сервис</th><th>Путь</th><th>Состояние</th><th>PID</th><th>Режим</th></tr></thead><tbody id="setTtydBody">
+                <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+              </tbody></table>
+              <section class="grid two">
+                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок htop</div><label>Пароль<input type="password" id="setHtopPass" placeholder="пусто — без пароля"></label>
+                <span><button class="btn sm" id="setHtopStart">Запустить</button> <button class="btn sm ghost" id="setHtopStop">Остановить</button> <button class="btn sm ghost" id="setHtopRestart">Перезапустить</button></span></div>
+                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок Терминал</div><label>Режим<select id="setTermMode"><option value="entware">Консоль Entware (/opt/bin/bash)</option><option value="telnet">Консоль роутера (telnet)</option></select></label><label>Пароль<input type="password" id="setTermPass" placeholder="пусто — без пароля"></label>
+                <span><button class="btn sm" id="setTermStart">Запустить</button> <button class="btn sm ghost" id="setTermStop">Остановить</button> <button class="btn sm ghost" id="setTermRestart">Перезапустить</button></span></div>
+              </section>
+              <div class="mut mono" style="margin-top:8px">Управление веб-терминалами ttyd: htop — мониторинг процессов, терминал — shell. Если вкладка не открывается — запустите здесь.</div></div>
+            <div class="card"><div class="c-head">Управление ссылками <span class="mut" id="setLinksMsg"></span></div>
+              <table class="tbl mono"><thead><tr><th>⋮⋮</th><th>Иконка</th><th>Название</th><th>URL</th><th>Действия</th></tr></thead><tbody id="setLinksBody">
+                <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+              </tbody></table>
+              <div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0"><button class="btn sm" id="setLinkAdd">Добавить ссылку</button><button class="btn sm ghost" id="setLinksSaveAll">Сохранить все на сервер</button><button class="btn sm ghost" id="setLinksReset">Сбросить по умолчанию</button></span></div></div>
+          </div>
+
+          <div data-pp="notif" hidden>
+            <div class="card" style="margin-bottom:12px"><div class="c-head">Telegram-уведомления <span class="badge ok">включены · тест ok</span></div>
+              <section class="grid two"><div class="frm mono">
+                <label class="chk"><input type="checkbox" checked> Включить уведомления</label>
+                <label>Bot Token<input type="password" value="8123456789:AA…"></label>
+                <label>Chat ID<input value="123456789"></label>
+                <label>Прокси<input value="" placeholder="пусто — напрямую"></label>
+                <label>Уровень<select><option>INFO</option><option>WARN</option><option>ERROR</option><option>OFF</option></select></label></div>
+              <div class="frm mono"><div class="mini-t">Источники</div>
+                <label class="chk"><input type="checkbox" checked> Система</label><label class="chk"><input type="checkbox" checked> Монитор</label><label class="chk"><input type="checkbox" checked> Сеть</label><label class="chk"><input type="checkbox"> Службы</label><label class="chk"><input type="checkbox" checked> Пакеты</label><label class="chk"><input type="checkbox" checked> Входы в панель</label><label class="chk"><input type="checkbox" checked> Модули</label>
+                <label class="chk"><input type="checkbox" checked> Чат-бот</label><label class="chk"><input type="checkbox" checked> Автозапуск бота</label>
+                <label class="chk"><input type="checkbox"> Тихий режим <input value="23:00–07:00" style="width:110px"></label>
+                <label>Доп. chat ID<input value=""></label></div></section>
+              <div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0"><button class="btn sm" onclick="toast('Сохранить — заглушка')">Сохранить</button><button class="btn sm ghost" onclick="toast('Тест отправлен — заглушка')">Отправить тест</button></span></div></div>
+            <div class="card"><div class="c-head">Критические пороги</div>
+              <table class="tbl mono"><thead><tr><th></th><th>Метрика</th><th>Порог</th></tr></thead><tbody>
+                <tr><td><input type="checkbox" checked></td><td class="l">Температура CPU</td><td><input value="75" style="width:60px"> °C</td></tr>
+                <tr><td><input type="checkbox" checked></td><td class="l">WiFi0 / WiFi1</td><td><input value="80" style="width:60px"> °C</td></tr>
+                <tr><td><input type="checkbox" checked></td><td class="l">Нагрузка CPU</td><td><input value="90" style="width:60px"> %</td></tr>
+                <tr><td><input type="checkbox" checked></td><td class="l">Занятость памяти</td><td><input value="90" style="width:60px"> %</td></tr>
+                <tr><td><input type="checkbox"></td><td class="l">Температура дисков</td><td><input value="55" style="width:60px"> °C</td></tr>
+              </tbody></table>
+              <button class="btn sm" style="margin-top:8px" onclick="toast('Сохранить пороги — заглушка')">Сохранить пороги</button></div>
+          </div>
+
+          <div data-pp="sec" hidden>
+            <section class="grid two">
+              <div class="card"><div class="c-head">Защита панели</div>
+                <div class="frm mono"><label class="chk"><input type="checkbox" checked> Включить защиту паролем</label>
+                <label>Новый пароль<input type="password" placeholder="••••••••"></label><label>Подтверждение<input type="password" placeholder="••••••••"></label>
+                <span><button class="btn sm" onclick="toast('Сохранить (запрос текущего пароля) — заглушка')">Сохранить</button> <span class="mut">статус: ok</span></span></div></div>
+              <div class="card"><div class="c-head">HTTPS</div>
+                <div class="frm mono"><label class="chk"><input type="checkbox"> Включить HTTPS</label>
+                <label>Порт<input value="8443" style="width:100px"></label>
+                <span><button class="btn sm" onclick="toast('Применить — заглушка')">Применить</button> <span class="mut">сертификат: создан · lighttpd</span></span></div></div>
+            </section>
+            <div class="card" style="margin-top:12px"><div class="c-head">Попытки входа <span class="badge warn">3 неудачных за 24ч</span> <button class="btn sm ghost" onclick="toast('Обновить — заглушка')">Обновить</button></div>
+              <table class="tbl mono"><thead><tr><th>Время</th><th>IP адрес</th><th>Событие</th></tr></thead><tbody>
+                <tr><td>07:41:12</td><td class="l">192.168.3.55</td><td class="crit-t">неверный пароль</td></tr>
+                <tr><td>03:12:47</td><td class="l">185.220.×.×</td><td class="crit-t">неверный пароль ×5</td></tr>
+                <tr><td>02:59:03</td><td class="l">192.168.3.1</td><td class="ok-t">успешный вход</td></tr>
+              </tbody></table></div>
+          </div>
+
+          <div data-pp="mnt" hidden>
+            <section class="grid two">
+              <div class="card"><div class="c-head">Бэкап и восстановление</div>
+                <div class="frm mono"><span><button class="btn sm" onclick="toast('Скачать бэкап — заглушка')">Скачать бэкап</button></span>
+                <span><button class="btn sm ghost" onclick="toast('Восстановить (.tar.gz) — заглушка')">Восстановить (.tar.gz)</button></span>
+                <span><button class="btn sm ghost" onclick="toast('Офлайн-пакет (~30–60 с) — заглушка')">Подготовить офлайн-пакет</button></span>
+                <span class="mut">статус: готов</span></div></div>
+              <div class="card"><div class="c-head">Обновление <span class="mut">текущая v1.16.28</span></div>
+                <div class="frm mono"><span>Доступна <b class="warn-t">v1.17.0</b></span>
+                <span><button class="btn sm" onclick="toast('Проверить — заглушка')">Проверить</button> <button class="btn sm ghost" onclick="toast('Обновить до v1.17.0 — заглушка')">Обновить до v1.17.0</button> <button class="btn sm ghost" onclick="toast('Переустановить — заглушка')">Переустановить</button></span>
+                <pre class="log mono" style="height:90px">[08:20:01] check: latest v1.17.0
+[08:20:02] status: ready</pre></div></div>
+            </section>
+            <div class="card" style="margin-top:12px"><div class="c-head">Внешний вид карточек</div>
+              <span class="seg mono"><button class="sg">Скруглённые</button><button class="sg active">Квадратные</button><button class="sg">Мягкие</button></span>
+              <button class="btn sm ghost" onclick="toast('Сбросить оформление — заглушка')">Сбросить оформление</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: MONITOR ===== -->
+      <div id="view-monitor" hidden>
+        <div class="card" style="margin-bottom:12px"><div class="c-head">Защита от зависших процессов <span class="badge ok" id="monBadge">…</span></div>
+          <div class="toolbar"><span class="t-right" style="margin-left:0"><button class="btn sm" id="monStartBtn">Запустить</button><button class="btn sm ghost" id="monStopBtn">Остановить</button><button class="btn sm ghost" id="monRestartBtn">Перезапустить</button><button class="btn sm ghost" id="monClearLogBtn">Очистить лог</button></span>
+          <label class="chk mono"><input type="checkbox" id="monAutoFull"> Автозапуск при загрузке</label></div>
+        </div>
+        <div class="card" style="margin-bottom:12px"><div class="c-head">Топ процессов по CPU <span class="mut">автообновление 7 с · команда обрезана до 50 символов</span></div>
+          <table class="tbl mono" id="monTopTable"><thead><tr><th style="width:70px">PID</th><th style="width:70px">%CPU</th><th style="width:110px">CPU время</th><th class="l">Команда</th><th style="width:90px">Действие</th></tr></thead><tbody id="monTopBody">
+            <tr><td colspan="5" class="mut">Загрузка…</td></tr>
+          </tbody></table></div>
+        <section class="grid two">
+          <div class="card"><div class="c-head">Настройки защиты</div>
+            <div class="frm mono"><label class="chk"><input type="checkbox" id="monEn"> Включить защиту</label>
+            <label>Интервал сканирования, сек<select id="monInt"><option>10</option><option>30</option><option selected>60</option><option>120</option><option>300</option></select></label>
+            <div class="mini-t">Индивидуальный режим</div>
+            <label class="chk"><input type="checkbox" id="monIndEn"> Включить</label>
+            <label>Порог CPU, %<select id="monCpu"><option>50</option><option>60</option><option>70</option><option selected>80</option><option>90</option><option>100</option></select></label>
+            <label>Время нагрузки, мин<select id="monTime"><option>1</option><option>2</option><option>3</option><option selected>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select></label>
+            <label>Игнорируемые процессы<input value="ttyd, htop" id="monIgnoreFull"></label>
+            <label class="chk"><input type="checkbox" id="monPsExc" checked> Исключать ps из мониторинга</label>
+            <div class="mini-t">Дополнительные настройки</div>
+            <label>Максимум процессов<input value="200" id="monMax" style="width:80px"></label>
+            <span><button class="btn sm" id="monSaveBtn">Сохранить настройки</button> <span class="mut" id="monMsgFull"></span></span></div></div>
+          <div class="card"><div class="c-head">Лог событий <span class="mut">автообновление 7 с</span></div>
+            <pre class="log mono" id="monLogFull">Загрузка…</pre></div>
+        </section>
+      </div>
+
+      <!-- ===== VIEW: HELP ===== -->
+      <div id="view-help" hidden>
+        <div class="toolbar">
+          <input class="t-search mono" id="helpSearch" placeholder="Поиск по справке…" autocomplete="off">
+          <span class="mut">Справка · v1.16.28 · 77 CGI · 9 Go-бинарников + grdp-proxy</span>
+        </div>
+        <div class="card" id="helpList">
+          <div class="acc-item"><button class="acc-h">Статистика</button><div class="acc-b">Карточки системы/памяти/CPU/пакетов/диска, сеть, tmpfs с очисткой, модули, ссылки, температуры.</div></div>
+          <div class="acc-item"><button class="acc-h">История температур</button><div class="acc-b">Графики CPU и WiFi за 24ч, мин/сред/макс/сейчас, сохранение истории.</div></div>
+          <div class="acc-item"><button class="acc-h">Пакеты</button><div class="acc-b">Фильтры, поиск, сортировка, установка/удаление/обновление, модалка информации.</div></div>
+          <div class="acc-item"><button class="acc-h">Процессы (htop)</button><div class="acc-b">htop через ttyd; если не открывается — запустить в Настройки → Терминал.</div></div>
+          <div class="acc-item"><button class="acc-h">Syncthing</button><div class="acc-b">Модуль синхронизации: панель :8384, управление через карточку модуля.</div></div>
+          <div class="acc-item"><button class="acc-h">Модули — как добавить свой сервис</button><div class="acc-b">Уровни от простого модуля с веб-страницей до действий с POST-телом; типы полей kbs/from/on/off/color; авторизация.</div></div>
+          <div class="acc-item"><button class="acc-h">Терминал</button><div class="acc-b">Режимы Entware (/opt/bin/bash) и telnet роутера; пароль опционален.</div></div>
+          <div class="acc-item"><button class="acc-h">Сеть</button><div class="acc-b">Демон, интерфейсы, маршруты, ARP, Wi-Fi клиенты, события; скрытие UNKNOWN.</div></div>
+          <div class="acc-item"><button class="acc-h">SMART</button><div class="acc-b">Здоровье дисков, атрибуты со справкой, разделы, короткие/полные тесты.</div></div>
+          <div class="acc-item"><button class="acc-h">RDP</button><div class="acc-b">grdp-proxy, настройка порта, встроенный клиент /rdp/, захват клавиатуры.</div></div>
+          <div class="acc-item"><button class="acc-h">Службы и Cron</button><div class="acc-b">watchdog с кастомными списками, init.d службы, системный и Entware crontab.</div></div>
+          <div class="acc-item"><button class="acc-h">Настройки</button><div class="acc-b">4 под-вкладки: терминал и ссылки, уведомления, безопасность, обслуживание.</div></div>
+          <div class="acc-item"><button class="acc-h">Защита панели</button><div class="acc-b">Пароль панели, HTTPS, журнал попыток входа.</div></div>
+          <div class="acc-item"><button class="acc-h">Защита от зависших процессов</button><div class="acc-b">Порог CPU и время нагрузки, игнор-лист, автоубийство зависших.</div></div>
+          <div class="acc-item"><button class="acc-h">Файловый менеджер (tmpfs)</button><div class="acc-b">Просмотр /tmp и /opt, сортировка, очистка, тёмная тема из панели.</div></div>
+          <div class="acc-item"><button class="acc-h">Логирование</button><div class="acc-b">Действия менеджера и системные логи, ротация, очистка старше 30 дней.</div></div>
+          <div class="acc-item"><button class="acc-h">Темы и ночной режим</button><div class="acc-b">7 пресетов-акцентов, авто-ночь 20:00–06:00, синхронизация между вкладками.</div></div>
+          <div class="acc-item"><button class="acc-h">Уведомления</button><div class="acc-b">Пороги CPU/RAM/температур, источники, тихий режим по часам.</div></div>
+          <div class="acc-item"><button class="acc-h">Telegram-уведомления и чат-бот</button><div class="acc-b">Bot token, chat id, прокси, команды /status /help /backup, автозапуск.</div></div>
+          <div class="acc-item"><button class="acc-h">Проверка системы</button><div class="acc-b">Зависимости (curl/bash/brctl), синтаксис скриптов, рекомендации по установке.</div></div>
+          <div class="acc-item"><button class="acc-h">Офлайн-установка</button><div class="acc-b">Пакет со всеми ipk-зависимостями; положить в /opt/tmp, запустить install-offline.sh.</div></div>
+          <div class="acc-item"><button class="acc-h">Кеширование ответов</button><div class="acc-b">stats/network/update кешируются (60/5/60 с); сброс при изменениях; ?fresh=1.</div></div>
+          <div class="acc-item"><button class="acc-h">Очистка мусора</button><div class="acc-b">Временные каталоги в /tmp (RAM): оборванные офлайн-пакеты, бэкапы, install-логи.</div></div>
+          <div class="acc-item"><button class="acc-h">Резервное копирование</button><div class="acc-b">Скачивание tar.gz, восстановление, права на секреты 0600.</div></div>
+          <div class="acc-item"><button class="acc-h">Полный список команд</button><div class="acc-b">opkg, backup.sh, watchdog.sh, rotate.sh, install.sh ключи и примеры.</div></div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: LOGS ===== -->
+      <div id="view-logs" hidden>
+        <div data-sub="logs">
+          <div class="toolbar"><span class="seg mono">
+            <button class="sg active" data-sp="mgr">Действия менеджера</button><button class="sg" data-sp="sys">Системные логи</button></span>
+          </div>
+          <div data-pp="mgr">
+            <div class="toolbar"><span class="t-right" style="margin-left:0">
+              <button class="btn sm ghost" onclick="document.getElementById('mgrFrame').contentWindow.location.reload()">Обновить</button></span></div>
+            <div class="card"><iframe id="mgrFrame" src="/entware-cgi/logger/view.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
+          </div>
+          <div data-pp="sys" hidden>
+            <div class="toolbar"><span class="t-right" style="margin-left:0">
+              <button class="btn sm ghost" onclick="document.getElementById('sysFrame').contentWindow.location.reload()">Обновить</button></span></div>
+            <div class="card"><iframe id="sysFrame" src="/entware-cgi/logger/system_logs.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="statusbar mono">
+        <span><i class="dot ok"></i> link br0 1000/full</span>
+        <span id="sbPpp"><i class="dot ok"></i> ppp0 up 94 Мбит/с</span>
+        <span id="sbPkg"><i class="dot warn"></i> 3 пакета к обновлению</span>
+        <span class="right"><a href="/entware-manager/" onclick="try{localStorage.removeItem('entware_ui')}catch(e){};location.href='http://'+location.hostname+':8087/entware-manager/';return false;" style="color:var(--accent)">← Классика</a> · NOC-бета · часть данных — мок</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- ===== BOOKMARK STRIPS (edge tabs) ===== -->
+<nav class="bm-rail" id="bmRail" aria-label="Быстрые ссылки" title="Долгое нажатие — переставить"></nav>
+
+<!-- ===== PALETTE ===== -->
+<div class="pal-wrap" id="palWrap" hidden>
+  <div class="pal">
+    <input class="pal-input mono" id="palInput" placeholder="Вкладка или действие… (Esc — закрыть)" autocomplete="off">
+    <div class="pal-list" id="palList"></div>
+  </div>
+</div>
+<div class="toast mono" id="toast" hidden></div>
+
+<script src="/entware-commander/noc/noc-console.js?v=18"></script>
+<script src="/entware-commander/noc/theme-bridge.js?v=2"></script>
+</body>
+</html>

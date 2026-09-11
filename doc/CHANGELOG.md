@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### NOC в проекте: папка `noc/` + установка всегда вместе с панелью
+
+- Исходники NOC (были только на роутере) стянуты в `noc/` (md5 = роутер): веб-консоль (`noc/index.html`, `noc-console.js/css`, `style.css`, `theme-bridge.js`), `noc/cgi-bin/procs.cgi`, форки `lib/common.sh` + `network_watchdog.sh` (v1.5 с Wi-Fi по RCI — новее панельного v1.4, не дедуплицируем: разные пути конфигов/состояния), `lighttpd/91-entware-commander.conf`. Конфиги (`*_config.json`), симлинки и `ssl/` в git не входят (секреты/рантайм).
+- Сборка/пакеты без правок кода: `noc/` автоматически копируется в `deploy/noc/` (324K, без конфигов) и попадает в ipk (`/opt/web_entware/noc/`, +~100K к архиву).
+- `Install/install.sh`: новый шаг «Установка NOC» (идемпотентный, warn-only проверки): файлы → `/opt/entware-commander/`, симлинки моста (`cgi-bin/go`, `entware-manager/{icons.svg,theme.js,logger/style.css}`), `91-entware-commander.conf` → conf.d, `lighttpd -t` + мягкий reload, проверка 200 на 8086. Конфиги NOC никогда не трогаются/создаются (демоны стартуют на дефолтах).
+- Доки: `doc/INSTALL.md` (размещение NOC), `doc/ARCHITECTURE.md` (§4.6).
+- Известно и не тронуто (packaging only): `procs.cgi` без авторизации; расхождение форков watchdog/common.sh с панельными.
+
 ### Логи в NOC: стили через <base> (запрос REQUEST_LOGGER_STYLES.md)
 
 - Проблема: iframe логов в NOC (порт 8086, `/entware-cgi/logger/view.cgi`) грузил CSS/JS по абсолютным `/entware-manager/...` — алиас есть только на 8087 → страница без оформления.
