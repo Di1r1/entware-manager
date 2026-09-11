@@ -206,7 +206,7 @@ done
 echo "  logger/*.cgi -> ../go.cgi"
 
 cd ../monitor
-for ep in action config log status; do
+for ep in action config log procs status; do
     ln -sf ../go.cgi "$ep.cgi"
 done
 echo "  monitor/*.cgi -> ../go.cgi"

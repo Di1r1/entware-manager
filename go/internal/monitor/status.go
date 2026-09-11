@@ -95,86 +95,115 @@ type cpuInfo struct {
 	StartTicks int64
 	Comm       string
 	Cmdline    string
+	RssKB      int64
 }
 
 const cpuSampleInterval = 1000 * time.Millisecond
+
+// snapshotProcs — двухточечный слепок процессов (используют getTopProcesses
+// и monitor/procs.cgi). Свои воркеры в окно замера не раздувают: self исключён.
+func snapshotProcs() (map[int]cpuInfo, int64) {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return nil, 0
+	}
+
+	self := os.Getpid()
+	procs := make(map[int]cpuInfo)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		if pid == self {
+			continue
+		}
+
+		statData, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+		if err != nil {
+			continue
+		}
+		statStr := string(statData)
+
+		openIdx := strings.Index(statStr, "(")
+		idx := strings.LastIndex(statStr, ")")
+		if openIdx < 0 || idx < 0 || idx <= openIdx {
+			continue
+		}
+		fields := strings.Fields(statStr[idx+1:])
+		if len(fields) < 22 {
+			continue
+		}
+
+		utime, _ := strconv.ParseInt(fields[11], 10, 64)     // field 14
+		stime, _ := strconv.ParseInt(fields[12], 10, 64)     // field 15
+		starttime, _ := strconv.ParseInt(fields[19], 10, 64) // field 22
+
+		cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+		cmdStr := strings.ReplaceAll(strings.TrimSpace(string(cmdline)), "\x00", " ")
+
+		procs[pid] = cpuInfo{
+			PID:        pid,
+			TotalTicks: utime + stime,
+			StartTicks: starttime,
+			Comm:       strings.TrimSpace(statStr[openIdx+1 : idx]),
+			Cmdline:    cmdStr,
+			RssKB:      readRssKB(pid),
+		}
+	}
+
+	return procs, readTotalCPU()
+}
+
+// readRssKB — VmRSS процесса в КБ (0 если недоступно, как у ядерных потоков).
+func readRssKB(pid int) int64 {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(line, "VmRSS:") {
+			continue
+		}
+		for _, f := range strings.Fields(line)[1:] {
+			if v, err := strconv.ParseInt(f, 10, 64); err == nil {
+				return v
+			}
+		}
+	}
+	return 0
+}
+
+// readTotalCPU — сумма всех полей строки 'cpu ' из /proc/stat.
+func readTotalCPU() int64 {
+	total := int64(0)
+	if data, err := os.ReadFile("/proc/stat"); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if !strings.HasPrefix(line, "cpu ") {
+				continue
+			}
+			for _, f := range strings.Fields(line)[1:] {
+				if v, err := strconv.ParseInt(f, 10, 64); err == nil {
+					total += v
+				}
+			}
+			break
+		}
+	}
+	return total
+}
 
 func getTopProcesses(n int) []Process {
 	if readUptime() <= 0 {
 		return nil
 	}
 
-	readSnapshot := func() (map[int]cpuInfo, int64) {
-		entries, err := os.ReadDir("/proc")
-		if err != nil {
-			return nil, 0
-		}
-
-		procs := make(map[int]cpuInfo)
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			pid, err := strconv.Atoi(e.Name())
-			if err != nil {
-				continue
-			}
-			if pid == os.Getpid() {
-				continue
-			}
-
-			statData, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
-			if err != nil {
-				continue
-			}
-			statStr := string(statData)
-
-			openIdx := strings.Index(statStr, "(")
-			idx := strings.LastIndex(statStr, ")")
-			if openIdx < 0 || idx < 0 || idx <= openIdx {
-				continue
-			}
-			fields := strings.Fields(statStr[idx+1:])
-			if len(fields) < 22 {
-				continue
-			}
-
-			utime, _ := strconv.ParseInt(fields[11], 10, 64)     // field 14
-			stime, _ := strconv.ParseInt(fields[12], 10, 64)     // field 15
-			starttime, _ := strconv.ParseInt(fields[19], 10, 64) // field 22
-
-			cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
-			cmdStr := strings.ReplaceAll(strings.TrimSpace(string(cmdline)), "\x00", " ")
-
-			procs[pid] = cpuInfo{
-				PID:        pid,
-				TotalTicks: utime + stime,
-				StartTicks: starttime,
-				Comm:       strings.TrimSpace(statStr[openIdx+1 : idx]),
-				Cmdline:    cmdStr,
-			}
-		}
-
-		total := int64(0)
-		if data, err := os.ReadFile("/proc/stat"); err == nil {
-			for _, line := range strings.Split(string(data), "\n") {
-				if !strings.HasPrefix(line, "cpu ") {
-					continue
-				}
-				for _, f := range strings.Fields(line)[1:] {
-					if v, err := strconv.ParseInt(f, 10, 64); err == nil {
-						total += v
-					}
-				}
-				break
-			}
-		}
-		return procs, total
-	}
-
-	snap1, total1 := readSnapshot()
+	snap1, total1 := snapshotProcs()
 	time.Sleep(cpuSampleInterval)
-	snap2, total2 := readSnapshot()
+	snap2, total2 := snapshotProcs()
 
 	if total2 <= total1 {
 		return []Process{}
@@ -218,7 +247,7 @@ func getTopProcesses(n int) []Process {
 		return a > b
 	})
 
-	if len(procs) > n {
+	if len(procs) > n && n > 0 {
 		procs = procs[:n]
 	}
 

@@ -26,6 +26,8 @@ func main() {
 		monitor.HandleConfig()
 	case "monitor_log":
 		monitor.HandleLog()
+	case "monitor_procs":
+		monitor.HandleProcs()
 	case "temperature":
 		monitor.HandleTemperature()
 	case "wifi_temp":

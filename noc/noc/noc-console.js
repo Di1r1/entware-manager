@@ -1098,7 +1098,7 @@
    * Мок (jitter) — фолбэк без сессии. Живое: топы, CPU%, температуры, сеть, обновления,
    * версия, health. Мок-only (нет JSON-источника на панели): RAM/диск/WAN-скорость/аптайм/тома. */
   var LIVE_BASE = '/entware-cgi/';
-  var LIVE_EXP_BASE = '/entware-manager/noc/cgi-bin/';
+  var LIVE_EXP_BASE = '/entware-cgi/monitor/';
   var LIVE_TICK_MS = 7000;
   var LIVE_TIMEOUT_MS = 12000;
   var livePending = 0;

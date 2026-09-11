@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### procs.cgi переписан на Go (NOC полностью через entware-server)
+
+- Новый `GET /entware-cgi/monitor/procs.cgi` (`entware-monitor`, `ENDPOINT=monitor_procs`): тот же JSON-контракт, что shell (`cpu_count/loadavg/mem_*/cpu{user,system,iowait,idle}/processes[{pid,pcpu,time,command,rss_kb}]`, полный список, self исключён, ядерные потоки в `[скобках]`).
+- Рефакторинг без смены поведения `monitor/status.cgi`: слепок процессов вынесен в `snapshotProcs()` (+ `readTotalCPU`, `readRssKB`), `getTopProcesses(n<=0)` = без обрезки; `CollectStatus` (топ-5) не изменился.
+- Маппинги: `go.cgi`/ `cgi.go` — generic subdir (без правок); `build-deploy.sh` — `procs` в цикл `monitor/`; `classicWhitelist` не тронут (это CGI, не статика).
+- NOC: `LIVE_EXP_BASE` → `/entware-cgi/monitor/procs.cgi` (работает на 8087 напрямую и 8086 через прокси), `noc-console.js?v=19→20`; `91-*.conf` — блок `cgi.assign` удалён (shell-файл остался как референс, отдача `.cgi` запрещена deny).
+- Проверено: `make ci` PASS, юнит-тесты (`TestCollectProcsShape`, `TestCPUBreakdown`), паритет на роутере (ключи/порядок 1:1, pid1 идентичен, 182 vs 183 процесса — transient).
+
 ### NOC — единый проект внутри менеджера (без /opt/entware-commander)
 
 - Переезд: веб-консоль → `/opt/web_entware/noc/` (URL `/entware-manager/noc/`), конфиги → `/opt/web_entware/noc/*.json`, рантайм форка → `/tmp/entware-noc/`. Legacy-корень удаляется установщиком после миграции конфигов (только отсутствующие).
