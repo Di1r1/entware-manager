@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Кнопка NOC — тот же порт (same-origin)
+
+- NOC полностью работает на 8087 (статика из whitelist + `/entware-cgi/*`, включая `monitor/procs.cgi`) — отдельный порт больше не нужен.
+- `checkNocAndRender()`: URL `location.host + /entware-manager/noc/`, проба — обычный same-origin `fetch` с проверкой `r.ok` (no-cors убран); `entware.js?v=172→173`.
+- Вход на 8086 оставлен как запасной (алиас + прокси без изменений).
+- Проверено: `node --check`, headless-тест трёх веток (200/404/сеть).
+
 ### procs.cgi переписан на Go (NOC полностью через entware-server)
 
 - Новый `GET /entware-cgi/monitor/procs.cgi` (`entware-monitor`, `ENDPOINT=monitor_procs`): тот же JSON-контракт, что shell (`cpu_count/loadavg/mem_*/cpu{user,system,iowait,idle}/processes[{pid,pcpu,time,command,rss_kb}]`, полный список, self исключён, ядерные потоки в `[скобках]`).

@@ -177,13 +177,12 @@ function startPanelWidgets() {
         .catch(e => { window.APP_VERSION = 'error'; console.error('Ошибка загрузки версии', e) });
 }
 
-// NOC-панель (порт 8086): проверка доступности + кнопка перехода.
-// Порт отличается от origin панели → только no-cors проба (opaque = жив,
-// сетевая ошибка = нет). Один запрос за сессию, NOC статичен.
+// NOC-панель (тот же порт, same-origin): проверка доступности + кнопка.
+// Один запрос за сессию, NOC статичен.
 function checkNocAndRender() {
     const btn = document.getElementById('nocBtn');
     if (!btn) return;
-    const url = location.protocol + '//' + location.hostname + ':8086/entware-manager/noc/';
+    const url = location.protocol + '//' + location.host + '/entware-manager/noc/';
     const setOff = (title) => {
         btn.style.opacity = '0.5';
         btn.title = title;
@@ -195,14 +194,15 @@ function checkNocAndRender() {
     try {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 3000);
-        fetch(url, { mode: 'no-cors', signal: ctl.signal })
-            .then(() => {
+        fetch(url, { signal: ctl.signal })
+            .then((r) => {
                 clearTimeout(t);
+                if (!r.ok) throw new Error('http ' + r.status);
                 btn.style.opacity = '';
                 btn.href = url;
                 btn.target = '_blank';
                 btn.rel = 'noopener noreferrer';
-                btn.title = 'Открыть NOC-панель (порт 8086)';
+                btn.title = 'Открыть NOC-панель';
                 btn.onclick = null;
             })
             .catch(() => {
@@ -223,7 +223,7 @@ function initPanel() {
             .then(d => { if (d && d.authenticated) logoutBtn.style.display = 'block'; })
             .catch(() => {});
     }
-    // Кнопка NOC-панели: проверка доступности 8086 + переход в новой вкладке.
+    // Кнопка NOC-панели: проверка доступности + переход в новой вкладке.
     checkNocAndRender();
     if (collapseToggle) {
         const collapsedState = localStorage.getItem('sidebar_collapsed');
