@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Фикс: зависание переноса карточек + theme.js в NOC (v1.16.38)
+
+- Перенос: `pointermove/pointerup/pointercancel` перевешены с шапки на `document` — без захвата указателя шапка перестаёт получать события, как только карточка уходит из-под курсора (fixed + pointer-events:none), и `pointerup` терялся → карточка висела. `noc-console.js?v=22→23`.
+- `theme.js Unexpected token '<'`: после удаления legacy `/opt/entware-commander` base-фикс логера вёл на мёртвый `/entware-commander/entware-manager/` (404-HTML как скрипт). Исправление: `staticBaseHTML` — plain `<base href="/entware-manager/">` без переключения (пересобран `entware-logger`), плюс в `91-*.conf` прокси `^/entware-manager/` (кроме `/noc/`) → 8087 (там whitelist) — чинит стили логера в NOC глобально.
+- По пути поймано: двойной `cat >` в одном ssh-вызове — второй съедает пустой stdin (обнулён `91-*.conf`, lighttpd остался без NOC) — перезалито отдельными вызовами; урок: один файл — один вызов.
+- Проверено: direct-exec HTML без commander-refs, `theme.js` 200 с JS-телом на 8086, матрица 200/401/403 по дизайну.
+
 ### NOC: перенос карточек за заголовок
 
 - JS `cardOrderBoot()` (+`cardBootIds` — стабильные id до применения порядка): pointerdown на `.panel-h`/`.c-head` (кнопки/ссылки/инпуты в шапке исключены), порог 6px, перетаскивание через fixed + placeholder, порядок по контейнерам в `localStorage.noc_cardorder`; только статические карточки (динамические сетки перерисовываются).

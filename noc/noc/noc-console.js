@@ -2970,9 +2970,9 @@
           }
         };
         var up = function () {
-          head.removeEventListener('pointermove', move);
-          head.removeEventListener('pointerup', up);
-          head.removeEventListener('pointercancel', up);
+          document.removeEventListener('pointermove', move);
+          document.removeEventListener('pointerup', up);
+          document.removeEventListener('pointercancel', up);
           if (!dragging) return;
           el.classList.remove('card-dragging');
           document.body.classList.remove('card-dragging');
@@ -2990,9 +2990,12 @@
           map[contKey(cont)] = ids;
           cardOrderSave(map);
         };
-        head.addEventListener('pointermove', move);
-        head.addEventListener('pointerup', up);
-        head.addEventListener('pointercancel', up);
+        /* move/up — на document: без захвата указателя шапка перестаёт
+         * получать события, как только карточка уходит из-под курсора
+         * (fixed + pointer-events:none) — иначе перенос зависает. */
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', up);
       });
     });
   }
