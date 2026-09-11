@@ -1073,7 +1073,7 @@ html[data-console="hc"] .term { border-color: var(--line); }
 
 /* events */
 .evt-bar { flex-wrap: wrap; row-gap: 4px; margin-bottom: 6px; }
-.evt-list { display: flex; flex-direction: column; gap: 2px; min-height: 196px; /* 7 строк — не прыгает на пустом */ }
+.evt-list { display: flex; flex-direction: column; gap: 2px; min-height: 98px; max-height: 196px; overflow-y: auto; /* компактно: ~3-7 строк + скролл */ }
 .evt {
   display: flex;
   align-items: center;

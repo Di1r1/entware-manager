@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+### NOC: карточка событий компактнее вдвое
+
+- `noc-console.css`: `.evt-list` — `min-height:98px; max-height:196px; overflow-y:auto` (было только `min-height:196px`, список рос на все события); бамп `noc-console.css?v=7→8` в `index.html`.
+- Проверено: md5 = роутер, css 200 с новой версией.
+
 ### NOC: фильтр событий в заголовке карточки
 
 - `noc/noc/index.html`: блок `#evtBar` (Все/Сеть/Службы/Защита/Входы/Пакеты) перенесён внутрь `.panel-h` карточки «События» — в одну строку с названием (`margin-left:auto`, без правок CSS/JS: селекторы по `#evtBar` не изменились).
