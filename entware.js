@@ -177,6 +177,43 @@ function startPanelWidgets() {
         .catch(e => { window.APP_VERSION = 'error'; console.error('Ошибка загрузки версии', e) });
 }
 
+// NOC-панель (порт 8086): проверка доступности + кнопка перехода.
+// Порт отличается от origin панели → только no-cors проба (opaque = жив,
+// сетевая ошибка = нет). Один запрос за сессию, NOC статичен.
+function checkNocAndRender() {
+    const btn = document.getElementById('nocBtn');
+    if (!btn) return;
+    const url = location.protocol + '//' + location.hostname + ':8086/entware-commander/noc/';
+    const setOff = (title) => {
+        btn.style.opacity = '0.5';
+        btn.title = title;
+        btn.removeAttribute('href');
+        btn.removeAttribute('target');
+        btn.onclick = (e) => { e.preventDefault(); };
+    };
+    setOff('Проверка NOC…');
+    try {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 3000);
+        fetch(url, { mode: 'no-cors', signal: ctl.signal })
+            .then(() => {
+                clearTimeout(t);
+                btn.style.opacity = '';
+                btn.href = url;
+                btn.target = '_blank';
+                btn.rel = 'noopener noreferrer';
+                btn.title = 'Открыть NOC-панель (порт 8086)';
+                btn.onclick = null;
+            })
+            .catch(() => {
+                clearTimeout(t);
+                setOff('NOC недоступен — обновите панель (NOC ставится вместе с ней)');
+            });
+    } catch (e) {
+        setOff('NOC недоступен — обновите панель (NOC ставится вместе с ней)');
+    }
+}
+
 function initPanel() {
     // Кнопка «Выйти» видна только когда пароль панели настроен (есть логин).
     const logoutBtn = document.getElementById('logoutBtn');
@@ -186,6 +223,8 @@ function initPanel() {
             .then(d => { if (d && d.authenticated) logoutBtn.style.display = 'block'; })
             .catch(() => {});
     }
+    // Кнопка NOC-панели: проверка доступности 8086 + переход в новой вкладке.
+    checkNocAndRender();
     if (collapseToggle) {
         const collapsedState = localStorage.getItem('sidebar_collapsed');
         if (collapsedState === 'true') {

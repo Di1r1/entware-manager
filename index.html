@@ -74,6 +74,12 @@
                     </svg>
                     <span class="sidebar-btn-text">Проверка системы</span>
                 </a>
+                <a href="#" id="nocBtn" class="sidebar-btn" data-collapsed-icon="link" style="opacity:0.5;" title="Проверка NOC…">
+                    <svg class="icon" width="14" height="14">
+                        <use href="/entware-manager/icons.svg?v=7#icon-link"/>
+                    </svg>
+                    <span class="sidebar-btn-text">NOC-панель</span>
+                </a>
                 <a href="#" onclick="doLogout();return false" id="logoutBtn" class="sidebar-btn" style="display:none;" data-collapsed-icon="logout">
                     <svg class="icon" width="14" height="14">
                         <use href="/entware-manager/icons.svg?v=7#icon-lock"/>
@@ -103,7 +109,7 @@
     </div>
 
     <script src="/entware-manager/menu/menu.js?v=3"></script>
-    <script src="/entware-manager/entware.js?v=170"></script>
+    <script src="/entware-manager/entware.js?v=171"></script>
     <script>
         function updateTemp() {
             fetch('/entware-cgi/temperature.cgi?_=' + Date.now())

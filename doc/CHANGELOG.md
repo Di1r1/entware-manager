@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Кнопка NOC-панели в футере сайдбара
+
+- `index.html`: новая `.sidebar-btn` `#nocBtn` (иконка `icon-link`, `data-collapsed-icon="link"`) после «Проверки системы»; старт — полупрозрачная «Проверка NOC…».
+- `entware.js`: `checkNocAndRender()` (вызов из `initPanel()`): URL `location.protocol//hostname:8086/entware-commander/noc/`, проба `fetch mode:'no-cors'` + `AbortController` 3с (порт чужой origin — CORS-fetch невозможен). Успех → `href/target=_blank/rel=noopener`, клик свободный; провал → кнопка неактивна + hint «обновите панель».
+- Кэш: `entware.js?v=170→171` в `index.html` (icons.svg не тронут).
+- Проверено: `node --check`, headless-прогон обеих веток (stub document/fetch), деплой на dev-роутер (md5 = deploy/, `entware.js` 200 + маркеры, `?v=171` на месте).
+
 ### NOC в проекте: папка `noc/` + установка всегда вместе с панелью
 
 - Исходники NOC (были только на роутере) стянуты в `noc/` (md5 = роутер): веб-консоль (`noc/index.html`, `noc-console.js/css`, `style.css`, `theme-bridge.js`), `noc/cgi-bin/procs.cgi`, форки `lib/common.sh` + `network_watchdog.sh` (v1.5 с Wi-Fi по RCI — новее панельного v1.4, не дедуплицируем: разные пути конфигов/состояния), `lighttpd/91-entware-commander.conf`. Конфиги (`*_config.json`), симлинки и `ssl/` в git не входят (секреты/рантайм).
