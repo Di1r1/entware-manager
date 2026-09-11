@@ -57,7 +57,13 @@ var classicWhitelist = map[string]bool{
 	"/menu/menu.json":             true,
 	"/logger/system_sources.json": true,
 	"/logger/style.css":           true,
-	"/cgi-bin/packages_log.cgi":  true,
+	"/noc/":                       true,
+	"/noc/index.html":             true,
+	"/noc/noc-console.css":        true,
+	"/noc/noc-console.js":         true,
+	"/noc/style.css":              true,
+	"/noc/theme-bridge.js":        true,
+	"/cgi-bin/packages_log.cgi":   true,
 	"/cgi-bin/network_events.cgi": true,
 }
 

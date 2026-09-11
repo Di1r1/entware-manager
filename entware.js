@@ -183,7 +183,7 @@ function startPanelWidgets() {
 function checkNocAndRender() {
     const btn = document.getElementById('nocBtn');
     if (!btn) return;
-    const url = location.protocol + '//' + location.hostname + ':8086/entware-commander/noc/';
+    const url = location.protocol + '//' + location.hostname + ':8086/entware-manager/noc/';
     const setOff = (title) => {
         btn.style.opacity = '0.5';
         btn.title = title;

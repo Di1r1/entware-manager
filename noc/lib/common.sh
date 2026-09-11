@@ -1,8 +1,8 @@
 #!/bin/sh
 # shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2155,SC2034
 # ==============================================
-# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-commander
-# Entware Manager - общие функции для демонов
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
+# Entware Manager - общие функции для демонов (форк NOC, объединён в проект)
 # Версия: 3.0 (удалены мёртвые функции shell-CGI эпохи)
 # Дата: 2026-08-16
 # ==============================================
@@ -38,10 +38,10 @@ die() {
     exit "${2:-1}"
 }
 
-# --- Единое логирование в /tmp/entware-commander/logs/ ---
+# --- Единое логирование в /tmp/entware-noc/logs/ (форк NOC, объединён в проект) ---
 log_message() {
     local level="$1" msg="$2"
-    local log_dir="/tmp/entware-commander/logs"
+    local log_dir="/tmp/entware-noc/logs"
     mkdir -p "$log_dir" 2>/dev/null
     local ts ip
     ts=$(date '+%Y-%m-%d %H:%M:%S')

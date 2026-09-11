@@ -1,8 +1,8 @@
 #!/bin/sh
 # shellcheck disable=SC3043,SC3037,SC3057,SC1090,SC1091,SC2155,SC2046,SC2086,SC2034
-# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-commander
+# Copyright (c) 2026 Di1r1 — https://github.com/Di1r1/entware-manager
 # ==============================================
-# Entware Manager - демон мониторинга сети
+# Entware Manager - демон мониторинга сети (форк NOC, объединён в проект)
 # Версия: 1.5 (интернет восстановлен, Wi-Fi клиенты, слабый сигнал)
 # Дата: 2026-09-09
 # ==============================================
@@ -10,14 +10,14 @@
 export PATH=/opt/sbin:/opt/bin:/sbin:/bin:/usr/sbin:/usr/bin
 export HOME=/tmp
 
-. /opt/entware-commander/lib/common.sh
+. /opt/web_entware/noc/lib/common.sh
 
-CONFIG_FILE="/opt/entware-commander/network_config.json"
-PID_FILE="/tmp/entware-commander/pid/network_watchdog.pid"
-STATE_FILE="/tmp/entware-commander/pid/network_watchdog_state.json"
-WIFI_STATE_FILE="/tmp/entware-commander/pid/network_watchdog_wifi.json"
+CONFIG_FILE="/opt/web_entware/noc/network_config.json"
+PID_FILE="/tmp/entware-noc/pid/network_watchdog.pid"
+STATE_FILE="/tmp/entware-noc/pid/network_watchdog_state.json"
+WIFI_STATE_FILE="/tmp/entware-noc/pid/network_watchdog_wifi.json"
 RCI_BASE="http://127.0.0.1:79"
-LOG_FILE="/tmp/entware-commander/logs/network_events.log"
+LOG_FILE="/tmp/entware-noc/logs/network_events.log"
 LOG_MAX_SIZE=1048576
 
 load_config() {

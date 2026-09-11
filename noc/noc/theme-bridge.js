@@ -2,8 +2,8 @@
  * Мост между классикой (theme.js: data-theme + класс night) и NOC-моком
  * (console.js: data-console / data-accent / data-density).
  *
- * Статус: черновик для ревью, прод не тронут. Подключение (будущее):
- *   <script src="/entware-commander/theme-bridge.js?v=1"></script>
+ * Статус: объединён в проект, пути внутри менеджера. Подключение:
+ *   <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
  * поверх theme.js (classic) или вместо блока тем в console.js (NOC).
  *
  * Источник правды — 4 ключа localStorage (не переименовываются):

@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### NOC — единый проект внутри менеджера (без /opt/entware-commander)
+
+- Переезд: веб-консоль → `/opt/web_entware/noc/` (URL `/entware-manager/noc/`), конфиги → `/opt/web_entware/noc/*.json`, рантайм форка → `/tmp/entware-noc/`. Legacy-корень удаляется установщиком после миграции конфигов (только отсутствующие).
+- Файлы NOC (только пути, логика не тронута): `/entware-commander/noc/*` → `/entware-manager/noc/*` (`index.html`, `noc-console.js` + бамп `?v=18→19`, сид ссылок); форк watchdog — пути на менеджер; `style.css` NOC нигде не подключён (везём как есть, не wire'им).
+- Менеджер минимум: `classicWhitelist` += 6 записей `/noc/` (+ тест `TestStaticWhitelistNOC`: 5 ассетов 200, `procs.cgi`/конфиги/`lib` 404); `91-*.conf` переписан (алиас нового префикса, прокси `/entware-cgi/`, exec `procs.cgi`, deny кода/конфигов зеркалом 90-conf); кнопка — новый URL на том же `:8086` (`entware.js?v=171→172`, 8086 оставлен: там полный функционал с `procs.cgi`; Go не исполняет shell).
+- `Install/install.sh` шаг 5b переписан: права, перенос конфигов (`.old` → legacy), удаление legacy, перевод dormant `S85entware-noc` на пути менеджера, `lighttpd -t` + reload, проверка 200 нового URL.
+- Известно: `procs.cgi` на 8087 → 404 (whitelist), у NOC есть фолбэк «без полного слепка»; `procs.cgi` без авторизации — как было; фолбэк-IP `192.168.3.1` в `noc-console.js:2349` — pre-existing (только при пустом hostname).
+
 ### Кнопка NOC-панели в футере сайдбара
 
 - `index.html`: новая `.sidebar-btn` `#nocBtn` (иконка `icon-link`, `data-collapsed-icon="link"`) после «Проверки системы»; старт — полупрозрачная «Проверка NOC…».

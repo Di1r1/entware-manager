@@ -1098,7 +1098,7 @@
    * Мок (jitter) — фолбэк без сессии. Живое: топы, CPU%, температуры, сеть, обновления,
    * версия, health. Мок-only (нет JSON-источника на панели): RAM/диск/WAN-скорость/аптайм/тома. */
   var LIVE_BASE = '/entware-cgi/';
-  var LIVE_EXP_BASE = '/entware-commander/noc/cgi-bin/';
+  var LIVE_EXP_BASE = '/entware-manager/noc/cgi-bin/';
   var LIVE_TICK_MS = 7000;
   var LIVE_TIMEOUT_MS = 12000;
   var livePending = 0;
@@ -2349,7 +2349,7 @@
       var h = window.location.hostname || '192.168.3.1';
       setLinksSave([
         { name: 'Роутер', url: 'http://' + h, icon: 'router' },
-        { name: 'Entware Manager', url: '/entware-commander/', icon: 'package' },
+        { name: 'Entware Manager', url: '/entware-manager/', icon: 'package' },
         { name: 'htop (ttyd)', url: '/htop/', icon: 'process' },
         { name: 'Терминал (ttyd)', url: '/terminal/', icon: 'terminal' }
       ], 'Ссылки сброшены к настройкам по умолчанию');

@@ -325,3 +325,39 @@ func TestStaticWhitelistRDP(t *testing.T) {
 		t.Errorf("GET /entware-manager/static/rdp/evil.sh = %d, want 404 (whitelist enforced)", resp.StatusCode)
 	}
 }
+
+func TestStaticWhitelistNOC(t *testing.T) {
+	webRoot = t.TempDir() + "/web"
+	os.MkdirAll(filepath.Join(webRoot, "noc"), 0755)
+	for _, f := range []string{"index.html", "noc-console.css", "noc-console.js", "style.css", "theme-bridge.js"} {
+		if err := os.WriteFile(filepath.Join(webRoot, "noc", f), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	defer func() { webRoot = "/opt/web_entware" }()
+
+	h := NewHandler()
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	for _, p := range []string{"/entware-manager/noc/index.html", "/entware-manager/noc/noc-console.css", "/entware-manager/noc/noc-console.js", "/entware-manager/noc/style.css", "/entware-manager/noc/theme-bridge.js"} {
+		resp, err := http.Get(srv.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s = %d, want 200 (NOC-консоль в whitelist)", p, resp.StatusCode)
+		}
+	}
+	for _, p := range []string{"/entware-manager/noc/cgi-bin/procs.cgi", "/entware-manager/noc/network_config.json", "/entware-manager/noc/lib/common.sh"} {
+		resp, err := http.Get(srv.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("GET %s = %d, want 404 (только 5 ассетов NOC, без CGI/конфигов/кода)", p, resp.StatusCode)
+		}
+	}
+}

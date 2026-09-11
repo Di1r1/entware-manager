@@ -930,48 +930,60 @@ else
 	ok "telegram_config.json уже есть"
 fi
 
-# ========== 5b. NOC (Entware Commander) — всегда вместе с панелью ==========
-# Исходники: $SELF_DIR/noc (зеркало /opt/entware-commander без симлинков
-# и конфигов). Код NOC перезаписываем целиком — пользовательских данных
-# внутри нет. Конфиги NOC (*_config.json) НИКОГДА не трогаем и не создаём:
-# их нет в поставке, демоны работают на дефолтах до первой настройки.
-step "Установка NOC (Entware Commander)"
+# ========== 5b. NOC — внутри менеджера (без сторонних папок) ==========
+# Цель: $TARGET_DIR/noc (веб-консоль + форки + 91-conf).
+# Классика не тронута; вход в NOC только через кнопку (opt-in).
+# Конфиги NOC (*_config.json) переносим (только отсутствующие), не создаём.
+step "Установка NOC (внутри менеджера)"
 
-NOC_SRC="$SELF_DIR/noc"
-NOC_DIR="/opt/entware-commander"
-NOC_CONF_SRC="$NOC_SRC/lighttpd/91-entware-commander.conf"
+NOC_DST="$TARGET_DIR/noc"
+NOC_CONF_SRC="$NOC_DST/lighttpd/91-entware-commander.conf"
 NOC_CONF_DST="/opt/etc/lighttpd/conf.d/91-entware-commander.conf"
+NOC_LEGACY="/opt/entware-commander"
 
-if [ ! -d "$NOC_SRC/noc" ]; then
-	warn "NOC: исходники $NOC_SRC/noc отсутствуют — панель ставится без NOC"
+if [ ! -d "$NOC_DST/noc" ]; then
+	warn "NOC: исходники $NOC_DST/noc отсутствуют — панель ставится без NOC"
 else
-	mkdir -p "$NOC_DIR/noc/cgi-bin" "$NOC_DIR/lib" "$NOC_DIR/entware-manager/logger" 2>/dev/null || {
-		fail "NOC: не удалось создать $NOC_DIR"
-		exit 1
-	}
+	# Раскладка git (зеркало корня commander) → плоская цель:
+	# веб-консоль noc/noc/* → $NOC_DST/, остальное уже на месте.
+	if [ -f "$NOC_DST/noc/noc/index.html" ]; then
+		cp -a "$NOC_DST/noc/noc/." "$NOC_DST/" 2>/dev/null
+		rm -rf "$NOC_DST/noc" 2>/dev/null
+		ok "NOC: раскладка выровнена ($NOC_DST/ — плоская)"
+	fi
+	# Права на код поставки (пользовательских данных внутри нет)
+	find "$NOC_DST/noc" -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) -exec chmod 644 {} + 2>/dev/null || true
+	chmod 755 "$NOC_DST/noc/cgi-bin/procs.cgi" 2>/dev/null || true
+	chmod 755 "$NOC_DST/network_watchdog.sh" 2>/dev/null || true
+	ok "NOC: файлы в $NOC_DST (веб-консоль + форки)"
 
-	# Веб-консоль + локальный CGI (перезапись — код поставки)
-	cp -a "$NOC_SRC/noc/." "$NOC_DIR/noc/" 2>/dev/null || {
-		fail "NOC: не удалось скопировать веб-консоль"
-		exit 1
-	}
-	find "$NOC_DIR/noc" -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) -exec chmod 644 {} + 2>/dev/null || true
-	chmod 755 "$NOC_DIR/noc/cgi-bin/procs.cgi" 2>/dev/null || true
+	# Конфиги: сначала из предыдущей версии (.old), затем миграция из legacy.
+	# Только отсутствующие — пользовательские настройки не перезаписываем.
+	for NOC_CFG in network_config.json auth_config.json server_config.json; do
+		if [ ! -f "$NOC_DST/$NOC_CFG" ]; then
+			if [ -n "${OLD_DIR:-}" ] && [ -f "$OLD_DIR/noc/$NOC_CFG" ]; then
+				cp -a "$OLD_DIR/noc/$NOC_CFG" "$NOC_DST/$NOC_CFG" 2>/dev/null && ok "NOC: $NOC_CFG перенесён из предыдущей версии"
+			elif [ -f "$NOC_LEGACY/$NOC_CFG" ]; then
+				cp -a "$NOC_LEGACY/$NOC_CFG" "$NOC_DST/$NOC_CFG" 2>/dev/null && ok "NOC: $NOC_CFG мигрирован из $NOC_LEGACY"
+			fi
+		fi
+	done
+	[ -f "$NOC_DST/auth_config.json" ] && chmod 600 "$NOC_DST/auth_config.json" 2>/dev/null || true
 
-	# Форк-утилиты NOC (свои копии, не дедуплицируем с панелью)
-	cp -a "$NOC_SRC/lib/common.sh" "$NOC_DIR/lib/common.sh" 2>/dev/null || true
-	cp -a "$NOC_SRC/network_watchdog.sh" "$NOC_DIR/network_watchdog.sh" 2>/dev/null || true
-	chmod 755 "$NOC_DIR/network_watchdog.sh" 2>/dev/null || true
+	# Legacy-корень больше не нужен: всё внутри менеджера.
+	if [ -d "$NOC_LEGACY" ]; then
+		rm -rf "$NOC_LEGACY" 2>/dev/null && ok "NOC: legacy $NOC_LEGACY удалён" || warn "NOC: не удалось удалить $NOC_LEGACY — удали вручную"
+	fi
 
-	# Мост в панель: Go-бинарники общие, статика — симлинки (как было вручную)
-	ln -sfn /opt/web_entware/cgi-bin/go "$NOC_DIR/cgi-bin/go" 2>/dev/null || true
-	ln -sfn /opt/web_entware/icons.svg "$NOC_DIR/entware-manager/icons.svg" 2>/dev/null || true
-	ln -sfn /opt/web_entware/theme.js "$NOC_DIR/entware-manager/theme.js" 2>/dev/null || true
-	ln -sfn /opt/web_entware/logger/style.css "$NOC_DIR/entware-manager/logger/style.css" 2>/dev/null || true
-	ok "NOC: файлы в $NOC_DIR (веб-консоль + мост в панель)"
+	# S85entware-noc (dormant): переключить пути на менеджер, не создаём.
+	if [ -f /opt/etc/init.d/S85entware-noc ]; then
+		backup_file /opt/etc/init.d/S85entware-noc "S85entware-noc" 2>/dev/null || true
+		sed -i 's#/opt/entware-commander/cgi-bin/go#/opt/web_entware/cgi-bin/go#g; s#EWM_WEB_ROOT=/opt/entware-commander#EWM_WEB_ROOT=/opt/web_entware#g; s#EWM_GO_DIR=/opt/entware-commander/cgi-bin/go#EWM_GO_DIR=/opt/web_entware/cgi-bin/go#g; s#/opt/entware-commander/server_config.json#/opt/web_entware/noc/server_config.json#g' /opt/etc/init.d/S85entware-noc 2>/dev/null \
+			&& ok "NOC: S85entware-noc переключён на менеджер" || warn "NOC: не удалось обновить S85entware-noc"
+	fi
 
-	# Lighttpd-конф NOC (алиас /entware-commander/, прокси /entware-cgi/ → 8087,
-	# локальный procs.cgi). Чужие conf.d не трогаем — только свой файл.
+	# Lighttpd-конф NOC (алиас /entware-manager/noc/, прокси /entware-cgi/ → 8087,
+	# локальный procs.cgi, deny кода/конфигов). Чужие conf.d не трогаем.
 	if [ -f "$NOC_CONF_SRC" ]; then
 		mkdir -p "$(dirname "$NOC_CONF_DST")" 2>/dev/null
 		cp -a "$NOC_CONF_SRC" "$NOC_CONF_DST" 2>/dev/null && ok "NOC: 91-entware-commander.conf установлен"
@@ -999,10 +1011,10 @@ else
 
 	# Проверка доступности NOC (мягкая — не валим установку)
 	if command -v curl >/dev/null 2>&1; then
-		if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8086/entware-commander/noc/ 2>/dev/null)" = "200" ]; then
+		if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8086/entware-manager/noc/ 2>/dev/null)" = "200" ]; then
 			ok "NOC: отвечает на 8086 (200)"
 		else
-			warn "NOC: нет 200 на 8086/entware-commander/noc/ — проверь после перезапуска lighttpd"
+			warn "NOC: нет 200 на 8086/entware-manager/noc/ — проверь после перезапуска lighttpd"
 		fi
 	fi
 fi

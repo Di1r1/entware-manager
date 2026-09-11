@@ -58,23 +58,24 @@ opkg install lighttpd ttyd htop jq coreutils-base procps-ng bridge-utils ip-full
 └── noc/                   # исходники NOC (зеркало /opt/entware-commander)
 ```
 
-NOC (Entware Commander) ставится всегда вместе с панелью шагом
-«Установка NOC» в `Install/install.sh`:
+NOC-консоль ставится всегда вместе с панелью шагом
+«Установка NOC» в `Install/install.sh` — всё внутри менеджера:
 
 ```
-/opt/entware-commander/
-├── noc/                     # веб-консоль (index.html, *.css/js)
-│   └── cgi-bin/procs.cgi    # локальный CGI (топ процессов, без авторизации)
+/opt/web_entware/noc/
+├── index.html, noc-console.*, style.css, theme-bridge.js  # веб-консоль
+│   └── cgi-bin/procs.cgi    # локальный CGI (топ процессов)
 ├── lib/common.sh            # форк общих функций NOC
-├── network_watchdog.sh      # форк демона сети NOC (v1.5: Wi-Fi по RCI)
-├── cgi-bin/go -> /opt/web_entware/cgi-bin/go   # общие Go-бинарники (симлинк)
-├── entware-manager/         # симлинки статики панели (стили/тема/иконки)
-└── *_config.json            # конфиги NOC — установщик их НЕ трогает и НЕ создаёт
+├── network_watchdog.sh      # форк демона сети NOC
+├── lighttpd/91-entware-commander.conf  # исходник конфига
+└── *_config.json            # конфиги NOC — переносятся, не перезаписываются
 ```
 
 `/opt/etc/lighttpd/conf.d/91-entware-commander.conf` — алиас
-`/entware-commander/`, прокси `/entware-cgi/ → 127.0.0.1:8087`, локальный
-`procs.cgi`. Порт NOC — 8086 (общий lighttpd / порт-хранитель).
+`/entware-manager/noc/`, прокси `/entware-cgi/ → 127.0.0.1:8087`, локальный
+`procs.cgi`, запрет отдачи кода/конфигов. Порт NOC — 8086 (общий lighttpd /
+порт-хранитель); та же консоль доступна на 8087 (`/entware-manager/noc/`,
+кроме `procs.cgi` — Go-сервер исполняет только свои бинарники).
 
 ## 3. Установка из временного каталога
 
