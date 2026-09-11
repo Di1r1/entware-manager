@@ -358,8 +358,34 @@ body {
   padding: var(--pad-card);
   box-shadow: var(--shadow-sm);
   transition: border-color var(--transition);
+  position: relative;
 }
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
+
+/* resize карточек: ручка справа (видна при наведении, вид по умолчанию не меняет) */
+.card-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.card-resizer::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background var(--transition);
+}
+.card:hover .card-resizer::after,
+.card-resizer.on::after { background: var(--accent); }
 
 .c-head {
   font-weight: 700;

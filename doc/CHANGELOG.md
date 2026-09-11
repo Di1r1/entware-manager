@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+### NOC: изменение ширины карточек перетаскиванием
+
+- CSS: `.card{position:relative}` + `.card-resizer` (ручка 8px справа, акцент только при наведении — вид по умолчанию не меняется); JS `cardResizeBoot()` для всех `.card`: Pointer Events (capture), clamp 240px…ширина контейнера, память в `localStorage.noc_cardw` (id либо индекс), даблклик — сброс.
+- Бамп: `noc-console.css?v=8→9`, `noc-console.js?v=20→21`.
+- Проверено: `node --check`, headless-тест clamp/id/persist, деплой (md5, маркеры в served-файлах).
+
 ### NOC: карточка событий компактнее вдвое
 
 - `noc-console.css`: `.evt-list` — `min-height:98px; max-height:196px; overflow-y:auto` (было только `min-height:196px`, список рос на все события); бамп `noc-console.css?v=7→8` в `index.html`.

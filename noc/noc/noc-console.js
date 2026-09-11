@@ -2799,9 +2799,76 @@
     var row = e.target && e.target.closest ? e.target.closest('tr[data-pkg]') : null;
     if (row) toast(pkgInfo(row.getAttribute('data-pkg')));
   });
+  /* ===== Card resize: ручка справа у каждой .card, ширина запоминается ===== */
+  var CARDW_KEY = 'noc_cardw';
+  function cardWLoad() {
+    try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
+    catch (err) { return {}; }
+  }
+  function cardWSave(map) {
+    try { localStorage.setItem(CARDW_KEY, JSON.stringify(map)); } catch (err) {}
+  }
+  function cardId(el, idx) {
+    if (el.id) return 'id:' + el.id;
+    return 'ix:' + idx;
+  }
+  function cardClamp(w, maxw) {
+    w = Math.round(w);
+    if (w < 240) w = 240;
+    if (maxw > 0 && w > maxw) w = maxw;
+    return w;
+  }
+  function cardResizeBoot() {
+    var saved = cardWLoad();
+    var cards = document.querySelectorAll('.card');
+    Array.prototype.forEach.call(cards, function (el, idx) {
+      var id = cardId(el, idx);
+      var st = el.style;
+      if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; }
+      if (el.querySelector(':scope > .card-resizer')) return;
+      var h = document.createElement('div');
+      h.className = 'card-resizer';
+      h.title = 'Тяните, чтобы изменить ширину (двойной клик — сброс)';
+      el.appendChild(h);
+      h.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var startX = e.clientX;
+        var startW = el.getBoundingClientRect().width;
+        var maxw = el.parentElement ? el.parentElement.clientWidth : 0;
+        h.classList.add('on');
+        try { h.setPointerCapture(e.pointerId); } catch (err) {}
+        var move = function (ev) {
+          st.width = cardClamp(startW + ev.clientX - startX, maxw) + 'px';
+          st.maxWidth = '100%';
+        };
+        var up = function () {
+          h.classList.remove('on');
+          h.removeEventListener('pointermove', move);
+          h.removeEventListener('pointerup', up);
+          h.removeEventListener('pointercancel', up);
+          var m = cardWLoad();
+          m[id] = parseInt(st.width, 10) || 0;
+          if (!m[id]) delete m[id];
+          cardWSave(m);
+        };
+        h.addEventListener('pointermove', move);
+        h.addEventListener('pointerup', up);
+        h.addEventListener('pointercancel', up);
+      });
+      h.addEventListener('dblclick', function (e) {
+        e.preventDefault();
+        st.width = '';
+        st.maxWidth = '';
+        var m = cardWLoad();
+        delete m[id];
+        cardWSave(m);
+      });
+    });
+  }
   var pkgSearch = document.getElementById('pkgSearch');
   if (pkgSearch) pkgSearch.oninput = function (e) { pkgState.q = e.target.value || ''; renderPkg(); };
   renderPkg();
+  cardResizeBoot();
   (function evtBarBoot() {
     var cur = document.querySelector('#evtBar [data-f="' + evtFilter + '"]');
     if (cur) {
