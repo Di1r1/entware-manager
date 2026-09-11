@@ -42,8 +42,9 @@ func HandleSystemLogs() {
 <head>
 	<meta charset="UTF-8">
 	<title>Системные логи</title>
-	<link rel="stylesheet" href="/entware-manager/logger/style.css?v=2">
-	<script src="/entware-manager/theme.js?v=2"></script>
+	` + staticBaseHTML + `
+	<link rel="stylesheet" href="logger/style.css?v=2">
+	<script src="theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();
 	</script>

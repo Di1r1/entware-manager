@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Логи в NOC: стили через <base> (запрос REQUEST_LOGGER_STYLES.md)
+
+- Проблема: iframe логов в NOC (порт 8086, `/entware-cgi/logger/view.cgi`) грузил CSS/JS по абсолютным `/entware-manager/...` — алиас есть только на 8087 → страница без оформления.
+- Решение: в `go/internal/logger/shared.go` — константа `staticBaseHTML` (`<base id="static-base" href="/entware-manager/">` + инлайн-скрипт до загрузки CSS/JS; при `location.port==='8086'` или пути `/entware-commander/...` base переключается на `/entware-commander/entware-manager/`). Все asset-ссылки в `view.go` / `system_logs.go` / `config.go` (pretty) стали относительными (`logger/style.css`, `theme.js`, `style.css`, `icons.svg`) и резолвятся через `<base>`. Чисто относительный путь без `<base>` не подошёл бы: страница живёт на `/entware-cgi/logger/`, где статики нет.
+- CGI-ссылка `← К логам` (`/entware-cgi/...`) не тронута — работает на обоих портах (на 8086 проксируется).
+- Проверено: `make ci` PASS, `gofmt` чисто, хост-прогон трёх HTML-шаблонов (base + относительные ссылки на месте, абсолютных `/entware-manager/` в шаблонах не осталось).
+
 ### Часть 3 NOC (дешёвое и полезное): tag=packages, format=json, tag=monitor
 
 - `network_events.cgi?tag=packages` (вариант Б из п. 2.2/3.1): читает хвост `package_changes.log`, маппит в общий формат событий (`service: "packages"`, `success → INFO`, прочее → WARN). NOC выкидывает `pkgLogCache`. Для тестов путь вынесен в `var PackageChangesLog`, тип записи экспортирован (`PkgLogEntry` + `CollectPackageLog`).

@@ -37,8 +37,9 @@ func HandleView() {
 <head>
 	<meta charset="UTF-8">
 	<title>Логи Entware Manager</title>
-	<link rel="stylesheet" href="/entware-manager/logger/style.css?v=2">
-	<script src="/entware-manager/theme.js?v=2"></script>
+	` + staticBaseHTML + `
+	<link rel="stylesheet" href="logger/style.css?v=2">
+	<script src="theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();
 	</script>
@@ -61,7 +62,7 @@ func HandleView() {
 
 	fmt.Print(`</select></div>
 	<div><label>Поиск</label><input type="text" name="search" value="` + htmlEscape(search) + `" placeholder="текст для поиска"></div>
-	<div><button type="submit"><svg class="icon" width="14" height="14" style="fill: none; stroke: currentColor;"><use href="/entware-manager/icons.svg?v=3#icon-search"/></svg> Фильтровать</button></div>
+	<div><button type="submit"><svg class="icon" width="14" height="14" style="fill: none; stroke: currentColor;"><use href="icons.svg?v=3#icon-search"/></svg> Фильтровать</button></div>
 </form>
 <div class="logs-container">`)
 
