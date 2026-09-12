@@ -2744,11 +2744,16 @@ html.night #toast {
     position: fixed;
     inset: 0;
     z-index: 1000;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     background: var(--bg-gradient, #f8fafc);
     backdrop-filter: blur(2px);
+}
+/* Показываем только по классу (ставит showLogin): иначе фон оверлея
+ * вспыхивает при обновлении до ответа session.cgi даже с валидной сессией. */
+body.login-shown .login-overlay {
+    display: flex;
 }
 .login-card {
     background: var(--card-bg, var(--content-bg));
