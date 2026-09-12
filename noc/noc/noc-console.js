@@ -2884,11 +2884,8 @@
     try { localStorage.setItem(CORD_KEY, JSON.stringify(map)); } catch (err) {}
   }
   function contKey(cont) {
-    var anc = cont;
-    while (anc && anc !== document.body) {
-      if (anc.id) return 'id:' + anc.id;
-      anc = anc.parentElement;
-    }
+    if (cont.dataset && cont.dataset.nocont) return 'cont:' + cont.dataset.nocont;
+    if (cont.id) return 'id:' + cont.id;
     var sibs = cont.parentElement ? cont.parentElement.children : [];
     var ix = Array.prototype.indexOf.call(sibs, cont);
     return 'ix:' + cont.tagName + ':' + ix;
@@ -2905,24 +2902,20 @@
     var keys = Object.keys(saved);
     if (!keys.length) return;
     var byId = {};
+    var contByKey = {};
     Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
       byId[cardId(el)] = el;
+      if (el.parentElement) contByKey[contKey(el.parentElement)] = el.parentElement;
     });
-    Object.keys(saved).forEach(function (ck) {
+    keys.forEach(function (ck) {
       var ids = saved[ck];
-      if (!ids || !ids.length) return;
-      var first = null;
+      var cont = contByKey[ck];
+      if (!cont || !ids || !ids.length) return;
       ids.forEach(function (id) {
         var el = byId[id];
-        if (el && el.parentElement && contKey(el.parentElement) === ck) {
-          if (!first) first = el;
-        }
-      });
-      if (!first) return;
-      var cont = first.parentElement;
-      ids.forEach(function (id) {
-        var el = byId[id];
-        if (el && el.parentElement === cont) cont.appendChild(el);
+        /* appendChild перемещает и между контейнерами — так порядок
+         * переживает перезагрузку и при переносе через строки */
+        if (el) cont.appendChild(el);
       });
     });
   }
@@ -2936,11 +2929,17 @@
   }
   function cardOrderBoot() {
     cardBootIds();
+    /* маркировка раньше apply: ключи cont:N должны существовать до чтения */
+    var markCards = document.querySelectorAll('.card');
+    var ncont = 0;
+    Array.prototype.forEach.call(markCards, function (el) {
+      if (el.parentElement) {
+        el.parentElement.dataset.dndcont = '1';
+        if (!el.parentElement.dataset.nocont) el.parentElement.dataset.nocont = '' + (ncont++);
+      }
+    });
     cardApplyOrder();
     var cards = document.querySelectorAll('.card');
-    Array.prototype.forEach.call(cards, function (el) {
-      if (el.parentElement) el.parentElement.dataset.dndcont = '1';
-    });
     Array.prototype.forEach.call(cards, function (el) {
       var head = el.querySelector(':scope > .panel-h, :scope > .c-head');
       if (!head || head.dataset.dnd) return;
@@ -2981,22 +2980,34 @@
           }
           el.style.left = (rect.left + ev.clientX - startX) + 'px';
           el.style.top = (rect.top + ev.clientY - startY) + 'px';
-          var under = document.elementFromPoint(ev.clientX, ev.clientY);
-          var over = under && under.closest ? under.closest('.card') : null;
-          if (over && over !== el && !over.classList.contains('card-placeholder')) {
-            var oc = over.parentElement, pc = ph.parentElement;
+          /* Попадание считаем сами по rect'ам — без elementFromPoint:
+           * хит-тест окружения ненадёжен (плейсхолдер не двигался при
+           * живых событиях). Скрытые view (нулевые rect) пропускаем. */
+          var placed = false;
+          Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
+            if (placed || other === el || !other.parentElement) return;
+            var r = other.getBoundingClientRect();
+            if (!r || r.width <= 0 || r.height <= 0) return;
+            if (ev.clientX < r.left - 8 || ev.clientX > r.right + 8 ||
+                ev.clientY < r.top - 8 || ev.clientY > r.bottom + 8) return;
+            var oc = other.parentElement, pc = ph.parentElement;
             if (!oc || !pc) return;
             /* чужой контейнер — только в том же view и только помеченный
              * (статические карточки); динамические сетки не трогаем. */
             if (oc !== pc && (!sameView(oc, pc) || !oc.dataset.dndcont || !pc.dataset.dndcont)) return;
-            var r = over.getBoundingClientRect();
             var before = (ev.clientY - r.top) < r.height / 2;
-            oc.insertBefore(ph, before ? over : over.nextSibling);
-          } else if (!over && under && under.closest) {
-            /* пустое место контейнера — placeholder в конец (сброс туда же) */
-            var ec = under.closest('[data-dndcont]');
-            if (ec && sameView(ec, srcCont) && ph.parentElement !== ec) ec.appendChild(ph);
-            else if (ec && ph.parentElement === ec && ec.lastElementChild !== ph) ec.appendChild(ph);
+            oc.insertBefore(ph, before ? other : other.nextSibling);
+            placed = true;
+          });
+          if (!placed) {
+            /* пустое место контейнера — placeholder в конец (сброс туда же);
+             * точку под курсором не трогаем, если это сама тащимая карточка. */
+            var under2 = null;
+            try { under2 = document.elementFromPoint(ev.clientX, ev.clientY); } catch (err2) {}
+            if (under2 && under2.closest && !(el.contains && el.contains(under2))) {
+              var ec = under2.closest('[data-dndcont]');
+              if (ec && sameView(ec, srcCont) && ec !== ph.parentElement) ec.appendChild(ph);
+            }
           }
         };
         var up = function () {
