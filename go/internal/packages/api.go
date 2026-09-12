@@ -28,7 +28,7 @@ func HandleAPI() {
 		return
 	}
 
-	info, _ := runOpkg("-f", "/opt/etc/opkg.conf", "info", pkg)
+	info, _ := runOpkgList("-f", "/opt/etc/opkg.conf", "info", pkg)
 	if info == "" {
 		cgiutil.WriteJSON(map[string]string{"error": "No information returned by opkg"})
 		return

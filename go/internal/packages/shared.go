@@ -86,6 +86,28 @@ func runOpkg(args ...string) (string, int) {
 	return runCmd("/opt/bin/opkg", args...)
 }
 
+// runOpkgList выполняет read-only команды opkg (list/list-installed/
+// list-upgradable/info) с ретраями: при старте панели десяток CGI
+// параллельно дёргает opkg, проигравший борьбу за лок-файл получает
+// ненулевой код — без ретрая фронт принимает пустой [] за правду
+// («всё обновлено», пустой список установленных). Мутации
+// (install/remove/upgrade) сюда передавать запрещено — повторный
+// прогон опасен.
+func runOpkgList(args ...string) (string, int) {
+	out, code := runOpkg(args...)
+	if code == 0 {
+		return out, code
+	}
+	for i := 0; i < 2; i++ {
+		time.Sleep(2 * time.Second)
+		out, code = runOpkg(args...)
+		if code == 0 {
+			return out, code
+		}
+	}
+	return out, code
+}
+
 // runOpkgTimed выполняет opkg с таймаутом 60с через coreutils-timeout (если
 // доступен), иначе напрямую. Защита от зависания на недоступном/медленном
 // feed — аналог opkgWithTimeout() в stats/update.go.

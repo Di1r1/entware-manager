@@ -229,6 +229,7 @@
       railItems.forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
       var tab = b.getAttribute('data-tab');
+      lsSet('entware_noc_tab', tab);
       crumbs.textContent = CRUMBS[tab] || ('мок / ' + b.getAttribute('data-name').toLowerCase());
       Object.keys(VIEWS).forEach(function (k) {
         var el = document.getElementById(VIEWS[k]);
@@ -1630,6 +1631,7 @@
     var rb = document.getElementById('dashRefresh');
     if (rb) rb.onclick = function () { liveTick(); renderStatMods(); toast('Дашборд обновлён (LIVE)'); };
     liveTick();
+    bootLiveTab();
   }
   function liveLogin() {
     var old = document.getElementById('liveLogin');
@@ -1725,7 +1727,7 @@
     { name: 'lighttpd', ver: '1.4.79-1', date: '2026-03-26', st: 'installed' },
     { name: 'wireguard-tools', ver: '1.0.20210914-1', date: '—', st: 'available' }
   ];
-  var pkgState = { installed: [], upgradable: [], available: [], filter: 'all', q: '', sortKey: 'package', sortDir: 1, loaded: false };
+  var pkgState = { installed: [], upgradable: [], available: [], filter: 'all', q: '', sortKey: 'package', sortDir: 1, loaded: false, loading: false };
   function plural(n, a, b, c) {
     var m = Math.abs(n) % 100, d = m % 10;
     if (m > 10 && m < 20) return c;
@@ -1905,6 +1907,166 @@
   }
   monBind();
   monBind();
+  /* ===== LIVE logs (вкладка Логи): паритет классики (loadLogsTab в entware.js).
+   * Панели действий всегда видимы (вне скрываемых data-pp) — табы logSeg
+   * переключают только iframe. Динамические источники — общий ключ
+   * localStorage 'entware_dynamic_sources' с классикой. */
+  var logTab = 'mgr';
+  function logNeedSession() { if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return false; } return true; }
+  function logFrame() { return document.getElementById('logsFrame'); }
+  function logMsg(t) { var m = document.getElementById('logMsg'); if (m) m.textContent = t || ''; }
+  function logDynLoad() {
+    try {
+      var raw = lsGet('entware_dynamic_sources');
+      var a = raw ? JSON.parse(raw) : [];
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function logDynSave(a) { lsSet('entware_dynamic_sources', JSON.stringify(a)); }
+  function logSources() {
+    var sel = document.getElementById('logSource');
+    if (!sel) return;
+    fetch('/entware-manager/logger/system_sources.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
+      var all = (d && Array.isArray(d.sources) ? d.sources : []).concat(logDynLoad());
+      var html = '<option value="">Выберите источник</option>';
+      all.forEach(function (src) {
+        var file = src.path || src.file || '';
+        html += '<option value="' + esc(src.name) + '"' + (file ? ' data-file="' + esc(file) + '"' : '') + '>' + esc(src.name) + '</option>';
+      });
+      sel.innerHTML = html;
+    }).catch(function () {});
+  }
+  function logShowSource() {
+    var sel = document.getElementById('logSource');
+    if (!sel || !sel.value) return;
+    var opt = sel.options[sel.selectedIndex];
+    var file = opt ? opt.getAttribute('data-file') : '';
+    var f = logFrame();
+    if (sel.value && file && f) f.src = LIVE_BASE + 'logger/system_logs.cgi?file=' + encodeURIComponent(file) + '&_=' + Date.now();
+    else if (f) f.src = 'about:blank';
+  }
+  function logStatus() {
+    if (!window.__NOC_LIVE_STATS) return;
+    liveFetch('logger/config.cgi').then(function (c) {
+      if (!c || typeof c !== 'object') return;
+      var on = !!c.enabled;
+      var v = document.getElementById('logVerdict');
+      if (v) {
+        v.innerHTML = '<span class="live-dot"></span>' + (on ? 'логирование вкл' : 'логирование выкл');
+        v.className = 'verdict ' + (on ? 'ok-t' : 'mut');
+      }
+      var dot = document.getElementById('logStateDot');
+      if (dot) dot.className = 'dot ' + (on ? 'ok' : 'warn');
+      var t = document.getElementById('logStateTxt');
+      if (t) t.textContent = on ? 'включено' : 'выключено';
+      var b = document.getElementById('logToggleBtn');
+      if (b) b.textContent = 'Логирование: ' + (on ? 'вкл' : 'выкл');
+    });
+  }
+  function logSetTab(tab) {
+    logTab = tab;
+    lsSet('entware_noc_logtab', tab);
+    var btns = document.querySelectorAll('#logSeg [data-ltab]');
+    Array.prototype.forEach.call(btns, function (x) { x.classList.toggle('active', x.getAttribute('data-ltab') === tab); });
+    var mc = document.getElementById('logMgrCard'), sc = document.getElementById('logSysCard');
+    if (mc) mc.hidden = (tab !== 'mgr');
+    if (sc) sc.hidden = (tab !== 'sys');
+    var f = logFrame();
+    if (!f) return;
+    if (tab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now();
+    else { logSources(); f.src = 'about:blank'; }
+  }
+  function logBoot() {
+    if (!window.__NOC_LIVE_STATS) return;
+    logSources();
+    logStatus();
+  }
+  (function logBind() {
+    function on(id, fn) { var el = document.getElementById(id); if (el) el.onclick = fn; }
+    on('logRefreshBtn', function () { var f = logFrame(); if (f) f.src = f.src; logMsg(''); toast('Логи обновлены (LIVE)'); });
+    Array.prototype.forEach.call(document.querySelectorAll('#logSeg [data-ltab]'), function (b) {
+      b.onclick = function () { logSetTab(b.getAttribute('data-ltab')); };
+    });
+    var sel = document.getElementById('logSource');
+    if (sel) sel.onchange = logShowSource;
+    on('logSysRefresh', function () { logShowSource(); });
+    on('logSearchBtn', function () {
+      if (!logNeedSession()) return;
+      var q = prompt('Введите текст для поиска в имени файла (в /tmp):');
+      if (!q || !q.replace(/^\s+|\s+$/g, '')) return;
+      liveFetch('logger/find_by_name.cgi?q=' + encodeURIComponent(q)).then(function (files) {
+        if (!Array.isArray(files) || !files.length) { toast('Файлы не найдены.', 'warn'); return; }
+        var dyn = logDynLoad(), added = 0;
+        files.forEach(function (fl) {
+          var dup = false;
+          dyn.forEach(function (s) { if (s.path === fl.path) dup = true; });
+          if (!dup) { dyn.push({ name: fl.name, path: fl.path }); added++; }
+        });
+        if (!added) { toast('Все файлы уже в списке.'); return; }
+        logDynSave(dyn);
+        logSources();
+        toast('Добавлено ' + added + '.');
+      });
+    });
+    on('logClearSrcBtn', function () {
+      if (!confirm('Удалить все сохранённые динамические источники логов?')) return;
+      try { localStorage.removeItem('entware_dynamic_sources'); } catch (e) {}
+      logSources();
+      toast('Сохранённые источники очищены');
+    });
+    on('logClearBtn', function () {
+      if (!logNeedSession()) return;
+      if (!confirm('Удалить все логи старше 30 дней?')) return;
+      livePost('logger/clear.cgi', '').then(function (t) {
+        toast((t && t.message) || 'Готово', t && t.status === 'ok' ? undefined : 'warn');
+        var f = logFrame();
+        if (f && logTab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now();
+      });
+    });
+    on('logRotateBtn', function () {
+      if (!logNeedSession()) return;
+      if (!confirm('Запустить ротацию логов сейчас?')) return;
+      livePost('logger/rotate.cgi', '').then(function (t) {
+        var msg = (t && t.message) || 'Готово';
+        if (t && Array.isArray(t.rotated) && t.rotated.length) {
+          msg += ' | ' + t.rotated.map(function (fl) { return fl.path + ' (' + fl.size + ')'; }).join(', ');
+        }
+        toast(msg.length > 200 ? msg.slice(0, 200) + '…' : msg, t && t.status === 'ok' ? undefined : 'warn');
+        var f = logFrame();
+        if (f && logTab === 'mgr') setTimeout(function () { f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now(); }, 1000);
+      });
+    });
+    on('logToggleBtn', function () {
+      if (!logNeedSession()) return;
+      liveFetch('logger/config.cgi').then(function (c) {
+        if (!c || typeof c !== 'object') { toast('Нет данных конфигурации', 'warn'); return; }
+        var on = !!c.enabled;
+        if (!confirm('Логирование сейчас ' + (on ? 'включено' : 'отключено') + '. Хотите изменить?')) return;
+        c.enabled = !on;
+        liveFetchRaw(LIVE_BASE + 'logger/config.cgi', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c)
+        }).then(function (t) {
+          var ok = t && t.status === 'ok';
+          toast(ok ? 'Настройки сохранены' : 'Ошибка сохранения', ok ? undefined : 'warn');
+          if (ok) logStatus();
+        });
+      });
+    });
+    on('logEventsBtn', function () {
+      var w = document.createElement('div');
+      w.className = 'pal-wrap';
+      w.innerHTML = '<div class="pal"><div style="padding:14px 16px">' +
+        '<div class="c-head">Системные события <button class="btn sm ghost" id="logEvClose">Закрыть</button></div>' +
+        '<div class="log mono" id="logEvBody" style="height:300px">Загрузка…</div></div></div>';
+      document.body.appendChild(w);
+      w.onclick = function (e) { if (e.target === w) w.remove(); };
+      document.getElementById('logEvClose').onclick = function () { w.remove(); };
+      liveFetch('logger/system_log.cgi').then(function (t) {
+        var b = document.getElementById('logEvBody');
+        if (b) b.innerHTML = (typeof t === 'string' && t) ? t : '<span class="mut">событий нет</span>';
+      });
+    });
+  })();
   /* ===== LIVE services (вкладка Службы и Cron): watchdog/services/crontab.
    * Обновление — по входу на вкладку, по кнопке, по действиям + интервал 10 с.
    * Все мутации — POST с телом (иначе lighttpd 411). */
@@ -2321,12 +2483,12 @@
   }
   (function setBind() {
     function on(id, fn) { var el = document.getElementById(id); if (el) el.onclick = fn; }
-    on('setHtopStart', function () { setTtydAct('start', 8189, 'setHtopPass', null); });
-    on('setHtopStop', function () { setTtydAct('stop', 8189, 'setHtopPass', null); });
-    on('setHtopRestart', function () { setTtydAct('restart', 8189, 'setHtopPass', null); });
-    on('setTermStart', function () { setTtydAct('start', 9189, 'setTermPass', 'setTermMode'); });
-    on('setTermStop', function () { setTtydAct('stop', 9189, 'setTermPass', null); });
-    on('setTermRestart', function () { setTtydAct('restart', 9189, 'setTermPass', 'setTermMode'); });
+    on('setHtopStart', function () { setTtydAct('start', 8089, 'setHtopPass', null); });
+    on('setHtopStop', function () { setTtydAct('stop', 8089, 'setHtopPass', null); });
+    on('setHtopRestart', function () { setTtydAct('restart', 8089, 'setHtopPass', null); });
+    on('setTermStart', function () { setTtydAct('start', 9089, 'setTermPass', 'setTermMode'); });
+    on('setTermStop', function () { setTtydAct('stop', 9089, 'setTermPass', null); });
+    on('setTermRestart', function () { setTtydAct('restart', 9089, 'setTermPass', 'setTermMode'); });
     on('setLinkAdd', function () {
       if (!setNeedSession()) return;
       var tb = document.getElementById('setLinksBody');
@@ -2468,23 +2630,20 @@
    * Запуск/остановка — в Настройках → Терминал (отдельная вкладка).
    * Iframe пересоздаём только при смене состояния, иначе фокус/ввод рвался бы. */
   var termTimer = null, termStateKey = '';
-  function termRow(label, path, inst, modeLabel) {
-    var run = inst && inst.state === 'running';
-    return '<tr><td class="l">' + label + '</td><td class="l">' + path + '</td>' +
-      '<td class="' + (run ? 'ok-t' : 'mut') + '">' + (run ? '● запущен' : '○ остановлен') + '</td>' +
-      '<td>' + esc((inst && inst.pid) || '—') + '</td><td class="l">' + esc(modeLabel || '—') + '</td></tr>';
-  }
   function termRender(d) {
     if (!d) return;
-    var tb = document.getElementById('termBody');
-    var t = d.terminal || {}, h = d.htop || {};
+    var t = d.terminal || {};
     var tMode = t.mode === 'telnet' ? 'telnet' : 'entware';
-    if (tb) tb.innerHTML = termRow('htop', '/htop/', h, '—') + termRow('Терминал', '/terminal/', t, tMode);
     var v = document.getElementById('termVerdict');
     if (v) {
-      var tRun = t.state === 'running';
-      v.innerHTML = '<span class="live-dot"></span>' + (tRun ? ('ttyd :' + esc(t.port || '—') + ' · ' + tMode) : 'остановлен');
-      v.className = 'verdict ' + (tRun ? 'ok-t' : 'mut');
+      if (t.state === 'running') {
+        v.innerHTML = '<span class="live-dot"></span>ttyd :' + esc(t.port || '—') +
+          ' · ' + tMode + ' · PID ' + esc(t.pid || '—');
+        v.className = 'verdict ok-t';
+      } else {
+        v.textContent = 'остановлен';
+        v.className = 'verdict mut';
+      }
     }
     var seg = document.getElementById('termModeSeg');
     if (seg) Array.prototype.forEach.call(seg.querySelectorAll('[data-tm]'), function (b) {
@@ -2508,6 +2667,54 @@
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     liveFetch('ttyd_control.cgi').then(termRender);
   }
+  /* Переключение режима прямо из вкладки Терминал (seg termModeSeg):
+   * один общий пароль на оба режима — поле termPass здесь же во вкладке
+   * (как в RDP), запасной вариант — поле Настроек. Отдельного пароля
+   * для telnet нет. Пароль для старта обязателен (бэкенд без него
+   * отказывает): если везде пусто — просим ввести здесь, никуда не уводим. */
+  function termPassVal() {
+    var a = document.getElementById('termPass');
+    if (a && a.value) return a.value;
+    var b = document.getElementById('setTermPass');
+    return b ? b.value : '';
+  }
+  function termPassClear() {
+    var a = document.getElementById('termPass');
+    if (a) a.value = '';
+    var b = document.getElementById('setTermPass');
+    if (b) b.value = '';
+  }
+  function termSwitchMode(mode) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    if (mode !== 'telnet' && mode !== 'entware') return;
+    var pw = termPassVal();
+    if (!pw) {
+      toast('Введите пароль терминала', 'warn');
+      var inp = document.getElementById('termPass');
+      if (inp) inp.focus();
+      return;
+    }
+    liveFetch('ttyd_control.cgi').then(function (d) {
+      var t = d && d.terminal ? d.terminal : {};
+      var cur = t.mode === 'telnet' ? 'telnet' : 'entware';
+      if (cur === mode && t.state === 'running') {
+        toast('Уже режим ' + (mode === 'telnet' ? 'Telnet' : 'Entware'));
+        return;
+      }
+      var label = mode === 'telnet' ? 'Telnet' : 'Entware';
+      var body = 'action=restart&port=9089&mode=' + encodeURIComponent(mode) +
+        '&pass=' + encodeURIComponent(pw);
+      toast('Переключение в режим ' + label + '…');
+      livePost('ttyd_control.cgi', body).then(function (r) {
+        var ok = r && r.status === 'ok';
+        toast((r && r.message) || (ok ? 'Режим ' + label + ' включён' : 'Ошибка переключения'), ok ? undefined : 'warn');
+        termPassClear();
+        var ms = document.getElementById('setTermMode');
+        if (ms) ms.value = mode;
+        liveFetch('ttyd_control.cgi').then(termRender);
+      });
+    });
+  }
   function termBoot() {
     if (!window.__NOC_LIVE_STATS) return;
     termFetch();
@@ -2518,6 +2725,10 @@
   (function termBind() {
     var r = document.getElementById('termRefreshBtn');
     if (r) r.onclick = function () { termFetch(); toast('Терминал обновлён (LIVE)'); };
+    var seg = document.getElementById('termModeSeg');
+    if (seg) Array.prototype.forEach.call(seg.querySelectorAll('[data-tm]'), function (b) {
+      b.onclick = function () { termSwitchMode(b.getAttribute('data-tm')); };
+    });
   })();
   /* ===== LIVE processes (вкладка Процессы): полный слепок procs.cgi.
    * Данные уже тянет тик (applyFullProcs) — новых периодических запросов нет;
@@ -2547,6 +2758,8 @@
     liveFetchExp('procs.cgi').then(function (d) { applyFullProcs(d); procRender(); });
   }
   function pkgReload() {
+    pkgEpoch++; /* гасим цепочку в полёте, если есть */
+    pkgLoadTries = 0;
     pkgState.loaded = false;
     pkgState.installed = []; pkgState.upgradable = []; pkgState.available = [];
     livePkgLoad();
@@ -2568,25 +2781,59 @@
       ' · доступно: ' + pkgState.available.length + more + '.';
   }
   function livePkgLoad() {
-    /* opkg на роутере медленный: тянем цепочкой с длинными таймаутами, статус по шагам */
+    /* opkg на роутере медленный: тянем цепочкой с длинными таймаутами, статус по шагам.
+     * Не-массив в ответе = сбой запроса (таймаут/opkg занят): ретраим цепочку
+     * до 2 раз, иначе список молча остаётся пустым навсегда (loaded уже true).
+     * Эпоха my/pkgEpoch гасит устаревшие цепочки: ручное «Обновить» или ретрай
+     * стартуют новую, а опоздавшие ответы старой игнорируются, а не затирают данные.
+     * Рендер один — в самом конце: промежуточные перерисовки давали «прыжки» таблицы. */
     if (!window.__NOC_LIVE_STATS || pkgState.loaded) return;
     pkgState.loaded = true;
+    pkgState.loading = true;
+    renderPkg();
+    var my = ++pkgEpoch;
     pkgStatus('Загрузка: установленные…');
     liveFetch('installed.cgi', null, 45000).then(function (d) {
-      pkgState.installed = Array.isArray(d) ? d : [];
-      renderPkg();
+      if (my !== pkgEpoch) return;
+      if (!Array.isArray(d)) { pkgRetry('установленные', my); return; }
+      pkgState.installed = d;
       pkgStatus('Установленные: ' + pkgState.installed.length + ' · загрузка: обновления…');
       liveFetch('upgradable.cgi', null, 45000).then(function (u) {
-        pkgState.upgradable = Array.isArray(u) ? u : [];
-        renderPkg();
+        if (my !== pkgEpoch) return;
+        if (!Array.isArray(u)) { pkgRetry('обновления', my); return; }
+        pkgState.upgradable = u;
         pkgStatus('Установленные: ' + pkgState.installed.length + ' · загрузка: доступные (долго)…');
         liveFetch('available.cgi', null, 90000).then(function (a) {
-          pkgState.available = Array.isArray(a) ? a : [];
+          if (my !== pkgEpoch) return;
+          if (!Array.isArray(a)) { pkgRetry('доступные', my); return; }
+          pkgState.available = a;
+          pkgLoadTries = 0;
+          pkgState.loading = false;
           renderPkg();
           pkgStatus('Готово. ' + pkgSummary());
         });
       });
     });
+  }
+  var pkgLoadTries = 0, pkgEpoch = 0;
+  function pkgRetry(step, my) {
+    /* повтор всей цепочки с нуля: частичные данные не показываем */
+    if (my !== pkgEpoch) return;
+    if (pkgLoadTries < 2 && window.__NOC_LIVE_STATS) {
+      pkgLoadTries++;
+      pkgStatus('Ошибка загрузки (' + step + '). Повтор ' + pkgLoadTries + '/2 через 5 с…');
+      setTimeout(function () {
+        if (my !== pkgEpoch) return;
+        pkgState.loaded = false;
+        pkgState.installed = []; pkgState.upgradable = []; pkgState.available = [];
+        livePkgLoad();
+      }, 5000);
+      return;
+    }
+    pkgLoadTries = 0;
+    pkgState.loading = false;
+    renderPkg();
+    pkgStatus('Ошибка загрузки (' + step + '). Нажмите «Обновить».');
   }
   function pkgRows() {
     if (!pkgState.loaded) return PKG_MOCK.slice();
@@ -2626,6 +2873,16 @@
   function renderPkg() {
     var body = document.getElementById('pkgBody');
     if (!body) return;
+    if (pkgState.loading) {
+      /* цепочка в полёте: скелетон вместо мок-строк и вместо пустой
+       * таблицы — никаких «неправильных данных» и промежуточных прыжков */
+      body.innerHTML = '<tr><td colspan="5" class="mut">Загрузка…</td></tr>';
+      var vl = document.getElementById('pkgVerdictFull');
+      if (vl) { vl.textContent = 'загрузка…'; vl.className = 'verdict mut'; }
+      var sl = document.getElementById('pkgSubFull');
+      if (sl) sl.textContent = 'LIVE · загрузка…';
+      return;
+    }
     var rows = pkgRows();
     var badge = { upgrade: '<span class="badge warn">обновление</span>', installed: '<span class="badge ok">установлен</span>', available: '<span class="badge">доступен</span>' };
     var act = { upgrade: '<button class="btn sm" data-pact="upgrade">Обновить</button>', installed: '<button class="btn sm ghost" data-pact="remove">Удалить</button>', available: '<button class="btn sm" data-pact="install">Установить</button>' };
@@ -2673,6 +2930,8 @@
     if (rdpv) { rdpBoot(); }
     var stv = e.target && e.target.closest ? e.target.closest('.ri[data-tab="settings"]') : null;
     if (stv) { setBoot(); }
+    var lgv = e.target && e.target.closest ? e.target.closest('.ri[data-tab="logs"]') : null;
+    if (lgv) { logBoot(); }
     var lsave = e.target && e.target.closest ? e.target.closest('[data-linksave]') : null;
     if (lsave) {
       var li = parseInt(lsave.getAttribute('data-linksave'), 10);
@@ -2800,7 +3059,7 @@
     if (row) toast(pkgInfo(row.getAttribute('data-pkg')));
   });
   /* ===== Card resize: ручка справа у каждой .card, ширина запоминается ===== */
-  var CARDW_KEY = 'noc_cardw';
+  var CARDW_KEY = 'noc_cardw2';
   function cardWLoad() {
     try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
     catch (err) { return {}; }
@@ -2875,7 +3134,7 @@
   }
   /* ===== Card order: перенос за шапку, порядок запоминается ===== */
   /* Только статические карточки (динамические сетки перерисовываются сами). */
-  var CORD_KEY = 'noc_cardorder';
+  var CORD_KEY = 'noc_cardorder2';
   function cardOrderLoad() {
     try { return JSON.parse(localStorage.getItem(CORD_KEY) || '{}'); }
     catch (err) { return {}; }
@@ -2914,8 +3173,11 @@
       ids.forEach(function (id) {
         var el = byId[id];
         /* appendChild перемещает и между контейнерами — так порядок
-         * переживает перезагрузку и при переносе через строки */
-        if (el) cont.appendChild(el);
+         * переживает перезагрузку и при переносе через строки.
+         * Чужой view не трогаем: после изменения DOM старые ключи
+         * контейнеров могут указывать не туда (карточки сыпались
+         * в чужую вкладку, напр. Мониторинг в Терминал). */
+        if (el && sameView(el.parentElement, cont)) cont.appendChild(el);
       });
     });
   }
@@ -3046,6 +3308,13 @@
   }
   var pkgSearch = document.getElementById('pkgSearch');
   if (pkgSearch) pkgSearch.oninput = function (e) { pkgState.q = e.target.value || ''; renderPkg(); };
+  var pkgRefreshBtn = document.getElementById('pkgRefreshBtn');
+  if (pkgRefreshBtn) pkgRefreshBtn.onclick = function () {
+    pkgState.q = '';
+    if (pkgSearch) pkgSearch.value = '';
+    pkgReload();
+    toast('Список пакетов обновляется (LIVE)');
+  };
   renderPkg();
   cardOrderBoot();
   cardResizeBoot();
@@ -3055,6 +3324,34 @@
       var all = document.querySelectorAll('#evtBar [data-f]');
       Array.prototype.forEach.call(all, function (x) { x.classList.remove('active'); });
       cur.classList.add('active');
+    }
+  })();
+  /* ===== Запоминание вкладки: активный таб rail + подтаб логов.
+   * Клик по rail сохраняет таб; при загрузке восстанавливаем его вместо
+   * стартового. bootLiveTab дожимает LIVE-загрузчики активной вкладки
+   * после входа (к моменту liveStart таб уже восстановлен). */
+  function bootLiveTab() {
+    var act = document.querySelector('.ri.active');
+    var t = act ? act.getAttribute('data-tab') : 'stats';
+    if (t === 'logs') logBoot();
+    else if (t === 'system-services') svcBoot();
+    else if (t === 'network') netBoot();
+    else if (t === 'monitor') { monRefresh(); monCfgLoad(); }
+    else if (t === 'packages') { livePkgLoad(); pkgJournalLoad(); }
+    else if (t === 'processes') procFetch();
+    else if (t === 'terminal') termBoot();
+    else if (t === 'rdp') rdpBoot();
+    else if (t === 'settings') setBoot();
+  }
+  (function restoreTab() {
+    var t = lsGet('entware_noc_tab');
+    if (!t || !VIEWS[t]) return;
+    var b = document.querySelector('.ri[data-tab="' + t + '"]');
+    if (!b) return;
+    b.click();
+    if (t === 'logs') {
+      var lt = lsGet('entware_noc_logtab');
+      if (lt === 'sys' || lt === 'mgr') logSetTab(lt);
     }
   })();
   liveBoot();

@@ -297,7 +297,7 @@
       <div id="view-packages" hidden>
         <div class="hero">
           <div><h2>Пакеты <span class="verdict warn-t" id="pkgVerdictFull">3 обновления доступны</span></h2><span class="mut" id="pkgSubFull">184 уст. · 2 410 доступно · списки от сегодня 06:00</span></div>
-          <span class="t-right"><button class="btn ghost" id="pkgUpdateLists">Обновить списки</button><button class="btn" id="pkgUpgradeAll">Обновить всё</button><button class="btn ghost" id="pkgJournalBtn">Журнал</button></span>
+          <span class="t-right"><button class="btn ghost" id="pkgRefreshBtn" title="Перезагрузить список пакетов">Обновить</button><button class="btn ghost" id="pkgUpdateLists">Обновить списки</button><button class="btn" id="pkgUpgradeAll">Обновить всё</button><button class="btn ghost" id="pkgJournalBtn">Журнал</button></span>
         </div>
         <div class="toolbar">
           <span class="seg mono" id="pkgSeg"><button class="sg active" data-pf="all">Все</button><button class="sg" data-pf="installed">Установленные</button><button class="sg" data-pf="upgrades">Обновления</button><button class="sg" data-pf="available">Доступные</button></span>
@@ -338,12 +338,9 @@
           <div><h2>Терминал <span class="verdict ok-t" id="termVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">если не открывается — Настройки → Терминал</span></div>
           <span class="t-right"><a class="btn ghost" id="termOpenLink" href="/terminal/" target="_blank" rel="noopener noreferrer" hidden>Открыть в новой вкладке</a><button class="btn ghost" id="termRefreshBtn">Обновить</button></span>
         </div>
-        <div class="card" style="margin-bottom:12px"><div class="c-head">Статус ttyd <span class="mut">опрос каждые 10 с</span></div>
-        <table class="tbl mono"><thead><tr><th>Сервис</th><th>Порт</th><th>Состояние</th><th>PID</th><th>Режим</th></tr></thead><tbody id="termBody">
-          <tr><td colspan="5" class="mut">Загрузка…</td></tr>
-        </tbody></table></div>
         <div class="toolbar"><span class="mut">Режим:</span>
-          <span class="seg mono" id="termModeSeg"><button class="sg" data-tm="entware">Entware</button><button class="sg" data-tm="telnet">Telnet</button></span>
+          <span class="seg mono" id="termModeSeg" title="Клик — переключить режим (рестарт с паролем ниже)"><button class="sg" data-tm="entware">Entware</button><button class="sg" data-tm="telnet">Telnet</button></span>
+          <input type="password" id="termPass" class="t-search mono" placeholder="Пароль терминала" autocomplete="off" style="width:150px">
         </div>
         <div class="card" id="termFrameWrap"><div class="mut mono">Загрузка…</div></div>
       </div>
@@ -479,7 +476,7 @@
               <section class="grid two">
                 <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок htop</div><label>Пароль<input type="password" id="setHtopPass" placeholder="пусто — без пароля"></label>
                 <span><button class="btn sm" id="setHtopStart">Запустить</button> <button class="btn sm ghost" id="setHtopStop">Остановить</button> <button class="btn sm ghost" id="setHtopRestart">Перезапустить</button></span></div>
-                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок Терминал</div><label>Режим<select id="setTermMode"><option value="entware">Консоль Entware (/opt/bin/bash)</option><option value="telnet">Консоль роутера (telnet)</option></select></label><label>Пароль<input type="password" id="setTermPass" placeholder="пусто — без пароля"></label>
+                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок Терминал</div><label>Режим<select id="setTermMode"><option value="entware">Консоль Entware (/opt/bin/bash)</option><option value="telnet">Консоль роутера (telnet)</option></select></label><label>Пароль<input type="password" id="setTermPass" placeholder="обязателен для запуска"></label>
                 <span><button class="btn sm" id="setTermStart">Запустить</button> <button class="btn sm ghost" id="setTermStop">Остановить</button> <button class="btn sm ghost" id="setTermRestart">Перезапустить</button></span></div>
               </section>
               <div class="mut mono" style="margin-top:8px">Управление веб-терминалами ttyd: htop — мониторинг процессов, терминал — shell. Если вкладка не открывается — запустите здесь.</div></div>
@@ -619,21 +616,32 @@
 
       <!-- ===== VIEW: LOGS ===== -->
       <div id="view-logs" hidden>
-        <div data-sub="logs">
-          <div class="toolbar"><span class="seg mono">
-            <button class="sg active" data-sp="mgr">Действия менеджера</button><button class="sg" data-sp="sys">Системные логи</button></span>
-          </div>
-          <div data-pp="mgr">
-            <div class="toolbar"><span class="t-right" style="margin-left:0">
-              <button class="btn sm ghost" onclick="document.getElementById('mgrFrame').contentWindow.location.reload()">Обновить</button></span></div>
-            <div class="card"><iframe id="mgrFrame" src="/entware-cgi/logger/view.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
-          </div>
-          <div data-pp="sys" hidden>
-            <div class="toolbar"><span class="t-right" style="margin-left:0">
-              <button class="btn sm ghost" onclick="document.getElementById('sysFrame').contentWindow.location.reload()">Обновить</button></span></div>
-            <div class="card"><iframe id="sysFrame" src="/entware-cgi/logger/system_logs.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
-          </div>
+        <div class="hero">
+          <div><h2>Логи <span class="verdict ok-t" id="logVerdict"><span class="live-dot"></span>…</span></h2><span class="mut">действия менеджера · системные логи · ротация</span></div>
+          <span class="t-right"><button class="btn ghost" id="logRefreshBtn">Обновить</button></span>
         </div>
+        <div class="toolbar"><span class="seg mono" id="logSeg">
+          <button class="sg active" data-ltab="mgr">Действия менеджера</button><button class="sg" data-ltab="sys">Системные логи</button></span>
+          <span class="mut mono" id="logMsg"></span>
+        </div>
+        <div class="card" id="logMgrCard"><div class="c-head">Действия менеджера <span class="mut"><i class="dot ok" id="logStateDot"></i><span id="logStateTxt">…</span></span></div>
+          <div class="toolbar" style="margin-bottom:0"><span class="t-right" style="margin-left:0">
+            <button class="btn sm ghost" id="logClearBtn">Очистить старше 30 дней</button>
+            <button class="btn sm ghost" id="logRotateBtn">Ротация сейчас</button>
+            <button class="btn sm ghost" id="logToggleBtn">Логирование: …</button>
+            <button class="btn sm ghost" id="logEventsBtn">Системные события</button>
+          </span></div>
+        </div>
+        <div class="card" id="logSysCard" hidden><div class="c-head">Системные логи <span class="mut">источник из system_sources.json + поиск</span></div>
+          <div class="toolbar" style="margin-bottom:0">
+            <select id="logSource"><option value="">Выберите источник</option></select>
+            <span class="t-right" style="margin-left:0">
+              <button class="btn sm ghost" id="logSysRefresh">Показать</button>
+              <button class="btn sm ghost" id="logSearchBtn">Поиск по имени</button>
+              <button class="btn sm ghost" id="logClearSrcBtn">Очистить источники</button>
+            </span></div>
+        </div>
+        <div class="card"><iframe id="logsFrame" src="/entware-cgi/logger/view.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
       </div>
 
       <footer class="statusbar mono">
@@ -658,7 +666,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=27"></script>
+<script src="/entware-manager/noc/noc-console.js?v=38"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>

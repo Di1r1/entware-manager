@@ -17,7 +17,7 @@ func Available() {
 		return
 	}
 
-	out, code := runOpkg("list")
+	out, code := runOpkgList("list")
 	if code != 0 {
 		cgiutil.WriteJSON([]PkgInfo{})
 		return

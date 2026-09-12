@@ -23,7 +23,7 @@ func Upgradable() {
 // CollectUpgradable — чистое значение для dashboard.cgi.
 // Форма ровно та, что отдаёт upgradable.cgi.
 func CollectUpgradable() []UpgradablePkg {
-	out, code := runOpkg("list-upgradable")
+	out, code := runOpkgList("list-upgradable")
 	if code != 0 {
 		return []UpgradablePkg{}
 	}

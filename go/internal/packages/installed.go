@@ -41,7 +41,7 @@ func Installed() {
 		return
 	}
 
-	out, code := runOpkg("list-installed")
+	out, code := runOpkgList("list-installed")
 	pkgList := strings.TrimSpace(out)
 	count := 0
 	if pkgList != "" {
@@ -120,7 +120,7 @@ func InstalledJSON() {
 		return
 	}
 
-	out, code := runOpkg("list-installed")
+	out, code := runOpkgList("list-installed")
 	if code != 0 {
 		cgiutil.WriteJSON([]InstalledPkg{})
 		return
