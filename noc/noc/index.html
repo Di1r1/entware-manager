@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entware Manager — NOC Console (бета)</title>
-<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=10">
+<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=12">
 </head>
 <body>
 <div class="noc">
@@ -203,7 +203,7 @@
                   <div class="vol">
                     <div class="vol-h"><b>/tmp</b><span>135 / 496 М</span><span class="mut">27%</span></div>
                     <div class="prog"><i style="width:27%"></i></div>
-                    <div class="vol-f mut">tmpfs · RAM <button class="btn sm ghost" onclick="toast('Очистка tmpfs — заглушка')">Очистить</button></div>
+                    <div class="vol-f mut">tmpfs · RAM</div>
                   </div>
                   <div class="vol">
                     <div class="vol-h"><b>rootfs</b><span>2.1 ГБ</span><span class="mut">29%</span></div>
@@ -473,13 +473,12 @@
               <table class="tbl mono"><thead><tr><th>Сервис</th><th>Путь</th><th>Состояние</th><th>PID</th><th>Режим</th></tr></thead><tbody id="setTtydBody">
                 <tr><td colspan="5" class="mut">Загрузка…</td></tr>
               </tbody></table>
-              <section class="grid two">
-                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок htop</div><label>Пароль<input type="password" id="setHtopPass" placeholder="пусто — без пароля"></label>
-                <span><button class="btn sm" id="setHtopStart">Запустить</button> <button class="btn sm ghost" id="setHtopStop">Остановить</button> <button class="btn sm ghost" id="setHtopRestart">Перезапустить</button></span></div>
-                <div class="frm mono" style="margin-top:10px"><div class="mini-t">Блок Терминал</div><label>Режим<select id="setTermMode"><option value="entware">Консоль Entware (/opt/bin/bash)</option><option value="telnet">Консоль роутера (telnet)</option></select></label><label>Пароль<input type="password" id="setTermPass" placeholder="обязателен для запуска"></label>
+              <div class="frm mono" style="margin-top:10px"><div class="mini-t">Один пароль на всё</div><label>Пароль ttyd — действует и на htop, и на терминал (Entware/telnet)<input type="password" id="setTermPass" placeholder="обязателен для запуска"></label>
+                <div class="mini-t">htop · :8089</div>
+                <span><button class="btn sm" id="setHtopStart">Запустить</button> <button class="btn sm ghost" id="setHtopStop">Остановить</button> <button class="btn sm ghost" id="setHtopRestart">Перезапустить</button></span>
+                <div class="mini-t" style="margin-top:8px">Терминал · :9089</div>
                 <span><button class="btn sm" id="setTermStart">Запустить</button> <button class="btn sm ghost" id="setTermStop">Остановить</button> <button class="btn sm ghost" id="setTermRestart">Перезапустить</button></span></div>
-              </section>
-              <div class="mut mono" style="margin-top:8px">Управление веб-терминалами ttyd: htop — мониторинг процессов, терминал — shell. Если вкладка не открывается — запустите здесь.</div></div>
+              <div class="mut mono" style="margin-top:8px">Управление веб-терминалами ttyd: htop — мониторинг процессов, терминал — shell. Режим терминала (Entware/telnet) переключается во вкладке Терминал. Если вкладка не открывается — запустите здесь.</div></div>
             <div class="card"><div class="c-head">Управление ссылками <span class="mut" id="setLinksMsg"></span></div>
               <table class="tbl mono"><thead><tr><th>⋮⋮</th><th>Иконка</th><th>Название</th><th>URL</th><th>Действия</th></tr></thead><tbody id="setLinksBody">
                 <tr><td colspan="5" class="mut">Загрузка…</td></tr>
@@ -488,65 +487,71 @@
           </div>
 
           <div data-pp="notif" hidden>
-            <div class="card" style="margin-bottom:12px"><div class="c-head">Telegram-уведомления <span class="badge ok">включены · тест ok</span></div>
-              <section class="grid two"><div class="frm mono">
-                <label class="chk"><input type="checkbox" checked> Включить уведомления</label>
-                <label>Bot Token<input type="password" value="8123456789:AA…"></label>
-                <label>Chat ID<input value="123456789"></label>
-                <label>Прокси<input value="" placeholder="пусто — напрямую"></label>
-                <label>Уровень<select><option>INFO</option><option>WARN</option><option>ERROR</option><option>OFF</option></select></label></div>
-              <div class="frm mono"><div class="mini-t">Источники</div>
-                <label class="chk"><input type="checkbox" checked> Система</label><label class="chk"><input type="checkbox" checked> Монитор</label><label class="chk"><input type="checkbox" checked> Сеть</label><label class="chk"><input type="checkbox"> Службы</label><label class="chk"><input type="checkbox" checked> Пакеты</label><label class="chk"><input type="checkbox" checked> Входы в панель</label><label class="chk"><input type="checkbox" checked> Модули</label>
-                <label class="chk"><input type="checkbox" checked> Чат-бот</label><label class="chk"><input type="checkbox" checked> Автозапуск бота</label>
-                <label class="chk"><input type="checkbox"> Тихий режим <input value="23:00–07:00" style="width:110px"></label>
-                <label>Доп. chat ID<input value=""></label></div></section>
-              <div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0"><button class="btn sm" onclick="toast('Сохранить — заглушка')">Сохранить</button><button class="btn sm ghost" onclick="toast('Тест отправлен — заглушка')">Отправить тест</button></span></div></div>
-            <div class="card"><div class="c-head">Критические пороги</div>
-              <table class="tbl mono"><thead><tr><th></th><th>Метрика</th><th>Порог</th></tr></thead><tbody>
-                <tr><td><input type="checkbox" checked></td><td class="l">Температура CPU</td><td><input value="75" style="width:60px"> °C</td></tr>
-                <tr><td><input type="checkbox" checked></td><td class="l">WiFi0 / WiFi1</td><td><input value="80" style="width:60px"> °C</td></tr>
-                <tr><td><input type="checkbox" checked></td><td class="l">Нагрузка CPU</td><td><input value="90" style="width:60px"> %</td></tr>
-                <tr><td><input type="checkbox" checked></td><td class="l">Занятость памяти</td><td><input value="90" style="width:60px"> %</td></tr>
-                <tr><td><input type="checkbox"></td><td class="l">Температура дисков</td><td><input value="55" style="width:60px"> °C</td></tr>
-              </tbody></table>
-              <button class="btn sm" style="margin-top:8px" onclick="toast('Сохранить пороги — заглушка')">Сохранить пороги</button></div>
+            <div class="card" style="margin-bottom:12px"><div class="c-head">Telegram-уведомления <span class="mut" id="ntgMsg"></span></div>
+              <div class="frm mono">
+                <label class="chk"><input type="checkbox" id="ntgEnabled"> Включить уведомления</label>
+                <label>Bot Token<input type="password" id="ntgToken" placeholder="123456:ABC-DEF... — пусто = не менять"></label>
+                <label>Chat ID<input type="text" id="ntgChat" placeholder="123456789"></label>
+                <label>Доп. chat ID<input type="text" id="ntgChatExtra" placeholder="111222333, 444555666 (через запятую)"></label>
+                <label>Прокси<input type="text" id="ntgProxy" placeholder="http://127.0.0.1:10871 или socks5://127.0.0.1:1080"></label>
+                <label>Уровень<select id="ntgLevel"><option value="ERROR">ERROR (только ошибки)</option><option value="WARN">WARN (ошибки и предупреждения)</option><option value="INFO">INFO (все)</option><option value="OFF">OFF (выключено)</option></select></label>
+                <div class="mini-t">Источники событий</div>
+                <span><label class="chk"><input type="checkbox" id="ntg-src-system"> Система</label> <label class="chk"><input type="checkbox" id="ntg-src-monitor"> Монитор</label> <label class="chk"><input type="checkbox" id="ntg-src-network"> Сеть</label> <label class="chk"><input type="checkbox" id="ntg-src-service"> Службы</label> <label class="chk"><input type="checkbox" id="ntg-src-packages"> Пакеты</label> <label class="chk"><input type="checkbox" id="ntg-src-login"> Входы в панель</label> <label class="chk"><input type="checkbox" id="ntg-src-bridge"> Модули</label></span>
+                <label class="chk"><input type="checkbox" id="ntgBot"> Чат-бот (команды /status /help /backup)</label>
+                <label class="chk"><input type="checkbox" id="ntgAutostart"> Автозапуск бота</label>
+                <div class="mini-t">Тихий режим (ночью алерты копятся, утром приходит сводка · часы 0–23)</div>
+                <span><label class="chk"><input type="checkbox" id="ntgQuiet"> Включить с <input type="number" id="ntgQuietFrom" min="0" max="23" placeholder="23" style="width:56px"> до <input type="number" id="ntgQuietTo" min="0" max="23" placeholder="7" style="width:56px"></label></span>
+                <span><button class="btn sm" id="ntgSave">Сохранить</button> <button class="btn sm ghost" id="ntgTest">Отправить тест</button> <span class="mut" id="ntgStatus"></span></span></div>
+              <div class="mut mono" style="margin-top:8px">Токен бота хранится скрыто и не отображается. Инструкция и все команды бота — во вкладке «Справка».</div></div>
+            <div class="card"><div class="c-head">Критические пороги <span class="mut">превышение — уведомление, возврат в норму — сообщение о восстановлении</span></div>
+              <div class="frm mono">
+                <span><label class="chk"><input type="checkbox" id="nth-cpu_temp"> 🔥 Температура CPU <input type="number" id="nth-cpu_temp-val" min="0" max="150" style="width:70px"> °C</label></span>
+                <span><label class="chk"><input type="checkbox" id="nth-wifi0_temp"> 📶 Температура WiFi0 <input type="number" id="nth-wifi0_temp-val" min="0" max="150" style="width:70px"> °C</label></span>
+                <span><label class="chk"><input type="checkbox" id="nth-wifi1_temp"> 📶 Температура WiFi1 <input type="number" id="nth-wifi1_temp-val" min="0" max="150" style="width:70px"> °C</label></span>
+                <span><label class="chk"><input type="checkbox" id="nth-cpu_load"> ⚡ Нагрузка CPU <input type="number" id="nth-cpu_load-val" min="0" max="100" style="width:70px"> %</label></span>
+                <span><label class="chk"><input type="checkbox" id="nth-ram_used"> 🧠 Занятость памяти <input type="number" id="nth-ram_used-val" min="0" max="100" style="width:70px"> %</label></span>
+                <span><label class="chk"><input type="checkbox" id="nth-disk_temp"> 💾 Температура дисков <input type="number" id="nth-disk_temp-val" min="0" max="150" style="width:70px"> °C</label></span>
+                <span><button class="btn sm" id="nthSave">Сохранить пороги</button> <span class="mut" id="nthStatus"></span></span></div></div>
           </div>
 
           <div data-pp="sec" hidden>
-            <section class="grid two">
-              <div class="card"><div class="c-head">Защита панели</div>
-                <div class="frm mono"><label class="chk"><input type="checkbox" checked> Включить защиту паролем</label>
-                <label>Новый пароль<input type="password" placeholder="••••••••"></label><label>Подтверждение<input type="password" placeholder="••••••••"></label>
-                <span><button class="btn sm" onclick="toast('Сохранить (запрос текущего пароля) — заглушка')">Сохранить</button> <span class="mut">статус: ok</span></span></div></div>
-              <div class="card"><div class="c-head">HTTPS</div>
-                <div class="frm mono"><label class="chk"><input type="checkbox"> Включить HTTPS</label>
-                <label>Порт<input value="8443" style="width:100px"></label>
-                <span><button class="btn sm" onclick="toast('Применить — заглушка')">Применить</button> <span class="mut">сертификат: создан · lighttpd</span></span></div></div>
-            </section>
-            <div class="card" style="margin-top:12px"><div class="c-head">Попытки входа <span class="badge warn">3 неудачных за 24ч</span> <button class="btn sm ghost" onclick="toast('Обновить — заглушка')">Обновить</button></div>
-              <table class="tbl mono"><thead><tr><th>Время</th><th>IP адрес</th><th>Событие</th></tr></thead><tbody>
-                <tr><td>07:41:12</td><td class="l">192.168.3.55</td><td class="crit-t">неверный пароль</td></tr>
-                <tr><td>03:12:47</td><td class="l">185.220.×.×</td><td class="crit-t">неверный пароль ×5</td></tr>
-                <tr><td>02:59:03</td><td class="l">192.168.3.1</td><td class="ok-t">успешный вход</td></tr>
+            <div class="card" style="margin-bottom:12px"><div class="c-head">Пароль панели <span class="mut" id="nsecMsg"></span></div>
+              <div class="frm mono">
+                <label class="chk"><input type="checkbox" id="nsecEnabled"> Включить защиту паролем</label>
+                <label>Новый пароль (мин. 8 символов)<input type="password" id="nsecPass" placeholder="пусто = не менять"></label>
+                <label>Подтверждение<input type="password" id="nsecPassConfirm" placeholder="повторите пароль"></label>
+                <label>Текущий пароль<input type="password" id="nsecCurrent" placeholder="нужен, если защита уже включена"></label>
+                <span><button class="btn sm" id="nsecSave">Сохранить</button> <span class="mut" id="nsecStatus"></span></span></div></div>
+            <div class="card" style="margin-bottom:12px"><div class="c-head">HTTPS (TLS) <span class="mut" id="ntlsMsg"></span></div>
+              <div class="frm mono">
+                <label class="chk"><input type="checkbox" id="ntlsEnabled"> Включить HTTPS</label>
+                <label>Порт<input type="text" id="ntlsPort" placeholder="8443" style="width:100px"></label>
+                <label>Пароль панели для подтверждения<input type="password" id="ntlsPass"></label>
+                <span><button class="btn sm" id="ntlsSave">Сохранить и перезапустить сервер</button> <span class="mut" id="ntlsStatus"></span></span></div>
+              <div class="mut mono" style="margin-top:8px">В режиме lighttpd недоступно — только go-режим. После включения страница перезагрузится.</div></div>
+            <div class="card"><div class="c-head">Журнал попыток входа <span class="mut" id="nalBadge"></span></div>
+              <div class="toolbar"><span class="t-right" style="margin-left:0"><button class="btn sm ghost" id="nalRefresh">Обновить</button></span></div>
+              <table class="tbl mono"><thead><tr><th>Время</th><th>IP адрес</th><th>Событие</th></tr></thead><tbody id="nalBody">
+                <tr><td colspan="3" class="mut">Загрузка…</td></tr>
               </tbody></table></div>
           </div>
 
           <div data-pp="mnt" hidden>
-            <section class="grid two">
-              <div class="card"><div class="c-head">Бэкап и восстановление</div>
-                <div class="frm mono"><span><button class="btn sm" onclick="toast('Скачать бэкап — заглушка')">Скачать бэкап</button></span>
-                <span><button class="btn sm ghost" onclick="toast('Восстановить (.tar.gz) — заглушка')">Восстановить (.tar.gz)</button></span>
-                <span><button class="btn sm ghost" onclick="toast('Офлайн-пакет (~30–60 с) — заглушка')">Подготовить офлайн-пакет</button></span>
-                <span class="mut">статус: готов</span></div></div>
-              <div class="card"><div class="c-head">Обновление <span class="mut">текущая v1.16.28</span></div>
-                <div class="frm mono"><span>Доступна <b class="warn-t">v1.17.0</b></span>
-                <span><button class="btn sm" onclick="toast('Проверить — заглушка')">Проверить</button> <button class="btn sm ghost" onclick="toast('Обновить до v1.17.0 — заглушка')">Обновить до v1.17.0</button> <button class="btn sm ghost" onclick="toast('Переустановить — заглушка')">Переустановить</button></span>
-                <pre class="log mono" style="height:90px">[08:20:01] check: latest v1.17.0
-[08:20:02] status: ready</pre></div></div>
-            </section>
-            <div class="card" style="margin-top:12px"><div class="c-head">Внешний вид карточек</div>
-              <span class="seg mono"><button class="sg">Скруглённые</button><button class="sg active">Квадратные</button><button class="sg">Мягкие</button></span>
-              <button class="btn sm ghost" onclick="toast('Сбросить оформление — заглушка')">Сбросить оформление</button></div>
+            <div class="card" style="margin-bottom:12px"><div class="c-head">Бэкап и восстановление</div>
+              <div class="mut mono" style="margin-bottom:8px">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога. Скачайте бэкап перед сбросом роутера или для переноса на новое устройство.</div>
+              <div class="toolbar"><span class="t-right" style="margin-left:0">
+                <a class="btn sm" href="/entware-cgi/backup.cgi" download="entware-manager-backup.tar.gz">Скачать бэкап</a>
+                <label class="btn sm ghost" style="cursor:pointer">Восстановить<input type="file" id="nmntRestoreFile" accept=".tar.gz" hidden></label>
+                <button class="btn sm ghost" id="nmntOffline">Подготовить офлайн-пакет</button>
+                <span class="mut mono" id="nmntBackupStatus"></span></span></div>
+              <div class="mut mono" style="margin-top:8px">Офлайн-пакет: перенесите tar.gz на целевой роутер в <b>/opt/tmp/</b> и выполните там: <span class="mono">tar xzf &lt;файл&gt; && cd &lt;каталог&gt; && sh install-offline.sh</span></div></div>
+            <div class="card"><div class="c-head">Обновление <span class="mut">Текущая версия: <span id="nmntCurrent">загрузка…</span></span></div>
+              <div class="toolbar"><span class="t-right" style="margin-left:0">
+                <button class="btn sm ghost" id="nmntCheck">Проверить</button>
+                <button class="btn sm" id="nmntRun" hidden>Обновить до <span id="nmntVersion"></span></button>
+                <button class="btn sm ghost" id="nmntReinstall">Переустановить</button></span></div>
+              <div class="mut mono" id="nmntStatus" style="margin-top:8px"></div>
+              <pre class="log mono" id="nmntLog" hidden style="margin-top:8px"></pre></div>
           </div>
         </div>
       </div>
@@ -583,34 +588,28 @@
       <div id="view-help" hidden>
         <div class="toolbar">
           <input class="t-search mono" id="helpSearch" placeholder="Поиск по справке…" autocomplete="off">
-          <span class="mut">Справка · v1.16.28 · 77 CGI · 9 Go-бинарников + grdp-proxy</span>
+          <span class="mut">Справка · NOC-бета · в конце каждого раздела — ссылка «Открыть →» для перехода</span>
         </div>
         <div class="card" id="helpList">
-          <div class="acc-item"><button class="acc-h">Статистика</button><div class="acc-b">Карточки системы/памяти/CPU/пакетов/диска, сеть, tmpfs с очисткой, модули, ссылки, температуры.</div></div>
-          <div class="acc-item"><button class="acc-h">История температур</button><div class="acc-b">Графики CPU и WiFi за 24ч, мин/сред/макс/сейчас, сохранение истории.</div></div>
-          <div class="acc-item"><button class="acc-h">Пакеты</button><div class="acc-b">Фильтры, поиск, сортировка, установка/удаление/обновление, модалка информации.</div></div>
-          <div class="acc-item"><button class="acc-h">Процессы (htop)</button><div class="acc-b">htop через ttyd; если не открывается — запустить в Настройки → Терминал.</div></div>
-          <div class="acc-item"><button class="acc-h">Syncthing</button><div class="acc-b">Модуль синхронизации: панель :8384, управление через карточку модуля.</div></div>
-          <div class="acc-item"><button class="acc-h">Модули — как добавить свой сервис</button><div class="acc-b">Уровни от простого модуля с веб-страницей до действий с POST-телом; типы полей kbs/from/on/off/color; авторизация.</div></div>
-          <div class="acc-item"><button class="acc-h">Терминал</button><div class="acc-b">Режимы Entware (/opt/bin/bash) и telnet роутера; пароль опционален.</div></div>
-          <div class="acc-item"><button class="acc-h">Сеть</button><div class="acc-b">Демон, интерфейсы, маршруты, ARP, Wi-Fi клиенты, события; скрытие UNKNOWN.</div></div>
-          <div class="acc-item"><button class="acc-h">SMART</button><div class="acc-b">Здоровье дисков, атрибуты со справкой, разделы, короткие/полные тесты.</div></div>
-          <div class="acc-item"><button class="acc-h">RDP</button><div class="acc-b">grdp-proxy, настройка порта, встроенный клиент /rdp/, захват клавиатуры.</div></div>
-          <div class="acc-item"><button class="acc-h">Службы и Cron</button><div class="acc-b">watchdog с кастомными списками, init.d службы, системный и Entware crontab.</div></div>
-          <div class="acc-item"><button class="acc-h">Настройки</button><div class="acc-b">4 под-вкладки: терминал и ссылки, уведомления, безопасность, обслуживание.</div></div>
-          <div class="acc-item"><button class="acc-h">Защита панели</button><div class="acc-b">Пароль панели, HTTPS, журнал попыток входа.</div></div>
-          <div class="acc-item"><button class="acc-h">Защита от зависших процессов</button><div class="acc-b">Порог CPU и время нагрузки, игнор-лист, автоубийство зависших.</div></div>
-          <div class="acc-item"><button class="acc-h">Файловый менеджер (tmpfs)</button><div class="acc-b">Просмотр /tmp и /opt, сортировка, очистка, тёмная тема из панели.</div></div>
-          <div class="acc-item"><button class="acc-h">Логирование</button><div class="acc-b">Действия менеджера и системные логи, ротация, очистка старше 30 дней.</div></div>
-          <div class="acc-item"><button class="acc-h">Темы и ночной режим</button><div class="acc-b">7 пресетов-акцентов, авто-ночь 20:00–06:00, синхронизация между вкладками.</div></div>
-          <div class="acc-item"><button class="acc-h">Уведомления</button><div class="acc-b">Пороги CPU/RAM/температур, источники, тихий режим по часам.</div></div>
-          <div class="acc-item"><button class="acc-h">Telegram-уведомления и чат-бот</button><div class="acc-b">Bot token, chat id, прокси, команды /status /help /backup, автозапуск.</div></div>
-          <div class="acc-item"><button class="acc-h">Проверка системы</button><div class="acc-b">Зависимости (curl/bash/brctl), синтаксис скриптов, рекомендации по установке.</div></div>
-          <div class="acc-item"><button class="acc-h">Офлайн-установка</button><div class="acc-b">Пакет со всеми ipk-зависимостями; положить в /opt/tmp, запустить install-offline.sh.</div></div>
-          <div class="acc-item"><button class="acc-h">Кеширование ответов</button><div class="acc-b">stats/network/update кешируются (60/5/60 с); сброс при изменениях; ?fresh=1.</div></div>
-          <div class="acc-item"><button class="acc-h">Очистка мусора</button><div class="acc-b">Временные каталоги в /tmp (RAM): оборванные офлайн-пакеты, бэкапы, install-логи.</div></div>
-          <div class="acc-item"><button class="acc-h">Резервное копирование</button><div class="acc-b">Скачивание tar.gz, восстановление, права на секреты 0600.</div></div>
-          <div class="acc-item"><button class="acc-h">Полный список команд</button><div class="acc-b">opkg, backup.sh, watchdog.sh, rotate.sh, install.sh ключи и примеры.</div></div>
+          <div class="acc-item"><button class="acc-h">Вход и режимы данных</button><div class="acc-b">При входе панель просит пароль (тот же, что в классике) и показывает живые данные с роутера (LIVE). Без входа — мок для ознакомления. Открытая вкладка запоминается и восстанавливается после обновления страницы.<br><a href="#" data-gotab="stats">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Статистика (главная)</button><div class="acc-b">Полоса ресурсов CPU/Memory/Storage/WAN/Temp, топы процессов по CPU и памяти (обновление 7 с), модули, интерфейсы, тома, обновления пакетов, журнал событий с фильтром. Кнопка «↻ Обновить» перезагружает дашборд.<br><a href="#" data-gotab="stats">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Модули</button><div class="acc-b">Подключённые сервисы: карточки со статусом, запуск/остановка/перезапуск, добавление своего сервиса через «+ Новый модуль». Сканер портов и редактор манифестов — в разработке.<br><a href="#" data-gotab="bridge">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Пакеты</button><div class="acc-b">Фильтры Все/Установленные/Обновления/Доступные, поиск, обновление списков, обновление всех пакетов, журнал операций. Список грузится сразу при входе; кнопка «Обновить» перезагружает.<br><a href="#" data-gotab="packages">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Процессы</button><div class="acc-b">Живой список процессов с загрузкой CPU; htop — через вкладку Терминал (режим htop).<br><a href="#" data-gotab="processes">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Терминал</button><div class="acc-b">Переключатель режимов: Консоль Entware (/opt/bin/bash, :9089) и telnet роутера, htop (:8089). Пароль обязателен для запуска (поле прямо во вкладке или из Настроек). Активный процесс виден в заголовке: порт, режим, PID.<br><a href="#" data-gotab="terminal">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Службы и Cron</button><div class="acc-b">Watchdog служб с кастомными списками, init.d-службы, системный и Entware crontab.<br><a href="#" data-gotab="system-services">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Сеть</button><div class="acc-b">Состояние демона, интерфейсы, маршруты, ARP-таблица, Wi-Fi клиенты, события сети.<br><a href="#" data-gotab="network">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">SMART</button><div class="acc-b">Здоровье дисков, атрибуты, разделы. Запуск тестов и часть модалок — в разработке.<br><a href="#" data-gotab="smart">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">RDP</button><div class="acc-b">Настройка grdp-proxy (порт, запуск/остановка), встроенный клиент, поле пароля, захват клавиатуры.<br><a href="#" data-gotab="rdp">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Настройки</button><div class="acc-b">4 под-вкладки. 4 под-вкладки — все рабочие прямо здесь: «Терминал и ссылки», «Уведомления» (Telegram-бот, chat ID, источники, пороги, тихий режим), «Безопасность» (пароль панели, HTTPS, журнал входов), «Обслуживание» (бэкап, офлайн-пакет, обновления).<br><a href="#" data-gotab="settings">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Защита от зависших процессов</button><div class="acc-b">Порог CPU и время нагрузки, игнор-лист, автоубийство зависших, топ процессов, лог событий. Кнопка «Сохранить настройки» пишет конфиг монитора.<br><a href="#" data-gotab="monitor">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Логи</button><div class="acc-b">«Действия менеджера»: очистка старше 30 дней, ротация, вкл/выкл логирования, системные события. «Системные логи»: выбор источника, поиск по имени. Просмотр — во встроенном окне.<br><a href="#" data-gotab="logs">Открыть →</a></div></div>
+          <div class="acc-item"><button class="acc-h">Закладки-ссылки (полоски справа)</button><div class="acc-b">Быстрые ссылки на веб-интерфейсы (AdGuard, Transmission и т.д.). Клик открывает в новой вкладке. Долгое нажатие — переставить, порядок запоминается. Сами ссылки правятся в Настройки → Терминал и ссылки → Управление ссылками.</div></div>
+          <div class="acc-item"><button class="acc-h">Карточки: перенос и размер</button><div class="acc-b">Карточку можно потянуть за заголовок на любое свободное место (в т.ч. в пустой контейнер), ширину — за правый край: суженые встают по несколько в один ряд. Двойной клик по ручке возвращает как было. Порядок и размеры запоминаются.</div></div>
+          <div class="acc-item"><button class="acc-h">Классическая панель</button><div class="acc-b">Полная версия со всеми настройками: Telegram-бот и уведомления, пароль панели и HTTPS, бэкап и восстановление, обновления. Ссылка «← Классика» — в нижней строке состояния. Из NOC туда ведут кнопки «Открыть Настройки в классической панели».</div></div>
+          <div class="acc-item"><button class="acc-h">Telegram-уведомления и чат-бот</button><div class="acc-b">Настраиваются в классике: токен бота, chat ID, прокси, источники событий, тихий режим, команды /status /help /backup, автозапуск бота.</div></div>
+          <div class="acc-item"><button class="acc-h">Резервное копирование</button><div class="acc-b">Делается в классике (Настройки): скачивание tar.gz, восстановление, права на секреты 0600. Конфиги переживают обновление менеджера.</div></div>
+          <div class="acc-item"><button class="acc-h">Проверка системы и офлайн-пакет</button><div class="acc-b">В классике: зависимости, синтаксис скриптов, подготовка офлайн-пакета (положить в /opt/tmp, запустить install-offline.sh).</div></div>
         </div>
       </div>
 
@@ -666,7 +665,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=38"></script>
+<script src="/entware-manager/noc/noc-console.js?v=46"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>

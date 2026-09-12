@@ -892,9 +892,12 @@
     });
   });
 
-  /* --- справка: аккордеон + живой поиск --- */
+  /* --- справка: аккордеон + живой поиск + переходы на вкладки --- */
   Array.prototype.forEach.call(document.querySelectorAll('.acc-h'), function (h) {
     h.onclick = function () { h.parentNode.classList.toggle('open'); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-gotab]'), function (a) {
+    a.onclick = function (e) { e.preventDefault(); goTab(a.getAttribute('data-gotab')); };
   });
   var helpSearch = document.getElementById('helpSearch');
   if (helpSearch) {
@@ -918,23 +921,86 @@
     { id: 'adguard', ico: '⧉', label: 'AdGuard', meta: ':8080', url: 'http://192.168.3.1:8080' },
     { id: 'trans', ico: '⧉', label: 'Transmission', meta: ':9091', url: 'http://192.168.3.1:9091' },
     { id: 'sync', ico: '⧉', label: 'Syncthing', meta: ':8384', url: 'http://192.168.3.1:8384' },
-    { id: 'ttyd', ico: '⧉', label: 'ttyd', meta: ':9089', url: 'http://192.168.3.1:9089' },
-    { id: 'fm', ico: '▦', label: 'Файлы', meta: '/opt', url: '#' }
+    { id: 'ttyd', ico: '⧉', label: 'ttyd', meta: ':9089', url: 'http://192.168.3.1:9089' }
   ];
+  /* Порядок перетаскивания храним отдельно (массив id) — сами пункты едут
+   * с сервера (links_load.cgi, правятся в Настройках), иначе локальная копия
+   * замораживала бы серверные правки. */
+  function bmOrderLoad() {
+    try {
+      var p = JSON.parse(lsGet('entware_bookmark_order'));
+      if (Array.isArray(p)) return p;
+    } catch (e) {}
+    return null;
+  }
+  function bmOrderSave() {
+    try { lsSet('entware_bookmark_order', JSON.stringify(bookmarks.map(function (b) { return b.id; }))); } catch (e) {}
+  }
+  function bmApplyOrder() {
+    var ord = bmOrderLoad();
+    if (!ord || !ord.length) return;
+    var pos = {};
+    for (var i = 0; i < ord.length; i++) pos[ord[i]] = i;
+    bookmarks.sort(function (a, b) {
+      var pa = (a.id in pos) ? pos[a.id] : 1e9;
+      var pb = (b.id in pos) ? pos[b.id] : 1e9;
+      return pa - pb;
+    });
+  }
+  function bmSlug(s) {
+    s = String(s || '').toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-+|-+$/g, '');
+    return s || 'link';
+  }
+  /* Серверная ссылка {name,url,icon} → пункт rail. meta — порт или путь. */
+  function bmFromServer(list) {
+    var out = [];
+    list.forEach(function (l) {
+      if (!l || !l.url) return;
+      var url = String(l.url), meta = '';
+      var m = url.match(/:(\d+)(\/|$)/);
+      if (m) meta = ':' + m[1];
+      else {
+        var p = url.replace(/^https?:\/\/[^\/]+/i, '');
+        if (p && p !== '/') meta = p.length > 18 ? p.slice(0, 18) + '…' : p;
+      }
+      var ico = '⧉';
+      if (l.icon && String(l.icon).length <= 4) ico = String(l.icon);
+      out.push({ id: 'srv-' + bmSlug(url), ico: ico, label: l.name || url, meta: meta, url: url });
+    });
+    return out;
+  }
+  function bmRefreshFromServer() {
+    if (!window.__NOC_LIVE_STATS || typeof liveFetch !== 'function') return;
+    liveFetch('links_load.cgi').then(function (d) {
+      if (!Array.isArray(d) || !d.length) return;
+      bookmarks = bmFromServer(d);
+      bmApplyOrder();
+      renderBookmarks();
+    });
+  }
   function loadBookmarks() {
+    var legacy = null;
     try {
       var raw = lsGet('entware_bookmarks');
       if (raw) {
         var parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
+        if (Array.isArray(parsed) && parsed.length) legacy = parsed;
       }
     } catch (e) {}
+    if (legacy) {
+      /* разовая миграция: полный массив → только порядок, ключ удаляем,
+       * дальше пункты едут с сервера */
+      try {
+        lsSet('entware_bookmark_order', JSON.stringify(legacy.map(function (b) { return b.id; })));
+        localStorage.removeItem('entware_bookmarks');
+      } catch (e) {}
+      return legacy;
+    }
     return BM_DEFAULT.slice();
   }
-  function saveBookmarks(list) {
-    try { lsSet('entware_bookmarks', JSON.stringify(list)); } catch (e) {}
-  }
+  function saveBookmarks() { bmOrderSave(); }
   var bookmarks = loadBookmarks();
+  bmApplyOrder();
   var bmRail = document.getElementById('bmRail');
   var bmDrag = { active: false, id: null, timer: null, startY: 0, suppressClick: false };
 
@@ -943,7 +1009,7 @@
     var html = '';
     bookmarks.forEach(function (b, idx) {
       html +=
-        '<a class="bm" href="' + esc(b.url || '#') + '" data-id="' + esc(b.id) + '" data-idx="' + idx + '"' +
+        '<a class="bm" href="' + esc(b.url || '#') + '" target="_blank" rel="noopener" data-id="' + esc(b.id) + '" data-idx="' + idx + '"' +
         ' title="' + esc(b.label + (b.meta ? ' ' + b.meta : '') + ' · долгое нажатие — переставить') + '">' +
         '<span class="bm-ico">' + esc(b.ico || '⧉') + '</span>' +
         '<span class="bm-label">' + esc(b.label) + '</span>' +
@@ -981,15 +1047,18 @@
     bmRail.addEventListener('click', function (e) {
       var a = e.target.closest('.bm');
       if (!a) return;
-      e.preventDefault();
       if (bmDrag.suppressClick) {
         bmDrag.suppressClick = false;
+        e.preventDefault();
         return;
       }
       var id = a.getAttribute('data-id');
       var b = null;
       for (var i = 0; i < bookmarks.length; i++) if (bookmarks[i].id === id) b = bookmarks[i];
-      toast('Открыть «' + (b ? b.label : id) + '» — заглушка мока');
+      var url = b ? b.url : a.getAttribute('href');
+      if (!url || url === '#') { e.preventDefault(); toast('Нет адреса', 'warn'); return; }
+      e.preventDefault();
+      window.open(url, '_blank', 'noopener');
     });
 
     bmRail.addEventListener('mousedown', function (e) {
@@ -1632,6 +1701,7 @@
     if (rb) rb.onclick = function () { liveTick(); renderStatMods(); toast('Дашборд обновлён (LIVE)'); };
     liveTick();
     bootLiveTab();
+    bmRefreshFromServer(); /* rail закладок — из Настроек (links_load.cgi) */
   }
   function liveLogin() {
     var old = document.getElementById('liveLogin');
@@ -2473,22 +2543,398 @@
       var ok = t && t.status === 'ok';
       if (m) m.textContent = ok ? 'сохранено' : 'ошибка: ' + ((t && (t.message || t.error)) || '—');
       toast(ok ? okMsg : 'Ошибка сохранения ссылок', ok ? undefined : 'warn');
-      if (ok) setLinksLoad();
+      if (ok) { setLinksLoad(); bmRefreshFromServer(); }
+    });
+  }
+  /* ===== LIVE уведомления (подвкладка notif): Telegram-конфиг + пороги.
+   * Паритет классики (entware.js): GET/POST telegram_config.cgi (form-urlencoded),
+   * POST telegram_test.cgi с пустым телом, пороги блоком thresholds=JSON. */
+  var NTG_SRCS = ['system', 'monitor', 'network', 'service', 'packages', 'login', 'bridge'];
+  var NTH_KEYS = ['cpu_temp', 'wifi0_temp', 'wifi1_temp', 'cpu_load', 'ram_used', 'disk_temp'];
+  function ntgStatus(msg, ok) {
+    var el = document.getElementById('ntgStatus');
+    if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+  }
+  function nthStatus(msg, ok) {
+    var el = document.getElementById('nthStatus');
+    if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+  }
+  function ntgFillThresholds(th) {
+    th = th || {};
+    NTH_KEYS.forEach(function (k) {
+      var cb = document.getElementById('nth-' + k), val = document.getElementById('nth-' + k + '-val');
+      if (cb) cb.checked = !!(th[k] && th[k].enabled);
+      if (val) val.value = (th[k] && th[k].value) || 0;
+    });
+  }
+  function ntgLoad() {
+    if (!window.__NOC_LIVE_STATS) return;
+    liveFetch('telegram_config.cgi').then(function (d) {
+      if (!d || typeof d !== 'object') { ntgStatus('нет связи', false); return; }
+      if (d.status === 'error') { ntgStatus('Ошибка: ' + (d.message || '—'), false); return; }
+      function setC(id, v) { var el = document.getElementById(id); if (el) el.checked = !!v; }
+      function setV(id, v) { var el = document.getElementById(id); if (el && v !== undefined && v !== null) el.value = v; }
+      setC('ntgEnabled', d.enabled);
+      setC('ntgBot', d.bot_enabled);
+      setC('ntgAutostart', d.autostart);
+      setV('ntgLevel', d.level || 'ERROR');
+      setV('ntgChat', d.chat_id || '');
+      setV('ntgChatExtra', d.chat_ids_extra || '');
+      setV('ntgProxy', d.proxy_url || '');
+      setC('ntgQuiet', d.quiet_enabled);
+      setV('ntgQuietFrom', d.quiet_from || '');
+      setV('ntgQuietTo', d.quiet_to || '');
+      var srcs = d.sources || [];
+      NTG_SRCS.forEach(function (s) { setC('ntg-src-' + s, srcs.indexOf(s) !== -1); });
+      ntgFillThresholds(d.thresholds);
+      var m = document.getElementById('ntgMsg');
+      if (m) m.textContent = d.configured ? 'настроен (токен скрыт)' : 'не настроен';
+      var tb = document.getElementById('ntgTest');
+      if (tb) tb.disabled = !d.configured;
+      ntgStatus(d.configured ? '' : 'Укажите токен и chat_id.', undefined);
+    });
+  }
+  function ntgSourcesCsv() {
+    var out = [];
+    NTG_SRCS.forEach(function (s) {
+      var el = document.getElementById('ntg-src-' + s);
+      if (el && el.checked) out.push(s);
+    });
+    return out.join(',');
+  }
+  function ntgVal(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  function ntgChecked(id) { var el = document.getElementById(id); return !!(el && el.checked); }
+  function ntgSave() {
+    if (!setNeedSession()) return;
+    var body = 'enabled=' + (ntgChecked('ntgEnabled') ? 'true' : 'false');
+    body += '&bot_enabled=' + (ntgChecked('ntgBot') ? 'true' : 'false');
+    body += '&autostart=' + (ntgChecked('ntgAutostart') ? 'true' : 'false');
+    body += '&level=' + encodeURIComponent(ntgVal('ntgLevel'));
+    body += '&chat_id=' + encodeURIComponent(ntgVal('ntgChat'));
+    body += '&sources=' + encodeURIComponent(ntgSourcesCsv());
+    body += '&quiet_enabled=' + (ntgChecked('ntgQuiet') ? 'true' : 'false');
+    if (ntgVal('ntgQuietFrom') !== '') body += '&quiet_from=' + encodeURIComponent(ntgVal('ntgQuietFrom'));
+    if (ntgVal('ntgQuietTo') !== '') body += '&quiet_to=' + encodeURIComponent(ntgVal('ntgQuietTo'));
+    if (ntgVal('ntgChatExtra')) body += '&chat_ids_extra=' + encodeURIComponent(ntgVal('ntgChatExtra'));
+    if (ntgVal('ntgProxy')) body += '&proxy_url=' + encodeURIComponent(ntgVal('ntgProxy'));
+    if (ntgVal('ntgToken')) body += '&bot_token=' + encodeURIComponent(ntgVal('ntgToken'));
+    ntgStatus('Сохранение…', undefined);
+    livePost('telegram_config.cgi', body).then(function (t) {
+      if (t && t.status === 'ok') {
+        ntgStatus('✓ Настройки сохранены', true);
+        var tk = document.getElementById('ntgToken');
+        if (tk) tk.value = '';
+        ntgLoad();
+      } else {
+        ntgStatus('Ошибка: ' + ((t && (t.message || t.error)) || 'нет связи'), false);
+      }
+    });
+  }
+  function ntgTest() {
+    if (!setNeedSession()) return;
+    ntgStatus('Отправка теста…', undefined);
+    livePost('telegram_test.cgi', '').then(function (t) {
+      var ok = t && t.status === 'ok';
+      ntgStatus(ok ? '✓ Тестовое сообщение отправлено' : 'Ошибка: ' + ((t && (t.message || t.error)) || 'нет связи'), ok);
+    });
+  }
+  function nthCollect() {
+    var th = {};
+    NTH_KEYS.forEach(function (k) {
+      var cb = document.getElementById('nth-' + k), val = document.getElementById('nth-' + k + '-val');
+      th[k] = { enabled: !!(cb && cb.checked), value: parseInt(val ? val.value : 0, 10) || 0 };
+    });
+    return th;
+  }
+  function nthSave() {
+    if (!setNeedSession()) return;
+    var body = 'thresholds=' + encodeURIComponent(JSON.stringify(nthCollect()));
+    if (ntgVal('ntgChat')) body += '&chat_id=' + encodeURIComponent(ntgVal('ntgChat'));
+    nthStatus('Сохранение…', undefined);
+    livePost('telegram_config.cgi', body).then(function (t) {
+      var ok = t && t.status === 'ok';
+      nthStatus(ok ? '✓ Пороги сохранены' : 'Ошибка: ' + ((t && (t.message || t.error)) || 'нет связи'), ok);
+    });
+  }
+  /* ===== LIVE безопасность (подвкладка sec): пароль панели, TLS, журнал входов.
+   * Паритет классики (entware.js): auth_config.cgi (enabled/password/current_password),
+   * tls_config.cgi (password+enabled+port, после успеха — reload), auth_log.cgi. */
+  var NSEC_AUTH_ON = false;
+  function nsecStatus(msg, ok) {
+    var el = document.getElementById('nsecStatus');
+    if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+  }
+  function ntlsStatus(msg, ok) {
+    var el = document.getElementById('ntlsStatus');
+    if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+  }
+  function nsecLoad() {
+    if (!window.__NOC_LIVE_STATS) return;
+    liveFetch('auth_config.cgi').then(function (d) {
+      if (!d || typeof d !== 'object') return;
+      var en = !!d.enabled;
+      NSEC_AUTH_ON = !!(d.configured || en);
+      var cb = document.getElementById('nsecEnabled');
+      if (cb) cb.checked = en;
+      var m = document.getElementById('nsecMsg');
+      if (m) m.textContent = NSEC_AUTH_ON ? 'защита включена' : 'защита выключена';
+    });
+    ntlsLoad();
+    nalLoad();
+  }
+  function nsecSave() {
+    if (!setNeedSession()) return;
+    var en = document.getElementById('nsecEnabled');
+    var enabled = !!(en && en.checked);
+    var pass = document.getElementById('nsecPass');
+    var conf = document.getElementById('nsecPassConfirm');
+    var cur = document.getElementById('nsecCurrent');
+    var pv = pass ? pass.value : '', cv = conf ? conf.value : '';
+    if (enabled && pv && pv !== cv) { nsecStatus('Пароли не совпадают', false); return; }
+    if (enabled && pv && pv.length < 8) { nsecStatus('Пароль должен быть минимум 8 символов', false); return; }
+    var body = 'enabled=' + (enabled ? 'true' : 'false') + '&password=' + encodeURIComponent(pv);
+    if (cur && cur.value) body += '&current_password=' + encodeURIComponent(cur.value);
+    nsecStatus('Сохранение…', undefined);
+    livePost('auth_config.cgi', body).then(function (t) {
+      if (t && t.status === 'ok') {
+        nsecStatus('✓ Настройки сохранены', true);
+        if (pass) pass.value = '';
+        if (conf) conf.value = '';
+        if (cur) cur.value = '';
+        NSEC_AUTH_ON = enabled;
+        nsecLoad();
+      } else {
+        nsecStatus('Ошибка: ' + ((t && (t.message || t.error)) || 'нет связи'), false);
+      }
+    });
+  }
+  function ntlsLoad() {
+    if (!window.__NOC_LIVE_STATS) return;
+    liveFetch('tls_config.cgi').then(function (d) {
+      if (!d || typeof d !== 'object') return;
+      var cb = document.getElementById('ntlsEnabled');
+      if (cb) cb.checked = !!d.tls;
+      if (d.tls_port) {
+        var p = document.getElementById('ntlsPort');
+        if (p) p.value = d.tls_port;
+      }
+      var hint = [];
+      if (!d.server_running) hint.push('режим lighttpd — недоступно');
+      if (d.has_cert) hint.push('сертификат создан');
+      var m = document.getElementById('ntlsMsg');
+      if (m) m.textContent = hint.join(' · ');
+      if (cb) cb.disabled = !d.server_running;
+      var sb = document.getElementById('ntlsSave');
+      if (sb) sb.disabled = !d.server_running;
+    });
+  }
+  function ntlsSave() {
+    if (!setNeedSession()) return;
+    var pw = document.getElementById('ntlsPass');
+    if (!pw || !pw.value) { ntlsStatus('Введите пароль панели для подтверждения', false); if (pw) pw.focus(); return; }
+    var en = document.getElementById('ntlsEnabled');
+    var port = document.getElementById('ntlsPort');
+    var body = 'password=' + encodeURIComponent(pw.value) +
+      '&enabled=' + ((en && en.checked) ? 'true' : 'false') +
+      '&port=' + encodeURIComponent(port && port.value ? port.value : '8443');
+    ntlsStatus('Сохранение и перезапуск сервера…', undefined);
+    livePost('tls_config.cgi', body).then(function (t) {
+      if (t && t.status === 'ok') {
+        ntlsStatus(t.message || 'Готово — страница перезагрузится', true);
+        setTimeout(function () { location.reload(); }, 2500);
+      } else {
+        ntlsStatus('Ошибка: ' + ((t && (t.message || t.error)) || 'нет связи'), false);
+      }
+    });
+  }
+  function nalLoad() {
+    if (!window.__NOC_LIVE_STATS) return;
+    var tb = document.getElementById('nalBody');
+    liveFetch('auth_log.cgi').then(function (d) {
+      if (!tb) return;
+      if (!d || typeof d !== 'object') { tb.innerHTML = '<tr><td colspan="3" class="mut">нет связи</td></tr>'; return; }
+      var entries = d.entries || [];
+      var badge = document.getElementById('nalBadge');
+      if (badge) {
+        if (d.failed_24h > 0) {
+          badge.textContent = d.failed_24h + ' неудачных попыток за 24ч';
+          badge.style.cssText = 'display:inline-block;background:#e53e3e;color:#fff;border-radius:12px;padding:2px 10px;font-size:0.8rem;';
+        } else {
+          badge.textContent = '';
+          badge.style.cssText = '';
+        }
+      }
+      if (!entries.length) { tb.innerHTML = '<tr><td colspan="3" class="mut">Попыток входа не зафиксировано</td></tr>'; return; }
+      var html = '';
+      entries.forEach(function (e) {
+        var color = '';
+        if (/Неверный пароль|CSRF|отклон/.test(e.message)) color = '#e53e3e';
+        else if (/заблокирован|Слишком много/.test(e.message)) color = '#f59e0b';
+        else if (/Успешный/.test(e.message)) color = '#2ecc71';
+        html += '<tr><td>' + esc(e.time) + '</td><td><code>' + esc(e.ip) + '</code></td>' +
+          '<td' + (color ? ' style="color:' + color + ';font-weight:600"' : '') + '>' + esc(e.message) + '</td></tr>';
+      });
+      tb.innerHTML = html;
+    });
+  }
+  /* ===== LIVE обслуживание (подвкладка mnt): бэкап/восстановление, офлайн-пакет, обновление.
+   * Паритет классики (entware.js): ссылка backup.cgi, POST backup_restore.cgi (gzip-тело),
+   * GET prepare_offline.cgi (blob), update_check/update_run/update_status.cgi с поллингом 2с.
+   * Бинарные ответы качаем голым fetch: liveFetchRaw испортил бы tar.gz через .text(). */
+  var NMNT_POLL = null;
+  function nmntBackupStatus(msg, ok) {
+    var el = document.getElementById('nmntBackupStatus');
+    if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+  }
+  function nmntUpdStatus(html) {
+    var el = document.getElementById('nmntStatus');
+    if (el) el.innerHTML = html;
+  }
+  function nmntRestore(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (!setNeedSession()) { input.value = ''; return; }
+    nmntBackupStatus('Восстановление…', undefined);
+    file.arrayBuffer().then(function (buf) {
+      return fetch(LIVE_BASE + 'backup_restore.cgi', {
+        method: 'POST', headers: { 'Content-Type': 'application/gzip' }, body: buf
+      }).then(function (r) { return r.json(); });
+    }).then(function (t) {
+      var ok = t && t.status === 'ok';
+      nmntBackupStatus(ok ? '✓ ' + (t.message || 'Восстановлено') : 'Ошибка: ' + ((t && t.message) || '—'), ok);
+    }).catch(function (e) {
+      nmntBackupStatus('Ошибка: ' + (e && e.message ? e.message : e), false);
+    });
+    input.value = '';
+  }
+  function nmntOffline() {
+    if (!setNeedSession()) return;
+    nmntBackupStatus('⏳ Подготовка офлайн-пакета… (скачивание зависимостей, ~30-60 сек)', undefined);
+    fetch(LIVE_BASE + 'prepare_offline.cgi?_=' + Date.now()).then(function (r) {
+      if (!r.ok) throw new Error('Сервер ответил ' + r.status);
+      var disp = r.headers.get('Content-Disposition') || '';
+      var m = disp.split('filename=')[1];
+      var name = m ? m.replace(/"/g, '').trim() : 'entware-manager-offline.tar.gz';
+      return r.blob().then(function (b) { return { blob: b, name: name }; });
+    }).then(function (o) {
+      var url = URL.createObjectURL(o.blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = o.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      nmntBackupStatus('✓ Офлайн-пакет готов: ' + o.name + ' (сохранён в Загрузки)', true);
+    }).catch(function (e) {
+      nmntBackupStatus('Ошибка: ' + (e && e.message ? e.message : e), false);
+    });
+  }
+  function nmntApplyCheck(d, btn) {
+    var cur = document.getElementById('nmntCurrent');
+    var run = document.getElementById('nmntRun');
+    if (!d || typeof d !== 'object') {
+      if (cur) cur.textContent = 'нет связи';
+      if (btn) btn.disabled = false;
+      return;
+    }
+    if (cur) cur.textContent = d.current || '?';
+    if (d.has_update) {
+      var v = document.getElementById('nmntVersion');
+      if (v) v.textContent = d.latest;
+      if (run) run.hidden = false;
+      nmntUpdStatus('<span style="color:#2ecc71">Доступна версия ' + esc(d.latest) + '</span>');
+    } else if (d.error) {
+      nmntUpdStatus('<span style="color:#e53e3e">' + esc(d.error) + '</span>');
+    } else {
+      if (run) run.hidden = true;
+      nmntUpdStatus('<span class="mut">Установлена последняя версия</span>');
+    }
+    if (btn) btn.disabled = false;
+  }
+  function nmntInfo() {
+    if (!window.__NOC_LIVE_STATS) return;
+    liveFetch('update_check.cgi').then(function (d) { nmntApplyCheck(d, null); });
+  }
+  function nmntCheck() {
+    if (!setNeedSession()) return;
+    var btn = document.getElementById('nmntCheck');
+    if (btn) btn.disabled = true;
+    nmntUpdStatus('<span class="mut">Проверка…</span>');
+    liveFetch('update_check.cgi').then(function (d) { nmntApplyCheck(d, btn); });
+  }
+  function nmntPoll() {
+    if (NMNT_POLL) clearInterval(NMNT_POLL);
+    var startedAt = Date.now();
+    NMNT_POLL = setInterval(function () {
+      liveFetch('update_status.cgi').then(function (d) {
+        if (!d || typeof d !== 'object') return;
+        var log = document.getElementById('nmntLog');
+        if (log && d.lines && d.lines.length) {
+          log.textContent = d.lines.join('\n');
+          log.scrollTop = log.scrollHeight;
+        }
+        if (d.status === 'done') {
+          clearInterval(NMNT_POLL);
+          if (typeof pkgCacheClearAll === 'function') { try { pkgCacheClearAll(); } catch (e) {} }
+          nmntUpdStatus('<span style="color:#2ecc71">✓ Обновление завершено</span>');
+          var run = document.getElementById('nmntRun');
+          if (run) run.hidden = true;
+          var rb = document.getElementById('nmntReinstall');
+          if (rb) rb.disabled = false;
+        } else if (d.status === 'error') {
+          clearInterval(NMNT_POLL);
+          nmntUpdStatus('<span style="color:#e53e3e">Ошибка: ' + esc(d.error || '—') + '</span>');
+          var r2 = document.getElementById('nmntRun');
+          if (r2) r2.disabled = false;
+          var rb2 = document.getElementById('nmntReinstall');
+          if (rb2) rb2.disabled = false;
+        } else if (d.status === 'running') {
+          var el = Math.round((Date.now() - startedAt) / 1000);
+          var ts = el >= 60 ? Math.floor(el / 60) + ' мин ' + (el % 60) + ' с' : el + ' с';
+          var prog = d.progress || (d.lines && d.lines.length ? d.lines[d.lines.length - 1] : '');
+          nmntUpdStatus('<span style="color:#f59e0b"><b>' + esc(prog) + '</b> ' +
+            '<span class="mut">(' + ts + ' — обычно до 1 минуты; не закрывайте страницу)</span></span>');
+        }
+      });
+    }, 2000);
+  }
+  function nmntRun(mode) {
+    if (!setNeedSession()) return;
+    if (mode === 'reinstall' && !confirm('Переустановить текущую версию Entware Manager?\nБудет повторно скачана и установлена установленная версия. Конфигурация сохранится.')) return;
+    var log = document.getElementById('nmntLog');
+    if (log) { log.hidden = false; log.textContent = mode === 'reinstall' ? 'Запуск переустановки…' : 'Запуск обновления…'; }
+    nmntUpdStatus('<span style="color:#f59e0b">Запущено…</span>');
+    var run = document.getElementById('nmntRun');
+    if (run) run.disabled = true;
+    var rb = document.getElementById('nmntReinstall');
+    if (rb) rb.disabled = true;
+    livePost('update_run.cgi', mode === 'reinstall' ? 'mode=reinstall' : '').then(function (t) {
+      if (t && t.status === 'error') {
+        nmntUpdStatus('<span style="color:#e53e3e">' + esc(t.message || '—') + '</span>');
+        if (run) run.disabled = false;
+        if (rb) rb.disabled = false;
+        return;
+      }
+      nmntPoll();
     });
   }
   function setBoot() {
     if (!window.__NOC_LIVE_STATS) return;
     setTtydStatus();
     setLinksLoad();
+    ntgLoad();
+    nsecLoad();
+    nmntInfo();
   }
   (function setBind() {
     function on(id, fn) { var el = document.getElementById(id); if (el) el.onclick = fn; }
-    on('setHtopStart', function () { setTtydAct('start', 8089, 'setHtopPass', null); });
-    on('setHtopStop', function () { setTtydAct('stop', 8089, 'setHtopPass', null); });
-    on('setHtopRestart', function () { setTtydAct('restart', 8089, 'setHtopPass', null); });
-    on('setTermStart', function () { setTtydAct('start', 9089, 'setTermPass', 'setTermMode'); });
+    on('setHtopStart', function () { setTtydAct('start', 8089, 'setTermPass', null); });
+    on('setHtopStop', function () { setTtydAct('stop', 8089, 'setTermPass', null); });
+    on('setHtopRestart', function () { setTtydAct('restart', 8089, 'setTermPass', null); });
+    on('setTermStart', function () { setTtydAct('start', 9089, 'setTermPass', null); });
     on('setTermStop', function () { setTtydAct('stop', 9089, 'setTermPass', null); });
-    on('setTermRestart', function () { setTtydAct('restart', 9089, 'setTermPass', 'setTermMode'); });
+    on('setTermRestart', function () { setTtydAct('restart', 9089, 'setTermPass', null); });
     on('setLinkAdd', function () {
       if (!setNeedSession()) return;
       var tb = document.getElementById('setLinksBody');
@@ -2516,6 +2962,21 @@
         { name: 'Терминал (ttyd)', url: '/terminal/', icon: 'terminal' }
       ], 'Ссылки сброшены к настройкам по умолчанию');
     });
+    on('ntgSave', ntgSave);
+    on('ntgTest', ntgTest);
+    on('nthSave', nthSave);
+    on('nsecSave', nsecSave);
+    on('ntlsSave', ntlsSave);
+    on('nalRefresh', nalLoad);
+    on('nmntOffline', nmntOffline);
+    on('nmntCheck', nmntCheck);
+    on('nmntRun', function () { nmntRun('update'); });
+    on('nmntReinstall', function () { nmntRun('reinstall'); });
+    var nrf = document.getElementById('nmntRestoreFile');
+    if (nrf && !nrf.dataset.bound) {
+      nrf.dataset.bound = '1';
+      nrf.addEventListener('change', function () { nmntRestore(nrf); });
+    }
   })();
   /* ===== LIVE rdp (вкладка RDP): config/status/start/stop/port.
    * Клиент /rdp/ (WASM-форк) не трогаем — только встраиваем iframe.
@@ -3091,7 +3552,7 @@
     Array.prototype.forEach.call(cards, function (el) {
       var id = cardId(el);
       var st = el.style;
-      if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; }
+      if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
       if (el.querySelector(':scope > .card-resizer')) return;
       var h = document.createElement('div');
       h.className = 'card-resizer';
@@ -3107,6 +3568,7 @@
         var move = function (ev) {
           st.width = cardClamp(startW + ev.clientX - startX, maxw) + 'px';
           st.maxWidth = '100%';
+          el.classList.add('card-fixedw');
         };
         var up = function () {
           h.classList.remove('on');
@@ -3126,6 +3588,7 @@
         e.preventDefault();
         st.width = '';
         st.maxWidth = '';
+        el.classList.remove('card-fixedw');
         var m = cardWLoad();
         delete m[id];
         cardWSave(m);
@@ -3197,6 +3660,12 @@
     Array.prototype.forEach.call(markCards, function (el) {
       if (el.parentElement) {
         el.parentElement.dataset.dndcont = '1';
+        /* свободная раскладка — ТОЛЬКО двухколоночным секциям
+         * (section.grid.two): служебные контейнеры главной
+         * (#view-stats, .stats-main, .panel-row) трогать нельзя —
+         * flex ломает их вёрстку. В блочных контейнерах суженые
+         * карточки встают в ряд через inline-block (CSS .card-fixedw). */
+        if (el.parentElement.classList.contains('two')) el.parentElement.classList.add('dnd-flow');
         if (!el.parentElement.dataset.nocont) el.parentElement.dataset.nocont = '' + (ncont++);
       }
     });
@@ -3230,6 +3699,11 @@
             ph = document.createElement('div');
             ph.className = 'card-placeholder';
             ph.style.height = rect.height + 'px';
+            /* суженая карточка — плейсхолдер того же размера, иначе в ряд не встать */
+            if (el.classList.contains('card-fixedw') && el.style.width) {
+              ph.style.width = el.style.width;
+              ph.style.flex = 'none';
+            }
             el.parentElement.insertBefore(ph, el);
             el.classList.add('card-dragging');
             document.body.classList.add('card-dragging');
@@ -3282,9 +3756,19 @@
           el.style.position = '';
           el.style.left = '';
           el.style.top = '';
-          el.style.width = '';
           el.style.margin = '';
           el.style.zIndex = '';
+          /* fixed-режим затирал ширину: вернуть запомненную, иначе сужение слетает */
+          var wmap = cardWLoad();
+          var wid = cardId(el);
+          if (wmap[wid]) {
+            el.style.width = wmap[wid] + 'px';
+            el.style.maxWidth = '100%';
+            el.classList.add('card-fixedw');
+          } else {
+            el.style.width = '';
+            el.classList.remove('card-fixedw');
+          }
           var cont = ph.parentElement;
           cont.insertBefore(el, ph);
           cont.removeChild(ph);

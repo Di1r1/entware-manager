@@ -407,6 +407,24 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
   box-sizing: border-box;
 }
 
+/* свободное размещение карточек.
+ * Двухколоночные секции (section.grid.two) — flex-wrap: несуженые
+ * как раньше 2 в ряд, суженые за ручку (card-fixedw) — в ряд с соседями.
+ * В обычных блочных контейнерах суженая карточка — inline-block,
+ * поэтому несколько суженых встают в одну линию, остальные — как были. */
+.dnd-flow { display: flex; flex-wrap: wrap; gap: var(--gap-main); align-items: flex-start; }
+.dnd-flow > .card { flex: 1 1 40%; min-width: 0; }
+.dnd-flow > .card-fixedw { flex: none; max-width: 100%; }
+.dnd-flow > .card-placeholder { flex: 1 1 40%; }
+.card-fixedw { display: inline-block; vertical-align: top; }
+.card-placeholder { display: inline-block; vertical-align: top; }
+/* пустой контейнер во время переноса — видимая цель для сброса */
+body.card-dragging [data-dndcont]:empty {
+  min-height: 70px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+}
+
 .c-head {
   font-weight: 700;
   margin-bottom: 10px;
