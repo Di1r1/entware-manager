@@ -3673,13 +3673,14 @@
     pinNow();
   }
   function cardResizeBoot() {
-    var saved = cardWLoad();
     var savedH = cardHLoad();
+    /* сохранённые абсолютные ширины больше не восстанавливаем напрямую:
+     * они могли быть записаны при другом размере .main и выглядеть
+     * «маленькими» или слишком большими после обновления страницы. */
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
       var id = cardId(el);
       var st = el.style;
-      if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
       if (savedH[id]) { st.height = savedH[id] + 'px'; el.classList.add('card-fixedh'); }
       var exH = el.querySelector(':scope > .card-resizer');
       var exB = el.querySelector(':scope > .card-resizer-b');
@@ -3797,7 +3798,7 @@
           var m = cardHLoad();
           m[id] = parseInt(st.height, 10) || 0;
           if (!m[id]) delete m[id];
-          cardHSave(m);
+          // cardHSave(m);
           if (el._pinHandles) el._pinHandles();
         };
         hb.addEventListener('pointermove', moveB);
@@ -3810,7 +3811,7 @@
         el.classList.remove('card-fixedh');
         var m = cardHLoad();
         delete m[id];
-        cardHSave(m);
+        // cardHSave(m);
         cardGripPos(el, h, hb);
       });
       cardPinHandles(el, h, hb);
@@ -3998,17 +3999,11 @@
           el.style.top = '';
           el.style.margin = '';
           el.style.zIndex = '';
-          /* fixed-режим затирал ширину: вернуть запомненную, иначе сужение слетает */
-          var wmap = cardWLoad();
-          var wid = cardId(el);
-          if (wmap[wid]) {
-            el.style.width = wmap[wid] + 'px';
-            el.style.maxWidth = '100%';
-            el.classList.add('card-fixedw');
-          } else {
-            el.style.width = '';
-            el.classList.remove('card-fixedw');
-          }
+          /* восстановление сохранённой ширины отключено:
+           * абсолютные значения могли быть записаны при другом размере
+           * контейнера и вызывать «уменьшение» карточек после обновления. */
+          // var wmap = cardWLoad();
+          // ... (restored width logic disabled)
           var cont = ph.parentElement;
           cont.insertBefore(el, ph);
           cont.removeChild(ph);
@@ -4106,7 +4101,10 @@
           changed = true;
         }
       });
-      if (changed) cardWSave(wmap);
+      /* сохранение абсолютных ширин в localStorage отключено:
+       * они могли быть записаны при другом размере .main и вызывать
+       * «уменьшение» карточек после обновления страницы. */
+      // if (changed) cardWSave(wmap);
     });
     ro.observe(main);
   })();
