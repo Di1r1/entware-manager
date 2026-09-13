@@ -1275,6 +1275,7 @@ html[data-console="hc"] .term { border-color: var(--line); }
   align-items: flex-end;
   padding: 4px 0;
   max-height: calc(100vh - 100px);
+  pointer-events: none;
 }
 .bm {
   display: flex;
@@ -1301,6 +1302,7 @@ html[data-console="hc"] .term { border-color: var(--line); }
   will-change: transform;
   position: relative;
   z-index: 1;
+  pointer-events: auto;
 }
 .bm:hover,
 .bm:focus-visible,
