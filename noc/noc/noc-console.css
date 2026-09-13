@@ -454,9 +454,11 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 /* ряды главной (.panel-row) — та же свободная раскладка: grid позже в файле,
  * поэтому явное правило с большей специфичностью */
 .panel-row.dnd-flow { display: flex; flex-wrap: wrap; gap: var(--gap-main); align-items: flex-start; }
-/* базовый flex-контейнер (30% — 3 посадочных места в ряд).
- * min-width: 30% (не 0!) — иначе flex-shrink letting сжимал карточки
- * до 25% и 4 штуки умещались в один ряд. */
+/* базовый flex-контейнер: по 3 карточки в ряд (30% basis), но они растут
+ * до заполнения строки (grow:1) — 1 карточка = вся ширина, 2 = по половине,
+ * 3 = по трети. min-width:30% не даёт 4-й лезть в тот же ряд (иначе
+ * сжимались бы до 25%). Суженные карточки (card-fixedw) — flex:none и своя
+ * ширина, растянутые ручкой — тоже, не мешают. */
 .dnd-flow > .card { flex: 1 1 30%; min-width: 30%; }
 .dnd-flow > .card-fixedw { flex: none; max-width: 100%; }
 .dnd-flow > .card-placeholder { flex: 1 1 30%; min-width: 30%; }
