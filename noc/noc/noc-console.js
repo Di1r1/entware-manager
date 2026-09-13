@@ -860,12 +860,6 @@
       pkgAct('upgrade.cgi', 'upgrade_all=1', 'Обновление всех пакетов');
     }
   };
-  document.getElementById('pkgJournalBtn').onclick = function () {
-    var p = document.getElementById('pkgJournalFull');
-    if (!p) return;
-    if (p.hidden) { p.hidden = false; pkgJournalLoad(); }
-    else p.hidden = true;
-  };
   document.getElementById('dashRefresh').onclick = function () {
     jitterMeters();
     renderStatMods();
@@ -1526,16 +1520,32 @@
   function setText(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
   function applyMonLog(t) {
     /* monitor/log.cgi — plain text, [monitor] сегодняшнего журнала.
-     * Карточка «Защита» на Статистике удалена — пишем только во вкладку. */
+     * Рендерим в таблицу (как «Последние события» на вкладке Службы). */
     if (typeof t !== 'string' || !t.replace(/^\s+|\s+$/g, '')) {
       monFail++;
-      if (monFail >= 3) setText('monLogFull', 'событий нет');
+      if (monFail >= 3) renderMonLogTable([]);
       return;
     }
     monFail = 0;
     monLogCache = t.replace(/^\s+|\s+$/g, '');
-    setText('monLogFull', monLogCache);
+    renderMonLogTable(monLogCache.split('\n').filter(function (s) { return s.replace(/^\s+|\s+$/g, ''); }));
     if (evtFilter === 'mon') renderEvents();
+  }
+  function renderMonLogTable(lines) {
+    var tb = document.getElementById('monLogFull');
+    if (!tb) return;
+    if (!lines.length) { tb.innerHTML = '<tr><td class="l mut">событий нет</td></tr>'; return; }
+    var html = '';
+    lines.slice(0, 200).forEach(function (ln) {
+      var m = ln.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/);
+      var lv = /\[ERROR\]|\[CRIT\]/i.test(ln) ? ['CRIT', 'crit'] : (/\[WARN\]/i.test(ln) ? ['WARN', 'warn'] : ['INFO', 'ok']);
+      var txt = ln.replace(/^\s+|\s+$/g, '');
+      if (txt.length > 160) txt = txt.slice(0, 160) + '…';
+      html += '<tr><td class="l"><span class="ts">' + esc(m ? m[1] : '') + '</span>' +
+        ' <span class="badge ' + lv[1] + '">' + lv[0] + '</span>' +
+        ' <span>' + esc(txt) + '</span></td></tr>';
+    });
+    tb.innerHTML = html;
   }
   function applyMemTop(t) {
     /* настоящий топ по RSS из stats.cgi (в JSON-источниках RSS нет) */
@@ -1860,13 +1870,15 @@
       }
       pkgLogCache = d;
       var html = '';
-      d.forEach(function (e) {
+      var capped = d.length > 100;
+      d.slice(0, 100).forEach(function (e) {
         var ok = String(e.status || '') === 'success';
         var actRu = PKG_ACT_RU[String(e.action || '')] || esc(e.action || '?');
         html += '<div class="evt"><span class="ts">' + esc(String(e.timestamp || '').slice(0, 16)) + '</span>' +
           '<span class="badge ' + (ok ? 'ok' : 'crit') + '">' + (ok ? '✓' : '✗') + '</span><span>' +
           esc(e.package || '?') + ' — ' + actRu + '</span></div>';
       });
+      if (capped) html += '<div class="evt"><span class="mut">показаны последние 100 из ' + d.length + '</span></div>';
       if (jf) jf.innerHTML = html;
       if (evtFilter === 'pkg') renderEvents();
     });
@@ -2012,7 +2024,7 @@
     var opt = sel.options[sel.selectedIndex];
     var file = opt ? opt.getAttribute('data-file') : '';
     var f = logFrame();
-    if (sel.value && file && f) f.src = LIVE_BASE + 'logger/system_logs.cgi?file=' + encodeURIComponent(file) + '&_=' + Date.now();
+    if (sel.value && file && f) f.src = LIVE_BASE + 'logger/system_logs.cgi?embed=noc&file=' + encodeURIComponent(file) + '&_=' + Date.now();
     else if (f) f.src = 'about:blank';
   }
   function logStatus() {
@@ -2043,7 +2055,7 @@
     if (sc) sc.hidden = (tab !== 'sys');
     var f = logFrame();
     if (!f) return;
-    if (tab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now();
+    if (tab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?embed=noc&_=' + Date.now();
     else { logSources(); f.src = 'about:blank'; }
   }
   function logBoot() {
@@ -2090,7 +2102,7 @@
       livePost('logger/clear.cgi', '').then(function (t) {
         toast((t && t.message) || 'Готово', t && t.status === 'ok' ? undefined : 'warn');
         var f = logFrame();
-        if (f && logTab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now();
+        if (f && logTab === 'mgr') f.src = LIVE_BASE + 'logger/view.cgi?embed=noc&_=' + Date.now();
       });
     });
     on('logRotateBtn', function () {
@@ -2103,7 +2115,7 @@
         }
         toast(msg.length > 200 ? msg.slice(0, 200) + '…' : msg, t && t.status === 'ok' ? undefined : 'warn');
         var f = logFrame();
-        if (f && logTab === 'mgr') setTimeout(function () { f.src = LIVE_BASE + 'logger/view.cgi?_=' + Date.now(); }, 1000);
+        if (f && logTab === 'mgr') setTimeout(function () { f.src = LIVE_BASE + 'logger/view.cgi?embed=noc&_=' + Date.now(); }, 1000);
       });
     });
     on('logToggleBtn', function () {
@@ -3237,7 +3249,7 @@
     if (box) box.textContent = t;
   }
   function pkgSummary() {
-    var more = (pkgState.rowsShown || 0) > 300 ? ' · показаны первые 300 из ' + pkgState.rowsShown : '';
+    var more = (pkgState.rowsShown || 0) > 100 ? ' · показаны первые 100 из ' + pkgState.rowsShown : '';
     return 'Установлено: ' + pkgState.installed.length + ' · к обновлению: ' + pkgState.upgradable.length +
       ' · доступно: ' + pkgState.available.length + more + '.';
   }
@@ -3347,7 +3359,7 @@
     var rows = pkgRows();
     var badge = { upgrade: '<span class="badge warn">обновление</span>', installed: '<span class="badge ok">установлен</span>', available: '<span class="badge">доступен</span>' };
     var act = { upgrade: '<button class="btn sm" data-pact="upgrade">Обновить</button>', installed: '<button class="btn sm ghost" data-pact="remove">Удалить</button>', available: '<button class="btn sm" data-pact="install">Установить</button>' };
-    var CAP = 300, html = '';
+    var CAP = 100, html = '';
     pkgState.rowsShown = rows.length;
     rows.slice(0, CAP).forEach(function (r) {
       html += '<tr data-pkg="' + esc(r.name) + '"><td class="l">' + esc(r.name) + '</td><td>' + esc(r.ver || '—') + '</td><td>' + esc(r.date) + '</td><td>' + badge[r.st] + '</td><td>' + act[r.st].replace('data-pact="', 'data-pkg="' + esc(r.name) + '" data-pact="') + '</td></tr>';
@@ -3519,14 +3531,22 @@
     var row = e.target && e.target.closest ? e.target.closest('tr[data-pkg]') : null;
     if (row) toast(pkgInfo(row.getAttribute('data-pkg')));
   });
-  /* ===== Card resize: ручка справа у каждой .card, ширина запоминается ===== */
+  /* ===== Card resize: ручка справа (ширина) + ручка снизу (высота), запоминаются ===== */
   var CARDW_KEY = 'noc_cardw2';
+  var CARDH_KEY = 'noc_cardh2';
   function cardWLoad() {
     try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
     catch (err) { return {}; }
   }
   function cardWSave(map) {
     try { localStorage.setItem(CARDW_KEY, JSON.stringify(map)); } catch (err) {}
+  }
+  function cardHLoad() {
+    try { return JSON.parse(localStorage.getItem(CARDH_KEY) || '{}'); }
+    catch (err) { return {}; }
+  }
+  function cardHSave(map) {
+    try { localStorage.setItem(CARDH_KEY, JSON.stringify(map)); } catch (err) {}
   }
   function cardId(el) {
     return (el.dataset && el.dataset.nocid) || '';
@@ -3546,13 +3566,20 @@
     if (maxw > 0 && w > maxw) w = maxw;
     return w;
   }
+  function cardClampH(h) {
+    h = Math.round(h);
+    if (h < 120) h = 120;
+    return h;
+  }
   function cardResizeBoot() {
     var saved = cardWLoad();
+    var savedH = cardHLoad();
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
       var id = cardId(el);
       var st = el.style;
       if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
+      if (savedH[id]) { st.height = savedH[id] + 'px'; el.classList.add('card-fixedh'); }
       if (el.querySelector(':scope > .card-resizer')) return;
       var h = document.createElement('div');
       h.className = 'card-resizer';
@@ -3584,14 +3611,95 @@
         h.addEventListener('pointerup', up);
         h.addEventListener('pointercancel', up);
       });
+      h.title = 'Тяните, чтобы изменить ширину (двойной клик — размер по сетке: вся / половина / треть)';
       h.addEventListener('dblclick', function (e) {
         e.preventDefault();
-        st.width = '';
-        st.maxWidth = '';
-        el.classList.remove('card-fixedw');
+        /* сетка из трёх: вся ширина, половина, треть контейнера (минус зазоры).
+         * Первый клик — подстроить под ближайший, повторный — следующий по кругу,
+         * после трети — возврат к авто (как было).
+         * Ограничитель: если в ряду уже 2+ карточки — полную ширину не
+         * предлагаем (иначе ряд развалится); только половина/треть. */
+        var rowN = 1;
+        try {
+          var sibs = contCards(el.parentElement);
+          var top = el.offsetTop, n = 0;
+          sibs.forEach(function (x) { if (Math.abs(x.offsetTop - top) < 4) n++; });
+          if (n > 0) rowN = n;
+        } catch (err) {}
+        var contW = el.parentElement ? el.parentElement.clientWidth : 0;
+        if (contW <= 0) contW = el.getBoundingClientRect().width;
+        /* запас вниз: round округлял вверх и 2×половины / 3×трети давали
+         * на 1–2px больше контейнера — карточка уходила на другую строку,
+         * хотя плейсхолдер показывал место. Считаем floor с запасом 8px
+         * (пробелы inline-block + отступы) и ещё −1px для надёжности. */
+        var gap = 14;
+        var half = Math.floor((contW - gap - 8) / 2) - 1;
+        var third = Math.floor((contW - gap * 2 - 8) / 3) - 1;
+        if (half < 120) half = 120;
+        if (third < 120) third = 120;
+        var targets = rowN >= 2 ? [half, third] : [Math.round(contW), half, third];
+        var cur = parseInt(st.width, 10) || el.getBoundingClientRect().width;
+        var best = 0, bestD = Math.abs(cur - targets[0]);
+        targets.forEach(function (t, i) {
+          var d = Math.abs(cur - t);
+          if (d < bestD) { bestD = d; best = i; }
+        });
         var m = cardWLoad();
-        delete m[id];
+        var next;
+        if (bestD > 12) next = best;
+        else next = (best + 1) % targets.length;
+        /* «вся ширина» — только индекс 0 полного списка; в ограниченном
+         * списке (ряд из 2+) нулевой элемент — половина, её ставим, не сброс. */
+        if (next === 0 && rowN < 2) {
+          st.width = '';
+          st.maxWidth = '';
+          el.classList.remove('card-fixedw');
+          delete m[id];
+        } else {
+          st.width = targets[next] + 'px';
+          st.maxWidth = '100%';
+          el.classList.add('card-fixedw');
+          m[id] = targets[next];
+        }
         cardWSave(m);
+      });
+      /* ручка высоты снизу — тот же механизм по вертикали */
+      if (el.querySelector(':scope > .card-resizer-b')) return;
+      var hb = document.createElement('div');
+      hb.className = 'card-resizer-b';
+      hb.title = 'Тяните, чтобы изменить высоту (двойной клик — сброс)';
+      el.appendChild(hb);
+      hb.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var startY = e.clientY;
+        var startH = el.getBoundingClientRect().height;
+        hb.classList.add('on');
+        try { hb.setPointerCapture(e.pointerId); } catch (err) {}
+        var moveB = function (ev) {
+          st.height = cardClampH(startH + ev.clientY - startY) + 'px';
+          el.classList.add('card-fixedh');
+        };
+        var upB = function () {
+          hb.classList.remove('on');
+          hb.removeEventListener('pointermove', moveB);
+          hb.removeEventListener('pointerup', upB);
+          hb.removeEventListener('pointercancel', upB);
+          var m = cardHLoad();
+          m[id] = parseInt(st.height, 10) || 0;
+          if (!m[id]) delete m[id];
+          cardHSave(m);
+        };
+        hb.addEventListener('pointermove', moveB);
+        hb.addEventListener('pointerup', upB);
+        hb.addEventListener('pointercancel', upB);
+      });
+      hb.addEventListener('dblclick', function (e) {
+        e.preventDefault();
+        st.height = '';
+        el.classList.remove('card-fixedh');
+        var m = cardHLoad();
+        delete m[id];
+        cardHSave(m);
       });
     });
   }
@@ -3704,6 +3812,7 @@
               ph.style.width = el.style.width;
               ph.style.flex = 'none';
             }
+            /* grid-контейнер: для высокой карточки (card-fixedh) плейсхолдер на 2 ряда */
             el.parentElement.insertBefore(ph, el);
             el.classList.add('card-dragging');
             document.body.classList.add('card-dragging');
@@ -3731,7 +3840,14 @@
             /* чужой контейнер — только в том же view и только помеченный
              * (статические карточки); динамические сетки не трогаем. */
             if (oc !== pc && (!sameView(oc, pc) || !oc.dataset.dndcont || !pc.dataset.dndcont)) return;
-            var before = (ev.clientY - r.top) < r.height / 2;
+            /* куда вставить: у верхнего/нижнего края — по вертикали (в ряд
+             * выше/ниже), в средней полосе карточки — по горизонтали
+             * (слева/справа в том же ряду). Иначе 3 в ряд не собрать:
+             * сброс правее карточки уходил бы строкой выше. */
+            var yFrac = r.height > 0 ? (ev.clientY - r.top) / r.height : 0.5;
+            var before;
+            if (yFrac > 0.25 && yFrac < 0.75) before = (ev.clientX - r.left) < r.width / 2;
+            else before = yFrac < 0.5;
             oc.insertBefore(ph, before ? other : other.nextSibling);
             placed = true;
           });
@@ -3840,4 +3956,34 @@
   })();
   liveBoot();
   applyAll();
+  /* ResizeObserver: при изменении ширины контейнера (rail hover) пропорционально
+   * подстраиваем зафиксированные ширины карточек, чтобы они не вылезали за края
+   * и сохраняли относительные пропорции. */
+  (function cardResizeObserver() {
+    var main = document.querySelector('.main');
+    if (!main || !window.ResizeObserver) return;
+    var lastW = main.clientWidth;
+    var ro = new ResizeObserver(function () {
+      var w = main.clientWidth;
+      if (w === lastW || w === 0) return;
+      var ratio = w / lastW;
+      lastW = w;
+      var wmap = cardWLoad();
+      var changed = false;
+      document.querySelectorAll('.card-fixedw').forEach(function (el) {
+        var id = cardId(el);
+        var cur = wmap[id];
+        if (!cur) return;
+        var nw = Math.round(cur * ratio);
+        if (nw < 240) nw = 240;
+        if (nw !== cur) {
+          el.style.width = nw + 'px';
+          wmap[id] = nw;
+          changed = true;
+        }
+      });
+      if (changed) cardWSave(wmap);
+    });
+    ro.observe(main);
+  })();
 })();

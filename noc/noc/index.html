@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entware Manager — NOC Console (бета)</title>
-<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=12">
+<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=16">
 </head>
 <body>
 <div class="noc">
@@ -123,7 +123,7 @@
           <div class="stats-main">
 
             <!-- Twin tops: CPU + Memory -->
-            <div class="panel-row">
+            <div class="panel-row dnd-flow">
               <div class="card panel panel-compact">
                 <div class="panel-h">
                   <h3>Топ по CPU</h3>
@@ -173,7 +173,7 @@
             </div>
 
             <!-- Network interfaces + volumes -->
-            <div class="panel-row">
+            <div class="panel-row dnd-flow">
               <div class="card panel">
                 <div class="panel-h">
                   <h3>Интерфейсы</h3>
@@ -215,7 +215,7 @@
             </div>
 
             <!-- Updates + alerts strip -->
-            <div class="panel-row">
+            <div class="panel-row dnd-flow">
               <div class="card panel">
                 <div class="panel-h">
                   <h3>Обновления пакетов</h3>
@@ -238,7 +238,7 @@
                     <button class="sg active" data-f="all">Все</button><button class="sg" data-f="net">Сеть</button><button class="sg" data-f="svc">Службы</button><button class="sg" data-f="mon">Защита</button><button class="sg" data-f="auth">Входы</button><button class="sg" data-f="pkg">Пакеты</button>
                   </div>
                 </div>
-                <div class="evt-list mono" id="evtList">
+                <div class="evt-list mono cap100 cap100-pkg" id="evtList">
                   <div class="evt"><span class="ts">08:14</span><span class="badge warn">WARN</span><span>opkg: 3 upgrades available</span></div>
                   <div class="evt"><span class="ts">08:12</span><span class="badge ok">OK</span><span>watchdog: check ok</span></div>
                   <div class="evt"><span class="ts">07:58</span><span class="badge warn">WARN</span><span>monitor: xray cpu 91% (1/3)</span></div>
@@ -297,15 +297,15 @@
       <div id="view-packages" hidden>
         <div class="hero">
           <div><h2>Пакеты <span class="verdict warn-t" id="pkgVerdictFull">3 обновления доступны</span></h2><span class="mut" id="pkgSubFull">184 уст. · 2 410 доступно · списки от сегодня 06:00</span></div>
-          <span class="t-right"><button class="btn ghost" id="pkgRefreshBtn" title="Перезагрузить список пакетов">Обновить</button><button class="btn ghost" id="pkgUpdateLists">Обновить списки</button><button class="btn" id="pkgUpgradeAll">Обновить всё</button><button class="btn ghost" id="pkgJournalBtn">Журнал</button></span>
+          <span class="t-right"><button class="btn ghost" id="pkgRefreshBtn" title="Перезагрузить список пакетов">Обновить</button><button class="btn ghost" id="pkgUpdateLists">Обновить списки</button><button class="btn" id="pkgUpgradeAll">Обновить всё</button></span>
         </div>
         <div class="toolbar">
           <span class="seg mono" id="pkgSeg"><button class="sg active" data-pf="all">Все</button><button class="sg" data-pf="installed">Установленные</button><button class="sg" data-pf="upgrades">Обновления</button><button class="sg" data-pf="available">Доступные</button></span>
           <input class="t-search mono" id="pkgSearch" placeholder="Поиск по названию…" autocomplete="off">
         </div>
         <div class="card mut mono" id="updateResult" style="margin-bottom:12px">Вывод операций появится здесь…</div>
-        <div class="card mono" id="pkgJournalFull" hidden style="margin-bottom:12px"><div class="c-head">Журнал установок и удалений</div><div id="pkgJournalFullBody" class="mut">Загрузка…</div></div>
-        <div class="card"><div class="mut" style="margin-bottom:6px">Клик по строке — информация о пакете. Сортировка — кликом по шапке.</div><table class="tbl mono">
+        <div class="card mono" id="pkgJournalFull" style="margin-bottom:12px"><div class="c-head">Журнал установок и удалений</div><div id="pkgJournalFullBody" class="mut cap100 cap100-pkg">Загрузка…</div></div>
+        <div class="card"><div class="c-head">Список пакетов <span class="mut">клик по строке — информация · сортировка — по шапке</span></div><div class="cap100 cap100-pkg"><table class="tbl mono">
           <thead><tr><th data-ps="package">Пакет</th><th data-ps="version">Версия</th><th data-ps="date">Установлен</th><th>Статус</th><th>Действие</th></tr></thead>
           <tbody id="pkgBody">
             <tr onclick="toast('Модалка пакета htop — заглушка')"><td class="l">htop</td><td>3.3.0-1 → 3.4.1-1</td><td>2026-05-11</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
@@ -315,7 +315,7 @@
             <tr><td class="l">lighttpd</td><td>1.4.79-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost">Удалить</button></td></tr>
             <tr><td class="l">wireguard-tools</td><td>1.0.20210914-1</td><td>—</td><td><span class="badge">доступен</span></td><td><button class="btn sm">Установить</button></td></tr>
           </tbody>
-        </table></div>
+        </table></div></div>
       </div>
 
       <!-- ===== VIEW: PROCESSES ===== -->
@@ -375,10 +375,10 @@
           <tr><td colspan="5" class="mut">Загрузка…</td></tr>
         </tbody></table></div>
         <section class="grid two">
-        <div class="card" style="margin-top:12px"><div class="c-head">Системный crontab</div>
+        <div class="card cap100-pkg" style="margin-top:12px"><div class="c-head">Системный crontab</div>
           <div class="frm mono"><textarea class="ta" rows="3" id="cronSysTa"></textarea>
           <span><button class="btn sm" id="cronSysSave">Сохранить системный crontab</button> <span class="mut" id="cronSysMsg"></span></span></div></div>
-        <div class="card" style="margin-top:12px"><div class="c-head">Entware crontab</div>
+        <div class="card cap100-pkg" style="margin-top:12px"><div class="c-head">Entware crontab</div>
           <div class="frm mono"><textarea class="ta" rows="3" id="cronOptTa"></textarea>
           <span><button class="btn sm" id="cronOptSave">Сохранить Entware crontab</button> <span class="mut" id="cronOptMsg"></span></span></div></div>
         </section>
@@ -580,7 +580,9 @@
             <label>Максимум процессов<input value="200" id="monMax" style="width:80px"></label>
             <span><button class="btn sm" id="monSaveBtn">Сохранить настройки</button> <span class="mut" id="monMsgFull"></span></span></div></div>
           <div class="card"><div class="c-head">Лог событий <span class="mut">автообновление 7 с</span></div>
-            <pre class="log mono" id="monLogFull">Загрузка…</pre></div>
+            <table class="tbl mono"><tbody id="monLogFull">
+              <tr><td class="mut">Загрузка…</td></tr>
+            </tbody></table></div>
         </section>
       </div>
 
@@ -605,7 +607,7 @@
           <div class="acc-item"><button class="acc-h">Защита от зависших процессов</button><div class="acc-b">Порог CPU и время нагрузки, игнор-лист, автоубийство зависших, топ процессов, лог событий. Кнопка «Сохранить настройки» пишет конфиг монитора.<br><a href="#" data-gotab="monitor">Открыть →</a></div></div>
           <div class="acc-item"><button class="acc-h">Логи</button><div class="acc-b">«Действия менеджера»: очистка старше 30 дней, ротация, вкл/выкл логирования, системные события. «Системные логи»: выбор источника, поиск по имени. Просмотр — во встроенном окне.<br><a href="#" data-gotab="logs">Открыть →</a></div></div>
           <div class="acc-item"><button class="acc-h">Закладки-ссылки (полоски справа)</button><div class="acc-b">Быстрые ссылки на веб-интерфейсы (AdGuard, Transmission и т.д.). Клик открывает в новой вкладке. Долгое нажатие — переставить, порядок запоминается. Сами ссылки правятся в Настройки → Терминал и ссылки → Управление ссылками.</div></div>
-          <div class="acc-item"><button class="acc-h">Карточки: перенос и размер</button><div class="acc-b">Карточку можно потянуть за заголовок на любое свободное место (в т.ч. в пустой контейнер), ширину — за правый край: суженые встают по несколько в один ряд. Двойной клик по ручке возвращает как было. Порядок и размеры запоминаются.</div></div>
+          <div class="acc-item"><button class="acc-h">Карточки: перенос и размер</button><div class="acc-b">Карточку можно потянуть за заголовок на любое свободное место (в т.ч. в пустой контейнер). Ширина — за правый край, высота — за нижний край: суженые встают по несколько в один ряд. Двойной клик по боковой ручке ставит ширину по сетке (вся / половина / треть, по кругу), по нижней — сбрасывает высоту. Порядок и размеры запоминаются.</div></div>
           <div class="acc-item"><button class="acc-h">Классическая панель</button><div class="acc-b">Полная версия со всеми настройками: Telegram-бот и уведомления, пароль панели и HTTPS, бэкап и восстановление, обновления. Ссылка «← Классика» — в нижней строке состояния. Из NOC туда ведут кнопки «Открыть Настройки в классической панели».</div></div>
           <div class="acc-item"><button class="acc-h">Telegram-уведомления и чат-бот</button><div class="acc-b">Настраиваются в классике: токен бота, chat ID, прокси, источники событий, тихий режим, команды /status /help /backup, автозапуск бота.</div></div>
           <div class="acc-item"><button class="acc-h">Резервное копирование</button><div class="acc-b">Делается в классике (Настройки): скачивание tar.gz, восстановление, права на секреты 0600. Конфиги переживают обновление менеджера.</div></div>
@@ -640,7 +642,7 @@
               <button class="btn sm ghost" id="logClearSrcBtn">Очистить источники</button>
             </span></div>
         </div>
-        <div class="card"><iframe id="logsFrame" src="/entware-cgi/logger/view.cgi" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
+        <div class="card"><iframe id="logsFrame" src="/entware-cgi/logger/view.cgi?embed=noc" width="100%" height="420" style="border:none;border-radius:8px"></iframe></div>
       </div>
 
       <footer class="statusbar mono">
@@ -665,7 +667,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=46"></script>
+<script src="/entware-manager/noc/noc-console.js?v=54"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>

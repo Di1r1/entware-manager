@@ -360,6 +360,10 @@ body {
   transition: border-color var(--transition);
   position: relative;
 }
+/* Карточка с растягиваемым содержимым (cap100-pkg): скролл внутри карточки */
+.card:has(.cap100-pkg) {
+  overflow: auto;
+}
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
 /* resize карточек: ручка справа (видна при наведении, вид по умолчанию не меняет) */
@@ -387,6 +391,35 @@ body {
 .card:hover .card-resizer::after,
 .card-resizer.on::after { background: var(--accent); }
 
+/* resize карточек: ручка снизу (высота запоминается, как ширина) */
+.card-resizer-b {
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.card-resizer-b::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background var(--transition);
+}
+.card:hover .card-resizer-b::after,
+.card-resizer-b.on::after { background: var(--accent); }
+/* фикс. высота: контент прокручивается внутри, ручки не обрезаются */
+.card-fixedh { overflow-y: auto; }
+.card-fixedh > .card-resizer { right: 0; }
+.card-fixedh > .card-resizer-b { bottom: 0; }
+
 /* перенос карточек: таскать за шапку (вид по умолчанию не меняет, только курсор) */
 .panel-h, .c-head { cursor: grab; touch-action: pan-y; }
 body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
@@ -413,11 +446,25 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
  * В обычных блочных контейнерах суженая карточка — inline-block,
  * поэтому несколько суженых встают в одну линию, остальные — как были. */
 .dnd-flow { display: flex; flex-wrap: wrap; gap: var(--gap-main); align-items: flex-start; }
-.dnd-flow > .card { flex: 1 1 40%; min-width: 0; }
+/* ряды главной (.panel-row) — та же свободная раскладка: grid позже в файле,
+ * поэтому явное правило с большей специфичностью */
+.panel-row.dnd-flow { display: flex; flex-wrap: wrap; gap: var(--gap-main); align-items: flex-start; }
+/* базовый flex-контейнер (30% — 3 посадочных места в ряд) */
+.dnd-flow > .card { flex: 1 1 30%; min-width: 0; }
 .dnd-flow > .card-fixedw { flex: none; max-width: 100%; }
-.dnd-flow > .card-placeholder { flex: 1 1 40%; }
+.dnd-flow > .card-placeholder { flex: 1 1 30%; }
 .card-fixedw { display: inline-block; vertical-align: top; }
 .card-placeholder { display: inline-block; vertical-align: top; }
+/* зазор между карточками в блочных контейнерах — как на Статистике (12px).
+ * У flex-контейнеров свой gap; у #view-stats/.stats-main тоже свой. */
+[data-dndcont]:not(.dnd-flow) > .card { margin-bottom: 12px; }
+#view-stats > .card, .stats-main > .card { margin-bottom: 0; }
+[data-dndcont]:not(.dnd-flow) > .card-fixedw { margin-right: 8px; }
+/* списки пакетов и журнал: одинаковая высота, внутри скролл (до 100 записей) */
+.cap100 { max-height: 420px; overflow-y: auto; }
+/* пакеты: растягиваем на весь доступный экран */
+.cap100-pkg { max-height: calc(100vh - 200px); }
+.cap100-pkg.evt-list { max-height: calc(100vh - 200px); }
 /* пустой контейнер во время переноса — видимая цель для сброса */
 body.card-dragging [data-dndcont]:empty {
   min-height: 70px;
@@ -488,11 +535,14 @@ body.card-dragging [data-dndcont]:empty {
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   height: 172px;
+  max-height: 172px;
   overflow-y: auto;
   white-space: pre-wrap;
   line-height: 1.55;
   font-size: 11.5px;
 }
+/* cap100-pkg перекрывает max-height для полноэкранного режима */
+.cap100-pkg.log { max-height: calc(100vh - 200px); }
 
 /* ========== STATUSBAR ========== */
 .statusbar {
@@ -861,7 +911,7 @@ body.card-dragging [data-dndcont]:empty {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-.ta { width: 100%; resize: vertical; min-height: 60px; }
+.ta { width: 100%; resize: vertical; min-height: 60px; max-height: calc(100vh - 200px); }
 
 /* ========== SEGMENT ========== */
 .seg {
@@ -1623,6 +1673,9 @@ html[data-density="compact"] .tbl th { padding: 3px 5px; }
   .two { grid-template-columns: 1fr; }
   .mods { grid-template-columns: 1fr 1fr; }
   .panel-row { grid-template-columns: 1fr; }
+  /* свободные ряды на узком экране — снова в столбик (как .two → 1fr) */
+  .dnd-flow > .card, .dnd-flow > .card-placeholder,
+  .panel-row.dnd-flow > .card, .panel-row.dnd-flow > .card-placeholder { flex-basis: 100%; }
   .svc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {

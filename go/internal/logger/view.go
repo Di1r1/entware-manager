@@ -30,6 +30,11 @@ func HandleView() {
 
 	logFile := findLogFile(dateFilter)
 
+	// embed=noc — iframe внутри NOC-панели: отдельный style-noc.css +
+	// ThemeBridge (data-console). Без параметра — классика: style.css +
+	// Theme.init(), как было (независимость видов).
+	embedNoc := cgiutil.GetQueryParam("embed") == "noc"
+
 	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 
 	fmt.Print(`<!DOCTYPE html>
@@ -37,16 +42,23 @@ func HandleView() {
 <head>
 	<meta charset="UTF-8">
 	<title>Логи Entware Manager</title>
-	` + staticBaseHTML + `
-	<link rel="stylesheet" href="logger/style.css?v=3">
+	` + staticBaseHTML + "\n")
+	if embedNoc {
+		fmt.Print(`	<link rel="stylesheet" href="logger/style-noc.css?v=1">
 	<script src="theme.js?v=2"></script>
 	<script src="noc/theme-bridge.js?v=2"></script>
 	<script>
 		if (window.ThemeBridge) ThemeBridge.init();
 		else if (window.Theme) Theme.init();
-	</script>
-</head>
-<body>`)
+	</script>`)
+	} else {
+		fmt.Print(`	<link rel="stylesheet" href="logger/style.css?v=2">
+	<script src="theme.js?v=2"></script>
+	<script>
+		if (window.Theme) Theme.init();
+	</script>`)
+	}
+	fmt.Print("\n</head>\n<body>")
 
 	// Filter form
 	fmt.Print(`<form class="log-filter" method="get">

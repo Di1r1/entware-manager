@@ -1,0 +1,294 @@
+/* Стили области логов для NOC-панели (iframe ?embed=noc).
+ * НЕЗАВИСИМ от logger/style.css (классика): правится отдельно.
+ * Палитра продублирована значениями из noc/noc-console.css. */
+:root {
+    --logger-bg: #f9fafb;
+    --logger-text: #1a202c;
+    --logger-border: #e2e8f0;
+    --logger-input-bg: #ffffff;
+    --logger-accent: var(--accent, #8b5cf6);
+    --logger-hover: #f1f5f9;
+    --logger-scrollbar-thumb: #cbd5e0;
+    --logger-scrollbar-track: #f1f5f9;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #718096;
+}
+
+html.night {
+    --logger-bg: #1a202c;
+    --logger-text: #e2e8f0;
+    --logger-border: #4a5568;
+    --logger-input-bg: #2d3748;
+    --logger-hover: #4a5568;
+    --logger-scrollbar-thumb: #4a5568;
+    --logger-scrollbar-track: #2d3748;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #a0aec0;
+}
+
+/* ===== NOC console bases (iframe внутри NOC) =====
+ * iframe грузит только этот файл, поэтому палитра NOC продублирована
+ * значениями из noc/noc-console.css. Базу (data-console) и акцент
+ * (data-accent) ставит ThemeBridge из общего с NOC localStorage,
+ * классика (без data-console) продолжает жить на html.night выше. */
+html[data-console="noc-dark"] {
+    --logger-bg: #0a0f1a;
+    --logger-text: #e2eaf8;
+    --logger-border: #1c2a45;
+    --logger-input-bg: #111b2e;
+    --logger-hover: #152036;
+    --logger-scrollbar-thumb: #2d4066;
+    --logger-scrollbar-track: #0d1526;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #7a8ba8;
+    color-scheme: dark;
+}
+
+html[data-console="ops-light"] {
+    --logger-bg: #eef1f6;
+    --logger-text: #14233a;
+    --logger-border: #d0d7e4;
+    --logger-input-bg: #ffffff;
+    --logger-hover: #f5f7fb;
+    --logger-scrollbar-thumb: #a0adc2;
+    --logger-scrollbar-track: #e4e9f2;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #64748b;
+    color-scheme: light;
+}
+
+html[data-console="hc"] {
+    --logger-bg: #000000;
+    --logger-text: #fefce8;
+    --logger-border: #facc15;
+    --logger-input-bg: #0c0c0c;
+    --logger-hover: #141414;
+    --logger-scrollbar-thumb: #facc15;
+    --logger-scrollbar-track: #0a0a0a;
+    --border-color: var(--logger-border);
+    --input-bg: var(--logger-input-bg);
+    --text-primary: var(--logger-text);
+    --text-muted: #d4d4d4;
+    color-scheme: dark;
+}
+
+/* Акцент из NOC (data-accent ставит ThemeBridge; те же hex, что в NOC). */
+html[data-accent="violet"] { --accent: #8b5cf6; --logger-accent: #8b5cf6; }
+html[data-accent="ocean"]  { --accent: #0ea5e9; --logger-accent: #0ea5e9; }
+html[data-accent="forest"] { --accent: #10b981; --logger-accent: #10b981; }
+html[data-accent="teal"]   { --accent: #14b8a6; --logger-accent: #14b8a6; }
+html[data-accent="amber"]  { --accent: #f59e0b; --logger-accent: #f59e0b; }
+html[data-accent="ruby"]   { --accent: #ef4444; --logger-accent: #ef4444; }
+html[data-accent="rose"]   { --accent: #ec4899; --logger-accent: #ec4899; }
+
+/* Область логов в языке NOC: контролы как .t-search/.btn (radius 5px,
+ * mono 12px, сплошной акцент), строки как компактные карточки NOC. */
+html[data-console] body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+}
+
+html[data-console] .log-filter label {
+    color: var(--text-muted);
+}
+
+html[data-console] .log-filter input, html[data-console] .log-filter select {
+    border-radius: 5px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+html[data-console] .log-filter input:focus, html[data-console] .log-filter select:focus {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+html[data-console] .log-filter button {
+    background: var(--logger-accent);
+    border-radius: 5px;
+    box-shadow: none;
+}
+
+html[data-console] .log-filter button:hover {
+    background-position: 0 0;
+    transform: none;
+    filter: brightness(1.12);
+    box-shadow: none;
+}
+
+html[data-console] .log-line {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    border-radius: 5px;
+}
+
+html[data-console] .no-logs {
+    color: var(--text-muted);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--logger-bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--logger-text);
+    line-height: 1.5;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Фильтр фиксируется вверху */
+.log-filter {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--logger-bg);
+    backdrop-filter: blur(8px);
+    padding: 12px 20px;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--logger-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.log-filter label {
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+    color: #718096;
+}
+
+html.night .log-filter label {
+    color: #a0aec0;
+}
+
+.log-filter input, .log-filter select {
+    padding: 6px 12px;
+    border-radius: 40px;
+    border: 1px solid var(--logger-border);
+    background: var(--logger-input-bg);
+    color: var(--logger-text);
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+
+.log-filter input:focus, .log-filter select:focus {
+    outline: none;
+    border-color: var(--logger-accent);
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.2);
+}
+
+.log-filter button {
+    background: var(--btn-gradient, linear-gradient(135deg, var(--accent, #8b5cf6), var(--accent-dark, #6d28d9)));
+    background-size: 200% 200%;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px var(--accent-glow, rgba(139,92,246,0.3));
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.log-filter button:hover {
+    background-position: 100% 100%;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139,92,246,0.4);
+}
+
+/* Контейнер для логов с прокруткой */
+.logs-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--logger-scrollbar-thumb) var(--logger-scrollbar-track);
+}
+
+.logs-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.logs-container::-webkit-scrollbar-track {
+    background: var(--logger-scrollbar-track);
+    border-radius: 4px;
+}
+
+.logs-container::-webkit-scrollbar-thumb {
+    background: var(--logger-scrollbar-thumb);
+    border-radius: 4px;
+}
+
+.logs-container::-webkit-scrollbar-thumb:hover {
+    background: var(--logger-accent);
+}
+
+.log-line {
+    font-family: monospace;
+    font-size: 13px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--logger-border);
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--logger-input-bg);
+    margin: 2px 0;
+    border-radius: 6px;
+    color: var(--logger-text);
+}
+
+.log-line:hover {
+    background: var(--logger-hover);
+}
+
+.no-logs {
+    text-align: center;
+    padding: 2rem;
+    color: #718096;
+}
+
+html.night .no-logs {
+    color: #a0aec0;
+}
+
+/* Стили для табов */
+.tab-button {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: 0.2s;
+    border-radius: 40px;
+}
+.tab-button.active {
+    background: var(--btn-gradient, var(--accent-gradient));
+    color: white;
+    box-shadow: 0 2px 4px var(--accent-glow, rgba(139,92,246,0.3));
+}
+.tab-button:hover:not(.active) {
+    background: var(--logger-hover);
+}

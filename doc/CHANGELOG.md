@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### Разделены стили логов классики и NOC (v1.16.45)
+
+- Регрессия v1.16.44: общий `logger/style.css` + `ThemeBridge` в iframe ставили `data-console` и в классическом iframe (localStorage общий) — NOC-палитра текла в классику.
+- Разделение: `logger/style.css` возвращён классике как был (`v=2`, только `Theme.init()`); новый независимый `logger/style-noc.css` (`v=1`, NOC-палитра + `ThemeBridge`) — правится отдельно.
+- `view.cgi`/`system_logs.cgi`: ветка по `?embed=noc` (NOC) vs без параметра (классика, побайтово как раньше); `style-noc.css` добавлен в оба static-whitelist.
+- NOC: все src iframe (`view.cgi`, `system_logs.cgi`, начальный в `index.html`) с `embed=noc`; `noc-console.js?v=53→54`. Классика (`entware.js`) не тронута — параметр не шлёт.
+- Проверено: прогон CGI (amd64) обеих веток — ссылки на CSS/инициализация различаются как задумано; `make ci` зелёный.
+
 ### NOC: логи в стиле панели, светлая тема в iframe (v1.16.44)
 
 - Причина: вкладка «Логи» NOC — iframe (`logger/view.cgi`, `system_logs.cgi`) со своим `logger/style.css` на старой теме `html.night`; NOC использует `data-console` — светлая база внутрь не проходила, область выбивалась из стиля.

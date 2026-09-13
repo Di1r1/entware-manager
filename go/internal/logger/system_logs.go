@@ -37,22 +37,32 @@ func HandleSystemLogs() {
 
 	fmt.Print("Content-type: text/html; charset=utf-8\n\n")
 
+	// embed=noc — iframe внутри NOC-панели (style-noc.css + ThemeBridge),
+	// без параметра — классика (style.css + Theme.init()). Виды независимы.
+	embedNoc := cgiutil.GetQueryParam("embed") == "noc"
+
 	fmt.Print(`<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="UTF-8">
 	<title>Системные логи</title>
-	` + staticBaseHTML + `
-	<link rel="stylesheet" href="logger/style.css?v=3">
+	` + staticBaseHTML + "\n")
+	if embedNoc {
+		fmt.Print(`	<link rel="stylesheet" href="logger/style-noc.css?v=1">
 	<script src="theme.js?v=2"></script>
 	<script src="noc/theme-bridge.js?v=2"></script>
 	<script>
 		if (window.ThemeBridge) ThemeBridge.init();
 		else if (window.Theme) Theme.init();
-	</script>
-</head>
-<body>
-<div class="logs-container">`)
+	</script>`)
+	} else {
+		fmt.Print(`	<link rel="stylesheet" href="logger/style.css?v=2">
+	<script src="theme.js?v=2"></script>
+	<script>
+		if (window.Theme) Theme.init();
+	</script>`)
+	}
+	fmt.Print("\n</head>\n<body>\n<div class=\"logs-container\">")
 
 	if logFile == "" {
 		fmt.Println(`<div class="no-logs">Лог-файл не найден</div>`)
