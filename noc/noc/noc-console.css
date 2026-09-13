@@ -366,13 +366,13 @@ body {
 }
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
-/* resize карточек: ручка справа (видна при наведении, вид по умолчанию не меняет) */
+/* resize карточек: короткая ручка справа (10px, по центру видимого края — top ставит JS) */
 .card-resizer {
   position: absolute;
   top: 0;
   right: -4px;
   width: 8px;
-  height: 100%;
+  height: 10px;
   cursor: ew-resize;
   z-index: 5;
   touch-action: none;
@@ -380,8 +380,8 @@ body {
 .card-resizer::after {
   content: "";
   position: absolute;
-  top: 10px;
-  bottom: 10px;
+  top: 1px;
+  bottom: 1px;
   left: 3px;
   width: 2px;
   border-radius: 2px;
@@ -391,12 +391,12 @@ body {
 .card:hover .card-resizer::after,
 .card-resizer.on::after { background: var(--accent); }
 
-/* resize карточек: ручка снизу (высота запоминается, как ширина) */
+/* resize карточек: короткая ручка снизу слева (10px, видимый низ держит JS-пининг) */
 .card-resizer-b {
   position: absolute;
-  left: 0;
+  left: 10px;
   bottom: -4px;
-  width: 100%;
+  width: 10px;
   height: 8px;
   cursor: ns-resize;
   z-index: 5;
@@ -405,8 +405,8 @@ body {
 .card-resizer-b::after {
   content: "";
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 1px;
+  right: 1px;
   top: 3px;
   height: 2px;
   border-radius: 2px;

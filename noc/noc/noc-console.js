@@ -3626,21 +3626,31 @@
     if (h < 120) h = 120;
     return h;
   }
-  /* Ручки ресайза — absolute-дети карточки, поэтому в карточке со скроллом
-   * (много записей + высота за ручку) они уезжают вместе с контентом.
-   * Компенсируем скролл трансформом — полоски стоят у видимого края. */
+  /* Ручки короткие (10px): правая — по центру видимого края, нижняя —
+   * слева у видимого низа. Скролл карточки компенсируем, иначе ручки
+   * уезжают вместе с контентом. */
   function cardPinHandles(el, h, hb) {
     var tick = 0;
+    function pinNow() {
+      var x = el.scrollLeft || 0, y = el.scrollTop || 0;
+      if (h) {
+        var mid = y + el.clientHeight / 2 - 5;
+        if (!(mid > 0)) mid = 0;
+        h.style.top = mid + 'px';
+        h.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      }
+      if (hb) hb.style.transform = (x || y) ? 'translate(' + x + 'px,' + y + 'px)' : '';
+    }
+    el._pinHandles = pinNow;
     el.addEventListener('scroll', function () {
       if (tick) return;
       tick = 1;
       (window.requestAnimationFrame || function (f) { f(); })(function () {
         tick = 0;
-        var x = el.scrollLeft || 0, y = el.scrollTop || 0;
-        if (h) h.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-        if (hb) hb.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        pinNow();
       });
     }, { passive: true });
+    pinNow();
   }
   function cardResizeBoot() {
     var saved = cardWLoad();
@@ -3679,6 +3689,7 @@
           m[id] = parseInt(st.width, 10) || 0;
           if (!m[id]) delete m[id];
           cardWSave(m);
+          if (el._pinHandles) el._pinHandles();
         };
         h.addEventListener('pointermove', move);
         h.addEventListener('pointerup', up);
@@ -3762,6 +3773,7 @@
           m[id] = parseInt(st.height, 10) || 0;
           if (!m[id]) delete m[id];
           cardHSave(m);
+          if (el._pinHandles) el._pinHandles();
         };
         hb.addEventListener('pointermove', moveB);
         hb.addEventListener('pointerup', upB);
