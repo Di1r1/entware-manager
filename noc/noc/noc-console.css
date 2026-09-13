@@ -366,13 +366,13 @@ body {
 }
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
-/* resize карточек: короткая ручка справа (10px, по центру видимого края — top ставит JS) */
+/* resize карточек: короткая ручка справа (20px, по центру видимого края — top ставит JS) */
 .card-resizer {
   position: absolute;
   top: 0;
   right: -4px;
   width: 8px;
-  height: 10px;
+  height: 20px;
   cursor: ew-resize;
   z-index: 5;
   touch-action: none;

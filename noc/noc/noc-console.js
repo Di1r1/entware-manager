@@ -235,6 +235,10 @@
         var el = document.getElementById(VIEWS[k]);
         if (el) el.hidden = (k !== tab);
       });
+      /* вкладка стала видимой — высоты посчитались, переприколоть ручки */
+      Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
+        if (el._pinHandles) el._pinHandles();
+      });
     };
   });
   document.getElementById('railPin').onclick = function () {
@@ -3634,7 +3638,7 @@
     function pinNow() {
       var x = el.scrollLeft || 0, y = el.scrollTop || 0;
       if (h) {
-        var mid = y + el.clientHeight / 2 - 5;
+        var mid = y + el.clientHeight / 2 - 10;
         if (!(mid > 0)) mid = 0;
         h.style.top = mid + 'px';
         h.style.transform = x ? 'translateX(' + x + 'px)' : '';
