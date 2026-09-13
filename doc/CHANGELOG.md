@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### NOC: логи в стиле панели, светлая тема в iframe (v1.16.44)
+
+- Причина: вкладка «Логи» NOC — iframe (`logger/view.cgi`, `system_logs.cgi`) со своим `logger/style.css` на старой теме `html.night`; NOC использует `data-console` — светлая база внутрь не проходила, область выбивалась из стиля.
+- `logger/style.css`: добавлены `html[data-console=noc-dark/ops-light/hc]` с палитрой из `noc-console.css`, маппинг 7 акцентов `data-accent`, `color-scheme`; NOC-скоуп: контролы как `.t-search/.btn` (radius 5px, mono 12px, сплошной акцент), строки — компактные карточки. Классика без `data-console` не тронута.
+- `view.go`/`system_logs.go`: подключён `noc/theme-bridge.js` (whitelist уже покрывает), init через `ThemeBridge` с fallback на `Theme`; `logger/style.css?v=2→v=3`.
+- `system_log.go`: убран глобальный `<style>body{color:#e0e0e0}>` — при вставке ответа в NOC-модалку через `innerHTML` он красил весь документ; теперь только классовые селекторы (`.syslog`), классика (парсинг через DOMParser) без изменений.
+- Проверено: gofmt/vet/test чисто, сборка `entware-logger` arm64, маркеры `v=3`/`ThemeBridge` в бинарнике.
+
 ### NOC: свои Уведомления/Безопасность/Обслуживание + свободные карточки (v1.16.43)
 
 - Настройки NOC больше не ведут в классику: подвкладки notif/sec/mnt — собственное управление, паритет с классикой по контрактам (`telegram_config/test.cgi`, `auth_config`, `tls_config`, `auth_log.cgi`, `backup.cgi`, `backup_restore.cgi`, `prepare_offline.cgi`, `update_check/run/status.cgi`), бэкенд не тронут.

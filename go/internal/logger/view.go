@@ -38,10 +38,12 @@ func HandleView() {
 	<meta charset="UTF-8">
 	<title>Логи Entware Manager</title>
 	` + staticBaseHTML + `
-	<link rel="stylesheet" href="logger/style.css?v=2">
+	<link rel="stylesheet" href="logger/style.css?v=3">
 	<script src="theme.js?v=2"></script>
+	<script src="noc/theme-bridge.js?v=2"></script>
 	<script>
-		if (window.Theme) Theme.init();
+		if (window.ThemeBridge) ThemeBridge.init();
+		else if (window.Theme) Theme.init();
 	</script>
 </head>
 <body>`)

@@ -22,26 +22,26 @@ func HandleSystemLog() {
 <head>
 	<meta charset="UTF-8">
 	<style>
-		body { margin: 0; padding: 16px; background: transparent; color: #e0e0e0; font-family: monospace; font-size: 13px; }
-		pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
-		.empty { color: #718096; text-align: center; padding: 20px; }
+		.syslog-wrap { padding: 16px; }
+		.syslog { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 13px; }
+		.syslog-empty { text-align: center; padding: 20px; opacity: .65; }
 	</style>
 </head>
-<body>`)
+<body><div class="syslog-wrap">`)
 
 	data, err := os.ReadFile(systemLog)
 	if err != nil || len(data) == 0 {
-		fmt.Println(`<div class="empty">Системный лог пуст</div>`)
+		fmt.Println(`<div class="syslog-empty">Системный лог пуст</div>`)
 	} else {
 		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 		// Новые сверху
 		for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
 			lines[i], lines[j] = lines[j], lines[i]
 		}
-		fmt.Print("<pre>")
+		fmt.Print(`<pre class="syslog">`)
 		fmt.Print(htmlEscape(strings.Join(lines, "\n")))
-		fmt.Println("</pre>")
+		fmt.Println(`</pre>`)
 	}
 
-	fmt.Println(`</body></html>`)
+	fmt.Println(`</div></body></html>`)
 }
