@@ -3600,6 +3600,7 @@
   /* ===== Card resize: ручка справа (ширина) + ручка снизу (высота), запоминаются ===== */
   var CARDW_KEY = 'noc_cardw2';
   var CARDH_KEY = 'noc_cardh2';
+  var MAINW_KEY = 'noc_mainw';
   function cardWLoad() {
     try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
     catch (err) { return {}; }
@@ -3613,6 +3614,12 @@
   }
   function cardHSave(map) {
     try { localStorage.setItem(CARDH_KEY, JSON.stringify(map)); } catch (err) {}
+  }
+  function mainWLoad() {
+    try { return parseInt(localStorage.getItem(MAINW_KEY) || '0') || 0; } catch (err) { return 0; }
+  }
+  function mainWSave(w) {
+    try { localStorage.setItem(MAINW_KEY, String(w || 0)); } catch (err) {}
   }
   function cardId(el) {
     return (el.dataset && el.dataset.nocid) || '';
@@ -3673,14 +3680,20 @@
     pinNow();
   }
   function cardResizeBoot() {
+    var saved = cardWLoad();
     var savedH = cardHLoad();
-    /* сохранённые абсолютные ширины больше не восстанавливаем напрямую:
-     * они могли быть записаны при другом размере .main и выглядеть
-     * «маленькими» или слишком большими после обновления страницы. */
+    var mainW = document.querySelector('.main') ? document.querySelector('.main').clientWidth : 0;
+    var savedMainW = mainWLoad();
+    /* при другом размере .main (например, переключение закреплённой панели)
+     * восстановленная ширина карточки масштабируется пропорционально,
+     * иначе карточки с сохранёнными абсолютными значениями выглядят
+     * «маленькими» или «большими» после обновления страницы. */
+    var scale = (savedMainW && savedMainW > 0 && mainW && mainW > 0) ? mainW / savedMainW : 1;
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
       var id = cardId(el);
       var st = el.style;
+      if (saved[id]) { var scaledW = Math.round(saved[id] * scale); st.width = scaledW + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
       if (savedH[id]) { st.height = savedH[id] + 'px'; el.classList.add('card-fixedh'); }
       var exH = el.querySelector(':scope > .card-resizer');
       var exB = el.querySelector(':scope > .card-resizer-b');
@@ -3712,6 +3725,8 @@
           m[id] = parseInt(st.width, 10) || 0;
           if (!m[id]) delete m[id];
           cardWSave(m);
+          var mainW = document.querySelector('.main') ? document.querySelector('.main').clientWidth : 0;
+          mainWSave(mainW);
           if (el._pinHandles) el._pinHandles();
         };
         h.addEventListener('pointermove', move);
@@ -3798,7 +3813,7 @@
           var m = cardHLoad();
           m[id] = parseInt(st.height, 10) || 0;
           if (!m[id]) delete m[id];
-          // cardHSave(m);
+          cardHSave(m);
           if (el._pinHandles) el._pinHandles();
         };
         hb.addEventListener('pointermove', moveB);
@@ -4087,23 +4102,26 @@
       if (w === lastW || w === 0) return;
       var ratio = w / lastW;
       lastW = w;
+      mainWSave(w);
       var wmap = cardWLoad();
       var changed = false;
       document.querySelectorAll('.card-fixedw').forEach(function (el) {
         var id = cardId(el);
-        var cur = wmap[id];
+        /* текущая ширина карточки (из style.width или wmap) —
+         * не оригинальное сохранённое значение, иначе при переключении
+         * меню карточки «прыгают» к старой ширине вместо плавной подстройки. */
+        var cur = parseInt(el.style.width) || wmap[id] || 240;
         if (!cur) return;
         var nw = Math.round(cur * ratio);
         if (nw < 240) nw = 240;
         if (nw !== cur) {
           el.style.width = nw + 'px';
-          wmap[id] = nw;
           changed = true;
         }
       });
-      /* сохранение абсолютных ширин в localStorage отключено:
-       * они могли быть записаны при другом размере .main и вызывать
-       * «уменьшение» карточек после обновления страницы. */
+      /* НЕ сохраняем в localStorage: наблюдатель подстраивает визуально,
+       * но не записывает сжатые значения, чтобы карточки не «уменьшались»
+       * после обновления страницы (drag save работает отдельно). */
       // if (changed) cardWSave(wmap);
     });
     ro.observe(main);

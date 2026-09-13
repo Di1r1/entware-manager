@@ -454,14 +454,13 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 /* ряды главной (.panel-row) — та же свободная раскладка: grid позже в файле,
  * поэтому явное правило с большей специфичностью */
 .panel-row.dnd-flow { display: flex; flex-wrap: wrap; gap: var(--gap-main); align-items: flex-start; }
-/* базовый flex-контейнер: по 3 карточки в ряд (30% basis), но они растут
- * до заполнения строки (grow:1) — 1 карточка = вся ширина, 2 = по половине,
- * 3 = по трети. min-width:30% не даёт 4-й лезть в тот же ряд (иначе
- * сжимались бы до 25%). Суженные карточки (card-fixedw) — flex:none и своя
- * ширина, растянутые ручкой — тоже, не мешают. */
-.dnd-flow > .card { flex: 1 1 30%; min-width: 30%; }
+/* свободная раскладка: 3 карточки в ряд (30% basis), растут до конца строки
+ * (grow:1) — 1 = вся ширина, 2 = по половине, 3 = по трети. 4-я уходит
+ * на следующую строку (flex-wrap). Суженные (card-fixedw) и растянутые
+ * ручкой — flex:none, своя ширина. */
+.dnd-flow > .card { flex: 1 1 30%; min-width: 0; }
 .dnd-flow > .card-fixedw { flex: none; max-width: 100%; }
-.dnd-flow > .card-placeholder { flex: 1 1 30%; min-width: 30%; }
+.dnd-flow > .card-placeholder { flex: 1 1 30%; min-width: 0; }
 .card-fixedw { display: inline-block; vertical-align: top; }
 .card-placeholder { display: inline-block; vertical-align: top; }
 /* зазор между карточками в блочных контейнерах — как на Статистике (12px).
