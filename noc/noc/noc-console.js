@@ -183,6 +183,11 @@
     root.setAttribute('data-console', lsGet('entware_console_base') || 'noc-dark');
     root.setAttribute('data-accent', lsGet('entware_theme') || 'violet');
     root.setAttribute('data-density', lsGet('entware_density') || 'comfortable');
+    /* положение закреплённой панели (railPin / Alt+M) — сохраняется,
+     * иначе при обновлении страницы rail сворачивался, .main расширялся
+     * и карточки с сохранёнными ширинами выглядели маленькими. */
+    var noc = document.querySelector('.noc');
+    if (noc && lsGet('entware_noc_pinned') === '1') noc.classList.add('pinned');
     paintDots();
   }
   function paintDots() {
@@ -242,12 +247,14 @@
     };
   });
   document.getElementById('railPin').onclick = function () {
-    document.querySelector('.noc').classList.toggle('pinned');
+    var pinned = document.querySelector('.noc').classList.toggle('pinned');
+    lsSet('entware_noc_pinned', pinned ? '1' : '0');
   };
   document.addEventListener('keydown', function (e) {
     if (e.altKey && e.key.toLowerCase() === 'm') {
       e.preventDefault();
-      document.querySelector('.noc').classList.toggle('pinned');
+      var pinned = document.querySelector('.noc').classList.toggle('pinned');
+      lsSet('entware_noc_pinned', pinned ? '1' : '0');
     }
   });
 
