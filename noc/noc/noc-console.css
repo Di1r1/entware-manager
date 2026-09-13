@@ -369,13 +369,14 @@ body {
 }
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
-/* resize карточек: короткая ручка справа (20px, по центру видимого края — top ставит JS) */
+/* resize карточек: ручка справа (видимая полоска 20px + невидимая зона хвата 20×40;
+ * top-центр ставит JS). Линия у края карточки, зона уходит наружу. */
 .card-resizer {
   position: absolute;
   top: 0;
-  right: -4px;
-  width: 8px;
-  height: 20px;
+  right: -12px;
+  width: 20px;
+  height: 40px;
   cursor: ew-resize;
   z-index: 5;
   touch-action: none;
@@ -383,9 +384,9 @@ body {
 .card-resizer::after {
   content: "";
   position: absolute;
-  top: 1px;
-  bottom: 1px;
-  left: 3px;
+  top: 10px;
+  bottom: 10px;
+  left: 7px;
   width: 2px;
   border-radius: 2px;
   background: transparent;
@@ -394,14 +395,15 @@ body {
 .card:hover .card-resizer::after,
 .card-resizer.on::after { background: var(--accent); }
 
-/* resize карточек: короткая ручка снизу по центру (20px, видимый низ держит JS-пининг) */
+/* resize карточек: ручка снизу по центру (видимая полоска 20px + невидимая
+ * зона хвата 40×20; видимый низ держит JS-пининг). Линия у края карточки. */
 .card-resizer-b {
   position: absolute;
   left: 50%;
-  margin-left: -10px;
-  bottom: -4px;
-  width: 20px;
-  height: 8px;
+  margin-left: -20px;
+  bottom: -10px;
+  width: 40px;
+  height: 20px;
   cursor: ns-resize;
   z-index: 5;
   touch-action: none;
@@ -409,9 +411,9 @@ body {
 .card-resizer-b::after {
   content: "";
   position: absolute;
-  left: 1px;
-  right: 1px;
-  top: 3px;
+  left: 10px;
+  right: 10px;
+  top: 9px;
   height: 2px;
   border-radius: 2px;
   background: transparent;

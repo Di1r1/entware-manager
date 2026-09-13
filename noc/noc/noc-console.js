@@ -3638,7 +3638,7 @@
     function pinNow() {
       var x = el.scrollLeft || 0, y = el.scrollTop || 0;
       if (h) {
-        var mid = y + el.clientHeight / 2 - 10;
+        var mid = y + el.clientHeight / 2 - 20;
         if (!(mid > 0)) mid = 0;
         h.style.top = mid + 'px';
         h.style.transform = x ? 'translateX(' + x + 'px)' : '';
