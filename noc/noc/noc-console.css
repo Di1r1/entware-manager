@@ -391,12 +391,13 @@ body {
 .card:hover .card-resizer::after,
 .card-resizer.on::after { background: var(--accent); }
 
-/* resize карточек: короткая ручка снизу слева (10px, видимый низ держит JS-пининг) */
+/* resize карточек: короткая ручка снизу по центру (20px, видимый низ держит JS-пининг) */
 .card-resizer-b {
   position: absolute;
-  left: 10px;
+  left: 50%;
+  margin-left: -10px;
   bottom: -4px;
-  width: 10px;
+  width: 20px;
   height: 8px;
   cursor: ns-resize;
   z-index: 5;
