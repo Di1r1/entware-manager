@@ -3630,20 +3630,29 @@
     if (h < 120) h = 120;
     return h;
   }
-  /* Ручки короткие (10px): правая — по центру видимого края, нижняя —
-   * слева у видимого низа. Скролл карточки компенсируем, иначе ручки
-   * уезжают вместе с контентом. */
+  /* Ручки: захват на всю длину края (зоны handles — во всю высоту/ширину),
+   * видимые полоски 20px ставит JS по центру (CSS transition — плавный переезд). */
+  function cardGripPos(el, h, hb) {
+    if (h && h.firstChild) {
+      var midV = (el.scrollTop || 0) + el.clientHeight / 2 - 10;
+      if (!(midV > 0)) midV = 0;
+      h.firstChild.style.top = midV + 'px';
+    }
+    if (hb && hb.firstChild) {
+      var midH = (el.scrollLeft || 0) + el.clientWidth / 2 - 10;
+      if (!(midH > 0)) midH = 0;
+      hb.firstChild.style.left = midH + 'px';
+    }
+  }
+  /* Скролл карточки компенсируем трансформом ручек + переставляем полоски. */
   function cardPinHandles(el, h, hb) {
     var tick = 0;
     function pinNow() {
       var x = el.scrollLeft || 0, y = el.scrollTop || 0;
-      if (h) {
-        var mid = y + el.clientHeight / 2 - 20;
-        if (!(mid > 0)) mid = 0;
-        h.style.top = mid + 'px';
-        h.style.transform = x ? 'translateX(' + x + 'px)' : '';
-      }
-      if (hb) hb.style.transform = (x || y) ? 'translate(' + x + 'px,' + y + 'px)' : '';
+      var t = (x || y) ? 'translate(' + x + 'px,' + y + 'px)' : '';
+      if (h) h.style.transform = t;
+      if (hb) hb.style.transform = t;
+      cardGripPos(el, h, hb);
     }
     el._pinHandles = pinNow;
     el.addEventListener('scroll', function () {
@@ -3671,6 +3680,7 @@
       var h = document.createElement('div');
       h.className = 'card-resizer';
       h.title = 'Тяните, чтобы изменить ширину (двойной клик — сброс)';
+      h.appendChild(document.createElement('i'));
       el.appendChild(h);
       h.addEventListener('pointerdown', function (e) {
         e.preventDefault();
@@ -3683,6 +3693,7 @@
           st.width = cardClamp(startW + ev.clientX - startX, maxw) + 'px';
           st.maxWidth = '100%';
           el.classList.add('card-fixedw');
+          cardGripPos(el, h, hb);
         };
         var up = function () {
           h.classList.remove('on');
@@ -3750,6 +3761,7 @@
           m[id] = targets[next];
         }
         cardWSave(m);
+        cardGripPos(el, h, hb);
       });
       /* ручка высоты снизу — тот же механизм по вертикали */
       var exB2 = el.querySelector(':scope > .card-resizer-b');
@@ -3757,6 +3769,7 @@
       var hb = document.createElement('div');
       hb.className = 'card-resizer-b';
       hb.title = 'Тяните, чтобы изменить высоту (двойной клик — сброс)';
+      hb.appendChild(document.createElement('i'));
       el.appendChild(hb);
       hb.addEventListener('pointerdown', function (e) {
         e.preventDefault();
@@ -3767,6 +3780,7 @@
         var moveB = function (ev) {
           st.height = cardClampH(startH + ev.clientY - startY) + 'px';
           el.classList.add('card-fixedh');
+          cardGripPos(el, h, hb);
         };
         var upB = function () {
           hb.classList.remove('on');
@@ -3790,6 +3804,7 @@
         var m = cardHLoad();
         delete m[id];
         cardHSave(m);
+        cardGripPos(el, h, hb);
       });
       cardPinHandles(el, h, hb);
     });
