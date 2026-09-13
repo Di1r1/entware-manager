@@ -2,6 +2,15 @@
 (function () {
   'use strict';
   var root = document.documentElement;
+  /* положение панели (pinned/minimal): применяем немедленно (до показа
+   * контента), чтобы избежать визуального «скачка» rail с 52px на 200px. */
+  (function applyPinEarly() {
+    try {
+      if (localStorage.getItem('entware_noc_pinned') === '1') {
+        document.querySelector('.noc').classList.add('pinned');
+      }
+    } catch (e) {}
+  })();
 
   /* --- фейковый лог --- */
   var lines = [
@@ -4014,11 +4023,19 @@
           el.style.top = '';
           el.style.margin = '';
           el.style.zIndex = '';
-          /* восстановление сохранённой ширины отключено:
-           * абсолютные значения могли быть записаны при другом размере
-           * контейнера и вызывать «уменьшение» карточек после обновления. */
-          // var wmap = cardWLoad();
-          // ... (restored width logic disabled)
+          /* move() выставил style.width = rect.width (жёсткая ширина),
+           * иначе flex-автонастройка (30% basis) больше не применялась —
+           * карточка замирала на ширине от момента перетаскивания, и
+           * ResizeObserver подстраивает только card-fixedw. */
+          if (el.classList.contains('card-fixedw')) {
+            var wmap = cardWLoad();
+            var wid = cardId(el);
+            if (wmap[wid]) { el.style.width = wmap[wid] + 'px'; el.style.maxWidth = '100%'; }
+            else { el.style.width = ''; el.style.maxWidth = ''; el.classList.remove('card-fixedw'); }
+          } else {
+            el.style.width = '';
+            el.style.maxWidth = '';
+          }
           var cont = ph.parentElement;
           cont.insertBefore(el, ph);
           cont.removeChild(ph);
