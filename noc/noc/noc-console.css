@@ -481,6 +481,13 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 /* суженная за ручку карточка — в ряд как раньше (inline-block),
  * но flex-колонка внутри, чтобы внутренняя область росла при растяжке */
 #view-packages .card-fixedw { display: inline-flex; vertical-align: top; }
+/* Логи: область просмотра растёт вместе с карточкой (как пакеты).
+ * Без ручки — 420px как раньше; потянул за низ — iframe тянется за карточкой,
+ * жёсткого лимита внутри нет, скролл — у самого документа логов. */
+#view-logs .card:has(#logsFrame) { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
+#logsFrame { flex: 1 1 auto; width: 100%; min-height: 420px; border: none; border-radius: 8px; }
+#view-logs .card-fixedh { overflow: hidden; }
+#view-logs .card-fixedh #logsFrame { min-height: 120px; }
 /* Службы и Cron → Последние события: заголовок зафиксирован при скролле карточки */
 .card:has(#svcEventsBody).card-fixedh > .c-head {
   position: sticky;
