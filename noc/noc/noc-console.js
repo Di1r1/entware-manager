@@ -3626,6 +3626,22 @@
     if (h < 120) h = 120;
     return h;
   }
+  /* Ручки ресайза — absolute-дети карточки, поэтому в карточке со скроллом
+   * (много записей + высота за ручку) они уезжают вместе с контентом.
+   * Компенсируем скролл трансформом — полоски стоят у видимого края. */
+  function cardPinHandles(el, h, hb) {
+    var tick = 0;
+    el.addEventListener('scroll', function () {
+      if (tick) return;
+      tick = 1;
+      (window.requestAnimationFrame || function (f) { f(); })(function () {
+        tick = 0;
+        var x = el.scrollLeft || 0, y = el.scrollTop || 0;
+        if (h) h.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        if (hb) hb.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      });
+    }, { passive: true });
+  }
   function cardResizeBoot() {
     var saved = cardWLoad();
     var savedH = cardHLoad();
@@ -3635,7 +3651,9 @@
       var st = el.style;
       if (saved[id]) { st.width = saved[id] + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
       if (savedH[id]) { st.height = savedH[id] + 'px'; el.classList.add('card-fixedh'); }
-      if (el.querySelector(':scope > .card-resizer')) return;
+      var exH = el.querySelector(':scope > .card-resizer');
+      var exB = el.querySelector(':scope > .card-resizer-b');
+      if (exH || exB) { cardPinHandles(el, exH, exB); return; }
       var h = document.createElement('div');
       h.className = 'card-resizer';
       h.title = 'Тяните, чтобы изменить ширину (двойной клик — сброс)';
@@ -3719,7 +3737,8 @@
         cardWSave(m);
       });
       /* ручка высоты снизу — тот же механизм по вертикали */
-      if (el.querySelector(':scope > .card-resizer-b')) return;
+      var exB2 = el.querySelector(':scope > .card-resizer-b');
+      if (exB2) { cardPinHandles(el, h, exB2); return; }
       var hb = document.createElement('div');
       hb.className = 'card-resizer-b';
       hb.title = 'Тяните, чтобы изменить высоту (двойной клик — сброс)';
@@ -3756,6 +3775,7 @@
         delete m[id];
         cardHSave(m);
       });
+      cardPinHandles(el, h, hb);
     });
   }
   /* ===== Card order: перенос за шапку, порядок запоминается ===== */
