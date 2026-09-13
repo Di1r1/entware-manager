@@ -849,7 +849,8 @@
     if (b) b.click();
   }
   document.getElementById('statModsManage').onclick = function () { goTab('bridge'); };
-  document.getElementById('kpiPkgGo').onclick = function () { goTab('packages'); };
+  var kpiGo = document.getElementById('kpiPkgGo');
+  if (kpiGo) kpiGo.onclick = function () { goTab('packages'); };
   document.getElementById('pkgUpdateLists').onclick = function () {
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия'); return; }
     pkgAct('update.cgi', 'run=1', 'Обновление списков');
@@ -1398,30 +1399,25 @@
     }
   }
   function applyUpgradable(a) {
-    var badge = document.getElementById('updBadge');
-    var box = document.getElementById('updList');
-    if (!box) return;
-    if (!Array.isArray(a)) {
-      if (badge) { badge.textContent = '?'; badge.className = 'badge'; }
-      liveTickErr.push('upgradable:' + ((a && a.error) || 'bad-shape'));
-      return; /* объект ошибки — не «всё обновлено», оставляем мок */
+    /* Карточки обновлений нет — счётчик живёт в кнопке «Пакеты» Событий. */
+    var pkgBtn = document.querySelector('#evtBar [data-f="pkg"]');
+    function setPkgBtn(n) {
+      if (pkgBtn) pkgBtn.textContent = n > 0 ? 'Пакеты ' + n : 'Пакеты';
     }
-    if (!a.length) {
-      if (badge) { badge.textContent = '0'; badge.className = 'badge ok'; }
-      var sb0 = document.getElementById('sbPkg');
-      if (sb0) sb0.innerHTML = '<i class="dot ok"></i> пакеты в порядке';
-      box.innerHTML = '<div class="upd"><b>всё обновлено</b></div>';
+    if (!Array.isArray(a)) {
+      setPkgBtn(0);
+      liveTickErr.push('upgradable:' + ((a && a.error) || 'bad-shape'));
       return;
     }
-    if (badge) { badge.textContent = String(a.length); badge.className = 'badge warn'; }
+    if (!a.length) {
+      setPkgBtn(0);
+      var sb0 = document.getElementById('sbPkg');
+      if (sb0) sb0.innerHTML = '<i class="dot ok"></i> пакеты в порядке';
+      return;
+    }
+    setPkgBtn(a.length);
     var sb = document.getElementById('sbPkg');
     if (sb) sb.innerHTML = '<i class="dot warn"></i> ' + a.length + ' ' + plural(a.length, 'пакет', 'пакета', 'пакетов') + ' к обновлению';
-    var html = '';
-    a.slice(0, 5).forEach(function (p) {
-      html += '<div class="upd"><b>' + esc(p.package) + '</b><span class="mut">' + esc(p.current) +
-        '</span><span class="arrow">→</span><span class="warn-t">' + esc(p.new) + '</span></div>';
-    });
-    box.innerHTML = html;
   }
   function applyVersion(d) {
     if (!d || !d.version) return;
@@ -1440,7 +1436,6 @@
    * тот же источник, что «Безопасность → Журнал попыток входа». */
   var authLogCache = null, authLogLoading = false;
   try { evtFilter = localStorage.getItem('noc_evtf') || 'all'; } catch (e) {}
-  /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
   /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
   var EVT_GROUPS = {
     net: ['network'], svc: ['service', 'crontab_update'], mon: ['monitor'],
@@ -1736,8 +1731,6 @@
       var el = document.getElementById(x[0]);
       if (el) el.innerHTML = '<tr><td colspan="' + x[1] + '" class="mut">Загрузка…</td></tr>';
     });
-    var ul = document.getElementById('updList');
-    if (ul) ul.innerHTML = '<div class="upd mut">Загрузка…</div>';
     var ev = document.getElementById('evtList');
     if (ev) ev.innerHTML = '<div class="evt mut">Загрузка…</div>';
     var rb = document.getElementById('dashRefresh');
@@ -1802,7 +1795,7 @@
       var el = document.getElementById(x[0]);
       if (el) el.style.width = '0%';
     });
-    ['topCpuBody', 'topMemBody', 'ifBody', 'updList', 'evtList', 'volList'].forEach(function (id) {
+    ['topCpuBody', 'topMemBody', 'ifBody', 'evtList', 'volList'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) {
         bootHTML[id] = el.innerHTML;
