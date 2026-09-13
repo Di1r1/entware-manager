@@ -1682,7 +1682,7 @@
     liveGo('updcheck', liveFetch('update_check.cgi'), applyUpdateCheck);
     liveGo('upgradable', liveFetch('upgradable.cgi'), applyUpgradable);
     liveGo('version', liveFetch('version.cgi'), applyVersion);
-    liveGo('events', liveFetch('network_events.cgi?limit=30&tag=all'), applyEvents);
+    liveGo('events', liveFetch('network_events.cgi?limit=200&tag=all'), applyEvents);
     liveGo('monlog', liveFetch('monitor/log.cgi'), applyMonLog);
     liveGo('stats', liveFetch('stats.cgi'), applyStatsHtml);
     liveGo('procs', liveFetchExp('procs.cgi'), applyFullProcs);

@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### Фильтры карточки «События» NOC отдают данные (v1.16.46)
+
+- Причина: карточка тянет `network_events.cgi?limit=30&tag=all`, а `parseGenericLine` (`go/internal/network/events.go`) отдавал `Service: ""` — клиентский фильтр по `e.service` (`Сеть/Службы/Входы`) совпасть не мог; `tag=login` не матчил `[login.cgi]`; `limit=30` забивался свежими записями одного источника.
+- Бэкенд: `parseGenericLine` извлекает тег источника в `Service` (`extractServiceTag` + `normalizeServiceTag`: нижний регистр, срез `.cgi` — `login.cgi→login`, `crontab_update.cgi→crontab_update`); матчинг тегов в `parseLogFile`/`parseLogLine` — по нормализованному тегу вместо подстроки.
+- Фронтенд: тик событий `limit=30→200` (`noc-console.js`), кэш-баст `noc-console.js?v=54→55` в `noc/noc/index.html`.
+- Классика не тронута: `/network/events.cgi` без тега (дефолт `network`, разбор побайтово тот же), `dashboard.cgi` — только тик NOC; `service_watchdog/events.cgi`, `monitor/log.cgi`, `packages_log.cgi` — другие пакеты.
+- Проверено: `make ci` зелёный, 3 новых теста (`Service` из `tag=all`, `tag=login→[login.cgi]`, неизменность `tag=network`).
+
 ### Разделены стили логов классики и NOC (v1.16.45)
 
 - Регрессия v1.16.44: общий `logger/style.css` + `ThemeBridge` в iframe ставили `data-console` и в классическом iframe (localStorage общий) — NOC-палитра текла в классику.

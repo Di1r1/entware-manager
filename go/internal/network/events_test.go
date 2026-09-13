@@ -184,6 +184,71 @@ func TestHandleEvents_OutputsJSON(t *testing.T) {
 	}
 }
 
+// tag=all (карточка «События» NOC): Service извлекается из тега строки,
+// суффикс .cgi нормализуется (login.cgi → login) — иначе фильтры
+// Сеть/Службы/Входы не могут совпасть (Service был "").
+func TestParseGenericLine_SetsService(t *testing.T) {
+	cases := []struct{ line, want string }{
+		{`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [network] eth0 interface_up`, "network"},
+		{`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [service] lighttpd started`, "service"},
+		{`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [monitor] watchdog started`, "monitor"},
+		{`[2026-04-02 10:00:00] [WARN] [192.168.1.1] [1234] [login.cgi] Неверный пароль при входе`, "login"},
+		{`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [crontab_update.cgi] cron updated`, "crontab_update"},
+		{`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [packages] Пакет curl: установлен`, "packages"},
+		{`[2026-04-02 10:00:00] [INFO] [localhost] [1234] [network] wifi connected`, "network"},
+	}
+	for _, c := range cases {
+		ev := parseGenericLine(c.line, "2026-04-02 10:00:00")
+		if ev.Service != c.want {
+			t.Errorf("line %q: expected service %q, got %q", c.line, c.want, ev.Service)
+		}
+		if ev.Event == "" {
+			t.Errorf("line %q: expected non-empty event text", c.line)
+		}
+	}
+}
+
+// Запрос tag=login находит строки [login.cgi] (нормализация с обеих сторон).
+func TestParseLogFile_LoginTag(t *testing.T) {
+	tmp := t.TempDir()
+	oldLogDir := LogDir
+	LogDir = tmp
+	defer func() { LogDir = oldLogDir }()
+
+	writeLogFile(t, tmp, []string{
+		`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [network] dhcp renew (eth0)`,
+		`[2026-04-02 10:01:00] [WARN] [192.168.1.1] [1234] [login.cgi] Неверный пароль при входе`,
+		`[2026-04-02 10:02:00] [INFO] [192.168.1.1] [1234] [login.cgi] Успешный вход`,
+	})
+
+	events := parseLogFile("login", 20)
+	if len(events) != 2 {
+		t.Fatalf("expected 2 login events, got %d", len(events))
+	}
+}
+
+// tag=network по-прежнему находит только [network] (классика без изменений).
+func TestParseLogFile_NetworkTagUnchanged(t *testing.T) {
+	tmp := t.TempDir()
+	oldLogDir := LogDir
+	LogDir = tmp
+	defer func() { LogDir = oldLogDir }()
+
+	writeLogFile(t, tmp, []string{
+		`[2026-04-02 10:00:00] [INFO] [127.0.0.1] [1234] [network] dhcp renew (eth0)`,
+		`[2026-04-02 10:01:00] [WARN] [192.168.1.1] [1234] [login.cgi] Неверный пароль при входе`,
+		`[2026-04-02 10:02:00] [INFO] [127.0.0.1] [1234] [service] lighttpd started`,
+	})
+
+	events := parseLogFile("network", 20)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 network event, got %d", len(events))
+	}
+	if events[0].Service != "dhcp" || events[0].Event != "renew" {
+		t.Errorf("classic network parsing changed: %+v", events[0])
+	}
+}
+
 func itoa(i int) string {
 	return string(rune('0' + i))
 }
