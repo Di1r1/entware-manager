@@ -1436,6 +1436,9 @@
    * monLogCache — текст monitor/log.cgi (обновляется каждый тик),
    * pkgLogCache — массив packages_log.cgi (лениво, один раз). */
   var monLogCache = '', pkgLogCache = [], pkgLogLoading = false;
+  /* Журнал входов (auth_log.cgi: сегодня+вчера, {entries, failed_24h}) —
+   * тот же источник, что «Безопасность → Журнал попыток входа». */
+  var authLogCache = null, authLogLoading = false;
   try { evtFilter = localStorage.getItem('noc_evtf') || 'all'; } catch (e) {}
   /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
   /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
@@ -1495,6 +1498,30 @@
           '<span class="badge ' + lv[1] + '">' + lv[0] + '</span><span>' + esc(txt) + '</span></div>';
       });
       box.innerHTML = html2;
+      return;
+    }
+    /* Входы: как «Безопасность → Журнал попыток входа» (auth_log.cgi,
+     * сегодня+вчера) — сырой дневной лог в этом окне часто пуст. */
+    if (evtFilter === 'auth') {
+      if (!authLogCache) {
+        if (window.__NOC_LIVE_STATS && !authLogLoading) authJournalLoad();
+        box.innerHTML = '<div class="evt mut">' + (window.__NOC_LIVE_STATS ? 'Загрузка…' : 'событий нет') + '</div>';
+        return;
+      }
+      var entries = authLogCache.entries || [];
+      if (!entries.length) { box.innerHTML = '<div class="evt mut">входов нет</div>'; return; }
+      var html3 = '';
+      entries.slice(0, 6).forEach(function (en) {
+        var lv3 = String(en.level || 'INFO').toUpperCase();
+        var cls3 = lv3 === 'WARN' ? 'warn' : 'ok';
+        html3 += '<div class="evt"><span class="ts">' + esc(evtTs(en.time)) + '</span>' +
+          '<span class="badge ' + cls3 + '">' + esc(lv3) + '</span><span>' +
+          esc((en.ip || '') + ' — ' + (en.message || '')) + '</span></div>';
+      });
+      if (authLogCache.failed_24h > 0) {
+        html3 += '<div class="evt"><span class="mut">' + esc(authLogCache.failed_24h) + ' неудачных попыток за 24ч</span></div>';
+      }
+      box.innerHTML = html3;
       return;
     }
     var grp = EVT_GROUPS[evtFilter];
@@ -1887,6 +1914,17 @@
       if (capped) html += '<div class="evt"><span class="mut">показаны последние 100 из ' + d.length + '</span></div>';
       if (jf) jf.innerHTML = html;
       if (evtFilter === 'pkg') renderEvents();
+    });
+  }
+  function authJournalLoad() {
+    /* Лениво, как журнал пакетов: по первому выбору фильтра Входы.
+     * Тот же источник, что блок «Журнал попыток входа» в Безопасности. */
+    if (!window.__NOC_LIVE_STATS) return;
+    authLogLoading = true;
+    liveFetch('auth_log.cgi').then(function (d) {
+      authLogLoading = false;
+      if (d && typeof d === 'object') authLogCache = d;
+      if (evtFilter === 'auth') renderEvents();
     });
   }
   /* ===== LIVE monitor (вкладка Защита): status/top/config/action.
@@ -3529,8 +3567,20 @@
       var ff = ef.getAttribute('data-f');
       /* повторный клик по активной вкладке — переход на страницу */
       if (ff === evtFilter) {
-        var ri = document.querySelector('.ri[data-tab="' + (EVT_GO[ff] || 'logs') + '"]');
-        if (ri) { ri.click(); return; }
+        var tab = EVT_GO[ff] || 'logs';
+        var ri = document.querySelector('.ri[data-tab="' + tab + '"]');
+        if (ri) {
+          ri.click();
+          /* Входы → Безопасность: открыть подвкладку sec и прокрутить к журналу */
+          if (ff === 'auth') {
+            var sec = document.querySelector('[data-sub="set"] [data-sp="sec"]');
+            if (sec) sec.click();
+            var nb = document.getElementById('nalBody');
+            var card = nb && nb.closest ? nb.closest('.card') : null;
+            if (card && card.scrollIntoView) card.scrollIntoView();
+          }
+          return;
+        }
       }
       var ebtns = document.querySelectorAll('#evtBar [data-f]');
       Array.prototype.forEach.call(ebtns, function (x) { x.classList.remove('active'); });
