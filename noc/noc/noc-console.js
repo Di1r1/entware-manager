@@ -1402,9 +1402,10 @@
     /* Карточки обновлений нет — счётчик живёт в кнопке «Пакеты» Событий. */
     var pkgBtn = document.querySelector('#evtBar [data-f="pkg"]');
     function setPkgBtn(n) {
-      if (pkgBtn) pkgBtn.textContent = 'Пакеты ' + n;
+      if (pkgBtn) pkgBtn.textContent = n > 0 ? 'Пакеты ' + n : 'Пакеты';
     }
     if (!Array.isArray(a)) {
+      setPkgBtn(0);
       liveTickErr.push('upgradable:' + ((a && a.error) || 'bad-shape'));
       return;
     }
