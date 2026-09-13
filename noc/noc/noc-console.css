@@ -369,12 +369,12 @@ body {
 }
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
-/* resize карточек: захват справа на всю высоту (зона 20px, из них 12 снаружи),
- * видимая полоска 20px по центру зоны; скролл компенсирует JS-пининг */
+/* resize карточек: захват справа на всю высоту (10px снаружи + 10 внутри),
+ * видимая полоска 20px по центру зоны ровно на краю; скролл — JS-пининг */
 .card-resizer {
   position: absolute;
   top: 0;
-  right: -12px;
+  right: -10px;
   width: 20px;
   height: 100%;
   cursor: ew-resize;
@@ -384,7 +384,7 @@ body {
 .card-resizer > i {
   position: absolute;
   top: 0;
-  left: 7px;
+  left: 8px;
   width: 2px;
   height: 20px;
   border-radius: 2px;
@@ -394,8 +394,8 @@ body {
 .card:hover .card-resizer > i,
 .card-resizer.on > i { background: var(--accent); }
 
-/* resize карточек: захват снизу на всю ширину (зона 20px, из них 10 снаружи),
- * видимая полоска 20px по центру; видимый низ держит JS-пининг */
+/* resize карточек: захват снизу на всю ширину (10px снаружи + 10 внутри),
+ * видимая полоска 20px по центру ровно на краю; видимый низ — JS-пининг */
 .card-resizer-b {
   position: absolute;
   left: 0;
@@ -409,7 +409,7 @@ body {
 .card-resizer-b > i {
   position: absolute;
   left: 0;
-  top: 9px;
+  top: 8px;
   height: 2px;
   width: 20px;
   border-radius: 2px;
@@ -418,10 +418,9 @@ body {
 }
 .card:hover .card-resizer-b > i,
 .card-resizer-b.on > i { background: var(--accent); }
-/* фикс. высота: контент прокручивается внутри, ручки не обрезаются */
+/* фикс. высота: контент прокручивается внутри (ручки оседлали край,
+ * поэтому их не обрезает: полоска внутри, половина зоны снаружи) */
 .card-fixedh { overflow-y: auto; }
-.card-fixedh > .card-resizer { right: 0; }
-.card-fixedh > .card-resizer-b { bottom: 0; }
 
 /* перенос карточек: таскать за шапку (вид по умолчанию не меняет, только курсор) */
 .panel-h, .c-head { cursor: grab; touch-action: pan-y; }
