@@ -473,6 +473,9 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 #view-packages .card-fixedh { overflow: hidden; }
 #view-packages .card-fixedh > .cap100-pkg,
 #view-packages .card-fixedh #pkgJournalFullBody { max-height: none; }
+/* суженная за ручку карточка — в ряд как раньше (inline-block),
+ * но flex-колонка внутри, чтобы внутренняя область росла при растяжке */
+#view-packages .card-fixedw { display: inline-flex; vertical-align: top; }
 /* пустой контейнер во время переноса — видимая цель для сброса */
 body.card-dragging [data-dndcont]:empty {
   min-height: 70px;
