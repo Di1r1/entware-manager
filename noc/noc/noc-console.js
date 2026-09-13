@@ -1438,9 +1438,15 @@
   var monLogCache = '', pkgLogCache = [], pkgLogLoading = false;
   try { evtFilter = localStorage.getItem('noc_evtf') || 'all'; } catch (e) {}
   /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
+  /* Кнопки карточки Событий → источники журнала (Service из tag=all) */
   var EVT_GROUPS = {
     net: ['network'], svc: ['service', 'crontab_update'], mon: ['monitor'],
     auth: ['login'], pkg: ['update', 'packages']
+  };
+  /* Повторный клик по активной вкладке → переход на страницу. */
+  var EVT_GO = {
+    all: 'logs', net: 'network', svc: 'system-services', mon: 'monitor',
+    auth: 'settings', pkg: 'packages'
   };
   function evtTs(ts) {
     ts = String(ts || '');
@@ -3520,10 +3526,16 @@
     }
     var ef = e.target && e.target.closest ? e.target.closest('#evtBar [data-f]') : null;
     if (ef) {
+      var ff = ef.getAttribute('data-f');
+      /* повторный клик по активной вкладке — переход на страницу */
+      if (ff === evtFilter) {
+        var ri = document.querySelector('.ri[data-tab="' + (EVT_GO[ff] || 'logs') + '"]');
+        if (ri) { ri.click(); return; }
+      }
       var ebtns = document.querySelectorAll('#evtBar [data-f]');
       Array.prototype.forEach.call(ebtns, function (x) { x.classList.remove('active'); });
       ef.classList.add('active');
-      evtFilter = ef.getAttribute('data-f');
+      evtFilter = ff;
       try { localStorage.setItem('noc_evtf', evtFilter); } catch (err) {}
       renderEvents();
       return;
