@@ -3858,13 +3858,24 @@
       });
     });
   }
-  /* Контейнеры одного view: перенос между строками разрешён. */
+  /* Контейнеры одного view: перенос между строками разрешён.
+   * Подтабы одного data-sub (Настройки: term/notif/sec/mnt) — разные экраны:
+   * карточки между ними не таскаем, иначе перетащенная карточка
+   * («Управление ссылками» в «Уведомления») сохраняется в noc_cardorder
+   * и apply возвращает её в чужой подтаб при каждой загрузке. */
   function sameView(a, b) {
     if (!a || !b) return false;
     var va = a.closest ? a.closest('[id^="view-"]') : null;
     var vb = b.closest ? b.closest('[id^="view-"]') : null;
     if (!va && !vb) return true;
-    return !!va && va === vb;
+    if (!va || va !== vb) return false;
+    var pa = a.closest ? a.closest('[data-pp]') : null;
+    var pb = b.closest ? b.closest('[data-pp]') : null;
+    if (pa || pb) {
+      if (!pa || !pb) return false;
+      if (pa !== pb) return false;
+    }
+    return true;
   }
   function cardOrderBoot() {
     cardBootIds();
