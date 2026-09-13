@@ -1495,7 +1495,7 @@
     var list = grp ? evtData.filter(function (e) { return grp.indexOf(String(e.service || '')) >= 0; }) : evtData.slice();
     if (!list.length) { box.innerHTML = '<div class="evt mut">' + (evtData.length ? 'нет записей' : 'событий нет') + '</div>'; return; }
     var html = '';
-    list.slice(0, 6).forEach(function (e) {
+    list.slice(0, evtFilter === 'all' ? 10 : 6).forEach(function (e) {
       var lv = String(e.level || 'INFO').toUpperCase();
       var cls = lv === 'WARN' ? 'warn' : (lv === 'ERROR' || lv === 'CRIT' ? 'crit' : 'ok');
       html += '<div class="evt"><span class="ts">' + esc(evtTs(e.timestamp)) + '</span>' +
