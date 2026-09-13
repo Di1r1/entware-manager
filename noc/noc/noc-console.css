@@ -363,10 +363,9 @@ body {
   transition: border-color var(--transition);
   position: relative;
 }
-/* Карточка с растягиваемым содержимым (cap100-pkg): скролл внутри карточки */
-.card:has(.cap100-pkg) {
-  overflow: auto;
-}
+/* Внутренние списки (.cap100/.evt-list/.log) скроллятся сами — внешний
+ * overflow карточки обязан оставаться visible, иначе торчащие ручки дают
+ * ложные скроллбары даже когда всё умещается. */
 .card:hover { border-color: color-mix(in srgb, var(--line) 70%, var(--accent)); }
 
 /* resize карточек: захват справа на всю высоту (10px снаружи + 10 внутри),
@@ -418,9 +417,13 @@ body {
 }
 .card:hover .card-resizer-b > i,
 .card-resizer-b.on > i { background: var(--accent); }
-/* фикс. высота: контент прокручивается внутри (ручки оседлали край,
- * поэтому их не обрезает: полоска внутри, половина зоны снаружи) */
+/* фикс. высота: контент прокручивается внутри; чтобы торчащие ручки не давали
+ * ложных скроллбаров — здесь они целиком внутри, полоска в 1–3px от края */
 .card-fixedh { overflow-y: auto; }
+.card-fixedh > .card-resizer { right: 0; }
+.card-fixedh > .card-resizer > i { left: 17px; }
+.card-fixedh > .card-resizer-b { bottom: 0; }
+.card-fixedh > .card-resizer-b > i { top: 17px; }
 
 /* перенос карточек: таскать за шапку (вид по умолчанию не меняет, только курсор) */
 .panel-h, .c-head { cursor: grab; touch-action: pan-y; }
