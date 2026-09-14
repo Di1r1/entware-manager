@@ -573,6 +573,7 @@
     });
     modGrid.innerHTML = html || '<div class="card"><div class="mod-detail">Ничего не найдено.</div></div>';
     document.getElementById('modCount').textContent = n + ' модулей · ' + on + ' вкл';
+    cardBootIds();
     cardResizeBoot();
   }
   renderMods('');
@@ -765,6 +766,7 @@
     applyDashModsVisible();
     paintModSparks();
     bindModDrag(box);
+    cardBootIds();
     cardResizeBoot();
   }
 
@@ -3630,15 +3632,22 @@
     try { localStorage.setItem(MAINW_KEY, String(w || 0)); } catch (err) {}
   }
   function cardId(el) {
+    if (el.dataset && el.dataset.mid) return 'mid:' + el.dataset.mid;
     return (el.dataset && el.dataset.nocid) || '';
   }
   /* Стабильные id: раздаются при каждой загрузке в порядке статического DOM
-   * (до применения порядка), поэтому переживают перестановки и перезагрузки. */
+   * (до применения порядка), поэтому переживают перестановки и перезагрузки.
+   * Приоритет: data-mid (модули) > id > index. */
   function cardBootIds() {
     var n = 0;
     Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
-      if (el.id) el.dataset.nocid = 'id:' + el.id;
-      else el.dataset.nocid = 'ix:' + (n++);
+      if (el.dataset && el.dataset.mid) {
+        el.dataset.nocid = 'mid:' + el.dataset.mid;
+      } else if (el.id) {
+        el.dataset.nocid = 'id:' + el.id;
+      } else {
+        el.dataset.nocid = 'ix:' + (n++);
+      }
     });
   }
   function cardClamp(w, maxw) {
@@ -3834,7 +3843,7 @@
         el.classList.remove('card-fixedh');
         var m = cardHLoad();
         delete m[id];
-        // cardHSave(m);
+        cardHSave(m);
         cardGripPos(el, h, hb);
       });
       cardPinHandles(el, h, hb);
