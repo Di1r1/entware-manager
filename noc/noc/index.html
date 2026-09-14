@@ -279,6 +279,7 @@
           <input class="t-search mono" id="pkgSearch" placeholder="Поиск по названию…" autocomplete="off">
         </div>
         <div class="card mut mono" id="updateResult" style="margin-bottom:12px">Вывод операций появится здесь…</div>
+        <section class="grid two" id="pkgRow">
         <div class="card mono" id="pkgJournalFull" style="margin-bottom:12px"><div class="c-head">Журнал установок и удалений</div><div id="pkgJournalFullBody" class="mut cap100 cap100-pkg">Загрузка…</div></div>
         <div class="card"><div class="c-head">Список пакетов <span class="mut">клик по строке — информация · сортировка — по шапке</span></div><div class="cap100 cap100-pkg"><table class="tbl mono">
           <thead><tr><th data-ps="package">Пакет</th><th data-ps="version">Версия</th><th data-ps="date">Установлен</th><th>Статус</th><th>Действие</th></tr></thead>
@@ -291,6 +292,7 @@
             <tr data-pkg="wireguard-tools"><td class="l">wireguard-tools</td><td>1.0.20210914-1</td><td>—</td><td><span class="badge">доступен</span></td><td><button class="btn sm" data-pkg="wireguard-tools" data-pact="install">Установить</button></td></tr>
           </tbody>
         </table></div></div>
+        </section>
       </div>
 
       <!-- ===== VIEW: PROCESSES ===== -->
