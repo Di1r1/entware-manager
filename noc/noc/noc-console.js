@@ -567,6 +567,100 @@
       '</div>' +
     '</div>';
   }
+  /* === Bridge: prefs/actions/ctl (live, как классика entware.js) === */
+  var bridgePrefsCache = null;
+  function bridgePrefsLoad(cb) {
+    if (bridgePrefsCache) { cb(bridgePrefsCache); return; }
+    liveFetch('bridge_prefs.cgi', null, 15000).then(function (d) {
+      bridgePrefsCache = (d && d.modules) || {};
+      cb(bridgePrefsCache);
+    });
+  }
+  function bridgePrefSet(id, field, value, cb) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); if (cb) cb(false); return; }
+    bridgePrefsLoad(function (cache) {
+      var p = cache[id] || {};
+      var body = 'id=' + encodeURIComponent(id) +
+        '&enabled=' + (field === 'enabled' ? String(value) : String(p.enabled !== false)) +
+        '&notifications=' + (field === 'notifications' ? String(value) : String(!!p.notifications)) +
+        '&control=' + (field === 'control' ? String(value) : String(p.control === true));
+      livePost('bridge_prefs.cgi', body, 15000).then(function (r) {
+        if (r && r.status === 'ok') {
+          bridgePrefsCache[id] = { enabled: r.enabled, notifications: r.notifications, control: r.control };
+          if (cb) cb(true);
+        } else {
+          toast((r && (r.message || r.error)) || 'ошибка сохранения', 'warn');
+          if (cb) cb(false);
+        }
+      });
+    });
+  }
+  /* Маскированный ввод пароля панели (аналог Modal.promptPassword классики). */
+  function askPanelPasswordNoc(title, cb) {
+    var old = document.getElementById('nocPwWrap');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var w = document.createElement('div');
+    w.id = 'nocPwWrap';
+    w.className = 'pal-wrap';
+    w.innerHTML = '<div class="pal"><div style="padding:14px 16px">' +
+      '<div class="c-head">' + esc(title || 'Пароль панели:') + '</div>' +
+      '<div class="frm mono"><label>Пароль панели<input type="password" id="nocPwInput"></label>' +
+      '<span><button class="btn sm" id="nocPwOk">OK</button> ' +
+      '<button class="btn sm ghost" id="nocPwCancel">Отмена</button></span></div></div></div>';
+    document.body.appendChild(w);
+    var done = function (v) {
+      if (w.parentNode) w.parentNode.removeChild(w);
+      cb(v);
+    };
+    document.getElementById('nocPwOk').onclick = function () {
+      done(document.getElementById('nocPwInput').value || '');
+    };
+    document.getElementById('nocPwCancel').onclick = function () { done(''); };
+    var inp = document.getElementById('nocPwInput');
+    inp.onkeydown = function (e) {
+      if (e.key === 'Enter') done(inp.value || '');
+      if (e.key === 'Escape') done('');
+    };
+    setTimeout(function () { inp.focus(); }, 0);
+  }
+  function bridgeCardMid(el) {
+    var card = el && el.closest ? el.closest('.mod') : null;
+    return card ? card.getAttribute('data-mid') : null;
+  }
+  function bridgeDoAction(id, action, needConfirm, btn) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    if (!id || !action) return;
+    if (needConfirm && !confirm('Выполнить «' + action + '» для модуля «' + id + '»?')) return;
+    askPanelPasswordNoc(needConfirm ? 'Повторите пароль панели для подтверждения:' : 'Пароль панели:', function (pw) {
+      if (!pw) return;
+      if (btn) btn.disabled = true;
+      livePost('bridge_action.cgi',
+        'id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action) +
+        '&password=' + encodeURIComponent(pw), 60000).then(function (r) {
+        if (btn) btn.disabled = false;
+        if (r && r.status === 'ok') toast('Выполнено (' + ((r.result && r.result.raw) || 'ok') + ')');
+        else toast((r && (r.message || r.error)) || 'ошибка', 'warn');
+      });
+    });
+  }
+  function bridgeDoCtl(id, op, needConfirm, btn) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    if (!id || !op) return;
+    if (needConfirm && !confirm(op === 'stop' ? 'Остановить сервис «' + id + '»?' : 'Перезапустить сервис «' + id + '»?')) return;
+    if (btn) btn.disabled = true;
+    livePost('bridge_ctl.cgi',
+      'id=' + encodeURIComponent(id) + '&op=' + encodeURIComponent(op), 60000).then(function (r) {
+      if (btn) btn.disabled = false;
+      if (r && r.status === 'ok') {
+        toast('Выполнено: ' + op);
+        setTimeout(function () { bridgeState.loaded = false; liveBridgeLoad(); }, 1500);
+      } else {
+        toast(((r && (r.message || r.error)) || 'ошибка') + ((r && r.output) ? '\n' + r.output : ''), 'warn');
+      }
+    });
+  }
+  /* === /Bridge actions === */
+
   var modGrid = document.getElementById('modGrid');
   function renderMods(filter) {
     var q = (filter || '').toLowerCase(), n = 0, on = 0;
@@ -588,43 +682,57 @@
     if (t.hasAttribute('data-mtgl')) {
       var card = t.closest('.mod');
       var on = t.checked;
-      card.classList.toggle('off', !on);
       var mid = card.getAttribute('data-mid');
-      for (var i = 0; i < MODS.length; i++) {
-        if (MODS[i].id === mid) {
-          MODS[i].on = on;
-          MODS[i].state = on ? 'running' : 'disabled';
-          MODS[i].label = on ? 'работает' : 'выключен';
-          MODS[i].color = on ? '#22c55e' : '#7d8fb0';
+      bridgePrefSet(mid, 'enabled', on, function (ok) {
+        if (!ok) { t.checked = !on; return; }
+        card.classList.toggle('off', !on);
+        for (var i = 0; i < MODS.length; i++) {
+          if (MODS[i].id === mid) {
+            MODS[i].on = on;
+            MODS[i].state = on ? 'running' : 'disabled';
+            MODS[i].label = on ? 'работает' : 'выключен';
+            MODS[i].color = on ? '#22c55e' : '#7d8fb0';
+          }
         }
-      }
-      var dot = card.querySelector('.dot');
-      if (dot) {
-        dot.className = 'dot ' + (on ? 'ok' : '');
-        dot.title = on ? 'работает' : 'выключен';
-      }
-      renderStatMods();
-      toast('Модуль «' + mid + '»: ' + (on ? 'включён (мок)' : 'выключен (мок)'));
+        var dot = card.querySelector('.dot');
+        if (dot) {
+          dot.className = 'dot ' + (on ? 'ok' : '');
+          dot.title = on ? 'работает' : 'выключен';
+        }
+        renderStatMods();
+        toast('Модуль «' + mid + '»: ' + (on ? 'включён' : 'выключен'));
+      });
       return;
     }
     if (t.hasAttribute('data-mnotify')) {
       var idn = t.getAttribute('data-mnotify');
-      for (var j = 0; j < MODS.length; j++) {
-        if (MODS[j].id === idn) MODS[j].notify = t.checked;
-      }
-      toast('Уведомления «' + idn + '»: ' + (t.checked ? 'вкл' : 'выкл'));
+      var nv = t.checked;
+      bridgePrefSet(idn, 'notifications', nv, function (ok) {
+        if (!ok) { t.checked = !nv; return; }
+        for (var j = 0; j < MODS.length; j++) {
+          if (MODS[j].id === idn) MODS[j].notify = nv;
+        }
+        toast('Уведомления «' + idn + '»: ' + (nv ? 'вкл' : 'выкл'));
+      });
       return;
     }
     if (t.hasAttribute('data-mctl')) {
       var idc = t.getAttribute('data-mctl');
-      for (var k = 0; k < MODS.length; k++) {
-        if (MODS[k].id === idc) MODS[k].ctl = t.checked;
-      }
-      renderStatMods();
-      toast('Управление «' + idc + '»: ' + (t.checked ? 'вкл' : 'выкл'));
+      var cv = t.checked;
+      if (cv && !confirm('Включить управление сервисом «' + idc + '»?')) { t.checked = false; return; }
+      bridgePrefSet(idc, 'control', cv, function (ok) {
+        if (!ok) { t.checked = !cv; return; }
+        for (var k = 0; k < MODS.length; k++) {
+          if (MODS[k].id === idc) MODS[k].ctl = cv;
+        }
+        renderStatMods();
+        toast('Управление «' + idc + '»: ' + (cv ? 'вкл' : 'выкл'));
+      });
       return;
     }
-    if (t.hasAttribute('data-mact')) { toast('«' + t.textContent + '» — заглушка мока'); }
+    if (t.hasAttribute('data-mact')) {
+      bridgeDoAction(bridgeCardMid(t), t.getAttribute('data-mact'), t.getAttribute('data-confirm') === '1', t);
+    }
   };
   document.querySelectorAll('.scan-tabs .st').forEach(function (b) {
     b.onclick = function () {
@@ -713,10 +821,10 @@
         });
       }
       if (m.on && m.ctl) {
-        btns += '<button class="btn sm ghost" data-mact="stop" data-confirm="1">Стоп</button>';
-        btns += '<button class="btn sm ghost" data-mact="restart" data-confirm="1">Рестарт</button>';
+        btns += '<button class="btn sm ghost" data-ctl-op="stop" data-ctl-id="' + esc(m.id) + '" data-confirm="1">Стоп</button>';
+        btns += '<button class="btn sm ghost" data-ctl-op="restart" data-ctl-id="' + esc(m.id) + '" data-confirm="1">Рестарт</button>';
       } else if (!m.on && m.ctl) {
-        btns += '<button class="btn sm ghost" data-mact="start">Старт</button>';
+        btns += '<button class="btn sm ghost" data-ctl-op="start" data-ctl-id="' + esc(m.id) + '">Старт</button>';
       }
       var tiles = '';
       /* process metrics always visible when module is process-based or running */
@@ -861,13 +969,22 @@
   document.getElementById('statMods').onclick = function (e) {
     var t = e.target;
     if (t.hasAttribute && t.hasAttribute('data-dmod')) {
-      setModOn(t.getAttribute('data-dmod'), t.checked);
-      toast('Модуль «' + t.getAttribute('data-dmod') + '»: ' + (t.checked ? 'включён (мок)' : 'выключен (мок)'));
+      var did = t.getAttribute('data-dmod');
+      var don = t.checked;
+      bridgePrefSet(did, 'enabled', don, function (ok) {
+        if (!ok) { t.checked = !don; return; }
+        setModOn(did, don);
+        toast('Модуль «' + did + '»: ' + (don ? 'включён' : 'выключен'));
+      });
+      return;
+    }
+    if (t.hasAttribute && t.hasAttribute('data-ctl-op')) {
+      bridgeDoCtl(t.getAttribute('data-ctl-id') || bridgeCardMid(t),
+        t.getAttribute('data-ctl-op'), t.getAttribute('data-confirm') === '1', t);
       return;
     }
     if (t.hasAttribute && t.hasAttribute('data-mact')) {
-      var conf = t.getAttribute('data-confirm') === '1';
-      toast((conf ? '⚠ confirm · ' : '') + '«' + t.textContent.trim() + '» — заглушка мока');
+      bridgeDoAction(bridgeCardMid(t), t.getAttribute('data-mact'), t.getAttribute('data-confirm') === '1', t);
     }
   };
   function goTab(tab) {
