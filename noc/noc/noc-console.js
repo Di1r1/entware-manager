@@ -896,18 +896,23 @@
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     var w = nocModal(
       '<div class="c-head">' + esc(editId ? 'Модуль «' + editId + '»' : 'Новый модуль') + '</div>' +
-      '<div class="frm mono"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
+      '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">' +
+      '<div class="frm mono" style="flex:1 1 340px;min-width:0"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
       (editId ? ' readonly' : '') + '></label>' +
-      '<label>JSON-манифест<textarea id="modEdJson" rows="10" style="font-family:monospace">' +
+      '<label>JSON-манифест<textarea id="modEdJson" rows="16" style="font-family:monospace">' +
       esc(MOD_ED_TEMPLATE) + '</textarea></label>' +
-      '<div class="c-head" style="margin-top:6px">Сканер <span class="mut">источники · поля · порты</span></div>' +
-      '<div id="modProbeTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
-      '<div id="modProbeBody" class="mono" style="max-height:220px;overflow:auto"></div>' +
       '<span class="mut" id="modEdStatus">Загрузка…</span>' +
       '<span><button class="btn sm" id="modEdProbe">Опросить</button> ' +
       '<button class="btn sm" id="modEdSave">Сохранить</button> ' +
       (editId ? '<button class="btn sm ghost" id="modEdDel">Удалить</button> ' : '') +
-      '<button class="btn sm ghost" id="modEdCancel">Отмена</button></span></div>');
+      '<button class="btn sm ghost" id="modEdCancel">Отмена</button></span></div>' +
+      '<div style="flex:1 1 340px;min-width:0">' +
+      '<div class="c-head">Сканер <span class="mut">источники · поля · порты</span></div>' +
+      '<div id="modProbeTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
+      '<div id="modProbeBody" class="mono" style="max-height:380px;overflow:auto"></div>' +
+      '</div></div>');
+    var pal = w.querySelector('.pal');
+    if (pal) { pal.style.width = 'min(1020px, 94vw)'; pal.style.maxWidth = '1020px'; }
     var st = function (s) { var el = document.getElementById('modEdStatus'); if (el) el.innerHTML = s; };
     if (editId) {
       liveFetch('bridge_manifest.cgi?id=' + encodeURIComponent(editId), null, 15000).then(function (d) {
