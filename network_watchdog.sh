@@ -115,6 +115,10 @@ daemon_loop() {
     
     log_message "INFO" "[network] watchdog started (interval=${INTERVAL}s, ping=$PING_HOST)"
     
+    # log current WAN IP on start
+    local wan_ip=$(ip route get 8.8.8.8 2>/dev/null | awk '/dev/ {for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+    [ -n "$wan_ip" ] && log_message "INFO" "[network] WAN IP: $wan_ip"
+    
     trap 'log_message "INFO" "[network] watchdog stopped (pid=$$)"; rm -f "$PID_FILE"; exit 0' TERM
     trap 'load_config; log_message "INFO" "[network] watchdog config_reloaded (interval=$INTERVAL)"' HUP
     
