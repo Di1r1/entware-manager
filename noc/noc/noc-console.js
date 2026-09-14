@@ -1754,6 +1754,8 @@
     liveGo('procs', liveFetchExp('procs.cgi'), applyFullProcs);
     /* Packages summary for stats card */
     livePkgLoad();
+    /* Bridge modules */
+    liveBridgeLoad();
     /* WAN-скорость: источника нет — мок не продвигаем, значение «—» */
     paintMeters();
     liveStamp();
@@ -3328,6 +3330,95 @@
     return 'Установлено: ' + pkgState.installed.length + ' · к обновлению: ' + pkgState.upgradable.length +
       ' · доступно: ' + pkgState.available.length + more + '.';
   }
+  /* === Bridge (Модули) === */
+  var bridgeState = { loaded: false, loading: false, services: [] };
+  function liveBridgeLoad() {
+    if (!window.__NOC_LIVE_STATS || bridgeState.loaded) return;
+    bridgeState.loaded = true;
+    bridgeState.loading = true;
+    bridgeDiscover().then(function (svcs) {
+      if (!Array.isArray(svcs)) {
+        bridgeState.loading = false;
+        bridgeState.loaded = false;
+        return;
+      }
+      bridgeState.services = svcs;
+      /* для каждого сервиса тянем карточку */
+      var pending = svcs.length;
+      if (pending === 0) {
+        bridgeState.loading = false;
+        applyBridgeModules();
+        return;
+      }
+      svcs.forEach(function (s) {
+        bridgeCard(s.id).then(function (card) {
+          pending--;
+          if (card) applyBridgeModule(s.id, card);
+          if (pending === 0) {
+            bridgeState.loading = false;
+            applyBridgeModules();
+          }
+        });
+      });
+    });
+  }
+  function bridgeDiscover() {
+    return liveFetch('bridge_discover.cgi', null, 30000).then(function (d) {
+      if (!d || d.status !== 'ok' || !Array.isArray(d.services)) return [];
+      return d.services;
+    });
+  }
+  function bridgeCard(id) {
+    return liveFetch('bridge_card.cgi?id=' + encodeURIComponent(id), null, 15000).then(function (d) {
+      if (!d || d.status !== 'ok') return null;
+      return { state: d.state, card: d.card };
+    });
+  }
+  function applyBridgeModule(id, data) {
+    for (var i = 0; i < MODS.length; i++) {
+      if (MODS[i].id === id) {
+        var st = data.state;
+        var c = data.card;
+        if (c) {
+          MODS[i].detail = c.detail || c.name || MODS[i].detail;
+          if (c.mem) MODS[i].mem = c.mem;
+          if (c.cpu) MODS[i].cpu = c.cpu;
+          if (c.uptime) MODS[i].up = c.uptime;
+          if (c.port) MODS[i].port = c.port;
+          if (c.base) MODS[i].base = c.base;
+          /* bridge_card returns {tiles:[], rows:[]} → convert to fields[] */
+          var fields = [];
+          if (Array.isArray(c.tiles)) {
+            c.tiles.forEach(function (t) {
+              fields.push({ path: t.label.toLowerCase().replace(/\s+/g,'_'), label: t.label, type: 'auto', tile: true, value: t.value });
+            });
+          }
+          if (Array.isArray(c.rows)) {
+            c.rows.forEach(function (r) {
+              fields.push({ path: r.label.toLowerCase().replace(/\s+/g,'_'), label: r.label, type: 'auto', tile: false, value: r.value });
+            });
+          }
+          if (fields.length) MODS[i].fields = fields;
+          if (Array.isArray(c.actions)) MODS[i].actions = c.actions;
+        }
+        if (st) {
+          MODS[i].on = (st === 'running');
+          MODS[i].state = st;
+          MODS[i].label = st === 'running' ? 'работает' : 'выключен';
+          MODS[i].color = st === 'running' ? '#22c55e' : '#7d8fb0';
+        }
+        break;
+      }
+    }
+    renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
+    renderStatMods();
+  }
+  function applyBridgeModules() {
+    renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
+    renderStatMods();
+  }
+  /* === /Bridge === */
+
   function livePkgLoad() {
     /* opkg на роутере медленный: тянем цепочкой с длинными таймаутами, статус по шагам.
      * Не-массив в ответе = сбой запроса (таймаут/opkg занят): ретраим цепочку
