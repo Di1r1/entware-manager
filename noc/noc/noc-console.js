@@ -564,6 +564,8 @@
       '<div class="mod-mini-flags">' +
         '<label class="chk"><input type="checkbox" data-mnotify="' + esc(m.id) + '"' + (m.notify ? ' checked' : '') + '> уведомления</label>' +
         '<label class="chk"><input type="checkbox" data-mctl="' + esc(m.id) + '"' + (m.ctl ? ' checked' : '') + '> управление</label>' +
+        '<span class="mod-mini-acts"><button class="btn sm ghost" data-medit="' + esc(m.id) + '" title="Манифест">✎</button>' +
+        '<button class="btn sm ghost" data-mauth="' + esc(m.id) + '" title="Авторизация сервиса">🔑</button></span>' +
       '</div>' +
     '</div>';
   }
@@ -661,6 +663,216 @@
   }
   /* === /Bridge actions === */
 
+  /* === Bridge: сканер + редактор манифестов + авторизация (как классика) === */
+  var MOD_ED_TEMPLATE = '{\n  "id": "myservice",\n  "name": "Мой сервис",\n  "base": "http://127.0.0.1:8081",\n  "probe": { "url": "/" },\n  "status": { "url": "/api/status", "expect": "json" }\n}';
+  function nocModal(html) {
+    var old = document.getElementById('nocModalWrap');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var w = document.createElement('div');
+    w.id = 'nocModalWrap';
+    w.className = 'pal-wrap';
+    w.innerHTML = '<div class="pal" style="max-width:640px"><div style="padding:14px 16px">' + html + '</div></div>';
+    document.body.appendChild(w);
+    return w;
+  }
+  function nocModalClose() {
+    var w = document.getElementById('nocModalWrap');
+    if (w && w.parentNode) w.parentNode.removeChild(w);
+  }
+  function modPortOf(m) {
+    var p = m.port || '';
+    var mm = String(p).match(/:(\d+)/);
+    if (mm) return mm[1];
+    if (m.base) { var b = String(m.base).match(/:(\d+)/); if (b) return b[1]; }
+    return '—';
+  }
+  function modAddrOf(m) {
+    if (m.base) return String(m.base).replace('http://127.0.0.1', window.location.hostname || '127.0.0.1');
+    if (m.port) return (window.location.hostname || '127.0.0.1') + m.port;
+    return '—';
+  }
+  function renderScanTab() {
+    var body = document.getElementById('scanPortsBody');
+    if (!body) return;
+    if (!window.__NOC_LIVE_STATS) { body.innerHTML = '<tr><td colspan="4" class="mut">Нужна сессия</td></tr>'; return; }
+    if (scanTab === 'procs') {
+      body.innerHTML = '<tr><td colspan="4" class="mut">Загрузка процессов…</td></tr>';
+      liveFetch('bridge_processes.cgi', null, 15000).then(function (d) {
+        var procs = (d && d.processes) || [];
+        var pc = document.getElementById('scanProcsCnt');
+        if (pc) pc.textContent = procs.length;
+        if (!procs.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Процессов нет</td></tr>'; return; }
+        var html = '';
+        procs.slice(0, 30).forEach(function (p) {
+          var nm = p.name || p.cmd || '?';
+          html += '<tr><td>—</td><td class="l">' + esc(nm) + '</td><td class="l mut">' +
+            esc((p.pids || []).join(',') || String(p.pid || '')) + '</td>' +
+            '<td><button class="btn sm" data-proc-add="' + esc(nm) + '">+ в модуль</button></td></tr>';
+        });
+        body.innerHTML = html;
+      });
+      return;
+    }
+    if (scanTab === 'modules') {
+      var svcs = bridgeState.services || [];
+      var mc = document.getElementById('scanModsCnt');
+      if (mc) mc.textContent = svcs.length;
+      if (!svcs.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Нет данных — нажмите «Пересканировать»</td></tr>'; return; }
+      var mh = '';
+      svcs.forEach(function (s) {
+        mh += '<tr><td>—</td><td class="l">' + esc(s.name || s.id) + '</td><td class="l mut">' +
+          esc(s.state || '') + '</td>' +
+          '<td><button class="btn sm" data-scan-open="' + esc(s.id) + '">Открыть</button></td></tr>';
+      });
+      body.innerHTML = mh;
+      return;
+    }
+    /* ports (по умолчанию): живые модули из MODS */
+    var rows = MODS.filter(function (m) { return modPortOf(m) !== '—'; });
+    var kc = document.getElementById('scanPortsCnt');
+    if (kc) kc.textContent = rows.length;
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Портов нет — нажмите «Пересканировать»</td></tr>'; return; }
+    var ph = '';
+    rows.forEach(function (m) {
+      ph += '<tr><td>' + esc(modPortOf(m)) + '</td><td class="l">' + esc(m.name) + '</td><td class="l">' +
+        esc(modAddrOf(m)) + '</td>' +
+        '<td>' + (m.base ? '<button class="btn sm" data-scan-go="' + esc(m.base) + '">Открыть</button>' : '') + '</td></tr>';
+    });
+    body.innerHTML = ph;
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.getAttribute) return;
+    if (t.hasAttribute('data-scan-open')) { openModEditor(t.getAttribute('data-scan-open')); }
+    else if (t.hasAttribute('data-scan-go')) { window.open(t.getAttribute('data-scan-go'), '_blank', 'noopener'); }
+    else if (t.hasAttribute('data-proc-add')) {
+      var ta = document.getElementById('modEdJson');
+      if (!ta) { toast('Откройте редактор манифеста', 'warn'); return; }
+      try {
+        var m = JSON.parse(ta.value);
+        m.process = m.process || [];
+        var nm = t.getAttribute('data-proc-add');
+        if (m.process.indexOf(nm) < 0) m.process.push(nm);
+        ta.value = JSON.stringify(m, null, 2);
+        toast('process += ' + nm);
+      } catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); }
+    }
+  });
+  function openModEditor(editId) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    var w = nocModal(
+      '<div class="c-head">' + esc(editId ? 'Модуль «' + editId + '»' : 'Новый модуль') + '</div>' +
+      '<div class="frm mono"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
+      (editId ? ' readonly' : '') + '></label>' +
+      '<label>JSON-манифест<textarea id="modEdJson" rows="14" style="font-family:monospace">' +
+      esc(MOD_ED_TEMPLATE) + '</textarea></label>' +
+      '<span class="mut" id="modEdStatus">Загрузка…</span>' +
+      '<span><button class="btn sm" id="modEdProbe">Опросить</button> ' +
+      '<button class="btn sm" id="modEdSave">Сохранить</button> ' +
+      (editId ? '<button class="btn sm ghost" id="modEdDel">Удалить</button> ' : '') +
+      '<button class="btn sm ghost" id="modEdCancel">Отмена</button></span></div>');
+    var st = function (s) { var el = document.getElementById('modEdStatus'); if (el) el.innerHTML = s; };
+    if (editId) {
+      liveFetch('bridge_manifest.cgi?id=' + encodeURIComponent(editId), null, 15000).then(function (d) {
+        var ta = document.getElementById('modEdJson');
+        if (!ta) return;
+        if (d && (d.body || d.manifest)) ta.value = typeof d.body === 'string' ? d.body : JSON.stringify(d.manifest || d.body, null, 2);
+        else st('<span class="warn-t">не удалось загрузить</span>');
+        st('');
+      });
+    } else {
+      st('');
+    }
+    document.getElementById('modEdCancel').onclick = nocModalClose;
+    document.getElementById('modEdProbe').onclick = function () {
+      var raw = document.getElementById('modEdJson').value;
+      st('Опрос сервиса…');
+      livePost('bridge_probe.cgi', 'body=' + encodeURIComponent(raw), 30000).then(function (r) {
+        if (!r || r.status !== 'ok') { st('<span class="warn-t">' + esc((r && (r.message || r.error)) || 'ошибка') + '</span>'); return; }
+        var n = ((r.probe && r.probe.sources) || []).length;
+        st('<span class="ok-t">OK · источников: ' + n + '</span>');
+      });
+    };
+    document.getElementById('modEdSave').onclick = function () {
+      var id = document.getElementById('modEdId').value.trim();
+      var raw = document.getElementById('modEdJson').value;
+      if (!/^[a-z0-9_-]{1,32}$/.test(id)) { st('<span class="warn-t">ID — только a-z, 0-9, «-», «_»</span>'); return; }
+      askPanelPasswordNoc('Пароль панели:', function (pw) {
+        if (!pw) return;
+        st('Проверка и сохранение…');
+        livePost('bridge_save.cgi', 'id=' + encodeURIComponent(id) + '&body=' + encodeURIComponent(raw) +
+          '&password=' + encodeURIComponent(pw), 30000).then(function (r) {
+          if (r && r.status === 'ok') {
+            st('<span class="ok-t">Сохранено</span>');
+            nocModalClose();
+            bridgeState.loaded = false;
+            liveBridgeLoad();
+            renderScanTab();
+          } else {
+            st('<span class="warn-t">' + esc((r && (r.message || r.error)) || 'ошибка') + '</span>');
+          }
+        });
+      });
+    };
+    var del = document.getElementById('modEdDel');
+    if (del) del.onclick = function () {
+      var id = document.getElementById('modEdId').value.trim();
+      if (!confirm('Удалить модуль «' + id + '»?')) return;
+      askPanelPasswordNoc('Пароль панели:', function (pw) {
+        if (!pw) return;
+        livePost('bridge_delete.cgi', 'id=' + encodeURIComponent(id) + '&password=' + encodeURIComponent(pw), 30000).then(function (r) {
+          if (r && r.status === 'ok') {
+            toast('Удалён');
+            nocModalClose();
+            bridgeState.loaded = false;
+            liveBridgeLoad();
+          } else {
+            toast((r && (r.message || r.error)) || 'ошибка', 'warn');
+          }
+        });
+      });
+    };
+  }
+  function openModAuth(id) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    var nm = id;
+    for (var i = 0; i < MODS.length; i++) { if (MODS[i].id === id) nm = MODS[i].name; }
+    nocModal(
+      '<div class="c-head">Авторизация · ' + esc(nm) + '</div>' +
+      '<div class="frm mono"><label>Логин сервиса<input id="modAuthUser"></label>' +
+      '<label>Пароль сервиса<input type="password" id="modAuthPass"></label>' +
+      '<label>Пароль панели<input type="password" id="modAuthPanel"></label>' +
+      '<span class="mut" id="modAuthSt"></span>' +
+      '<span><button class="btn sm" id="modAuthSave">Сохранить</button> ' +
+      '<button class="btn sm ghost" id="modAuthClear">Сбросить авторизацию</button> ' +
+      '<button class="btn sm ghost" id="modAuthCancel">Отмена</button></span></div>');
+    document.getElementById('modAuthCancel').onclick = nocModalClose;
+    document.getElementById('modAuthSave').onclick = function () {
+      var u = document.getElementById('modAuthUser').value.trim();
+      var a = document.getElementById('modAuthPass').value;
+      var p = document.getElementById('modAuthPanel').value;
+      var st = document.getElementById('modAuthSt');
+      if (!u || !a || !p) { st.textContent = 'Заполните все поля'; return; }
+      st.textContent = 'Сохранение…';
+      livePost('bridge_auth.cgi', 'id=' + encodeURIComponent(id) + '&cred_type=basic&username=' + encodeURIComponent(u) +
+        '&app_password=' + encodeURIComponent(a) + '&password=' + encodeURIComponent(p), 30000).then(function (r) {
+        st.textContent = (r && r.status === 'ok') ? 'Сохранено' : ((r && (r.message || r.error)) || 'ошибка');
+        if (r && r.status === 'ok') toast('Учётные данные «' + id + '» сохранены');
+      });
+    };
+    document.getElementById('modAuthClear').onclick = function () {
+      if (!confirm('Сбросить сохранённые учётные данные «' + id + '»?')) return;
+      askPanelPasswordNoc('Пароль панели:', function (pw) {
+        if (!pw) return;
+        livePost('bridge_auth.cgi', 'id=' + encodeURIComponent(id) + '&clear=1&password=' + encodeURIComponent(pw), 30000).then(function (r) {
+          toast((r && r.status === 'ok') ? 'Авторизация сброшена' : ((r && (r.message || r.error)) || 'ошибка'));
+          if (r && r.status === 'ok') nocModalClose();
+        });
+      });
+    };
+  }
+  /* === /Bridge scanner+editor === */
+
   var modGrid = document.getElementById('modGrid');
   function renderMods(filter) {
     var q = (filter || '').toLowerCase(), n = 0, on = 0;
@@ -730,22 +942,42 @@
       });
       return;
     }
+    if (t.hasAttribute('data-medit')) {
+      openModEditor(t.getAttribute('data-medit'));
+      return;
+    }
+    if (t.hasAttribute('data-mauth')) {
+      openModAuth(t.getAttribute('data-mauth'));
+      return;
+    }
     if (t.hasAttribute('data-mact')) {
       bridgeDoAction(bridgeCardMid(t), t.getAttribute('data-mact'), t.getAttribute('data-confirm') === '1', t);
     }
   };
-  document.querySelectorAll('.scan-tabs .st').forEach(function (b) {
+  var scanTab = 'ports';
+  document.querySelectorAll('#scanTabs .st').forEach(function (b) {
     b.onclick = function () {
-      document.querySelectorAll('.scan-tabs .st').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('#scanTabs .st').forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
-      toast('Вкладка сканера — заглушка мока');
+      scanTab = b.getAttribute('data-stab') || 'ports';
+      renderScanTab();
     };
   });
   document.getElementById('scanBtn').onclick = function () {
     var p = document.getElementById('scanPanel');
     p.hidden = !p.hidden;
+    if (!p.hidden) renderScanTab();
   };
-  document.getElementById('newModBtn').onclick = function () { toast('Редактор модуля — будет в проде, здесь заглушка'); };
+  document.getElementById('newModBtn').onclick = function () { openModEditor(''); };
+  document.getElementById('modRescanBtn').onclick = function () {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    toast('Сканирование модулей…');
+    bridgeState.loaded = false;
+    bridgeState.services = [];
+    liveBridgeLoad();
+    renderScanTab();
+  };
+  document.getElementById('modManifestsBtn').onclick = function () { openModEditor(''); };
 
   /* --- дашборд: колонка модулей из тех же MODS, что и вкладка Модули --- */
   function dashMet(m) {

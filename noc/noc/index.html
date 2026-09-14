@@ -249,35 +249,23 @@
         </div>
 
         <div class="scan card" id="scanPanel" hidden>
-          <div class="c-head">Сканер <span class="mut">порты · процессы · сервисы (заглушка)</span></div>
-          <div class="scan-tabs mono">
-            <button class="st active">порты <b>8</b></button>
-            <button class="st">процессы <b>5</b></button>
-            <button class="st">сервисы <b>6</b></button>
+          <div class="c-head">Сканер <span class="mut">порты · процессы · сервисы</span></div>
+          <div class="scan-tabs mono" id="scanTabs">
+            <button class="st active" data-stab="ports">порты <b id="scanPortsCnt">…</b></button>
+            <button class="st" data-stab="procs">процессы <b id="scanProcsCnt">…</b></button>
+            <button class="st" data-stab="modules">сервисы <b id="scanModsCnt">…</b></button>
           </div>
           <table class="tbl mono">
             <thead><tr><th>Порт</th><th>Сервис</th><th>Адрес</th><th></th></tr></thead>
-            <tbody>
-              <tr><td>8080</td><td class="l">AdGuard Home</td><td class="l">192.168.3.1:8080</td><td><button class="btn sm">Открыть</button></td></tr>
-              <tr><td>9091</td><td class="l">Transmission</td><td class="l">192.168.3.1:9091</td><td><button class="btn sm">Открыть</button></td></tr>
-              <tr><td>8384</td><td class="l">Syncthing</td><td class="l">192.168.3.1:8384</td><td><button class="btn sm">Открыть</button></td></tr>
+            <tbody id="scanPortsBody">
+              <tr><td colspan="4" class="mut">Нажмите «Сканировать»</td></tr>
             </tbody>
           </table>
         </div>
 
         <section class="grid mods" id="modGrid"></section>
 
-        <div class="toolbar" style="margin-top:12px"><span class="t-right" style="margin-left:0"><button class="btn ghost" onclick="toast('Пересканировать — заглушка')">Пересканировать</button><button class="btn ghost" onclick="toast('Редактор манифестов (ID + JSON + сканер: сервис/процессы/модули) — заглушка')">Манифесты</button></span></div>
-
-        <section class="grid two">
-          <div class="card"><div class="c-head">AdGuard Home <span class="ok-t">● защита включена</span></div>
-            <div class="tiles mono" style="grid-template-columns:repeat(4,1fr)"><div class="tile"><label>Версия</label><b>v0.107.65</b></div><div class="tile"><label>Запросов</label><b>12 408</b></div><div class="tile"><label>Заблокировано</label><b>18%</b></div><div class="tile"><label>DNS</label><b>4 мс</b></div></div>
-            <div class="mod-detail mono">Топ клиенты: phone 4 102 · laptop 3 377 · Топ блокировок: metrics.× 412</div>
-            <span><button class="btn sm ghost">Выключить защиту</button> <button class="btn sm ghost">Обновить</button></span></div>
-          <div class="card"><div class="c-head">Авторизация сервиса <span class="badge warn">нужна авторизация</span></div>
-            <div class="frm mono"><label>Логин сервиса<input value="admin"></label><label>Пароль сервиса<input type="password" value="********"></label><label>Пароль панели<input type="password" placeholder="для сохранения"></label>
-            <span><button class="btn sm">Сохранить</button> <button class="btn sm ghost">Сбросить авторизацию</button></span></div></div>
-        </section>
+        <div class="toolbar" style="margin-top:12px"><span class="t-right" style="margin-left:0"><button class="btn ghost" id="modRescanBtn">Пересканировать</button><button class="btn ghost" id="modManifestsBtn">Манифесты</button></span></div>
       </div><!-- /view-modules -->
 
       <!-- ===== VIEW: PACKAGES ===== -->
@@ -654,7 +642,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=81"></script>
+<script src="/entware-manager/noc/noc-console.js?v=82"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>
