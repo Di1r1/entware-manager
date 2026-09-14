@@ -873,6 +873,210 @@
   }
   /* === /Bridge scanner+editor === */
 
+  /* === SMART (как классика smart.js) === */
+  var SMART_ATTR_DESC = {
+    1: 'Read Error Rate — частота ошибок чтения.',
+    3: 'Spin-Up Time — время выхода шпинделя на скорость.',
+    4: 'Start/Stop Count — циклы запуска/останова.',
+    5: 'Reallocated Sectors Count — переназначенные сектора. Критический атрибут!',
+    7: 'Seek Error Rate — ошибки позиционирования головок.',
+    9: 'Power-On Hours — общее время работы в часах.',
+    10: 'Spin Retry Count — повторы раскрута шпинделя.',
+    12: 'Power Cycle Count — циклы подачи питания.',
+    184: 'End-to-End Error — ошибки на шине данных.',
+    187: 'Reported Uncorrectable Errors — неисправимые ошибки.',
+    188: 'Command Timeout — таймауты команд.',
+    189: 'High Fly Writes — записи на неоптимальной высоте.',
+    190: 'Airflow Temperature — температура воздуха в корпусе.',
+    193: 'Load Cycle Count — циклы парковки головок.',
+    194: 'Temperature — температура диска.',
+    196: 'Reallocation Event Count — операции переназначения.',
+    197: 'Current Pending Sector Count — нестабильные сектора.',
+    198: 'Uncorrectable Sector Count — неисправимые сектора.',
+    199: 'UDMA CRC Error Count — ошибки CRC на интерфейсе.'
+  };
+  var smartLoaded = false, smartTestTimer = null;
+  function smartNeedSession() { if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return false; } return true; }
+  function smartBoot(force) {
+    if (!smartNeedSession()) return;
+    if (smartLoaded && !force) return;
+    smartLoaded = true;
+    smartLoadDisks(!!force);
+  }
+  function smartLoadDisks(force) {
+    if (!smartNeedSession()) return;
+    var body = document.getElementById('smartBody');
+    if (body) body.innerHTML = '<tr><td colspan="8" class="mut">Загрузка…</td></tr>';
+    liveFetch('smart.cgi?action=list' + (force ? '&refresh=1' : ''), null, 60000).then(function (d) {
+      var disks = (d && d.disks) || [];
+      smartRenderTable(disks);
+      var pend = disks.some(function (x) { return x.attr_health === 'loading' || x.attr_health === 'busy'; });
+      if (pend) setTimeout(function () { smartLoadDisks(true); }, 5000);
+    });
+  }
+  function smartHealthBadge(d) {
+    var h = d.health || '—', ah = d.attr_health || 'ok';
+    if (ah === 'inactive') return '<span class="mut">—</span>';
+    if (ah === 'loading') return '<span class="badge">Загрузка…</span>';
+    if (ah === 'busy') return '<span class="badge warn">Не отвечает</span>';
+    if (ah === 'critical' || h !== 'PASSED') return '<span class="badge crit">' + esc(h) + '</span>';
+    if (ah === 'warning') return '<span class="badge warn">' + esc(h) + '</span>';
+    return '<span class="badge ok">' + esc(h) + '</span>';
+  }
+  function smartRenderTable(disks) {
+    var body = document.getElementById('smartBody');
+    if (!body) return;
+    if (!disks.length) { body.innerHTML = '<tr><td colspan="8" class="mut">Диски не найдены или smartmontools не установлен</td></tr>'; return; }
+    var html = '';
+    disks.forEach(function (d) {
+      var temp = (d.temperature !== null && d.temperature !== undefined) ? d.temperature + '°' : '—';
+      var tcls = (d.temperature > 55) ? ' class="crit-t"' : (d.temperature > 45 ? ' class="warn-t"' : '');
+      html += '<tr data-device="' + esc(d.device) + '">' +
+        '<td class="l smart-d" title="Информация">' + esc(d.device) + '</td>' +
+        '<td class="l">' + esc(d.model || '—') + '</td>' +
+        '<td class="l mut">' + esc(d.serial || '—') + '</td>' +
+        '<td class="smart-u" title="Разделы">' + esc(d.size || '—') + '</td>' +
+        '<td>' + esc(d.type || '—') + '</td>' +
+        '<td class="smart-h" title="Проверка">' + smartHealthBadge(d) + '</td>' +
+        '<td class="smart-t" title="Тесты"' + tcls + '>' + esc(temp) + '</td>' +
+        '<td>' + esc(d.power_on_hours ? d.power_on_hours + ' ч' : '—') + '</td></tr>';
+    });
+    body.innerHTML = html;
+    smartApplyFilter();
+  }
+  function smartApplyFilter() {
+    var q = document.getElementById('smartSearch');
+    var body = document.getElementById('smartBody');
+    if (!q || !body) return;
+    var s = q.value.toLowerCase();
+    Array.prototype.forEach.call(body.querySelectorAll('tr[data-device]'), function (r) {
+      r.style.display = (!s || r.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
+    });
+  }
+  function smartShowInfo(dev) {
+    nocModal('<div class="c-head">Информация · ' + esc(dev) + '</div>' +
+      '<pre class="mono mut" style="white-space:pre-wrap;max-height:340px;overflow:auto">Загрузка…</pre>' +
+      '<span><button class="btn sm ghost" id="nocModalOk">Закрыть</button></span>');
+    document.getElementById('nocModalOk').onclick = nocModalClose;
+    liveFetch('smart.cgi?action=info&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
+      var pre = document.querySelector('#nocModalWrap pre');
+      if (!pre) return;
+      pre.textContent = (d && (d.info || d.error)) || 'нет данных';
+    });
+  }
+  function smartShowHealth(dev) {
+    nocModal('<div class="c-head">Health · ' + esc(dev) + '</div>' +
+      '<pre class="mono mut" style="white-space:pre-wrap;max-height:340px;overflow:auto">Загрузка…</pre>' +
+      '<span><button class="btn sm ghost" id="nocModalOk">Закрыть</button></span>');
+    document.getElementById('nocModalOk').onclick = nocModalClose;
+    liveFetch('smart.cgi?action=health&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
+      var pre = document.querySelector('#nocModalWrap pre');
+      if (!pre) return;
+      pre.textContent = (d && (d.message || d.health || d.error)) || 'нет данных';
+    });
+  }
+  function smartToggleUsage(row, dev) {
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('smart-use-row')) {
+      next.parentNode.removeChild(next);
+      return;
+    }
+    var ur = document.createElement('tr');
+    ur.className = 'smart-use-row';
+    ur.innerHTML = '<td colspan="8" class="mut">Загрузка разделов…</td>';
+    row.parentNode.insertBefore(ur, row.nextSibling);
+    liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
+      if (!ur.parentNode) return;
+      var parts = (d && d.partitions) || [];
+      if (!parts.length) { ur.innerHTML = '<td colspan="8" class="mut">Разделы не найдены</td>'; return; }
+      var h = '<td colspan="8"><table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
+      parts.forEach(function (p) {
+        h += '<tr><td class="l">' + esc(p.part) + '</td><td class="l">' + esc(p.mnt) + '</td><td>' +
+          esc(p.size) + '</td><td>' + esc(p.used) + '</td><td>' + esc(p.avail) + '</td><td>' + esc(p.pct) + '%</td></tr>';
+      });
+      ur.innerHTML = h + '</tbody></table></td>';
+    });
+  }
+  function smartShowAttrs(dev) {
+    nocModal('<div class="c-head">Атрибуты · ' + esc(dev) + ' <span class="mut">клик по имени — справка</span></div>' +
+      '<div class="mono mut" id="smartAttrBody">Загрузка…</div>' +
+      '<span><button class="btn sm ghost" id="nocModalOk">Закрыть</button></span>');
+    document.getElementById('nocModalOk').onclick = nocModalClose;
+    liveFetch('smart.cgi?action=attributes&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
+      var el = document.getElementById('smartAttrBody');
+      if (!el) return;
+      var attrs = (d && d.attributes) || [];
+      if (!attrs.length) { el.textContent = 'нет данных'; return; }
+      var h = '<table class="tbl mono"><thead><tr><th>ID</th><th>Имя</th><th>Value</th><th>Worst</th><th>Thresh</th><th>Raw</th><th>Статус</th></tr></thead><tbody>';
+      attrs.forEach(function (a) {
+        h += '<tr><td>' + esc(a.id) + '</td><td class="l"><a href="#" data-attr="' + esc(a.id) + '">' +
+          esc(a.name) + '</a></td><td>' + esc(a.value) + '</td><td>' + esc(a.worst) + '</td><td>' +
+          esc(a.threshold) + '</td><td>' + esc(a.raw) + '</td><td>' + esc(a.status || 'OK') + '</td></tr>';
+      });
+      el.innerHTML = h + '</tbody></table>';
+    });
+  }
+  function smartShowTests(dev) {
+    nocModal('<div class="c-head">Самодиагностика · ' + esc(dev) + '</div>' +
+      '<div class="toolbar"><button class="btn sm" data-test="short">Короткий (~2 мин)</button>' +
+      '<button class="btn sm ghost" data-test="long">Полный (~60–120 мин)</button>' +
+      '<button class="btn sm ghost" data-test="conveyance">Conveyance (~5 мин)</button></div>' +
+      '<div class="mono mut" id="smartTestSt">Нажмите кнопку для запуска…</div>' +
+      '<span><button class="btn sm ghost" id="nocModalOk">Закрыть</button></span>');
+    document.getElementById('nocModalOk').onclick = function () {
+      if (smartTestTimer) { clearInterval(smartTestTimer); smartTestTimer = null; }
+      nocModalClose();
+    };
+    Array.prototype.forEach.call(document.querySelectorAll('#nocModalWrap [data-test]'), function (b) {
+      b.onclick = function () { smartRunTest(dev, b.getAttribute('data-test')); };
+    });
+  }
+  function smartRunTest(dev, type) {
+    var st = document.getElementById('smartTestSt');
+    if (!st) return;
+    st.textContent = 'Запуск ' + type + '…';
+    livePost('smart.cgi', 'action=selftest&device=' + encodeURIComponent(dev) + '&type=' + type, 30000).then(function (r) {
+      if (!r || r.error) { st.textContent = 'Ошибка: ' + ((r && r.error) || 'ошибка'); return; }
+      st.textContent = 'Запущен: ' + (r.message || 'OK');
+      var n = 0;
+      if (smartTestTimer) clearInterval(smartTestTimer);
+      smartTestTimer = setInterval(function () {
+        if (!document.getElementById('smartTestSt')) { clearInterval(smartTestTimer); smartTestTimer = null; return; }
+        liveFetch('smart.cgi?action=selftest&device=' + encodeURIComponent(dev), null, 15000).then(function (d) {
+          if (d && d.status) {
+            st.textContent = 'Статус: ' + d.status + ' · ' + (d.progress || '?') + '%';
+            if (/Completed|Aborted|Interrupted/.test(d.status)) {
+              clearInterval(smartTestTimer); smartTestTimer = null;
+              st.textContent += ' · завершён';
+            }
+          }
+        });
+        if (++n >= 240) { clearInterval(smartTestTimer); smartTestTimer = null; }
+      }, 5000);
+    });
+  }
+  /* === /SMART === */
+
+  document.getElementById('smartRefreshBtn').onclick = function () { smartBoot(true); };
+  document.getElementById('smartSearch').oninput = smartApplyFilter;
+  document.getElementById('smartBody').onclick = function (e) {
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-attr')) {
+      e.preventDefault();
+      var id = parseInt(t.getAttribute('data-attr'), 10);
+      toast(SMART_ATTR_DESC[id] || ('Атрибут ' + id));
+      return;
+    }
+    var row = t.closest ? t.closest('tr[data-device]') : null;
+    if (!row) return;
+    var dev = row.getAttribute('data-device');
+    if (t.closest && t.closest('.smart-h')) smartShowHealth(dev);
+    else if (t.closest && t.closest('.smart-t')) smartShowTests(dev);
+    else if (t.closest && t.closest('.smart-d')) smartShowInfo(dev);
+    else if (t.closest && t.closest('.smart-u')) smartToggleUsage(row, dev);
+    else smartShowAttrs(dev);
+  };
+
   var modGrid = document.getElementById('modGrid');
   function renderMods(filter) {
     var q = (filter || '').toLowerCase(), n = 0, on = 0;
@@ -2231,6 +2435,22 @@
     return c;
   }
   function pkgShortDate(s) { return String(s || '—').slice(0, 10); }
+  function showPkgModalNoc(nm) {
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
+    nocModal('<div class="c-head">' + esc(nm) + '</div>' +
+      '<div class="mod-detail mono">' + esc(pkgInfo(nm)) + '</div>' +
+      '<pre class="mono mut" id="pkgModalBody" style="white-space:pre-wrap;max-height:320px;overflow:auto">Загрузка…</pre>' +
+      '<span><button class="btn sm ghost" id="pkgModalClose">Закрыть</button></span>');
+    document.getElementById('pkgModalClose').onclick = nocModalClose;
+    liveFetch('api.cgi?action=info&package=' + encodeURIComponent(nm), null, 15000).then(function (d) {
+      var el = document.getElementById('pkgModalBody');
+      if (!el) return;
+      var txt = '';
+      if (d && typeof d === 'object') txt = d.info || d.output || JSON.stringify(d, null, 2);
+      else if (typeof d === 'string') txt = htmlToText(d);
+      el.textContent = txt || 'нет данных';
+    });
+  }
   function pkgInfo(nm) {
     var u = null, ins = null, av = null, i;
     for (i = 0; i < pkgState.upgradable.length; i++) {
@@ -3918,6 +4138,8 @@
     if (rdpv) { rdpBoot(); }
     var stv = e.target && e.target.closest ? e.target.closest('.ri[data-tab="settings"]') : null;
     if (stv) { setBoot(); }
+    var smv = e.target && e.target.closest ? e.target.closest('.ri[data-tab="smart"]') : null;
+    if (smv) { smartBoot(); }
     var lgv = e.target && e.target.closest ? e.target.closest('.ri[data-tab="logs"]') : null;
     if (lgv) { logBoot(); }
     var lsave = e.target && e.target.closest ? e.target.closest('[data-linksave]') : null;
@@ -4062,7 +4284,7 @@
       return;
     }
     var row = e.target && e.target.closest ? e.target.closest('tr[data-pkg]') : null;
-    if (row) toast(pkgInfo(row.getAttribute('data-pkg')));
+    if (row) showPkgModalNoc(row.getAttribute('data-pkg'));
   });
   /* ===== Card resize: ручка справа (ширина) + ручка снизу (высота), запоминаются ===== */
   var CARDW_KEY = 'noc_cardw2';
@@ -4557,6 +4779,7 @@
     else if (t === 'processes') procFetch();
     else if (t === 'terminal') termBoot();
     else if (t === 'rdp') rdpBoot();
+    else if (t === 'smart') smartBoot();
     else if (t === 'settings') setBoot();
   }
   (function restoreTab() {

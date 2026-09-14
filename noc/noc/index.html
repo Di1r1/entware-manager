@@ -283,12 +283,12 @@
         <div class="card"><div class="c-head">Список пакетов <span class="mut">клик по строке — информация · сортировка — по шапке</span></div><div class="cap100 cap100-pkg"><table class="tbl mono">
           <thead><tr><th data-ps="package">Пакет</th><th data-ps="version">Версия</th><th data-ps="date">Установлен</th><th>Статус</th><th>Действие</th></tr></thead>
           <tbody id="pkgBody">
-            <tr onclick="toast('Модалка пакета htop — заглушка')"><td class="l">htop</td><td>3.3.0-1 → 3.4.1-1</td><td>2026-05-11</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
-            <tr onclick="toast('Модалка пакета jq — заглушка')"><td class="l">jq</td><td>1.7.1-1 → 1.8.0-1</td><td>2026-04-02</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
-            <tr onclick="toast('Модалка пакета ttyd — заглушка')"><td class="l">ttyd</td><td>1.7.7-1 → 1.8.2-1</td><td>2026-06-19</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm">Обновить</button></td></tr>
-            <tr><td class="l">bash</td><td>5.3-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost">Удалить</button></td></tr>
-            <tr><td class="l">lighttpd</td><td>1.4.79-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost">Удалить</button></td></tr>
-            <tr><td class="l">wireguard-tools</td><td>1.0.20210914-1</td><td>—</td><td><span class="badge">доступен</span></td><td><button class="btn sm">Установить</button></td></tr>
+            <tr data-pkg="htop"><td class="l">htop</td><td>3.3.0-1 → 3.4.1-1</td><td>2026-05-11</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm" data-pkg="htop" data-pact="upgrade">Обновить</button></td></tr>
+            <tr data-pkg="jq"><td class="l">jq</td><td>1.7.1-1 → 1.8.0-1</td><td>2026-04-02</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm" data-pkg="jq" data-pact="upgrade">Обновить</button></td></tr>
+            <tr data-pkg="ttyd"><td class="l">ttyd</td><td>1.7.7-1 → 1.8.2-1</td><td>2026-06-19</td><td><span class="badge warn">обновление</span></td><td><button class="btn sm" data-pkg="ttyd" data-pact="upgrade">Обновить</button></td></tr>
+            <tr data-pkg="bash"><td class="l">bash</td><td>5.3-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost" data-pkg="bash" data-pact="remove">Удалить</button></td></tr>
+            <tr data-pkg="lighttpd"><td class="l">lighttpd</td><td>1.4.79-1</td><td>2026-03-26</td><td><span class="badge ok">установлен</span></td><td><button class="btn sm ghost" data-pkg="lighttpd" data-pact="remove">Удалить</button></td></tr>
+            <tr data-pkg="wireguard-tools"><td class="l">wireguard-tools</td><td>1.0.20210914-1</td><td>—</td><td><span class="badge">доступен</span></td><td><button class="btn sm" data-pkg="wireguard-tools" data-pact="install">Установить</button></td></tr>
           </tbody>
         </table></div></div>
       </div>
@@ -394,33 +394,15 @@
       <div id="view-smart" hidden>
         <div class="hero">
           <div><h2>SMART <span class="verdict warn-t">1 диск с предупреждением</span></h2><span class="mut">2 диска · sda PASSED · sdb проверить</span></div>
-          <span class="t-right"><button class="btn ghost" onclick="toast('Обновить — заглушка')">Обновить</button></span>
+          <span class="t-right"><button class="btn ghost" id="smartRefreshBtn">Обновить</button></span>
         </div>
         <div class="toolbar">
-          <input class="t-search mono" placeholder="Поиск по модели/серийнику…" oninput="toast('Поиск — заглушка')">
+          <input class="t-search mono" id="smartSearch" placeholder="Поиск по модели/серийнику…" autocomplete="off">
         </div>
-        <div class="card"><div class="mut" style="margin-bottom:6px">Клик: устройство — информация · размер — разделы · health — проверка · temp — тесты. Сортировка — по шапке.</div>
-        <table class="tbl mono"><thead><tr><th>Устройство</th><th>Модель</th><th>Серийный №</th><th>Размер</th><th>Тип</th><th>Health</th><th>Temp</th><th>Power-On</th></tr></thead><tbody>
-          <tr><td class="l"><a href="#" onclick="toast('Модалка «Информация» (smartctl) — заглушка');return false">/dev/sda</a></td><td class="l">SanDisk Ultra 64G</td><td class="l">4C53…9A21</td><td><a href="#" onclick="toast('Подстрока разделов уже раскрыта ниже');return false">56.7G</a></td><td>Flash</td><td><a href="#" onclick="toast('Модалка «Health» — заглушка');return false"><span class="badge ok">PASSED</span></a></td><td><a href="#" onclick="toast('Модалка «Самодиагностика» — см. карточку ниже');return false">41°</a></td><td>4 812 ч</td></tr>
-          <tr><td colspan="8" style="background:var(--bg)"><div class="mini-t">Использование разделов — /dev/sda</div>
-            <table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>
-            <tr><td class="l">/dev/sda1</td><td class="l">/opt</td><td>56.7G</td><td>21.4G</td><td>35.3G</td><td><span class="prog sm"><i style="width:38%"></i></span> 38%</td></tr>
-            </tbody></table></td></tr>
-          <tr><td class="l">/dev/sdb</td><td class="l">Seagate ST1000LM035</td><td class="l">WDE…44QZ</td><td>931G</td><td>HDD</td><td><span class="badge warn">Предупреждение</span></td><td class="warn-t">47°</td><td>21 306 ч</td></tr>
+        <div class="card"><div class="mut" style="margin-bottom:6px">Клик: устройство — информация · размер — разделы · health — проверка · temp — тесты · строка — атрибуты. Сортировка — по шапке.</div>
+        <table class="tbl mono"><thead><tr><th>Устройство</th><th>Модель</th><th>Серийный №</th><th>Размер</th><th>Тип</th><th>Health</th><th>Temp</th><th>Power-On</th></tr></thead><tbody id="smartBody">
+          <tr><td colspan="8" class="mut">Загрузка…</td></tr>
         </tbody></table></div>
-        <section class="grid two">
-          <div class="card" style="margin-top:12px"><div class="c-head">Атрибуты SMART — /dev/sda <span class="mut">клик по имени — справка</span></div>
-            <table class="tbl mono"><thead><tr><th>ID</th><th>Имя атрибута</th><th>Value</th><th>Worst</th><th>Thresh</th><th>Raw</th><th>Статус</th></tr></thead><tbody>
-            <tr><td>5</td><td class="l"><a href="#" onclick="toast('Справка: перераспределённые сектора');return false">Reallocated_Sector_Ct</a></td><td>100</td><td>100</td><td>10</td><td>0</td><td class="ok-t">OK</td></tr>
-            <tr><td>9</td><td class="l">Power_On_Hours</td><td>95</td><td>95</td><td>0</td><td>4 812</td><td class="ok-t">OK</td></tr>
-            <tr><td>194</td><td class="l">Temperature_Celsius</td><td>59</td><td>51</td><td>0</td><td>41</td><td class="ok-t">OK</td></tr>
-            <tr><td>233</td><td class="l">Media_Wearout</td><td>88</td><td>88</td><td>10</td><td>—</td><td class="warn-t">важный</td></tr>
-            </tbody></table>
-            <div class="mut mono" style="margin-top:6px">Легенда: OK · Предупреждение · Критично · Критичный атрибут · Важный атрибут</div></div>
-          <div class="card" style="margin-top:12px"><div class="c-head">Самодиагностика — /dev/sda</div>
-            <div class="toolbar"><button class="btn sm" onclick="toast('Короткий тест запущен (автоопрос 5 с) — заглушка')">Короткий тест (~2 мин)</button><button class="btn sm ghost" onclick="toast('Полный тест — заглушка')">Полный (~60–120 мин)</button><button class="btn sm ghost" onclick="toast('Conveyance тест — заглушка')">Conveyance (~5 мин)</button></div>
-            <div class="kv mono"><span>Статус</span><b>Тест завершён · ошибок нет</b><span>Прогресс</span><b>100%</b></div></div>
-        </section>
       </div>
 
       <!-- ===== VIEW: RDP ===== -->
@@ -642,7 +624,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=82"></script>
+<script src="/entware-manager/noc/noc-console.js?v=83"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>
