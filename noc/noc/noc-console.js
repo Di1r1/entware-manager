@@ -1044,11 +1044,11 @@
   }
   function smartLoadDisks(force) {
     if (!smartNeedSession()) return;
-    var body = document.getElementById('smartBody');
-    if (body) body.innerHTML = '<tr><td colspan="8" class="mut">Загрузка…</td></tr>';
+    var wrap = document.getElementById('smartCards');
+    if (wrap) wrap.innerHTML = '<div class="card"><div class="mut">Загрузка…</div></div>';
     liveFetch('smart.cgi?action=list' + (force ? '&refresh=1' : ''), null, 60000).then(function (d) {
       var disks = (d && d.disks) || [];
-      smartRenderTable(disks);
+      smartRenderCards(disks);
       var pend = disks.some(function (x) { return x.attr_health === 'loading' || x.attr_health === 'busy'; });
       if (pend) setTimeout(function () { smartLoadDisks(true); }, 5000);
     });
@@ -1062,34 +1062,47 @@
     if (ah === 'warning') return '<span class="badge warn">' + esc(h) + '</span>';
     return '<span class="badge ok">' + esc(h) + '</span>';
   }
-  function smartRenderTable(disks) {
-    var body = document.getElementById('smartBody');
-    if (!body) return;
-    if (!disks.length) { body.innerHTML = '<tr><td colspan="8" class="mut">Диски не найдены или smartmontools не установлен</td></tr>'; return; }
+  /* Каждый диск — своя карточка (data-mid стабилен: ширины/высоты
+   * запоминаются и переживают обновление, ручки навешивает cardResizeBoot). */
+  function smartRenderCards(disks) {
+    var wrap = document.getElementById('smartCards');
+    if (!wrap) return;
+    if (!disks.length) { wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>'; return; }
     var html = '';
     disks.forEach(function (d) {
       var temp = (d.temperature !== null && d.temperature !== undefined) ? d.temperature + '°' : '—';
-      var tcls = (d.temperature > 55) ? ' class="crit-t"' : (d.temperature > 45 ? ' class="warn-t"' : '');
-      html += '<tr data-device="' + esc(d.device) + '">' +
-        '<td class="l smart-d" title="Информация">' + esc(d.device) + '</td>' +
-        '<td class="l">' + esc(d.model || '—') + '</td>' +
-        '<td class="l mut">' + esc(d.serial || '—') + '</td>' +
-        '<td class="smart-u" title="Разделы">' + esc(d.size || '—') + '</td>' +
-        '<td>' + esc(d.type || '—') + '</td>' +
-        '<td class="smart-h" title="Проверка">' + smartHealthBadge(d) + '</td>' +
-        '<td class="smart-t" title="Тесты"' + tcls + '>' + esc(temp) + '</td>' +
-        '<td>' + esc(d.power_on_hours ? d.power_on_hours + ' ч' : '—') + '</td></tr>';
+      var tcls = (d.temperature > 55) ? 'crit-t' : (d.temperature > 45 ? 'warn-t' : 'ok-t');
+      html += '<div class="card panel" data-mid="smart-' + esc(d.device) + '" data-device="' + esc(d.device) + '">' +
+        '<div class="panel-h"><h3>/dev/' + esc(d.device) + '</h3>' + smartHealthBadge(d) +
+        '<span class="mut mono" style="margin-left:auto">' + esc(d.model || '—') + '</span></div>' +
+        '<table class="tbl mono"><tbody>' +
+        '<tr><td class="l mut">Серийный №</td><td class="l">' + esc(d.serial || '—') + '</td></tr>' +
+        '<tr><td class="l mut">Размер</td><td class="l">' + esc(d.size || '—') + '</td></tr>' +
+        '<tr><td class="l mut">Тип</td><td class="l">' + esc(d.type || '—') + '</td></tr>' +
+        '<tr><td class="l mut">Температура</td><td class="l ' + tcls + '">' + esc(temp) + '</td></tr>' +
+        '<tr><td class="l mut">Power-On</td><td class="l">' + esc(d.power_on_hours ? d.power_on_hours + ' ч' : '—') + '</td></tr>' +
+        '</tbody></table>' +
+        '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
+        '<button class="btn sm ghost" data-sact="info">Информация</button> ' +
+        '<button class="btn sm ghost" data-sact="health">Проверка</button> ' +
+        '<button class="btn sm ghost" data-sact="usage">Разделы</button> ' +
+        '<button class="btn sm ghost" data-sact="attrs">Атрибуты</button> ' +
+        '<button class="btn sm ghost" data-sact="tests">Тесты</button></span></div>' +
+        '<div class="smart-use mono" hidden></div>' +
+        '</div>';
     });
-    body.innerHTML = html;
+    wrap.innerHTML = html;
+    cardBootIds();
+    cardResizeBoot();
     smartApplyFilter();
   }
   function smartApplyFilter() {
     var q = document.getElementById('smartSearch');
-    var body = document.getElementById('smartBody');
-    if (!q || !body) return;
+    var wrap = document.getElementById('smartCards');
+    if (!q || !wrap) return;
     var s = q.value.toLowerCase();
-    Array.prototype.forEach.call(body.querySelectorAll('tr[data-device]'), function (r) {
-      r.style.display = (!s || r.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
+    Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
+      c.style.display = (!s || c.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
     });
   }
   function smartShowInfo(dev) {
@@ -1114,26 +1127,22 @@
       pre.textContent = (d && (d.message || d.health || d.error)) || 'нет данных';
     });
   }
-  function smartToggleUsage(row, dev) {
-    var next = row.nextElementSibling;
-    if (next && next.classList.contains('smart-use-row')) {
-      next.parentNode.removeChild(next);
-      return;
-    }
-    var ur = document.createElement('tr');
-    ur.className = 'smart-use-row';
-    ur.innerHTML = '<td colspan="8" class="mut">Загрузка разделов…</td>';
-    row.parentNode.insertBefore(ur, row.nextSibling);
+  function smartToggleUsage(card, dev) {
+    var box = card.querySelector('.smart-use');
+    if (!box) return;
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<span class="mut">Загрузка разделов…</span>';
     liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
-      if (!ur.parentNode) return;
+      if (box.hidden) return;
       var parts = (d && d.partitions) || [];
-      if (!parts.length) { ur.innerHTML = '<td colspan="8" class="mut">Разделы не найдены</td>'; return; }
-      var h = '<td colspan="8"><table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
+      if (!parts.length) { box.innerHTML = '<span class="mut">Разделы не найдены</span>'; return; }
+      var h = '<table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
       parts.forEach(function (p) {
         h += '<tr><td class="l">' + esc(p.part) + '</td><td class="l">' + esc(p.mnt) + '</td><td>' +
           esc(p.size) + '</td><td>' + esc(p.used) + '</td><td>' + esc(p.avail) + '</td><td>' + esc(p.pct) + '%</td></tr>';
       });
-      ur.innerHTML = h + '</tbody></table></td>';
+      box.innerHTML = h + '</tbody></table>';
     });
   }
   function smartShowAttrs(dev) {
@@ -1198,7 +1207,7 @@
 
   document.getElementById('smartRefreshBtn').onclick = function () { smartBoot(true); };
   document.getElementById('smartSearch').oninput = smartApplyFilter;
-  document.getElementById('smartBody').onclick = function (e) {
+  document.getElementById('smartCards').onclick = function (e) {
     var t = e.target;
     if (t.hasAttribute && t.hasAttribute('data-attr')) {
       e.preventDefault();
@@ -1206,14 +1215,17 @@
       toast(SMART_ATTR_DESC[id] || ('Атрибут ' + id));
       return;
     }
-    var row = t.closest ? t.closest('tr[data-device]') : null;
-    if (!row) return;
-    var dev = row.getAttribute('data-device');
-    if (t.closest && t.closest('.smart-h')) smartShowHealth(dev);
-    else if (t.closest && t.closest('.smart-t')) smartShowTests(dev);
-    else if (t.closest && t.closest('.smart-d')) smartShowInfo(dev);
-    else if (t.closest && t.closest('.smart-u')) smartToggleUsage(row, dev);
-    else smartShowAttrs(dev);
+    var btn = t.closest ? t.closest('[data-sact]') : null;
+    if (!btn) return;
+    var card = btn.closest ? btn.closest('.card[data-device]') : null;
+    if (!card) return;
+    var dev = card.getAttribute('data-device');
+    var act = btn.getAttribute('data-sact');
+    if (act === 'info') smartShowInfo(dev);
+    else if (act === 'health') smartShowHealth(dev);
+    else if (act === 'usage') smartToggleUsage(card, dev);
+    else if (act === 'attrs') smartShowAttrs(dev);
+    else if (act === 'tests') smartShowTests(dev);
   };
 
   var modGrid = document.getElementById('modGrid');
