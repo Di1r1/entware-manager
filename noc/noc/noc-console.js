@@ -4967,7 +4967,8 @@
           }
         };
         var up = function (ev) {
-          document.removeEventListener('pointermove', move);
+          moveActive = false;
+          document.removeEventListener('pointermove', moveThrottled);
           document.removeEventListener('pointerup', up);
           document.removeEventListener('pointercancel', up);
           if (!dragging) return;
@@ -5035,8 +5036,21 @@
         };
         /* move/up — на document: без захвата указателя шапка перестаёт
          * получать события, как только карточка уходит из-под курсора
-         * (fixed + pointer-events:none) — иначе перенос зависает. */
-        document.addEventListener('pointermove', move);
+         * (fixed + pointer-events:none) — иначе перенос зависает.
+         * move throttled через rAF: не чаще одного пересчёта вёрстки за кадр,
+         * иначе частые pointermove дёргают соседние карточки. */
+        var moveActive = true, moveQueued = false, lastMoveEv = null;
+        var moveThrottled = function (ev) {
+          if (!moveActive) return;
+          lastMoveEv = ev;
+          if (moveQueued) return;
+          moveQueued = true;
+          (window.requestAnimationFrame || function (f) { f(); })(function () {
+            moveQueued = false;
+            if (moveActive) move(lastMoveEv);
+          });
+        };
+        document.addEventListener('pointermove', moveThrottled);
         document.addEventListener('pointerup', up);
         document.addEventListener('pointercancel', up);
       });
