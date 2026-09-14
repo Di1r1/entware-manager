@@ -2,15 +2,6 @@
 (function () {
   'use strict';
   var root = document.documentElement;
-  /* положение панели (pinned/minimal): применяем немедленно (до показа
-   * контента), чтобы избежать визуального «скачка» rail с 52px на 200px. */
-  (function applyPinEarly() {
-    try {
-      if (localStorage.getItem('entware_noc_pinned') === '1') {
-        document.querySelector('.noc').classList.add('pinned');
-      }
-    } catch (e) {}
-  })();
 
   /* --- фейковый лог --- */
   var lines = [
@@ -196,7 +187,9 @@
      * иначе при обновлении страницы rail сворачивался, .main расширялся
      * и карточки с сохранёнными ширинами выглядели маленькими. */
     var noc = document.querySelector('.noc');
-    if (noc && lsGet('entware_noc_pinned') === '1') noc.classList.add('pinned');
+    var pinned = lsGet('entware_noc_pinned') === '1';
+    if (noc && pinned) noc.classList.add('pinned');
+    if (pinned) document.documentElement.setAttribute('data-noc-pinned', '1');
     paintDots();
   }
   function paintDots() {
@@ -256,13 +249,17 @@
     };
   });
   document.getElementById('railPin').onclick = function () {
-    var pinned = document.querySelector('.noc').classList.toggle('pinned');
+    var noc = document.querySelector('.noc');
+    var pinned = noc.classList.toggle('pinned');
+    document.documentElement.toggleAttribute('data-noc-pinned', pinned);
     lsSet('entware_noc_pinned', pinned ? '1' : '0');
   };
   document.addEventListener('keydown', function (e) {
     if (e.altKey && e.key.toLowerCase() === 'm') {
       e.preventDefault();
-      var pinned = document.querySelector('.noc').classList.toggle('pinned');
+      var noc = document.querySelector('.noc');
+      var pinned = noc.classList.toggle('pinned');
+      document.documentElement.toggleAttribute('data-noc-pinned', pinned);
       lsSet('entware_noc_pinned', pinned ? '1' : '0');
     }
   });

@@ -260,6 +260,7 @@ body {
   z-index: 15;
 }
 .noc.pinned .rail,
+[data-noc-pinned="1"] .noc .rail,
 .rail:hover { width: 200px; }
 
 .rg-title {
@@ -273,6 +274,7 @@ body {
   opacity: .85;
 }
 .noc.pinned .rg-title,
+[data-noc-pinned="1"] .noc .rg-title,
 .rail:hover .rg-title { display: block; }
 
 .ri {
@@ -302,6 +304,7 @@ body {
 }
 .ri span { display: none; }
 .noc.pinned .ri span,
+[data-noc-pinned="1"] .noc .ri span,
 .rail:hover .ri span { display: inline; }
 
 .ri:hover { background: var(--panel); color: var(--text); }
@@ -325,6 +328,7 @@ body {
   opacity: .7;
 }
 .noc.pinned .rail-foot,
+[data-noc-pinned="1"] .noc .rail-foot,
 .rail:hover .rail-foot { display: block; }
 
 /* ========== MAIN ========== */
