@@ -4588,10 +4588,37 @@
         var startX = e.clientX;
         var startW = el.getBoundingClientRect().width;
         var maxw = el.parentElement ? el.parentElement.clientWidth : 0;
+        /* Пластичный сосед: карточка того же ряда справа (или слева, если
+         * тянущая — последняя). Если у соседа уже фиксированная ширина —
+         * его край едет навстречу (перетекание), иначе ряд сходится сам
+         * через flex. Без этого ряд из двух фиксированных карточек
+         * «заморожен»: одна едет, вторая стоит на месте. */
+        var mate = null, mateStartW = 0;
+        try {
+          var sibs = contCards(el.parentElement);
+          var top = el.offsetTop, row = [];
+          sibs.forEach(function (x) { if (x !== el && Math.abs(x.offsetTop - top) < 4) row.push(x); });
+          if (row.length) {
+            var idx = sibs.indexOf(el), mi, mj;
+            for (mi = idx + 1; mi < sibs.length; mi++) { if (row.indexOf(sibs[mi]) >= 0) { mate = sibs[mi]; break; } }
+            if (!mate) for (mj = idx - 1; mj >= 0; mj--) { if (row.indexOf(sibs[mj]) >= 0) { mate = sibs[mj]; break; } }
+            /* гибкий сосед сойдётся сам — трогаем только фиксированного */
+            if (mate && !mate.classList.contains('card-fixedw')) mate = null;
+            if (mate) mateStartW = mate.getBoundingClientRect().width;
+          }
+        } catch (err) { mate = null; }
         h.classList.add('on');
         try { h.setPointerCapture(e.pointerId); } catch (err) {}
         var move = function (ev) {
-          st.width = cardClamp(startW + ev.clientX - startX, maxw) + 'px';
+          var nw = cardClamp(startW + ev.clientX - startX, maxw);
+          if (mate) {
+            /* сколько забираем у соседа; минимум соседа — 240, дальше стоп */
+            var give = nw - startW;
+            if (mateStartW - give < 240) { give = mateStartW - 240; nw = cardClamp(startW + give, maxw); }
+            mate.style.width = cardClamp(mateStartW - give, maxw) + 'px';
+            mate.style.maxWidth = '100%';
+          }
+          st.width = nw + 'px';
           st.maxWidth = '100%';
           el.classList.add('card-fixedw');
           cardGripPos(el, h, hb);
@@ -4604,6 +4631,11 @@
           var m = cardWLoad();
           m[id] = parseInt(st.width, 10) || 0;
           if (!m[id]) delete m[id];
+          if (mate) {
+            var mateId = cardId(mate);
+            var mateW = parseInt(mate.style.width, 10) || 0;
+            if (mateId) { if (mateW) m[mateId] = mateW; else delete m[mateId]; }
+          }
           cardWSave(m);
           var mainW = document.querySelector('.main') ? document.querySelector('.main').clientWidth : 0;
           mainWSave(mainW);
