@@ -4435,6 +4435,36 @@
    * могли указывать на чужие карточки и замораживать соседей (flex:none). */
   var CARDW_KEY = 'noc_cardw3';
   var CARDH_KEY = 'noc_cardh3';
+  /* высоты полей ввода (textarea.ta): нативный ресайз правит inline-высоту,
+   * карточка тянется за ним; высоту запоминаем, текст — всегда живой с роутера */
+  var TAH_KEY = 'noc_tah';
+  function taHLoad() {
+    try { return JSON.parse(localStorage.getItem(TAH_KEY) || '{}'); }
+    catch (err) { return {}; }
+  }
+  function taHSave(m) {
+    try { localStorage.setItem(TAH_KEY, JSON.stringify(m)); } catch (err) {}
+  }
+  function taHeightApply() {
+    var m = taHLoad();
+    Array.prototype.forEach.call(document.querySelectorAll('textarea.ta[id]'), function (ta) {
+      var h = parseInt(m[ta.id], 10);
+      if (h >= 60 && h <= 2000) ta.style.height = h + 'px';
+    });
+  }
+  function taHeightBoot() {
+    taHeightApply();
+    function saveTa(t) {
+      if (!t || t.tagName !== 'TEXTAREA' || !t.id || !t.classList.contains('ta')) return;
+      var h = parseInt(t.style.height, 10) || t.offsetHeight || 0;
+      if (h < 60) return;
+      var m = taHLoad();
+      if (m[t.id] !== h) { m[t.id] = h; taHSave(m); }
+    }
+    /* нативный ресайз заканчивается mouseup; change — страховка */
+    document.addEventListener('mouseup', function (e) { saveTa(e.target); });
+    document.addEventListener('change', function (e) { saveTa(e.target); });
+  }
   var MAINW_KEY = 'noc_mainw';
   function cardWLoad() {
     try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
@@ -5068,6 +5098,7 @@
   renderPkg();
   cardOrderBoot();
   cardResizeBoot();
+  taHeightBoot();
   (function evtBarBoot() {
     var cur = document.querySelector('#evtBar [data-f="' + evtFilter + '"]');
     if (cur) {
