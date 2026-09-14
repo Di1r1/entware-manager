@@ -743,7 +743,23 @@
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.getAttribute) return;
-    if (t.hasAttribute('data-scan-open')) { openModEditor(t.getAttribute('data-scan-open')); }
+    if (t.hasAttribute('data-ptab')) {
+      modProbeTab = t.getAttribute('data-ptab');
+      modProbeRender(modProbeCache, '');
+    }
+    else if (t.hasAttribute('data-pport')) {
+      var ta = document.getElementById('modEdJson');
+      if (!ta) return;
+      try {
+        var m = JSON.parse(ta.value);
+        m.base = 'http://127.0.0.1:' + t.getAttribute('data-pport');
+        ta.value = JSON.stringify(m, null, 2);
+        toast('base = http://127.0.0.1:' + t.getAttribute('data-pport'));
+        modProbeRun();
+      } catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); }
+    }
+    else if (t.hasAttribute('data-padd')) { modFieldAdd(parseInt(t.getAttribute('data-padd'), 10)); }
+    else if (t.hasAttribute('data-scan-open')) { openModEditor(t.getAttribute('data-scan-open')); }
     else if (t.hasAttribute('data-scan-go')) { window.open(t.getAttribute('data-scan-go'), '_blank', 'noopener'); }
     else if (t.hasAttribute('data-proc-add')) {
       var ta = document.getElementById('modEdJson');
@@ -758,14 +774,135 @@
       } catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); }
     }
   });
+  var modProbeCache = null, modProbeTab = '';
+  function modProbePaths() {
+    try {
+      var m = JSON.parse(document.getElementById('modEdJson').value);
+      return ((m.fields || []).map(function (f) { return f.path; }));
+    } catch (err) { return []; }
+  }
+  function modProbeRun() {
+    var stEl = document.getElementById('modEdStatus');
+    var raw = document.getElementById('modEdJson').value;
+    if (stEl) stEl.textContent = 'Опрос сервиса…';
+    livePost('bridge_probe.cgi', 'body=' + encodeURIComponent(raw), 30000).then(function (r) {
+      if (!r || r.status !== 'ok') {
+        modProbeCache = null;
+        modProbeRender(null, (r && (r.message || r.error)) || 'ошибка');
+        return;
+      }
+      modProbeCache = r.probe || {};
+      modProbeRender(modProbeCache, '');
+    });
+  }
+  function modProbeRender(probe, err) {
+    var stEl = document.getElementById('modEdStatus');
+    var tabsEl = document.getElementById('modProbeTabs');
+    var bodyEl = document.getElementById('modProbeBody');
+    if (!tabsEl || !bodyEl) return;
+    if (err || !probe) {
+      if (stEl) stEl.innerHTML = '<span class="warn-t">' + esc(err || 'ошибка') + '</span>';
+      tabsEl.innerHTML = '';
+      bodyEl.innerHTML = '';
+      return;
+    }
+    var msg = '';
+    if (probe.valid) msg += '<span class="ok-t">Манифест валиден. </span>';
+    else if (probe.validation_error) msg += '<span class="warn-t">Валидация: ' + esc(probe.validation_error) + ' </span>';
+    if (probe.warnings && probe.warnings.length) msg += '<span class="warn-t">Внимание: ' + esc(probe.warnings.join(' ')) + '</span>';
+    if (stEl) stEl.innerHTML = msg || '';
+    var sources = probe.sources || [];
+    if (!sources.length) {
+      tabsEl.innerHTML = '';
+      bodyEl.innerHTML = '<span class="mut">Источники не найдены — добавьте status/stats.</span>';
+      return;
+    }
+    var has = false, i;
+    for (i = 0; i < sources.length; i++) { if (sources[i].name === modProbeTab) has = true; }
+    if (!modProbeTab || !has) modProbeTab = sources[0].name;
+    var th = '';
+    sources.forEach(function (s) {
+      th += '<button class="btn sm' + (s.name === modProbeTab ? '' : ' ghost') + '" data-ptab="' + esc(s.name) + '">' + esc(s.name) + '</button>';
+    });
+    tabsEl.innerHTML = th;
+    var cur = null;
+    for (i = 0; i < sources.length; i++) { if (sources[i].name === modProbeTab) cur = sources[i]; }
+    if (!cur) { bodyEl.innerHTML = ''; return; }
+    var h = '';
+    if (probe.listen_ports && probe.listen_ports.length) {
+      h += '<div class="mut" style="margin-bottom:4px">Порты (клик — в base):</div><div style="margin-bottom:6px">';
+      probe.listen_ports.forEach(function (p) {
+        h += '<button class="btn sm ghost" data-pport="' + p + '">' + p + '</button> ';
+      });
+      h += '</div>';
+    }
+    if (cur.error) {
+      h += '<span class="warn-t">' + esc(cur.error) + '</span>';
+      if (cur.http_code === 401 || cur.http_code === 403) {
+        h += '<div class="mut">Сервис требует авторизацию — задайте логин/пароль кнопкой 🔑 на карточке модуля.</div>';
+      }
+      bodyEl.innerHTML = h;
+      return;
+    }
+    var paths = cur.paths || [];
+    if (!paths.length) { bodyEl.innerHTML = h + '<span class="mut">Пустой ответ или нет JSON-полей.</span>'; return; }
+    var added = modProbePaths();
+    h += '<div class="mut" style="margin-bottom:4px">Поля источника «' + esc(cur.name) + '» — клик «+ поле» добавляет в манифест:</div>';
+    paths.forEach(function (p, pi) {
+      var isAdded = added.indexOf(p.path) >= 0;
+      var numeric = /^(bool|num|bytes|ms|count|top|kbs|dur)$/.test(p.guess || '');
+      h += '<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)">' +
+        '<div class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="' + esc(p.path) + '">' + esc(p.path) +
+        ' <span class="mut">' + esc(p.preview || '') + '</span>' +
+        (p.guess ? ' <span style="color:var(--accent);font-size:11px">[' + esc(p.guess) + ']</span>' : '') + '</div>' +
+        (isAdded ? '<span class="ok-t" style="font-size:12px">добавлено</span>'
+          : '<label class="chk" style="font-size:11px"><input type="checkbox" data-ptile="' + pi + '"' + (numeric ? ' checked' : '') + '> плитка</label>' +
+          '<button class="btn sm" data-padd="' + pi + '">+ поле</button>') +
+        '</div>';
+    });
+    bodyEl.innerHTML = h;
+  }
+  function modFieldAdd(pi) {
+    var ta = document.getElementById('modEdJson');
+    if (!ta) return;
+    var m;
+    try { m = JSON.parse(ta.value); }
+    catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); return; }
+    var cur = null, srcs = (modProbeCache && modProbeCache.sources) || [];
+    for (var i = 0; i < srcs.length; i++) { if (srcs[i].name === modProbeTab) cur = srcs[i]; }
+    var p = cur && cur.paths ? cur.paths[pi] : null;
+    if (!p) return;
+    if (!Array.isArray(m.fields)) m.fields = [];
+    var exists = false;
+    for (var j = 0; j < m.fields.length; j++) { if (m.fields[j].path === p.path) exists = true; }
+    if (exists) { toast('Поле уже добавлено'); return; }
+    if (m.fields.length >= 24) { toast('Достигнут лимит полей (24)', 'warn'); return; }
+    var segs = String(p.path).split('.');
+    var last = segs[segs.length - 1];
+    var label = (/^\d+$/.test(last) && segs.length > 1)
+      ? segs[segs.length - 2].replace(/_/g, ' ') + ' [' + last + ']'
+      : last.replace(/_/g, ' ');
+    var f = { path: p.path, label: label };
+    if (modProbeTab && modProbeTab !== 'status') f.from = modProbeTab.replace(/^extra\./, '');
+    if (p.guess) f.type = p.guess;
+    var cb = document.querySelector('#modProbeBody [data-ptile="' + pi + '"]');
+    if (cb && cb.checked) f.tile = true;
+    m.fields.push(f);
+    ta.value = JSON.stringify(m, null, 2);
+    toast('Поле «' + p.path + '» добавлено в fields');
+    modProbeRender(modProbeCache, '');
+  }
   function openModEditor(editId) {
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     var w = nocModal(
       '<div class="c-head">' + esc(editId ? 'Модуль «' + editId + '»' : 'Новый модуль') + '</div>' +
       '<div class="frm mono"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
       (editId ? ' readonly' : '') + '></label>' +
-      '<label>JSON-манифест<textarea id="modEdJson" rows="14" style="font-family:monospace">' +
+      '<label>JSON-манифест<textarea id="modEdJson" rows="10" style="font-family:monospace">' +
       esc(MOD_ED_TEMPLATE) + '</textarea></label>' +
+      '<div class="c-head" style="margin-top:6px">Сканер <span class="mut">источники · поля · порты</span></div>' +
+      '<div id="modProbeTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
+      '<div id="modProbeBody" class="mono" style="max-height:220px;overflow:auto"></div>' +
       '<span class="mut" id="modEdStatus">Загрузка…</span>' +
       '<span><button class="btn sm" id="modEdProbe">Опросить</button> ' +
       '<button class="btn sm" id="modEdSave">Сохранить</button> ' +
@@ -778,22 +915,18 @@
         if (!ta) return;
         if (d && typeof d.json === 'string') ta.value = d.json;
         else if (d && (d.body || d.manifest)) ta.value = typeof d.body === 'string' ? d.body : JSON.stringify(d.manifest || d.body, null, 2);
-        else st('<span class="warn-t">не удалось загрузить</span>');
-        st('');
+        else { st('<span class="warn-t">не удалось загрузить</span>'); return; }
+        /* как классика: при редактировании сразу опрашиваем — список полей виден сразу */
+        modProbeTab = '';
+        modProbeRun();
       });
     } else {
+      modProbeCache = null;
+      modProbeTab = '';
       st('');
     }
     document.getElementById('modEdCancel').onclick = nocModalClose;
-    document.getElementById('modEdProbe').onclick = function () {
-      var raw = document.getElementById('modEdJson').value;
-      st('Опрос сервиса…');
-      livePost('bridge_probe.cgi', 'body=' + encodeURIComponent(raw), 30000).then(function (r) {
-        if (!r || r.status !== 'ok') { st('<span class="warn-t">' + esc((r && (r.message || r.error)) || 'ошибка') + '</span>'); return; }
-        var n = ((r.probe && r.probe.sources) || []).length;
-        st('<span class="ok-t">OK · источников: ' + n + '</span>');
-      });
-    };
+    document.getElementById('modEdProbe').onclick = modProbeRun;
     document.getElementById('modEdSave').onclick = function () {
       var id = document.getElementById('modEdId').value.trim();
       var raw = document.getElementById('modEdJson').value;
