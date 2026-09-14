@@ -1269,6 +1269,9 @@ body.card-dragging [data-dndcont]:empty {
 .mod-drag:hover { color: var(--accent); opacity: 1; }
 .mods-on-stats .mod-top { gap: 8px; }
 
+/* SMART: диски — отдельные полоски во всю ширину, стопкой */
+#smartCards > .card { margin-bottom: 12px; }
+
 .mods-on-stats .mod {
   margin: 0;
   padding: 14px 14px 12px;
