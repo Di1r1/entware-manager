@@ -4934,7 +4934,10 @@
             var before;
             if (yFrac > 0.25 && yFrac < 0.75) before = (ev.clientX - r.left) < r.width / 2;
             else before = yFrac < 0.5;
-            oc.insertBefore(ph, before ? other : other.nextSibling);
+            /* плейсхолдер уже на месте — не трогаем DOM, иначе каждый
+             * pointermove дёргает вёрстку и соседние карточки мерцают */
+            var refNode = before ? other : other.nextSibling;
+            if (!(ph.parentElement === oc && ph.nextSibling === refNode)) oc.insertBefore(ph, refNode);
             placed = true;
           });
           if (!placed) {
