@@ -48,13 +48,18 @@
     var el = typeof svgIdOrEl === 'string' ? document.getElementById(svgIdOrEl) : svgIdOrEl;
     if (!el || !data || !data.length) return;
     var w = 120, h = height || 36, pad = 2;
-    var max = maxHint || 100;
+    /* для процентных метрик (CPU, RAM, disk) — фикс 0..100
+     * для WAN speed и temp — auto-scale с нулевым минимумом */
+    var isPct = (maxHint === 100 || maxHint === 120);
+    var max = isPct ? maxHint : 0;
     var min = 0;
     var i, n = data.length;
     for (i = 0; i < n; i++) {
       if (data[i] > max) max = data[i];
     }
     if (max <= 0) max = 1;
+    /* минимальный maxHint для авто-масштабируемых — чтобы график не был слишком плоским */
+    if (!isPct && max < maxHint) max = maxHint;
     function x(i) { return pad + (i / Math.max(1, n - 1)) * (w - pad * 2); }
     function y(v) { return h - pad - ((v - min) / (max - min)) * (h - pad * 2); }
     var line = '', fill = '';
@@ -1402,6 +1407,18 @@
       if (wf) wf.textContent = String(d.wan);
       var kw2 = document.getElementById('kpiWan');
       if (kw2) kw2.textContent = d.wan_speed || '—';
+      /* push numeric speed to sparkline */
+      var ws = d.wan_speed;
+      if (ws && typeof ws === 'string') {
+        var m = ws.match(/([\d.]+)\s*(Мбит|Гбит|Кбит|бит)/);
+        if (m) {
+          var val = parseFloat(m[1]), unit = m[2];
+          if (unit === 'Гбит') val *= 1000;
+          else if (unit === 'Кбит') val /= 1000;
+          else if (unit === 'бит') val /= 1000000;
+          if (!isNaN(val)) pushSeries('wan', val);
+        }
+      }
       var sbp = document.getElementById('sbPpp');
       if (sbp) sbp.innerHTML = '<i class="dot ' + (String(d.wan).indexOf('up') >= 0 ? 'ok' : 'warn') + '"></i> ' + esc(String(d.wan));
     }
