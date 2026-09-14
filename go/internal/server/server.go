@@ -16,9 +16,11 @@ package server
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"entware-manager/internal/auth"
 )
@@ -47,10 +49,11 @@ func envOr(name, def string) string {
 
 // Config — настройки сервера из server_config.json.
 type Config struct {
-	Port    int  `json:"port"`
-	Timeout int  `json:"timeout"` // секунд на CGI-запрос
-	TLS     bool `json:"tls"`     // дополнительный HTTPS-листенер (self-signed)
-	TLSPort int  `json:"tls_port"`
+	Bind    string `json:"bind"`    // адрес/имя интерфейса; пусто = все интерфейсы
+	Port    int    `json:"port"`
+	Timeout int    `json:"timeout"` // секунд на CGI-запрос
+	TLS     bool   `json:"tls"`     // дополнительный HTTPS-листенер (self-signed)
+	TLSPort int    `json:"tls_port"`
 }
 
 // LoadConfig читает server_config.json (при ошибке — значения по умолчанию).
@@ -64,6 +67,7 @@ func LoadConfig() Config {
 	if json.Unmarshal(data, &c) != nil {
 		return cfg
 	}
+	cfg.Bind = strings.TrimSpace(c.Bind)
 	if c.Port > 0 && c.Port < 65536 {
 		cfg.Port = c.Port
 	}
@@ -75,6 +79,12 @@ func LoadConfig() Config {
 	}
 	cfg.TLS = c.TLS
 	return cfg
+}
+
+// ListenAddress собирает адрес для net/http. Пустой bind сохраняет прежнее
+// поведение (:port, все интерфейсы), а IPv6 корректно получает квадратные скобки.
+func ListenAddress(bind string, port int) string {
+	return net.JoinHostPort(strings.TrimSpace(bind), strconv.Itoa(port))
 }
 
 // NewHandler собирает маршруты сервера.
