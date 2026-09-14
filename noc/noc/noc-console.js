@@ -576,6 +576,7 @@
     });
     modGrid.innerHTML = html || '<div class="card"><div class="mod-detail">Ничего не найдено.</div></div>';
     document.getElementById('modCount').textContent = n + ' модулей · ' + on + ' вкл';
+    cardResizeBoot();
   }
   renderMods('');
   document.getElementById('modSearch').oninput = function (e) { renderMods(e.target.value); };
@@ -767,6 +768,7 @@
     applyDashModsVisible();
     paintModSparks();
     bindModDrag(box);
+    cardResizeBoot();
   }
 
   /* DnD reorder module cards */
