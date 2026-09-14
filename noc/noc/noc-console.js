@@ -4895,23 +4895,36 @@
           }
           el.style.left = (rect.left + ev.clientX - startX) + 'px';
           el.style.top = (rect.top + ev.clientY - startY) + 'px';
+          /* указатель стоит на месте — пересчёт не нужен (кадры без движения
+           * пропускаем, иначе каждый лишний pointermove — полный скан DOM) */
+          if (ev.clientX === moveLastX && ev.clientY === moveLastY && ev.shiftKey === moveLastShift) return;
+          moveLastX = ev.clientX; moveLastY = ev.clientY; moveLastShift = ev.shiftKey;
           /* Shift+drop на карточку — собрать вертикальную стопку (группировка
            * маленьких карточек в один слот ряда). Подсвечиваем цель, плейсхолдер
            * убираем. Без Shift — обычное переупорядочивание. */
+          /* ОДИН скан карточек за кадр: rect считаем один раз и делим между
+           * Shift-веткой (стопка) и обычной (переупорядочивание) — раньше было
+           * два полных прохода по DOM с getBoundingClientRect на каждую. */
+          var hits = [];
+          Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
+            if (other === el || !other.parentElement) return;
+            var hr = other.getBoundingClientRect();
+            if (!hr || hr.width <= 0 || hr.height <= 0) return;
+            hits.push({ el: other, r: hr, op: other.parentElement });
+          });
           var stackTarget = null;
           if (ev.shiftKey) {
-            Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
-              if (stackTarget || other === el || !other.parentElement) return;
-              var r2 = other.getBoundingClientRect();
-              if (!r2 || r2.width <= 0 || r2.height <= 0) return;
-              if (ev.clientX < r2.left || ev.clientX > r2.right || ev.clientY < r2.top || ev.clientY > r2.bottom) return;
-              var op = other.parentElement;
+            for (var hi = 0; hi < hits.length; hi++) {
+              var h = hits[hi];
+              if (ev.clientX < h.r.left || ev.clientX > h.r.right || ev.clientY < h.r.top || ev.clientY > h.r.bottom) continue;
+              var op = h.op;
               var inStack = op.classList.contains('card-stack');
-              if (!inStack && !op.classList.contains('dnd-flow')) return;
-              if (inStack && op === el.parentElement) return;
-              if (!sameView(op, srcCont)) return;
-              stackTarget = { ref: other, into: inStack };
-            });
+              if (!inStack && !op.classList.contains('dnd-flow')) continue;
+              if (inStack && op === el.parentElement) continue;
+              if (!sameView(op, srcCont)) continue;
+              stackTarget = { ref: h.el, into: inStack, r: h.r };
+              break;
+            }
           }
           if (lastStackHint && (!stackTarget || lastStackHint !== stackTarget.ref)) {
             lastStackHint.classList.remove('stack-drop-hint');
@@ -4922,8 +4935,8 @@
           if (stackTarget) {
             if (ph.parentElement) ph.parentElement.removeChild(ph);
             /* два варианта подсветки: верхняя половина — встанет первой,
-             * нижняя — второй */
-            var rT = stackTarget.ref.getBoundingClientRect();
+             * нижняя — второй (rect уже посчитан в общем скане выше) */
+            var rT = stackTarget.r;
             var isBefore = rT.height > 0 && (ev.clientY - rT.top) < rT.height / 2;
             stackTarget.before = isBefore;
             stackTarget.ref.classList.remove('stack-drop-hint-before');
@@ -4938,17 +4951,16 @@
            * хит-тест окружения ненадёжен (плейсхолдер не двигался при
            * живых событиях). Скрытые view (нулевые rect) пропускаем. */
           var placed = false;
-          Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
-            if (placed || other === el || !other.parentElement) return;
-            var r = other.getBoundingClientRect();
-            if (!r || r.width <= 0 || r.height <= 0) return;
+          for (var pi = 0; pi < hits.length; pi++) {
+            var p = hits[pi];
+            var other = p.el, r = p.r;
             if (ev.clientX < r.left - 8 || ev.clientX > r.right + 8 ||
-                ev.clientY < r.top - 8 || ev.clientY > r.bottom + 8) return;
-            var oc = other.parentElement, pc = ph.parentElement;
-            if (!oc || !pc) return;
+                ev.clientY < r.top - 8 || ev.clientY > r.bottom + 8) continue;
+            var oc = p.op, pc = ph.parentElement;
+            if (!oc || !pc) break;
             /* чужой контейнер — только в том же view и только помеченный
              * (статические карточки); динамические сетки не трогаем. */
-            if (oc !== pc && (!sameView(oc, pc) || !oc.dataset.dndcont || !pc.dataset.dndcont)) return;
+            if (oc !== pc && (!sameView(oc, pc) || !oc.dataset.dndcont || !pc.dataset.dndcont)) continue;
             /* куда вставить: у верхнего/нижнего края — по вертикали (в ряд
              * выше/ниже), в средней полосе карточки — по горизонтали
              * (слева/справа в том же ряду). Иначе 3 в ряд не собрать:
@@ -4962,7 +4974,8 @@
             var refNode = before ? other : other.nextSibling;
             if (!(ph.parentElement === oc && ph.nextSibling === refNode)) oc.insertBefore(ph, refNode);
             placed = true;
-          });
+            break;
+          }
           if (!placed) {
             /* пустое место контейнера — placeholder в конец (сброс туда же).
              * Сначала elementFromPoint, затем rect-скан контейнеров: точка
@@ -5063,6 +5076,7 @@
          * move throttled через rAF: не чаще одного пересчёта вёрстки за кадр,
          * иначе частые pointermove дёргают соседние карточки. */
         var moveActive = true, moveQueued = false, lastMoveEv = null;
+        var moveLastX = null, moveLastY = null, moveLastShift = null;
         var moveThrottled = function (ev) {
           if (!moveActive) return;
           lastMoveEv = ev;
