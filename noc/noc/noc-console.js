@@ -4061,7 +4061,7 @@
       svcs.forEach(function (s) {
         bridgeCard(s.id).then(function (card) {
           pending--;
-          if (card) applyBridgeModule(s.id, card);
+          if (card) applyBridgeModule(s.id, card, true);
           if (pending === 0) {
             bridgeState.loading = false;
             applyBridgeModules();
@@ -4082,7 +4082,7 @@
       return { state: d.state, card: d.card };
     });
   }
-  function applyBridgeModule(id, data) {
+  function applyBridgeModule(id, data, quiet) {
     for (var i = 0; i < MODS.length; i++) {
       if (MODS[i].id === id) {
         var st = data.state;
@@ -4118,8 +4118,13 @@
         break;
       }
     }
-    renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
-    renderStatMods();
+    /* quiet: при массовой загрузке (liveBridgeLoad) не рендерим на каждую
+     * карточку — один финальный applyBridgeModules в конце. Иначе N модулей
+     * давали 2N полных перерисовок + N перенумераций за тик. */
+    if (!quiet) {
+      renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
+      renderStatMods();
+    }
   }
   function applyBridgeModules() {
     renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
@@ -4426,8 +4431,10 @@
     if (row) showPkgModalNoc(row.getAttribute('data-pkg'));
   });
   /* ===== Card resize: ручка справа (ширина) + ручка снизу (высота), запоминаются ===== */
-  var CARDW_KEY = 'noc_cardw2';
-  var CARDH_KEY = 'noc_cardh2';
+  /* v3: сброс карт ширин — ключи ix: эпохи перенумерации (до assign-once)
+   * могли указывать на чужие карточки и замораживать соседей (flex:none). */
+  var CARDW_KEY = 'noc_cardw3';
+  var CARDH_KEY = 'noc_cardh3';
   var MAINW_KEY = 'noc_mainw';
   function cardWLoad() {
     try { return JSON.parse(localStorage.getItem(CARDW_KEY) || '{}'); }
@@ -4504,8 +4511,12 @@
       hb.firstChild.style.left = midH + 'px';
     }
   }
-  /* Скролл карточки компенсируем трансформом ручек + переставляем полоски. */
+  /* Скролл карточки компенсируем трансформом ручек + переставляем полоски.
+   * Привязка — один раз на элемент (повторные cardResizeBoot при перерисовках
+   * только перевычисляют позицию, иначе scroll-слушатели копятся). */
   function cardPinHandles(el, h, hb) {
+    if (el._pinBound) { if (el._pinHandles) el._pinHandles(); return; }
+    el._pinBound = true;
     var tick = 0;
     function pinNow() {
       var x = el.scrollLeft || 0, y = el.scrollTop || 0;
