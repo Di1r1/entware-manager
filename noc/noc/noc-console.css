@@ -4,7 +4,7 @@
   --radius: 8px;
   --radius-sm: 5px;
   --pad-card: 14px;
-  --gap-main: 14px;
+  --gap-main: 10px;
   --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.18);
@@ -467,6 +467,12 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 .dnd-flow > .card-placeholder { flex: 1 1 30%; min-width: 0; }
 .card-fixedw { display: inline-block; vertical-align: top; }
 .card-placeholder { display: inline-block; vertical-align: top; }
+/* вертикальная стопка: слот ряда, внутри карточки друг под другом.
+ * Сборка — Shift+drop на карточку; разбор — перетащить карточку из стопки.
+ * Пустая стопка удаляется, из одной оставшейся карточка вынимается обратно. */
+.card-stack { display: flex; flex-direction: column; gap: var(--gap-main); min-width: 0; }
+.dnd-flow > .card-stack { flex: 1 1 30%; min-width: 0; }
+.stack-drop-hint { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--radius); }
 /* зазор между карточками в блочных контейнерах — как на Статистике (12px).
  * У flex-контейнеров свой gap; у #view-stats/.stats-main тоже свой. */
 [data-dndcont]:not(.dnd-flow) > .card { margin-bottom: 12px; }
@@ -1713,8 +1719,8 @@ html[data-density="compact"] .tbl th { padding: 3px 5px; }
   .mods { grid-template-columns: 1fr 1fr; }
   .panel-row { grid-template-columns: 1fr; }
   /* свободные ряды на узком экране — снова в столбик (как .two → 1fr) */
-  .dnd-flow > .card, .dnd-flow > .card-placeholder,
-  .panel-row.dnd-flow > .card, .panel-row.dnd-flow > .card-placeholder { flex-basis: 100%; }
+  .dnd-flow > .card, .dnd-flow > .card-placeholder, .dnd-flow > .card-stack,
+  .panel-row.dnd-flow > .card, .panel-row.dnd-flow > .card-placeholder, .panel-row.dnd-flow > .card-stack { flex-basis: 100%; }
   .svc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {

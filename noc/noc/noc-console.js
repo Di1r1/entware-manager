@@ -4713,6 +4713,42 @@
     });
     return out;
   }
+  /* Ряд для сохранения порядка: сама стопка не ключуется, сериализуется
+   * внутри родительского ряда (вложенный массив id). */
+  function rowOf(c) {
+    if (c && c.classList && c.classList.contains('card-stack')) return c.parentElement;
+    return c;
+  }
+  function contCardsDeep(cont) {
+    var out = [];
+    Array.prototype.forEach.call(cont.children, function (x) {
+      if (!x.classList) return;
+      if (x.classList.contains('card-stack')) {
+        var inner = contCards(x).map(function (y) { return cardId(y); });
+        if (inner.length) out.push(inner);
+      } else if (x.classList.contains('card')) {
+        out.push(cardId(x));
+      }
+    });
+    return out;
+  }
+  /* Собрать стопку: target остаётся в ряду, el встаёт до/после него внутри. */
+  function stackWrap(target, el, before) {
+    var row = target.parentElement;
+    var st = document.createElement('div');
+    st.className = 'card-stack';
+    st.dataset.dndcont = '1';
+    row.insertBefore(st, target);
+    if (before) { st.appendChild(el); st.appendChild(target); }
+    else { st.appendChild(target); st.appendChild(el); }
+  }
+  /* Пустая стопка удаляется; из стопки с одной карточкой карточка вынимается. */
+  function stackNormalize(st) {
+    if (!st || !st.parentElement || !st.classList.contains('card-stack')) return;
+    var kids = contCards(st);
+    if (!kids.length) { st.parentElement.removeChild(st); }
+    else if (kids.length === 1) { st.parentElement.insertBefore(kids[0], st); st.parentElement.removeChild(st); }
+  }
   function cardApplyOrder() {
     var saved = cardOrderLoad();
     var keys = Object.keys(saved);
@@ -4727,8 +4763,21 @@
       var ids = saved[ck];
       var cont = contByKey[ck];
       if (!cont || !ids || !ids.length) return;
-      ids.forEach(function (id) {
-        var el = byId[id];
+      ids.forEach(function (entry) {
+        if (Array.isArray(entry)) {
+          /* вертикальная стопка: пересоздаём обёртку */
+          var st = document.createElement('div');
+          st.className = 'card-stack';
+          st.dataset.dndcont = '1';
+          var added = false;
+          entry.forEach(function (id) {
+            var el2 = byId[id];
+            if (el2 && sameView(el2.parentElement, cont)) { st.appendChild(el2); added = true; }
+          });
+          if (added) cont.appendChild(st);
+          return;
+        }
+        var el = byId[entry];
         /* appendChild перемещает и между контейнерами — так порядок
          * переживает перезагрузку и при переносе через строки.
          * Чужой view не трогаем: после изменения DOM старые ключи
@@ -4793,6 +4842,7 @@
         var ph = null;
         var rect = null;
         var srcCont = el.parentElement;
+        var lastStackHint = null;
         var move = function (ev) {
           if (!dragging) {
             if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 6) return;
@@ -4822,6 +4872,36 @@
           }
           el.style.left = (rect.left + ev.clientX - startX) + 'px';
           el.style.top = (rect.top + ev.clientY - startY) + 'px';
+          /* Shift+drop на карточку — собрать вертикальную стопку (группировка
+           * маленьких карточек в один слот ряда). Подсвечиваем цель, плейсхолдер
+           * убираем. Без Shift — обычное переупорядочивание. */
+          var stackTarget = null;
+          if (ev.shiftKey) {
+            Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
+              if (stackTarget || other === el || !other.parentElement) return;
+              var r2 = other.getBoundingClientRect();
+              if (!r2 || r2.width <= 0 || r2.height <= 0) return;
+              if (ev.clientX < r2.left || ev.clientX > r2.right || ev.clientY < r2.top || ev.clientY > r2.bottom) return;
+              var op = other.parentElement;
+              var inStack = op.classList.contains('card-stack');
+              if (!inStack && !op.classList.contains('dnd-flow')) return;
+              if (inStack && op === el.parentElement) return;
+              if (!sameView(op, srcCont)) return;
+              stackTarget = { ref: other, into: inStack };
+            });
+          }
+          if (lastStackHint && (!stackTarget || lastStackHint !== stackTarget.ref)) {
+            lastStackHint.classList.remove('stack-drop-hint');
+            lastStackHint = null;
+          }
+          if (stackTarget) {
+            if (ph.parentElement) ph.parentElement.removeChild(ph);
+            stackTarget.ref.classList.add('stack-drop-hint');
+            lastStackHint = stackTarget.ref;
+            el._stackTarget = stackTarget;
+            return;
+          }
+          el._stackTarget = null;
           /* Попадание считаем сами по rect'ам — без elementFromPoint:
            * хит-тест окружения ненадёжен (плейсхолдер не двигался при
            * живых событиях). Скрытые view (нулевые rect) пропускаем. */
@@ -4859,7 +4939,7 @@
             }
           }
         };
-        var up = function () {
+        var up = function (ev) {
           document.removeEventListener('pointermove', move);
           document.removeEventListener('pointerup', up);
           document.removeEventListener('pointercancel', up);
@@ -4884,15 +4964,38 @@
             el.style.width = '';
             el.style.maxWidth = '';
           }
-          var cont = ph.parentElement;
-          cont.insertBefore(el, ph);
-          cont.removeChild(ph);
-          /* сохраняем оба затронутых контейнера (источник мог отдать карточку) */
+          var dropRow = null;
+          var sdrop = el._stackTarget;
+          el._stackTarget = null;
+          if (lastStackHint) { lastStackHint.classList.remove('stack-drop-hint'); lastStackHint = null; }
+          if (sdrop && sdrop.ref && document.contains(sdrop.ref)) {
+            /* Shift-drop: вертикальная стопка (до/после по половине карточки) */
+            var rr = sdrop.ref.getBoundingClientRect();
+            var before = !!(ev && rr.height && (ev.clientY - rr.top) < rr.height / 2);
+            if (sdrop.into) {
+              var dst = sdrop.ref.parentElement;
+              dst.insertBefore(el, before ? sdrop.ref : sdrop.ref.nextSibling);
+              dropRow = dst;
+            } else {
+              dropRow = sdrop.ref.parentElement;
+              stackWrap(sdrop.ref, el, before);
+            }
+            if (ph.parentElement) ph.parentElement.removeChild(ph);
+            toast('Стопка собрана — вытащить можно перетаскиванием');
+          } else {
+            var cont = ph.parentElement;
+            if (!cont) { srcCont.appendChild(ph); cont = srcCont; }
+            cont.insertBefore(el, ph);
+            cont.removeChild(ph);
+            dropRow = cont;
+          }
+          /* карточка могла выйти из стопки — нормализуем источник */
+          if (srcCont.classList.contains('card-stack')) stackNormalize(srcCont);
+          /* сохраняем оба затронутых ряда (источник мог отдать карточку) */
           var map = cardOrderLoad();
-          [srcCont, cont].forEach(function (c) {
+          [rowOf(srcCont), rowOf(dropRow)].forEach(function (c) {
             if (!c || !c.dataset.dndcont) return;
-            var ids = contCards(c).map(function (x) { return cardId(x); });
-            map[contKey(c)] = ids;
+            map[contKey(c)] = contCardsDeep(c);
           });
           cardOrderSave(map);
         };
