@@ -4453,12 +4453,23 @@
     if (el.dataset && el.dataset.mid) return 'mid:' + el.dataset.mid;
     return (el.dataset && el.dataset.nocid) || '';
   }
-  /* Стабильные id: раздаются при каждой загрузке в порядке статического DOM
-   * (до применения порядка), поэтому переживают перестановки и перезагрузки.
-   * Приоритет: data-mid (модули) > id > index. */
+  /* Стабильные id: раздаются один раз и едут вместе с элементом,
+   * поэтому переживают перестановки и перезагрузки. Повторный вызов
+   * НЕ переназначает (иначе после drag + перерисовки модулей ix:N
+   * привязались бы к новому порядку и сохранённые ширины сели бы
+   * на чужие карточки). Новым элементам (innerHTML) id выдаются. */
   function cardBootIds() {
     var n = 0;
+    /* следующий свободный ix: считаем от максимума уже занятых,
+     * чтобы не выдавать дубликаты новым карточкам */
     Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
+      if (el.dataset && el.dataset.nocid) {
+        var m = /^ix:(\d+)$/.exec(el.dataset.nocid);
+        if (m && (+m[1]) >= n) n = (+m[1]) + 1;
+      }
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
+      if (el.dataset && el.dataset.nocid) return;
       if (el.dataset && el.dataset.mid) {
         el.dataset.nocid = 'mid:' + el.dataset.mid;
       } else if (el.id) {
