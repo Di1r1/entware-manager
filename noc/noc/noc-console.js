@@ -1401,7 +1401,7 @@
       var wf = document.querySelector('[data-metric="wan"] .res-f');
       if (wf) wf.textContent = String(d.wan);
       var kw2 = document.getElementById('kpiWan');
-      if (kw2) kw2.textContent = '—';
+      if (kw2) kw2.textContent = d.wan_speed || '—';
       var sbp = document.getElementById('sbPpp');
       if (sbp) sbp.innerHTML = '<i class="dot ' + (String(d.wan).indexOf('up') >= 0 ? 'ok' : 'warn') + '"></i> ' + esc(String(d.wan));
     }

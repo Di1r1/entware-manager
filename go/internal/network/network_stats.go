@@ -53,6 +53,7 @@ type NetworkStatsResponse struct {
 	WiFi       string        `json:"wifi"`
 	WiFiInfo   []wifiBridge  `json:"wifi_info"`
 	WAN        string        `json:"wan"`
+	WANSpeed   string        `json:"wan_speed,omitempty"`
 	Ports      []portInfo    `json:"ports"`
 	Networks   []networkInfo `json:"networks"`
 }
@@ -86,6 +87,12 @@ func HandleNetworkStats() {
 }
 
 // buildNetworkStats — сборка ответа без кэша и HTTP (общая для хендлера и коллектора).
+var (
+	lastWANRX uint64
+	lastWANTX uint64
+	lastWANTime time.Time
+)
+
 func buildNetworkStats() NetworkStatsResponse {
 	resp := NetworkStatsResponse{
 		Interfaces: getInterfacesWithIPs(),
@@ -97,6 +104,7 @@ func buildNetworkStats() NetworkStatsResponse {
 	resp.LAN = buildLAN(resp.Interfaces)
 	resp.WiFi = getWiFiStatus()
 	resp.WAN = getWANStatus()
+	resp.WANSpeed = getWANSpeed()
 
 	return resp
 }
@@ -488,4 +496,63 @@ func buildNetworkInfo(bridge string, members []string) networkInfo {
 		Bridge:  bridge,
 		Members: strings.TrimSpace(strings.Join(members, " ")),
 	}
+}
+
+func getWANSpeed() string {
+	wanIface := getWANInterface()
+	if wanIface == "—" || wanIface == "" {
+		return ""
+	}
+
+	data, err := os.ReadFile("/proc/net/dev")
+	if err != nil {
+		return ""
+	}
+
+	var rx, tx uint64
+	found := false
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, wanIface+":") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 10 {
+			continue
+		}
+		rx, _ = strconv.ParseUint(fields[1], 10, 64)
+		tx, _ = strconv.ParseUint(fields[9], 10, 64)
+		found = true
+		break
+	}
+
+	if !found {
+		return ""
+	}
+
+	now := time.Now()
+	if lastWANTime.IsZero() {
+		lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+		return "0 Мбит/с"
+	}
+
+	dt := now.Sub(lastWANTime).Seconds()
+	if dt <= 0 {
+		lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+		return "0 Мбит/с"
+	}
+
+	speedBps := float64((rx - lastWANRX) + (tx - lastWANTX)) * 8 / dt
+	lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+
+	if speedBps >= 1_000_000_000 {
+		return fmt.Sprintf("%.0f Гбит/с", speedBps/1_000_000_000)
+	}
+	if speedBps >= 1_000_000 {
+		return fmt.Sprintf("%.0f Мбит/с", speedBps/1_000_000)
+	}
+	if speedBps >= 1_000 {
+		return fmt.Sprintf("%.0f Кбит/с", speedBps/1_000)
+	}
+	return fmt.Sprintf("%.0f бит/с", speedBps)
 }
