@@ -4947,17 +4947,27 @@
   applyAll();
   /* ResizeObserver: при изменении ширины контейнера (rail hover) пропорционально
    * подстраиваем зафиксированные ширины карточек, чтобы они не вылезали за края
-   * и сохраняли относительные пропорции. */
+   * и сохраняли относительные пропорции.
+   * Ограничитель: реагируем только на УСТОЯВШУЮСЯ ширину (debounce 300ms).
+   * Иначе во время 180ms-анимации раскрытия меню по hover каждое промежуточное
+   * значение ширины пересчитывало карточки — они «прыгали» по строкам.
+   * Быстрый hover туда-обратно вообще ничего не трогает. */
   (function cardResizeObserver() {
     var main = document.querySelector('.main');
     if (!main || !window.ResizeObserver) return;
-    var lastW = main.clientWidth;
+    var lastAW = main.clientWidth;
+    var roTimer = 0;
     var ro = new ResizeObserver(function () {
       var w = main.clientWidth;
-      if (w === lastW || w === 0) return;
-      var ratio = w / lastW;
-      lastW = w;
-      mainWSave(w);
+      if (w === 0 || w === lastAW) return;
+      if (roTimer) clearTimeout(roTimer);
+      roTimer = setTimeout(function () {
+        roTimer = 0;
+        var w2 = main.clientWidth;
+        if (w2 === 0 || w2 === lastAW) return;
+        var ratio = w2 / lastAW;
+        lastAW = w2;
+        mainWSave(w2);
       var wmap = cardWLoad();
       var changed = false;
       document.querySelectorAll('.card-fixedw').forEach(function (el) {
@@ -4978,6 +4988,7 @@
        * но не записывает сжатые значения, чтобы карточки не «уменьшались»
        * после обновления страницы (drag save работает отдельно). */
       // if (changed) cardWSave(wmap);
+      });
     });
     ro.observe(main);
   })();
