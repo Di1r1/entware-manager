@@ -4892,11 +4892,20 @@
           }
           if (lastStackHint && (!stackTarget || lastStackHint !== stackTarget.ref)) {
             lastStackHint.classList.remove('stack-drop-hint');
+            lastStackHint.classList.remove('stack-drop-hint-before');
+            lastStackHint.classList.remove('stack-drop-hint-after');
             lastStackHint = null;
           }
           if (stackTarget) {
             if (ph.parentElement) ph.parentElement.removeChild(ph);
-            stackTarget.ref.classList.add('stack-drop-hint');
+            /* два варианта подсветки: верхняя половина — встанет первой,
+             * нижняя — второй */
+            var rT = stackTarget.ref.getBoundingClientRect();
+            var isBefore = rT.height > 0 && (ev.clientY - rT.top) < rT.height / 2;
+            stackTarget.before = isBefore;
+            stackTarget.ref.classList.remove('stack-drop-hint-before');
+            stackTarget.ref.classList.remove('stack-drop-hint-after');
+            stackTarget.ref.classList.add(isBefore ? 'stack-drop-hint-before' : 'stack-drop-hint-after');
             lastStackHint = stackTarget.ref;
             el._stackTarget = stackTarget;
             return;
@@ -4929,14 +4938,29 @@
             placed = true;
           });
           if (!placed) {
-            /* пустое место контейнера — placeholder в конец (сброс туда же);
-             * точку под курсором не трогаем, если это сама тащимая карточка. */
-            var under2 = null;
-            try { under2 = document.elementFromPoint(ev.clientX, ev.clientY); } catch (err2) {}
-            if (under2 && under2.closest && !(el.contains && el.contains(under2))) {
-              var ec = under2.closest('[data-dndcont]');
-              if (ec && sameView(ec, srcCont) && ec !== ph.parentElement) ec.appendChild(ph);
+            /* пустое место контейнера — placeholder в конец (сброс туда же).
+             * Сначала elementFromPoint, затем rect-скан контейнеров: точка
+             * может быть над зазором или над самой тащимой карточкой —
+             * тогда elementFromPoint не даёт цели и поле не подсвечивается. */
+            var dest = null;
+            try {
+              var under2 = document.elementFromPoint(ev.clientX, ev.clientY);
+              if (under2 && under2.closest && !(el.contains && el.contains(under2))) {
+                var ec = under2.closest('[data-dndcont]');
+                if (ec && sameView(ec, srcCont)) dest = ec;
+              }
+            } catch (err2) {}
+            if (!dest) {
+              Array.prototype.forEach.call(document.querySelectorAll('[data-dndcont]'), function (cc) {
+                if (dest || cc === ph.parentElement) return;
+                var rc = cc.getBoundingClientRect();
+                if (!rc || rc.width <= 0 || rc.height <= 0) return;
+                if (ev.clientX < rc.left || ev.clientX > rc.right || ev.clientY < rc.top || ev.clientY > rc.bottom) return;
+                if (!sameView(cc, srcCont)) return;
+                dest = cc;
+              });
             }
+            if (dest && dest !== ph.parentElement) dest.appendChild(ph);
           }
         };
         var up = function (ev) {
@@ -4967,11 +4991,18 @@
           var dropRow = null;
           var sdrop = el._stackTarget;
           el._stackTarget = null;
-          if (lastStackHint) { lastStackHint.classList.remove('stack-drop-hint'); lastStackHint = null; }
+          if (lastStackHint) {
+            lastStackHint.classList.remove('stack-drop-hint');
+            lastStackHint.classList.remove('stack-drop-hint-before');
+            lastStackHint.classList.remove('stack-drop-hint-after');
+            lastStackHint = null;
+          }
           if (sdrop && sdrop.ref && document.contains(sdrop.ref)) {
-            /* Shift-drop: вертикальная стопка (до/после по половине карточки) */
-            var rr = sdrop.ref.getBoundingClientRect();
-            var before = !!(ev && rr.height && (ev.clientY - rr.top) < rr.height / 2);
+            /* Shift-drop: вертикальная стопка (позиция уже показана подсветкой) */
+            var before = (typeof sdrop.before === 'boolean') ? sdrop.before : (function () {
+              var rr = sdrop.ref.getBoundingClientRect();
+              return !!(ev && rr.height && (ev.clientY - rr.top) < rr.height / 2);
+            })();
             if (sdrop.into) {
               var dst = sdrop.ref.parentElement;
               dst.insertBefore(el, before ? sdrop.ref : sdrop.ref.nextSibling);
