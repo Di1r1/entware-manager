@@ -776,7 +776,8 @@
       liveFetch('bridge_manifest.cgi?id=' + encodeURIComponent(editId), null, 15000).then(function (d) {
         var ta = document.getElementById('modEdJson');
         if (!ta) return;
-        if (d && (d.body || d.manifest)) ta.value = typeof d.body === 'string' ? d.body : JSON.stringify(d.manifest || d.body, null, 2);
+        if (d && typeof d.json === 'string') ta.value = d.json;
+        else if (d && (d.body || d.manifest)) ta.value = typeof d.body === 'string' ? d.body : JSON.stringify(d.manifest || d.body, null, 2);
         else st('<span class="warn-t">не удалось загрузить</span>');
         st('');
       });
