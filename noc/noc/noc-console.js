@@ -1298,9 +1298,10 @@
     }
   };
   var scanTab = 'ports';
-  document.querySelectorAll('#scanTabs .st').forEach(function (b) {
+  var scanTabs = document.querySelectorAll('#scanTabs .st');
+  Array.prototype.forEach.call(scanTabs, function (b) {
     b.onclick = function () {
-      document.querySelectorAll('#scanTabs .st').forEach(function (x) { x.classList.remove('active'); });
+      Array.prototype.forEach.call(scanTabs, function (x) { x.classList.remove('active'); });
       b.classList.add('active');
       scanTab = b.getAttribute('data-stab') || 'ports';
       renderScanTab();
@@ -1323,14 +1324,6 @@
   document.getElementById('modManifestsBtn').onclick = function () { openModEditor(''); };
 
   /* --- дашборд: колонка модулей из тех же MODS, что и вкладка Модули --- */
-  function dashMet(m) {
-    if (m.id === 'adguard') return '12 408 запр. · блок 18% · 4 мс';
-    if (m.id === 'transmission') return '↓ 1.2 МБ/с · 4 раздачи';
-    if (m.id === 'koffe') return 'socks5 :1080 · failover';
-    if (m.id === 'syncthing') return m.on ? '1 узел offline' : 'выключен';
-    if (m.id === 'xray-proxy') return '41M · 8.2%';
-    return m.detail;
-  }
   function applyDashModsVisible() {
     var show = lsGet('entware_noc_show_mods') !== '0';
     var col = document.getElementById('statModCol');
@@ -2275,7 +2268,6 @@
     renderEvents();
   }
   var monFail = 0;
-  function setText(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
   function applyMonLog(t) {
     /* monitor/log.cgi — plain text, [monitor] сегодняшнего журнала.
      * Рендерим в таблицу (как «Последние события» на вкладке Службы). */
@@ -2772,7 +2764,6 @@
     on('monClearLogBtn', function () { if (confirm('Очистить лог защиты?')) monAct('clearlog'); });
     on('monSaveBtn', monCfgSave);
   }
-  monBind();
   monBind();
   /* ===== LIVE logs (вкладка Логи): паритет классики (loadLogsTab в entware.js).
    * Панели действий всегда видимы (вне скрываемых data-pp) — табы logSeg
@@ -4453,6 +4444,8 @@
     });
   }
   function taHeightBoot() {
+    if (taHeightBoot._bound) { taHeightApply(); return; }
+    taHeightBoot._bound = true;
     taHeightApply();
     function saveTa(t) {
       if (!t || t.tagName !== 'TEXTAREA' || !t.id || !t.classList.contains('ta')) return;
@@ -5162,8 +5155,7 @@
         lastAW = w2;
         mainWSave(w2);
       var wmap = cardWLoad();
-      var changed = false;
-      document.querySelectorAll('.card-fixedw').forEach(function (el) {
+      Array.prototype.forEach.call(document.querySelectorAll('.card-fixedw'), function (el) {
         var id = cardId(el);
         /* текущая ширина карточки (из style.width или wmap) —
          * не оригинальное сохранённое значение, иначе при переключении
@@ -5172,15 +5164,11 @@
         if (!cur) return;
         var nw = Math.round(cur * ratio);
         if (nw < 240) nw = 240;
-        if (nw !== cur) {
-          el.style.width = nw + 'px';
-          changed = true;
-        }
+        if (nw !== cur) el.style.width = nw + 'px';
       });
       /* НЕ сохраняем в localStorage: наблюдатель подстраивает визуально,
        * но не записывает сжатые значения, чтобы карточки не «уменьшались»
        * после обновления страницы (drag save работает отдельно). */
-      // if (changed) cardWSave(wmap);
       });
     });
     ro.observe(main);
