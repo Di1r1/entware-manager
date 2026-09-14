@@ -87,11 +87,14 @@ func HandleNetworkStats() {
 }
 
 // buildNetworkStats — сборка ответа без кэша и HTTP (общая для хендлера и коллектора).
-var (
-	lastWANRX uint64
-	lastWANTX uint64
-	lastWANTime time.Time
-)
+const wanSpeedCacheFile = "/tmp/wan_speed_cache.json"
+
+type wanSpeedCache struct {
+	RX      uint64    `json:"rx"`
+	TX      uint64    `json:"tx"`
+	Time    time.Time `json:"time"`
+	Iface   string    `json:"iface"`
+}
 
 func buildNetworkStats() NetworkStatsResponse {
 	resp := NetworkStatsResponse{
@@ -531,19 +534,29 @@ func getWANSpeed() string {
 	}
 
 	now := time.Now()
-	if lastWANTime.IsZero() {
-		lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+
+	cacheData, _ := os.ReadFile(wanSpeedCacheFile)
+	var cache wanSpeedCache
+	if len(cacheData) > 0 {
+		json.Unmarshal(cacheData, &cache)
+	}
+
+	if cache.Iface != wanIface || cache.Time.IsZero() {
+		cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+		os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
 		return "0 Мбит/с"
 	}
 
-	dt := now.Sub(lastWANTime).Seconds()
+	dt := now.Sub(cache.Time).Seconds()
 	if dt <= 0 {
-		lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+		cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+		os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
 		return "0 Мбит/с"
 	}
 
-	speedBps := float64((rx - lastWANRX) + (tx - lastWANTX)) * 8 / dt
-	lastWANRX, lastWANTX, lastWANTime = rx, tx, now
+	speedBps := float64((rx - cache.RX) + (tx - cache.TX)) * 8 / dt
+	cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+	os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
 
 	if speedBps >= 1_000_000_000 {
 		return fmt.Sprintf("%.0f Гбит/с", speedBps/1_000_000_000)
@@ -555,4 +568,9 @@ func getWANSpeed() string {
 		return fmt.Sprintf("%.0f Кбит/с", speedBps/1_000)
 	}
 	return fmt.Sprintf("%.0f бит/с", speedBps)
+}
+
+func mustMarshal(v interface{}) []byte {
+	b, _ := json.Marshal(v)
+	return b
 }
