@@ -745,12 +745,24 @@
       bodyEl.innerHTML = sh;
       return;
     }
-    /* ports: слушающие порты из последнего опроса (клик — в base + переопрос) */
+    /* ports: слушающие порты из последнего опроса (клик — в base + переопрос).
+     * Как классика: подпись службы из port_labels, текущий порт подсвечен. */
     var ports = (modProbeCache && modProbeCache.listen_ports) || [];
     if (!ports.length) { bodyEl.innerHTML = '<span class="mut">Портов пока нет — нажмите «Опросить».</span>'; return; }
+    var labels = (modProbeCache && modProbeCache.port_labels) || {};
+    var curPort = null;
+    try {
+      var mb = JSON.parse(document.getElementById('modEdJson').value).base;
+      var mm = String(mb || '').match(/:(\d+)/);
+      if (mm) curPort = +mm[1];
+    } catch (e) {}
     var ph2 = '<div class="mut" style="margin-bottom:4px">Слушают (клик — в base):</div><div>';
     ports.forEach(function (p) {
-      ph2 += '<button class="btn sm ghost" data-pport="' + p + '">' + p + '</button> ';
+      var active = (+p === curPort);
+      var hint = labels[p] || labels[String(p)] || '';
+      ph2 += '<button class="btn sm' + (active ? '' : ' ghost') + '" data-pport="' + p + '"' +
+        (hint ? ' title="' + esc(hint) + '"' : '') + '>' + p + '</button> ' +
+        (hint ? '<span class="mut" style="font-size:11px;margin-right:8px">' + esc(hint) + '</span>' : '');
     });
     bodyEl.innerHTML = ph2 + '</div>';
   }
@@ -865,25 +877,25 @@
     var w = nocModal(
       '<div class="c-head">' + esc(editId ? 'Модуль «' + editId + '»' : 'Новый модуль') + '</div>' +
       '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">' +
-      '<div class="frm mono" style="flex:1 1 340px;min-width:0"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
+      '<div class="frm mono" style="flex:1 1 420px;min-width:0"><label>ID файла (a-z, 0-9, -, _)<input id="modEdId" value="' + esc(editId || '') + '"' +
       (editId ? ' readonly' : '') + '></label>' +
-      '<label>JSON-манифест<textarea id="modEdJson" rows="16" style="font-family:monospace">' +
+      '<label>JSON-манифест<textarea id="modEdJson" rows="20" style="font-family:monospace">' +
       esc(MOD_ED_TEMPLATE) + '</textarea></label>' +
       '<span class="mut" id="modEdStatus">Загрузка…</span>' +
       '<span><button class="btn sm" id="modEdProbe">Опросить</button> ' +
       '<button class="btn sm" id="modEdSave">Сохранить</button> ' +
       (editId ? '<button class="btn sm ghost" id="modEdDel">Удалить</button> ' : '') +
       '<button class="btn sm ghost" id="modEdCancel">Отмена</button></span></div>' +
-      '<div style="flex:1 1 340px;min-width:0">' +
+      '<div style="flex:1 1 420px;min-width:0">' +
       '<div class="c-head">Сканер <span class="mut">порты · процессы · сервисы</span></div>' +
       '<div id="modDiscTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
-      '<div id="modDiscBody" class="mono" style="max-height:220px;overflow:auto;margin-bottom:10px"></div>' +
+      '<div id="modDiscBody" class="mono" style="max-height:320px;overflow:auto;margin-bottom:10px"></div>' +
       '<div class="c-head">Опрос манифеста <span class="mut">источники · поля</span></div>' +
       '<div id="modProbeTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
-      '<div id="modProbeBody" class="mono" style="max-height:300px;overflow:auto"></div>' +
+      '<div id="modProbeBody" class="mono" style="max-height:400px;overflow:auto"></div>' +
       '</div></div>');
     var pal = w.querySelector('.pal');
-    if (pal) { pal.style.width = 'min(1020px, 94vw)'; pal.style.maxWidth = '1020px'; }
+    if (pal) { pal.style.width = 'min(1280px, 96vw)'; pal.style.maxWidth = '1280px'; }
     var st = function (s) { var el = document.getElementById('modEdStatus'); if (el) el.innerHTML = s; };
     if (editId) {
       liveFetch('bridge_manifest.cgi?id=' + encodeURIComponent(editId), null, 15000).then(function (d) {
