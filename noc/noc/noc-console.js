@@ -1062,29 +1062,47 @@
     if (ah === 'warning') return '<span class="badge warn">' + esc(h) + '</span>';
     return '<span class="badge ok">' + esc(h) + '</span>';
   }
-  /* Каждый диск — отдельная полоска: та же таблица, что раньше была
-   * общей, но по одной строке на диск (data-mid стабилен: размеры
-   * запоминаются, ручки навешивает cardResizeBoot). */
+  /* SMART как «Тома»: каждый диск — полоска с барами температуры
+   * и наработки (data-mid стабилен, ручки навешивает cardResizeBoot). */
+  function smartTempBar(t) {
+    if (t === null || t === undefined) return '<div class="vol"><div class="vol-h"><b>Температура</b><span>—</span></div></div>';
+    var pct = Math.min(100, Math.round(t / 70 * 100));
+    var col = t > 55 ? 'var(--crit)' : (t > 45 ? 'var(--warn)' : 'var(--accent)');
+    return '<div class="vol"><div class="vol-h"><b>Температура</b><span>' + t + '°</span>' +
+      '<span class="mut">шкала до 70°</span></div>' +
+      '<div class="prog"><i style="width:' + pct + '%;background:' + col + '"></i></div></div>';
+  }
+  function smartHoursBar(h) {
+    if (!h) return '<div class="vol"><div class="vol-h"><b>Наработка</b><span>—</span></div></div>';
+    var pct = Math.min(100, Math.round(h / 43800 * 100));
+    var years = (h / 8760).toFixed(1).replace('.', ',');
+    return '<div class="vol"><div class="vol-h"><b>Наработка</b><span>' + h + ' ч</span>' +
+      '<span class="mut">≈' + years + ' г · шкала 5 лет</span></div>' +
+      '<div class="prog"><i style="width:' + pct + '%"></i></div></div>';
+  }
   function smartRenderCards(disks) {
     var wrap = document.getElementById('smartCards');
     if (!wrap) return;
     if (!disks.length) { wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>'; return; }
     var html = '';
     disks.forEach(function (d) {
-      var temp = (d.temperature !== null && d.temperature !== undefined) ? d.temperature + '°' : '—';
-      var tcls = (d.temperature > 55) ? ' class="crit-t"' : (d.temperature > 45 ? ' class="warn-t"' : '');
       html += '<div class="card" data-mid="smart-' + esc(d.device) + '">' +
-        '<table class="tbl mono"><thead><tr><th>Устройство</th><th>Модель</th><th>Серийный №</th><th>Размер</th><th>Тип</th><th>Health</th><th>Temp</th><th>Power-On</th></tr></thead><tbody>' +
-        '<tr data-device="' + esc(d.device) + '">' +
-        '<td class="l smart-d" title="Информация">' + esc(d.device) + '</td>' +
-        '<td class="l">' + esc(d.model || '—') + '</td>' +
-        '<td class="l mut">' + esc(d.serial || '—') + '</td>' +
-        '<td class="smart-u" title="Разделы">' + esc(d.size || '—') + '</td>' +
-        '<td>' + esc(d.type || '—') + '</td>' +
-        '<td class="smart-h" title="Проверка">' + smartHealthBadge(d) + '</td>' +
-        '<td class="smart-t" title="Тесты"' + tcls + '>' + esc(temp) + '</td>' +
-        '<td>' + esc(d.power_on_hours ? d.power_on_hours + ' ч' : '—') + '</td></tr>' +
-        '</tbody></table></div>';
+        '<div class="panel-h"><h3>/dev/' + esc(d.device) + '</h3>' + smartHealthBadge(d) +
+        '<span class="mut mono" style="margin-left:auto">' + esc(d.model || '—') + '</span></div>' +
+        '<div class="vol-list mono">' +
+        smartTempBar(d.temperature) +
+        smartHoursBar(d.power_on_hours) +
+        '<div class="vol-f mut" style="font-size:10.5px">' +
+        esc(d.serial || '—') + ' · ' + esc(d.type || '—') + ' · ' + esc(d.size || '—') + '</div>' +
+        '</div>' +
+        '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
+        '<button class="btn sm ghost" data-sact="info">Информация</button> ' +
+        '<button class="btn sm ghost" data-sact="health">Проверка</button> ' +
+        '<button class="btn sm ghost" data-sact="usage">Разделы</button> ' +
+        '<button class="btn sm ghost" data-sact="attrs">Атрибуты</button> ' +
+        '<button class="btn sm ghost" data-sact="tests">Тесты</button></span></div>' +
+        '<div class="smart-use mono" hidden></div>' +
+        '</div>';
     });
     wrap.innerHTML = html;
     /* чистим сохранённые ширины эпохи «карточки в ряд» — полоски всегда
@@ -1097,6 +1115,15 @@
     cardBootIds();
     cardResizeBoot();
     smartApplyFilter();
+  }
+  function smartApplyFilter() {
+    var q = document.getElementById('smartSearch');
+    var wrap = document.getElementById('smartCards');
+    if (!q || !wrap) return;
+    var s = q.value.toLowerCase();
+    Array.prototype.forEach.call(wrap.querySelectorAll('.card'), function (c) {
+      c.style.display = (!s || c.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
+    });
   }
   function smartApplyFilter() {
     var q = document.getElementById('smartSearch');
@@ -1130,26 +1157,22 @@
       pre.textContent = (d && (d.message || d.health || d.error)) || 'нет данных';
     });
   }
-  function smartToggleUsage(row, dev) {
-    var next = row.nextElementSibling;
-    if (next && next.classList.contains('smart-use-row')) {
-      next.parentNode.removeChild(next);
-      return;
-    }
-    var ur = document.createElement('tr');
-    ur.className = 'smart-use-row';
-    ur.innerHTML = '<td colspan="8" class="mut">Загрузка разделов…</td>';
-    row.parentNode.insertBefore(ur, row.nextSibling);
+  function smartToggleUsage(card, dev) {
+    var box = card.querySelector('.smart-use');
+    if (!box) return;
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<span class="mut">Загрузка разделов…</span>';
     liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
-      if (!ur.parentNode) return;
+      if (box.hidden) return;
       var parts = (d && d.partitions) || [];
-      if (!parts.length) { ur.innerHTML = '<td colspan="8" class="mut">Разделы не найдены</td>'; return; }
-      var h = '<td colspan="8"><table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
+      if (!parts.length) { box.innerHTML = '<span class="mut">Разделы не найдены</span>'; return; }
+      var h = '<table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
       parts.forEach(function (p) {
         h += '<tr><td class="l">' + esc(p.part) + '</td><td class="l">' + esc(p.mnt) + '</td><td>' +
           esc(p.size) + '</td><td>' + esc(p.used) + '</td><td>' + esc(p.avail) + '</td><td>' + esc(p.pct) + '%</td></tr>';
       });
-      ur.innerHTML = h + '</tbody></table></td>';
+      box.innerHTML = h + '</tbody></table>';
     });
   }
   function smartShowAttrs(dev) {
@@ -1222,14 +1245,18 @@
       toast(SMART_ATTR_DESC[id] || ('Атрибут ' + id));
       return;
     }
-    var row = t.closest ? t.closest('tr[data-device]') : null;
-    if (!row) return;
-    var dev = row.getAttribute('data-device');
-    if (t.closest && t.closest('.smart-h')) smartShowHealth(dev);
-    else if (t.closest && t.closest('.smart-t')) smartShowTests(dev);
-    else if (t.closest && t.closest('.smart-d')) smartShowInfo(dev);
-    else if (t.closest && t.closest('.smart-u')) smartToggleUsage(row, dev);
-    else smartShowAttrs(dev);
+    var btn = t.closest ? t.closest('[data-sact]') : null;
+    if (!btn) return;
+    var card = btn.closest ? btn.closest('.card') : null;
+    if (!card) return;
+    var mid = (card.getAttribute('data-mid') || '').replace(/^smart-/, '');
+    if (!mid) return;
+    var act = btn.getAttribute('data-sact');
+    if (act === 'info') smartShowInfo(mid);
+    else if (act === 'health') smartShowHealth(mid);
+    else if (act === 'usage') smartToggleUsage(card, mid);
+    else if (act === 'attrs') smartShowAttrs(mid);
+    else if (act === 'tests') smartShowTests(mid);
   };
 
   var modGrid = document.getElementById('modGrid');
@@ -5122,6 +5149,25 @@
             cont.insertBefore(el, ph);
             cont.removeChild(ph);
             dropRow = cont;
+            /* сброс широкой карточки в занятый ряд: фиксированная ширина
+             * на весь контейнер не даёт встать в ряд — отдаём её flex'у,
+             * иначе 3 в ряд обратно не собрать (карточка упадёт строкой
+             * ниже). В пустом ряду ширина сохраняется как была. */
+            try {
+              if (el.classList.contains('card-fixedw') && cont.classList.contains('dnd-flow')) {
+                var cw = cont.clientWidth;
+                var ew = el.getBoundingClientRect().width;
+                var mates = contCards(cont).filter(function (x) {
+                  return x !== el && Math.abs(x.offsetTop - el.offsetTop) < 4;
+                });
+                if (mates.length && ew > cw - 240 - 14) {
+                  el.style.width = ''; el.style.maxWidth = '';
+                  el.classList.remove('card-fixedw');
+                  var m2 = cardWLoad(), eid = cardId(el);
+                  if (eid) { delete m2[eid]; cardWSave(m2); }
+                }
+              }
+            } catch (err) {}
           }
           /* карточка могла выйти из стопки — нормализуем источник */
           if (srcCont.classList.contains('card-stack')) stackNormalize(srcCont);
