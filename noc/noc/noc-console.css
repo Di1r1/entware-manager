@@ -1284,22 +1284,33 @@ body.card-dragging [data-dndcont]:empty {
 }
 .smart-frame.warn { color: var(--warn); border-color: var(--warn); }
 .smart-frame.crit { color: var(--crit); border-color: var(--crit); }
-/* Слоты переноса: в обычном виде скрыты, при перетаскивании — видимые
- * пунктирные ячейки в конце каждого ряда (всегда есть куда бросить) */
+/* Слоты переноса: в обычном виде скрыты, при перетаскивании — тонкие
+ * пунктирные разделители. Невесомые (нулевой вклад в раскладку), чтобы
+ * ряды не переносились и страница не прыгала при взятии карточки. */
 .card-slot { display: none; }
-body.card-dragging [data-dndcont] > .card-slot {
+/* flex-ряды: вертикальный разделитель между карточками */
+body.card-dragging .dnd-flow > .card-slot {
   display: block;
-  flex: 1 1 30%;
-  min-width: 80px;
+  flex: 0 0 auto;
   align-self: stretch;
-  min-height: 48px;
-  border-radius: 8px;
-  border: 1px dashed var(--line);
+  width: 4px;
+  min-height: 24px;
+  margin: 0 -2px;
+  border: none;
+  border-left: 2px dashed var(--line);
 }
-body.card-dragging [data-dndcont] > .card-slot.slot-over {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+/* блочные контейнеры: горизонтальная линия */
+body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot {
+  display: block;
+  height: 2px;
+  min-height: 0;
+  margin: -4px 0;
+  padding: 6px 0;
+  border: none;
+  border-top: 2px dashed var(--line);
 }
+body.card-dragging .dnd-flow > .card-slot.slot-over { border-left-color: var(--accent); }
+body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot.slot-over { border-top-color: var(--accent); }
 
 .mods-on-stats .mod {
   margin: 0;
