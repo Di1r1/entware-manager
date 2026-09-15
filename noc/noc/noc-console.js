@@ -4773,8 +4773,15 @@
   function slotBoot() {
     /* сначала маркировка: ряды из свежих перерисовок тоже получают слот */
     markDndCont();
+    kpiPin();
     Array.prototype.forEach.call(document.querySelectorAll('[data-dndcont]'), function (c) {
       if (c.classList.contains('card-stack')) return;
+      /* бесхозные слоты (не сразу за карточкой — напр. перед KPI) — убрать */
+      Array.prototype.forEach.call(c.querySelectorAll(':scope > .card-slot'), function (s) {
+        var pv = s.previousSibling;
+        while (pv && pv.nodeType !== 1) pv = pv.previousSibling;
+        if (!pv || !pv.classList || !pv.classList.contains('card')) s.parentNode.removeChild(s);
+      });
       /* слот после КАЖДОЙ карточки: зона видна и над, и под каждой.
        * snapshot детей — коллекция живая, в неё же вставляем. */
       var kids = Array.prototype.slice.call(c.children);
@@ -4867,6 +4874,23 @@
         if (el && sameView(el.parentElement, cont)) cont.appendChild(el);
       });
     });
+    kpiPin();
+  }
+  /* Полоска показателей (#kpiRow) закреплена первой: выше неё сбрасывать
+   * нельзя. kpiPin возвращает её перед первой карточкой родителя
+   * (чинит раскладки, где сверху уже что-то бросили); kpiClamp сдвигает
+   * точку вставки сразу под неё. */
+  function kpiPin() {
+    var kpi = document.getElementById('kpiRow');
+    if (!kpi || !kpi.parentElement) return;
+    var first = kpi.parentElement.querySelector(':scope > .card, :scope > .card-slot');
+    if (first && first !== kpi) kpi.parentElement.insertBefore(kpi, first);
+  }
+  function kpiClamp(cont, ref) {
+    var kpi = document.getElementById('kpiRow');
+    if (!kpi || !cont || kpi.parentElement !== cont || !ref) return ref;
+    for (var x = ref; x; x = x.nextSibling) { if (x === kpi) return kpi.nextSibling; }
+    return ref;
   }
   /* Контейнеры одного view: перенос между строками разрешён.
    * Подтабы одного data-sub (Настройки: term/notif/sec/mnt) — разные экраны:
@@ -5000,6 +5024,7 @@
             for (var hi = 0; hi < hits.length; hi++) {
               var h = hits[hi];
               if (h.slot) continue;
+              if (h.el.id === 'kpiRow') continue; /* KPI в стопку нельзя */
               if (ev.clientX < h.r.left || ev.clientX > h.r.right || ev.clientY < h.r.top || ev.clientY > h.r.bottom) continue;
               var op = h.op;
               var inStack = op.classList.contains('card-stack');
@@ -5046,7 +5071,7 @@
               if (ev.clientX < p.r.left || ev.clientX > p.r.right || ev.clientY < p.r.top || ev.clientY > p.r.bottom) continue;
               if (!sameView(p.op, srcCont) || !p.op.dataset.dndcont) continue;
               p.el.classList.add('slot-over');
-              if (!(ph.parentElement === p.op && ph.nextSibling === p.el)) p.op.insertBefore(ph, p.el);
+              if (!(ph.parentElement === p.op && ph.nextSibling === p.el)) p.op.insertBefore(ph, kpiClamp(p.op, p.el));
               placed = true;
               break;
             }
@@ -5075,7 +5100,7 @@
             if (oc.classList.contains('dnd-flow') && ph.style.flex === 'none') {
               ph.style.width = ''; ph.style.flex = '';
             }
-            var refNode = before ? other : other.nextSibling;
+            var refNode = kpiClamp(oc, before ? other : other.nextSibling);
             if (!(ph.parentElement === oc && ph.nextSibling === refNode)) oc.insertBefore(ph, refNode);
             placed = true;
             break;
