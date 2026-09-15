@@ -526,31 +526,6 @@
   window.__MODS_REF = MODS;
 
   /* порядок карточек модулей (localStorage) */
-  function applyModOrder() {
-    try {
-      var raw = lsGet('entware_mod_order');
-      if (!raw) return;
-      var order = JSON.parse(raw);
-      if (!Array.isArray(order) || !order.length) return;
-      var map = {};
-      MODS.forEach(function (m) { map[m.id] = m; });
-      var next = [];
-      order.forEach(function (id) {
-        if (map[id]) { next.push(map[id]); delete map[id]; }
-      });
-      Object.keys(map).forEach(function (id) { next.push(map[id]); });
-      MODS.length = 0;
-      next.forEach(function (m) { MODS.push(m); });
-      window.__MODS_REF = MODS;
-    } catch (e) {}
-  }
-  function saveModOrder() {
-    try {
-      lsSet('entware_mod_order', JSON.stringify(MODS.map(function (m) { return m.id; })));
-    } catch (e) {}
-  }
-  applyModOrder();
-
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function modCard(m) {
     var live = m.on ? (m.state === 'degraded' ? 'warn' : 'ok') : '';
@@ -1462,7 +1437,7 @@
         ? (m.process ? 'process · ' + (m.process[0] || m.id) : (m.port ? 'probe ' + m.port + ' · OK' : 'probe OK'))
         : 'не отвечает / выключен';
       html +=
-        '<div class="card mod' + (m.on ? '' : ' off') + '" data-mid="' + esc(m.id) + '" draggable="true">' +
+        '<div class="card mod' + (m.on ? '' : ' off') + '" data-mid="' + esc(m.id) + '">' +
           '<div class="mod-top">' +
             '<span class="mod-drag" title="Перетащить" draggable="false">⠿</span>' +
             '<span class="dot ok" title="работает"></span>' +
@@ -1495,73 +1470,10 @@
     if (cnt) cnt.textContent = on + ' активных · ' + MODS.length + ' всего';
     applyDashModsVisible();
     paintModSparks();
-    bindModDrag(box);
     cardBootIds();
     cardResizeBoot();
     /* перерисовка убила шапки с привязанным переносом — перепривязать */
     cardOrderReboot(box);
-  }
-
-  /* DnD reorder module cards */
-  var modDragId = null;
-  function bindModDrag(box) {
-    if (!box || box._modDragBound) return;
-    box._modDragBound = true;
-    box.addEventListener('dragstart', function (e) {
-      var card = e.target.closest && e.target.closest('.mod[data-mid]');
-      if (!card || !box.contains(card)) return;
-      /* don't start drag from interactive controls */
-      if (e.target.closest('button, a, input, label.tgl, label.chk, .mod-btns')) {
-        e.preventDefault();
-        return;
-      }
-      modDragId = card.getAttribute('data-mid');
-      card.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', modDragId); } catch (err) {}
-    });
-    box.addEventListener('dragend', function (e) {
-      var card = e.target.closest && e.target.closest('.mod');
-      if (card) card.classList.remove('dragging');
-      Array.prototype.forEach.call(box.querySelectorAll('.mod'), function (c) {
-        c.classList.remove('drag-over');
-      });
-      modDragId = null;
-    });
-    box.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      var over = e.target.closest && e.target.closest('.mod[data-mid]');
-      Array.prototype.forEach.call(box.querySelectorAll('.mod'), function (c) {
-        c.classList.toggle('drag-over', !!(over && c === over && c.getAttribute('data-mid') !== modDragId));
-      });
-    });
-    box.addEventListener('dragleave', function (e) {
-      var card = e.target.closest && e.target.closest('.mod');
-      if (card && !card.contains(e.relatedTarget)) card.classList.remove('drag-over');
-    });
-    box.addEventListener('drop', function (e) {
-      e.preventDefault();
-      var over = e.target.closest && e.target.closest('.mod[data-mid]');
-      Array.prototype.forEach.call(box.querySelectorAll('.mod'), function (c) {
-        c.classList.remove('drag-over', 'dragging');
-      });
-      if (!over || !modDragId) return;
-      var toId = over.getAttribute('data-mid');
-      if (!toId || toId === modDragId) return;
-      var from = -1, to = -1, i;
-      for (i = 0; i < MODS.length; i++) {
-        if (MODS[i].id === modDragId) from = i;
-        if (MODS[i].id === toId) to = i;
-      }
-      if (from < 0 || to < 0 || from === to) return;
-      var item = MODS.splice(from, 1)[0];
-      MODS.splice(to, 0, item);
-      saveModOrder();
-      renderStatMods();
-      renderMods(document.getElementById('modSearch') ? document.getElementById('modSearch').value : '');
-      toast('Порядок модулей сохранён');
-    });
   }
 
   function setModOn(id, on) {
@@ -5004,7 +4916,9 @@
     cardApplyOrder();
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
-      var head = el.querySelector(':scope > .panel-h, :scope > .c-head');
+      /* шапка переноса: обычные панели + шапки модульных карточек
+       * (.mod-top на статистике, .mod-mini-row на вкладке Модули) */
+      var head = el.querySelector(':scope > .panel-h, :scope > .c-head, :scope > .mod-top, :scope > .mod-mini-row');
       if (!head || head.dataset.dnd) return;
       head.dataset.dnd = '1';
       head.addEventListener('pointerdown', function (e) {

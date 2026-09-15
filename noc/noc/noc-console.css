@@ -1014,6 +1014,14 @@ body.card-dragging [data-dndcont]:empty {
   padding: 0 !important;
   overflow: hidden;
 }
+/* полоска показателей всегда сверху при скролле статистики */
+#kpiRow {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+/* шапки модульных карточек — тоже ручки переноса */
+.mod-top { cursor: grab; }
 .res-cell {
   padding: 10px 14px 11px;
   display: flex;
