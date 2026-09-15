@@ -1292,11 +1292,12 @@ body.card-dragging .dnd-flow > .card-slot {
   display: block;
   flex: 0 0 auto;
   align-self: stretch;
-  width: 4px;
+  width: 8px;
   min-height: 24px;
-  margin: 0 -2px;
+  margin: 0 -4px;
   border: none;
-  border-left: 2px dashed var(--line);
+  border-left: 3px dashed var(--accent);
+  opacity: .55;
 }
 /* блочные контейнеры: горизонтальная линия */
 body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot {
@@ -1308,7 +1309,7 @@ body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot {
   border: none;
   border-top: 2px dashed var(--line);
 }
-body.card-dragging .dnd-flow > .card-slot.slot-over { border-left-color: var(--accent); }
+body.card-dragging .dnd-flow > .card-slot.slot-over { border-left-color: var(--accent); border-left-style: solid; opacity: 1; }
 body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot.slot-over { border-top-color: var(--accent); }
 
 .mods-on-stats .mod {

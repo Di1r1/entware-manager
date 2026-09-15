@@ -5044,6 +5044,7 @@
             stackTarget.ref.classList.add(isBefore ? 'stack-drop-hint-before' : 'stack-drop-hint-after');
             lastStackHint = stackTarget.ref;
             el._stackTarget = stackTarget;
+            flexSync();
             return;
           }
           el._stackTarget = null;
@@ -5060,6 +5061,7 @@
               p.el.classList.add('slot-over');
               if (!(ph.parentElement === p.op && ph.nextSibling === p.el)) p.op.insertBefore(ph, kpiClamp(p.op, p.el));
               placed = true;
+              flexSync();
               break;
             }
             var other = p.el, r = p.r;
@@ -5090,6 +5092,7 @@
             var refNode = kpiClamp(oc, before ? other : other.nextSibling);
             if (!(ph.parentElement === oc && ph.nextSibling === refNode)) oc.insertBefore(ph, refNode);
             placed = true;
+            flexSync();
             break;
           }
           if (!placed) {
@@ -5121,6 +5124,7 @@
                 ph.style.width = el.style.width; ph.style.flex = 'none';
               }
               dest.appendChild(ph);
+              flexSync();
             }
           }
         };
@@ -5130,6 +5134,7 @@
           document.removeEventListener('pointerup', up);
           document.removeEventListener('pointercancel', up);
           if (!dragging) return;
+          flexRestore();
           el.classList.remove('card-dragging');
           document.body.classList.remove('card-dragging');
           el.style.position = '';
@@ -5184,22 +5189,30 @@
             cont.insertBefore(el, ph);
             cont.removeChild(ph);
             dropRow = cont;
-            /* сброс широкой карточки в занятый ряд: фиксированная ширина
-             * на весь контейнер не даёт встать в ряд — отдаём её flex'у,
-             * иначе 3 в ряд обратно не собрать (карточка упадёт строкой
-             * ниже). В пустом ряду ширина сохраняется как была. */
+            /* сброс в занятый ряд: если ряд с новой карточкой не влезает
+             * в контейнер — весь ряд отдаём flex'у (и в DOM, и в сохранённых
+             * ширинах), иначе 2–3 в ряд не собрать. Влезающий ряд не трогаем. */
             try {
-              if (el.classList.contains('card-fixedw') && cont.classList.contains('dnd-flow')) {
+              flexRestore();
+              if (cont.classList.contains('dnd-flow')) {
                 var cw = cont.clientWidth;
                 var ew = el.getBoundingClientRect().width;
                 var mates = contCards(cont).filter(function (x) {
                   return x !== el && Math.abs(x.offsetTop - el.offsetTop) < 4;
                 });
-                if (mates.length && ew > cw - 240 - 14) {
-                  el.style.width = ''; el.style.maxWidth = '';
-                  el.classList.remove('card-fixedw');
-                  var m2 = cardWLoad(), eid = cardId(el);
-                  if (eid) { delete m2[eid]; cardWSave(m2); }
+                var sum = ew;
+                mates.forEach(function (x) { sum += x.getBoundingClientRect().width; });
+                if (mates.length && sum > cw + 2) {
+                  var m2 = cardWLoad(), ch = false;
+                  [el].concat(mates).forEach(function (x) {
+                    if (x.classList.contains('card-fixedw')) {
+                      x.style.width = ''; x.style.maxWidth = '';
+                      x.classList.remove('card-fixedw');
+                      var xid = cardId(x);
+                      if (xid && m2[xid]) { delete m2[xid]; ch = true; }
+                    }
+                  });
+                  if (ch) cardWSave(m2);
                 }
               }
             } catch (err) {}
@@ -5223,6 +5236,43 @@
          * иначе частые pointermove дёргают соседние карточки. */
         var moveActive = true, moveQueued = false, lastMoveEv = null;
         var moveLastX = null, moveLastY = null, moveLastShift = null;
+        /* Живая пластичность ряда: пока тянем широкую карточку над рядом,
+         * который с ней не влезает, фиксированные соседи временно отдают
+         * ширину (flex) — иначе превью переносится строкой ниже и «не даёт»
+         * собрать 2–3 в ряд. Набор отслеживаем: повторная запись тех же
+         * ширин каждый кадр дала бы мерцание, поэтому пишем только при смене. */
+        var flexedKey = null, flexedItems = null;
+        function flexRestore() {
+          if (flexedItems) flexedItems.forEach(function (it) {
+            if (!it.el.parentElement) return;
+            it.el.style.width = it.w;
+            it.el.style.maxWidth = '100%';
+            it.el.classList.add('card-fixedw');
+          });
+          flexedItems = null; flexedKey = null;
+        }
+        function flexSync() {
+          if (!ph || !ph.parentElement) { flexRestore(); return; }
+          var cont = ph.parentElement;
+          if (!cont.classList.contains('dnd-flow')) { flexRestore(); return; }
+          var top = ph.offsetTop;
+          var elW = el.getBoundingClientRect().width;
+          var mates = contCards(cont).filter(function (x) {
+            return x !== el && Math.abs(x.offsetTop - top) < 4;
+          });
+          var sum = elW;
+          mates.forEach(function (x) { sum += x.getBoundingClientRect().width; });
+          var fixed = (sum > cont.clientWidth + 2)
+            ? mates.filter(function (x) { return x.classList.contains('card-fixedw'); }) : [];
+          var same = !!flexedItems && fixed.length === flexedItems.length &&
+            fixed.every(function (x, i) { return flexedItems[i].el === x; });
+          if (same) { flexedKey = { cont: cont, top: top }; return; }
+          flexRestore();
+          if (!fixed.length) return;
+          flexedItems = fixed.map(function (x) { return { el: x, w: x.style.width }; });
+          flexedKey = { cont: cont, top: top };
+          fixed.forEach(function (x) { x.style.width = ''; x.style.maxWidth = ''; x.classList.remove('card-fixedw'); });
+        }
         var moveThrottled = function (ev) {
           if (!moveActive) return;
           lastMoveEv = ev;
