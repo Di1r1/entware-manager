@@ -4863,11 +4863,23 @@
     markDndCont();
     Array.prototype.forEach.call(document.querySelectorAll('[data-dndcont]'), function (c) {
       if (c.classList.contains('card-stack')) return;
-      var s = c.querySelector(':scope > .card-slot');
-      if (s) { c.appendChild(s); return; } /* слот всегда последний */
-      s = document.createElement('div');
-      s.className = 'card-slot';
-      c.appendChild(s);
+      /* слот после КАЖДОЙ карточки: зона видна и над, и под каждой.
+       * snapshot детей — коллекция живая, в неё же вставляем. */
+      var kids = Array.prototype.slice.call(c.children);
+      kids.forEach(function (x) {
+        if (!x.classList || !x.classList.contains('card')) return;
+        var nx = x.nextSibling;
+        if (nx && nx.classList && nx.classList.contains('card-slot')) return;
+        var s = document.createElement('div');
+        s.className = 'card-slot';
+        c.insertBefore(s, nx);
+      });
+      /* пустой ряд — один слот, иначе бросить некуда */
+      if (!c.querySelector(':scope > .card') && !c.querySelector(':scope > .card-slot')) {
+        var s2 = document.createElement('div');
+        s2.className = 'card-slot';
+        c.appendChild(s2);
+      }
     });
   }
   /* Перезапуск привязки после перерисовки — только если реально есть
