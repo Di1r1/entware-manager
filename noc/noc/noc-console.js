@@ -4524,26 +4524,12 @@
     Array.prototype.forEach.call(cards, function (el) {
       var id = cardId(el);
       var st = el.style;
-      /* полоски SMART — всегда во всю ширину: сохранённые ширины эпохи
-       * «карточки в ряд» не применяем, иначе полоска замирает узкой
-       * и «прилипает». Высота — как у всех. */
-      var smartStrip = id.indexOf('mid:smart-') === 0;
-      if (smartStrip) {
-        st.width = ''; st.maxWidth = '';
-        el.classList.remove('card-fixedw');
-      } else if (saved[id]) { var scaledW = Math.round(saved[id] * scale); st.width = scaledW + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
+      if (saved[id]) { var scaledW = Math.round(saved[id] * scale); st.width = scaledW + 'px'; st.maxWidth = '100%'; el.classList.add('card-fixedw'); }
       if (savedH[id]) { st.height = savedH[id] + 'px'; el.classList.add('card-fixedh'); }
-      var exH = smartStrip ? null : el.querySelector(':scope > .card-resizer');
+      var exH = el.querySelector(':scope > .card-resizer');
       var exB = el.querySelector(':scope > .card-resizer-b');
       if (exH || exB) { cardPinHandles(el, exH, exB); return; }
-      /* stale-ручка ширины от прошлых версий на SMART-полоске — убрать */
-      if (smartStrip) {
-        var staleW = el.querySelector(':scope > .card-resizer');
-        if (staleW) staleW.parentNode.removeChild(staleW);
-      }
-      var h = null;
-      if (!smartStrip) {
-      h = document.createElement('div');
+      var h = document.createElement('div');
       h.className = 'card-resizer';
       h.title = 'Тяните, чтобы изменить ширину (двойной клик — сброс)';
       h.appendChild(document.createElement('i'));
@@ -4663,7 +4649,6 @@
         cardWSave(m);
         cardGripPos(el, h, hb);
       });
-      } /* /if (!smartStrip): у SMART-полосок ручки ширины нет */
       /* ручка высоты снизу — тот же механизм по вертикали */
       var exB2 = el.querySelector(':scope > .card-resizer-b');
       if (exB2) { cardPinHandles(el, h, exB2); return; }
