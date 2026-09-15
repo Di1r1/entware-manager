@@ -1561,6 +1561,7 @@ body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot.s
 /* density */
 html[data-density="compact"] { --pad-card: 9px; --gap-main: 10px; }
 html[data-density="compact"] body { font-size: 12px; }
+html[data-density="comfortable"] body { font-size: 14px; }
 html[data-density="compact"] .log { height: 130px; }
 html[data-density="compact"] .topbar { height: 40px; }
 html[data-density="compact"] .hero h2 { font-size: 15px; }
