@@ -1562,6 +1562,29 @@ body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot.s
 html[data-density="compact"] { --pad-card: 9px; --gap-main: 10px; }
 html[data-density="compact"] body { font-size: 12px; }
 html[data-density="comfortable"] body { font-size: 14px; }
+/* комфорт: крупнее и фиксированные текстовые классы (иначе половина
+ * интерфейса остаётся мелкой) */
+html[data-density="comfortable"] .mono { font-size: 13px; }
+html[data-density="comfortable"] .btn { font-size: 13px; }
+html[data-density="comfortable"] .btn.sm { font-size: 12px; }
+html[data-density="comfortable"] .panel-h h3 { font-size: 13.5px; }
+html[data-density="comfortable"] .panel-h .mut { font-size: 12px; }
+html[data-density="comfortable"] .tile b { font-size: 13px; }
+html[data-density="comfortable"] .mods-on-stats .tile b { font-size: 15px; }
+html[data-density="comfortable"] .mod-top b { font-size: 14px; }
+html[data-density="comfortable"] .mod-state { font-size: 13px; }
+html[data-density="comfortable"] .mod-detail { font-size: 12px; }
+html[data-density="comfortable"] .res-val small { font-size: 13px; }
+html[data-density="comfortable"] .res-f { font-size: 11.5px; }
+html[data-density="comfortable"] .hero .mut { font-size: 12.5px; }
+html[data-density="comfortable"] .chk { font-size: 12.5px; }
+html[data-density="comfortable"] .tb-host,
+html[data-density="comfortable"] .tb-uptime { font-size: 13px; }
+html[data-density="comfortable"] .vol .vol-h { font-size: 13px; }
+html[data-density="comfortable"] .meter b { font-size: 12.5px; }
+html[data-density="comfortable"] .bm-label { font-size: 13.5px; }
+html[data-density="comfortable"] .smart-frame { font-size: 12.5px; }
+html[data-density="comfortable"] .evt { font-size: 12.5px; }
 html[data-density="compact"] .log { height: 130px; }
 html[data-density="compact"] .topbar { height: 40px; }
 html[data-density="compact"] .hero h2 { font-size: 15px; }
