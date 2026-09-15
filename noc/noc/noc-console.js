@@ -677,6 +677,27 @@
       } catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); }
     }
     else if (t.hasAttribute('data-padd')) { modFieldAdd(parseInt(t.getAttribute('data-padd'), 10)); }
+    else if (t.hasAttribute('data-pauth-save')) {
+      var pu = document.getElementById('modProbeUser');
+      var pa = document.getElementById('modProbePass');
+      var pp = document.getElementById('modProbePanel');
+      var ps = document.getElementById('modProbeAuthSt');
+      var mid = (document.getElementById('modEdId') || {}).value || '';
+      mid = mid.trim();
+      if (!pu || !pu.value || !pa || !pa.value || !pp || !pp.value) { if (ps) ps.textContent = 'Заполните все поля'; }
+      else if (!/^[a-z0-9_-]{1,32}$/.test(mid)) { if (ps) ps.textContent = 'Сначала задайте ID файла'; }
+      else {
+        if (ps) ps.textContent = 'Сохранение…';
+        livePost('bridge_auth.cgi', 'id=' + encodeURIComponent(mid) + '&cred_type=basic&username=' + encodeURIComponent(pu.value.trim()) +
+          '&app_password=' + encodeURIComponent(pa.value) + '&password=' + encodeURIComponent(pp.value), 30000).then(function (r) {
+          var box = document.getElementById('modProbeAuthSt');
+          if (r && r.status === 'ok') {
+            if (box) box.textContent = 'Сохранено — опрашиваю…';
+            modProbeRun();
+          } else if (box) box.textContent = 'Ошибка: ' + ((r && (r.message || r.error)) || 'ошибка');
+        });
+      }
+    }
     else if (t.hasAttribute('data-scan-open')) { openModEditor(t.getAttribute('data-scan-open')); }
     else if (t.hasAttribute('data-scan-go')) { window.open(t.getAttribute('data-scan-go'), '_blank', 'noopener'); }
     else if (t.hasAttribute('data-proc-add')) {
@@ -819,7 +840,13 @@
     if (cur.error) {
       h += '<span class="warn-t">' + esc(cur.error) + '</span>';
       if (cur.http_code === 401 || cur.http_code === 403) {
-        h += '<div class="mut">Сервис требует авторизацию — задайте логин/пароль кнопкой 🔑 на карточке модуля.</div>';
+        /* формы прямо здесь: у нового модуля карточки с 🔑 ещё нет */
+        h += '<div class="frm mono" style="margin-top:8px;max-width:340px">' +
+          '<label>Логин сервиса<input id="modProbeUser" autocomplete="username"></label>' +
+          '<label>Пароль сервиса<input type="password" id="modProbePass" autocomplete="current-password"></label>' +
+          '<label>Пароль панели<input type="password" id="modProbePanel"></label>' +
+          '<span><button class="btn sm" data-pauth-save>Сохранить и переопросить</button></span>' +
+          '<span class="mut" id="modProbeAuthSt"></span></div>';
       }
       bodyEl.innerHTML = h;
       return;
