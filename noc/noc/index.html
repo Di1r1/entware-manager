@@ -241,31 +241,14 @@
       <div id="view-modules" hidden>
         <div class="hero">
           <div><h2>Модули <span class="verdict ok-t">5 из 6 включены</span></h2><span class="mut">подключение и управление · отображение — на Статистике</span></div>
-          <span class="t-right"><button class="btn ghost" id="scanBtn">Сканировать</button><button class="btn" id="newModBtn">+ Новый модуль</button></span>
+          <span class="t-right"><button class="btn" id="newModBtn">+ Новый модуль</button></span>
         </div>
         <div class="toolbar">
           <input class="t-search mono" id="modSearch" placeholder="Фильтр модулей…" autocomplete="off">
           <span class="mut" id="modCount">6 модулей · 5 вкл</span>
         </div>
 
-        <div class="scan card" id="scanPanel" hidden>
-          <div class="c-head">Сканер <span class="mut">порты · процессы · сервисы</span></div>
-          <div class="scan-tabs mono" id="scanTabs">
-            <button class="st active" data-stab="ports">порты <b id="scanPortsCnt">…</b></button>
-            <button class="st" data-stab="procs">процессы <b id="scanProcsCnt">…</b></button>
-            <button class="st" data-stab="modules">сервисы <b id="scanModsCnt">…</b></button>
-          </div>
-          <table class="tbl mono">
-            <thead><tr><th>Порт</th><th>Сервис</th><th>Адрес</th><th></th></tr></thead>
-            <tbody id="scanPortsBody">
-              <tr><td colspan="4" class="mut">Нажмите «Сканировать»</td></tr>
-            </tbody>
-          </table>
-        </div>
-
         <section class="grid mods" id="modGrid"></section>
-
-        <div class="toolbar" style="margin-top:12px"><span class="t-right" style="margin-left:0"><button class="btn ghost" id="modRescanBtn">Пересканировать</button><button class="btn ghost" id="modManifestsBtn">Манифесты</button></span></div>
       </div><!-- /view-modules -->
 
       <!-- ===== VIEW: PACKAGES ===== -->
@@ -626,7 +609,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=116"></script>
+<script src="/entware-manager/noc/noc-console.js?v=117"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>

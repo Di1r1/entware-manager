@@ -654,71 +654,14 @@
     var w = document.getElementById('nocModalWrap');
     if (w && w.parentNode) w.parentNode.removeChild(w);
   }
-  function modPortOf(m) {
-    var p = m.port || '';
-    var mm = String(p).match(/:(\d+)/);
-    if (mm) return mm[1];
-    if (m.base) { var b = String(m.base).match(/:(\d+)/); if (b) return b[1]; }
-    return '—';
-  }
-  function modAddrOf(m) {
-    if (m.base) return String(m.base).replace('http://127.0.0.1', window.location.hostname || '127.0.0.1');
-    if (m.port) return (window.location.hostname || '127.0.0.1') + m.port;
-    return '—';
-  }
-  function renderScanTab() {
-    var body = document.getElementById('scanPortsBody');
-    if (!body) return;
-    if (!window.__NOC_LIVE_STATS) { body.innerHTML = '<tr><td colspan="4" class="mut">Нужна сессия</td></tr>'; return; }
-    if (scanTab === 'procs') {
-      body.innerHTML = '<tr><td colspan="4" class="mut">Загрузка процессов…</td></tr>';
-      liveFetch('bridge_processes.cgi', null, 15000).then(function (d) {
-        var procs = (d && d.processes) || [];
-        var pc = document.getElementById('scanProcsCnt');
-        if (pc) pc.textContent = procs.length;
-        if (!procs.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Процессов нет</td></tr>'; return; }
-        var html = '';
-        procs.slice(0, 30).forEach(function (p) {
-          var nm = p.name || p.cmd || '?';
-          html += '<tr><td>—</td><td class="l">' + esc(nm) + '</td><td class="l mut">' +
-            esc((p.pids || []).join(',') || String(p.pid || '')) + '</td>' +
-            '<td><button class="btn sm" data-proc-add="' + esc(nm) + '">+ в модуль</button></td></tr>';
-        });
-        body.innerHTML = html;
-      });
-      return;
-    }
-    if (scanTab === 'modules') {
-      var svcs = bridgeState.services || [];
-      var mc = document.getElementById('scanModsCnt');
-      if (mc) mc.textContent = svcs.length;
-      if (!svcs.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Нет данных — нажмите «Пересканировать»</td></tr>'; return; }
-      var mh = '';
-      svcs.forEach(function (s) {
-        mh += '<tr><td>—</td><td class="l">' + esc(s.name || s.id) + '</td><td class="l mut">' +
-          esc(s.state || '') + '</td>' +
-          '<td><button class="btn sm" data-scan-open="' + esc(s.id) + '">Открыть</button></td></tr>';
-      });
-      body.innerHTML = mh;
-      return;
-    }
-    /* ports (по умолчанию): живые модули из MODS */
-    var rows = MODS.filter(function (m) { return modPortOf(m) !== '—'; });
-    var kc = document.getElementById('scanPortsCnt');
-    if (kc) kc.textContent = rows.length;
-    if (!rows.length) { body.innerHTML = '<tr><td colspan="4" class="mut">Портов нет — нажмите «Пересканировать»</td></tr>'; return; }
-    var ph = '';
-    rows.forEach(function (m) {
-      ph += '<tr><td>' + esc(modPortOf(m)) + '</td><td class="l">' + esc(m.name) + '</td><td class="l">' +
-        esc(modAddrOf(m)) + '</td>' +
-        '<td>' + (m.base ? '<button class="btn sm" data-scan-go="' + esc(m.base) + '">Открыть</button>' : '') + '</td></tr>';
-    });
-    body.innerHTML = ph;
-  }
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.getAttribute) return;
-    if (t.hasAttribute('data-ptab')) {
+    if (t.hasAttribute('data-dtab')) {
+      modDiscTab = t.getAttribute('data-dtab');
+      modDiscRender();
+    }
+    else if (t.hasAttribute('data-ptab')) {
       modProbeTab = t.getAttribute('data-ptab');
       modProbeRender(modProbeCache, '');
     }
@@ -749,12 +692,65 @@
       } catch (err) { toast('Сначала исправьте JSON манифеста', 'warn'); }
     }
   });
-  var modProbeCache = null, modProbeTab = '';
+  var modProbeCache = null, modProbeTab = '', modDiscTab = 'ports';
   function modProbePaths() {
     try {
       var m = JSON.parse(document.getElementById('modEdJson').value);
       return ((m.fields || []).map(function (f) { return f.path; }));
     } catch (err) { return []; }
+  }
+  /* 3 вида сканера в редакторе модуля: порты (слушающие — из опроса),
+   * процессы (кандидаты в process), сервисы (найденные discover). */
+  function modDiscRender() {
+    var tabsEl = document.getElementById('modDiscTabs');
+    var bodyEl = document.getElementById('modDiscBody');
+    if (!tabsEl || !bodyEl) return;
+    var tabs = [['ports', 'Порты'], ['procs', 'Процессы'], ['services', 'Сервисы']];
+    var th = '';
+    tabs.forEach(function (t) {
+      th += '<button class="btn sm' + (t[0] === modDiscTab ? '' : ' ghost') + '" data-dtab="' + t[0] + '">' + t[1] + '</button>';
+    });
+    tabsEl.innerHTML = th;
+    if (modDiscTab === 'procs') {
+      bodyEl.innerHTML = '<span class="mut">Загрузка процессов…</span>';
+      liveFetch('bridge_processes.cgi', null, 15000).then(function (d) {
+        var box = document.getElementById('modDiscBody');
+        if (!box) return;
+        var procs = (d && d.processes) || [];
+        if (!procs.length) { box.innerHTML = '<span class="mut">Процессов нет</span>'; return; }
+        var h = '';
+        procs.slice(0, 30).forEach(function (p) {
+          var nm = p.name || p.cmd || '?';
+          h += '<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)">' +
+            '<div class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(nm) +
+            ' <span class="mut">' + esc((p.pids || []).join(',') || String(p.pid || '')) + '</span></div>' +
+            '<button class="btn sm" data-proc-add="' + esc(nm) + '">+ в модуль</button></div>';
+        });
+        box.innerHTML = h;
+      });
+      return;
+    }
+    if (modDiscTab === 'services') {
+      var svcs = bridgeState.services || [];
+      if (!svcs.length) { bodyEl.innerHTML = '<span class="mut">Нет данных — подождите автообновление…</span>'; return; }
+      var sh = '';
+      svcs.forEach(function (s) {
+        sh += '<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)">' +
+          '<div class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.name || s.id) +
+          ' <span class="mut">' + esc(s.state || '') + (s.has_manifest ? ' · манифест' : '') + '</span></div>' +
+          '<button class="btn sm" data-scan-open="' + esc(s.id) + '">Открыть</button></div>';
+      });
+      bodyEl.innerHTML = sh;
+      return;
+    }
+    /* ports: слушающие порты из последнего опроса (клик — в base + переопрос) */
+    var ports = (modProbeCache && modProbeCache.listen_ports) || [];
+    if (!ports.length) { bodyEl.innerHTML = '<span class="mut">Портов пока нет — нажмите «Опросить».</span>'; return; }
+    var ph2 = '<div class="mut" style="margin-bottom:4px">Слушают (клик — в base):</div><div>';
+    ports.forEach(function (p) {
+      ph2 += '<button class="btn sm ghost" data-pport="' + p + '">' + p + '</button> ';
+    });
+    bodyEl.innerHTML = ph2 + '</div>';
   }
   function modProbeRun() {
     var stEl = document.getElementById('modEdStatus');
@@ -768,6 +764,7 @@
       }
       modProbeCache = r.probe || {};
       modProbeRender(modProbeCache, '');
+      modDiscRender();
     });
   }
   function modProbeRender(probe, err) {
@@ -882,9 +879,12 @@
       (editId ? '<button class="btn sm ghost" id="modEdDel">Удалить</button> ' : '') +
       '<button class="btn sm ghost" id="modEdCancel">Отмена</button></span></div>' +
       '<div style="flex:1 1 340px;min-width:0">' +
-      '<div class="c-head">Сканер <span class="mut">источники · поля · порты</span></div>' +
+      '<div class="c-head">Сканер <span class="mut">порты · процессы · сервисы</span></div>' +
+      '<div id="modDiscTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
+      '<div id="modDiscBody" class="mono" style="max-height:220px;overflow:auto;margin-bottom:10px"></div>' +
+      '<div class="c-head">Опрос манифеста <span class="mut">источники · поля</span></div>' +
       '<div id="modProbeTabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>' +
-      '<div id="modProbeBody" class="mono" style="max-height:380px;overflow:auto"></div>' +
+      '<div id="modProbeBody" class="mono" style="max-height:300px;overflow:auto"></div>' +
       '</div></div>');
     var pal = w.querySelector('.pal');
     if (pal) { pal.style.width = 'min(1020px, 94vw)'; pal.style.maxWidth = '1020px'; }
@@ -904,7 +904,11 @@
       modProbeCache = null;
       modProbeTab = '';
       st('');
+      /* новый модуль: сразу опрашиваем шаблон — появятся слушающие порты */
+      modProbeRun();
     }
+    modDiscTab = 'ports';
+    modDiscRender();
     document.getElementById('modEdCancel').onclick = nocModalClose;
     document.getElementById('modEdProbe').onclick = modProbeRun;
     document.getElementById('modEdSave').onclick = function () {
@@ -921,7 +925,6 @@
             nocModalClose();
             bridgeState.loaded = false;
             liveBridgeLoad();
-            renderScanTab();
           } else {
             st('<span class="warn-t">' + esc((r && (r.message || r.error)) || 'ошибка') + '</span>');
           }
@@ -1306,31 +1309,7 @@
       bridgeDoAction(bridgeCardMid(t), t.getAttribute('data-mact'), t.getAttribute('data-confirm') === '1', t);
     }
   };
-  var scanTab = 'ports';
-  var scanTabs = document.querySelectorAll('#scanTabs .st');
-  Array.prototype.forEach.call(scanTabs, function (b) {
-    b.onclick = function () {
-      Array.prototype.forEach.call(scanTabs, function (x) { x.classList.remove('active'); });
-      b.classList.add('active');
-      scanTab = b.getAttribute('data-stab') || 'ports';
-      renderScanTab();
-    };
-  });
-  document.getElementById('scanBtn').onclick = function () {
-    var p = document.getElementById('scanPanel');
-    p.hidden = !p.hidden;
-    if (!p.hidden) renderScanTab();
-  };
   document.getElementById('newModBtn').onclick = function () { openModEditor(''); };
-  document.getElementById('modRescanBtn').onclick = function () {
-    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
-    toast('Сканирование модулей…');
-    bridgeState.loaded = false;
-    bridgeState.services = [];
-    liveBridgeLoad();
-    renderScanTab();
-  };
-  document.getElementById('modManifestsBtn').onclick = function () { openModEditor(''); };
 
   /* --- дашборд: колонка модулей из тех же MODS, что и вкладка Модули --- */
   function applyDashModsVisible() {
