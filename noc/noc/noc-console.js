@@ -922,7 +922,35 @@
       '<div id="modProbeBody" class="mono" style="max-height:400px;overflow:auto"></div>' +
       '</div></div>');
     var pal = w.querySelector('.pal');
-    if (pal) { pal.style.width = 'min(1280px, 96vw)'; pal.style.maxWidth = '1280px'; }
+    if (pal) {
+      /* ширина окна — как у карточек: тянется за правый край, запоминается */
+      pal.style.position = 'relative';
+      var savedW = 0;
+      try { savedW = parseInt(localStorage.getItem('entware_noc_modedit_w') || '0', 10); } catch (e) {}
+      pal.style.width = (savedW >= 700 && savedW <= 1700) ? savedW + 'px' : 'min(1280px, 96vw)';
+      pal.style.maxWidth = '1700px';
+      var grip = document.createElement('div');
+      grip.title = 'Тяните — ширина окна';
+      grip.style.cssText = 'position:absolute;top:0;right:0;bottom:0;width:10px;cursor:ew-resize;z-index:5;touch-action:none;border-right:2px solid var(--line)';
+      pal.appendChild(grip);
+      grip.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault();
+        var x0 = ev.clientX, w0 = pal.getBoundingClientRect().width;
+        var mv = function (e) {
+          var nw = Math.round(w0 + (e.clientX - x0));
+          if (nw < 700) nw = 700;
+          if (nw > 1700) nw = 1700;
+          pal.style.width = nw + 'px';
+        };
+        var up = function () {
+          document.removeEventListener('pointermove', mv);
+          document.removeEventListener('pointerup', up);
+          try { localStorage.setItem('entware_noc_modedit_w', String(Math.round(pal.getBoundingClientRect().width))); } catch (e2) {}
+        };
+        document.addEventListener('pointermove', mv);
+        document.addEventListener('pointerup', up);
+      });
+    }
     var st = function (s) { var el = document.getElementById('modEdStatus'); if (el) el.innerHTML = s; };
     if (editId) {
       liveFetch('bridge_manifest.cgi?id=' + encodeURIComponent(editId), null, 15000).then(function (d) {
