@@ -1287,14 +1287,16 @@ body.card-dragging [data-dndcont]:empty {
  * пунктирные разделители. Невесомые (нулевой вклад в раскладку), чтобы
  * ряды не переносились и страница не прыгала при взятии карточки. */
 .card-slot { display: none; }
-/* flex-ряды: вертикальный разделитель между карточками */
+/* flex-ряды: вертикальный разделитель между карточками.
+ * Широкий (20px) для лёгкого попадания, отрицательные поля гасят вклад
+ * в раскладку в ноль. */
 body.card-dragging .dnd-flow > .card-slot {
   display: block;
   flex: 0 0 auto;
   align-self: stretch;
-  width: 8px;
+  width: 20px;
   min-height: 24px;
-  margin: 0 -4px;
+  margin: 0 -10px;
   border: none;
   border-left: 3px dashed var(--accent);
   opacity: .55;
