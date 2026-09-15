@@ -923,29 +923,44 @@
       '</div></div>');
     var pal = w.querySelector('.pal');
     if (pal) {
-      /* ширина окна — как у карточек: тянется за правый край, запоминается */
+      /* размер окна — как у карточек: тянется за правый нижний угол, запоминается */
       pal.style.position = 'relative';
-      var savedW = 0;
-      try { savedW = parseInt(localStorage.getItem('entware_noc_modedit_w') || '0', 10); } catch (e) {}
+      var savedW = 0, savedH = 0;
+      try {
+        savedW = parseInt(localStorage.getItem('entware_noc_modedit_w') || '0', 10);
+        savedH = parseInt(localStorage.getItem('entware_noc_modedit_h') || '0', 10);
+      } catch (e) {}
       pal.style.width = (savedW >= 700 && savedW <= 1700) ? savedW + 'px' : 'min(1280px, 96vw)';
       pal.style.maxWidth = '1700px';
+      if (savedH >= 400 && savedH <= 1200) { pal.style.height = savedH + 'px'; pal.style.maxHeight = '92vh'; }
       var grip = document.createElement('div');
-      grip.title = 'Тяните — ширина окна';
-      grip.style.cssText = 'position:absolute;top:0;right:0;bottom:0;width:10px;cursor:ew-resize;z-index:5;touch-action:none;border-right:2px solid var(--line)';
+      grip.title = 'Тяните — размер окна';
+      grip.style.cssText = 'position:absolute;right:2px;bottom:2px;width:18px;height:18px;cursor:nwse-resize;z-index:5;touch-action:none;' +
+        'background:linear-gradient(135deg, transparent 50%, var(--line) 50%, var(--line) 60%, transparent 60%, transparent 70%, var(--line) 70%, var(--line) 80%, transparent 80%)';
       pal.appendChild(grip);
       grip.addEventListener('pointerdown', function (ev) {
         ev.preventDefault();
-        var x0 = ev.clientX, w0 = pal.getBoundingClientRect().width;
+        var x0 = ev.clientX, y0 = ev.clientY;
+        var r0 = pal.getBoundingClientRect();
         var mv = function (e) {
-          var nw = Math.round(w0 + (e.clientX - x0));
+          var nw = Math.round(r0.width + (e.clientX - x0));
+          var nh = Math.round(r0.height + (e.clientY - y0));
           if (nw < 700) nw = 700;
           if (nw > 1700) nw = 1700;
+          if (nh < 400) nh = 400;
+          if (nh > 1200) nh = 1200;
           pal.style.width = nw + 'px';
+          pal.style.height = nh + 'px';
+          pal.style.maxHeight = '92vh';
         };
         var up = function () {
           document.removeEventListener('pointermove', mv);
           document.removeEventListener('pointerup', up);
-          try { localStorage.setItem('entware_noc_modedit_w', String(Math.round(pal.getBoundingClientRect().width))); } catch (e2) {}
+          try {
+            var r = pal.getBoundingClientRect();
+            localStorage.setItem('entware_noc_modedit_w', String(Math.round(r.width)));
+            localStorage.setItem('entware_noc_modedit_h', String(Math.round(r.height)));
+          } catch (e2) {}
         };
         document.addEventListener('pointermove', mv);
         document.addEventListener('pointerup', up);
