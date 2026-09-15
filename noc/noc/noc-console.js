@@ -720,10 +720,12 @@
         if (!procs.length) { box.innerHTML = '<span class="mut">Процессов нет</span>'; return; }
         var h = '';
         procs.slice(0, 30).forEach(function (p) {
-          var nm = p.name || p.cmd || '?';
+          /* pids — число процессов (не массив!), init — init-скрипт */
+          var nm = p.name || '?';
+          var meta = (p.pids ? p.pids + ' шт' : '') + (p.init ? (p.pids ? ' · ' : '') + 'init' : '');
           h += '<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)">' +
             '<div class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(nm) +
-            ' <span class="mut">' + esc((p.pids || []).join(',') || String(p.pid || '')) + '</span></div>' +
+            (meta ? ' <span class="mut">' + esc(meta) + '</span>' : '') + '</div>' +
             '<button class="btn sm" data-proc-add="' + esc(nm) + '">+ в модуль</button></div>';
         });
         box.innerHTML = h;
@@ -800,14 +802,8 @@
     var cur = null;
     for (i = 0; i < sources.length; i++) { if (sources[i].name === modProbeTab) cur = sources[i]; }
     if (!cur) { bodyEl.innerHTML = ''; return; }
+    /* порты тут не дублируем — они живут во вкладке «Порты» выше */
     var h = '';
-    if (probe.listen_ports && probe.listen_ports.length) {
-      h += '<div class="mut" style="margin-bottom:4px">Порты (клик — в base):</div><div style="margin-bottom:6px">';
-      probe.listen_ports.forEach(function (p) {
-        h += '<button class="btn sm ghost" data-pport="' + p + '">' + p + '</button> ';
-      });
-      h += '</div>';
-    }
     if (cur.error) {
       h += '<span class="warn-t">' + esc(cur.error) + '</span>';
       if (cur.http_code === 401 || cur.http_code === 403) {
