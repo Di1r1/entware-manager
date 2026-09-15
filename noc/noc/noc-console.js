@@ -1093,15 +1093,17 @@
     if (!disks.length) { wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>'; return; }
     var html = '';
     disks.forEach(function (d) {
-      var facts = [];
-      if (d.temperature !== null && d.temperature !== undefined) facts.push(d.temperature + '°');
-      if (d.power_on_hours) facts.push(d.power_on_hours + ' ч');
-      facts.push(d.serial || '—');
-      facts.push(d.type || '—');
-      facts.push(d.size || '—');
+      var frames = '';
+      if (d.temperature !== null && d.temperature !== undefined) {
+        var tcls = d.temperature > 55 ? ' crit' : (d.temperature > 45 ? ' warn' : '');
+        frames += '<span class="smart-frame' + tcls + '">' + d.temperature + '°</span>';
+      }
+      if (d.power_on_hours) frames += '<span class="smart-frame">' + d.power_on_hours + ' ч</span>';
+      var facts = [d.serial || '—', d.type || '—', d.size || '—'];
       html += '<div class="card" data-mid="smart-' + esc(d.device) + '" data-device="' + esc(d.device) + '">' +
         '<div class="panel-h"><h3>/dev/' + esc(d.device) + '</h3>' + smartHealthBadge(d) +
-        '<span class="mut mono" style="margin-left:auto">' + esc(d.model || '—') + '</span></div>' +
+        '<span class="mut mono">' + esc(d.model || '—') + '</span>' +
+        '<span class="smart-frames">' + frames + '</span></div>' +
         '<div class="vol-list mono" data-parts><div class="vol"><div class="vol-h"><b>Разделы</b><span class="mut">Загрузка…</span></div></div></div>' +
         '<div class="mut mono" style="font-size:11px;margin-top:4px">' + esc(facts.join(' · ')) + '</div>' +
         '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
@@ -1122,6 +1124,9 @@
     } catch (err) {}
     cardBootIds();
     cardResizeBoot();
+    /* перерисовка убила шапки с привязанным переносом — перепривязать */
+    cardOrderBoot();
+    slotBoot();
     Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
       smartFillParts(c, c.getAttribute('data-device'));
     });
@@ -1272,6 +1277,9 @@
     document.getElementById('modCount').textContent = n + ' модулей · ' + on + ' вкл';
     cardBootIds();
     cardResizeBoot();
+    /* перерисовка убила шапки с привязанным переносом — перепривязать */
+    cardOrderBoot();
+    slotBoot();
   }
   renderMods('');
   document.getElementById('modSearch').oninput = function (e) { renderMods(e.target.value); };
@@ -1492,6 +1500,9 @@
     bindModDrag(box);
     cardBootIds();
     cardResizeBoot();
+    /* перерисовка убила шапки с привязанным переносом — перепривязать */
+    cardOrderBoot();
+    slotBoot();
   }
 
   /* DnD reorder module cards */
@@ -4845,6 +4856,20 @@
     });
     return out;
   }
+  /* Обязательные слоты переноса: в конце каждого ряда-контейнера держим
+   * невидимую ячейку — при перетаскивании она подсвечивается и всегда
+   * есть куда бросить (идея владельца). Слоты не .card: порядок, ресайз
+   * и сканы их не видят. */
+  function slotBoot() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-dndcont]'), function (c) {
+      if (c.classList.contains('card-stack')) return;
+      var s = c.querySelector(':scope > .card-slot');
+      if (s) { c.appendChild(s); return; } /* слот всегда последний */
+      s = document.createElement('div');
+      s.className = 'card-slot';
+      c.appendChild(s);
+    });
+  }
   /* Собрать стопку: target остаётся в ряду, el встаёт до/после него внутри. */
   function stackWrap(target, el, before) {
     var row = target.parentElement;
@@ -5000,8 +5025,17 @@
            * (мерцание соседних карточек). */
           ph.style.display = 'none';
           var hits = [];
-          Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
+          Array.prototype.forEach.call(document.querySelectorAll('.card,.card-slot'), function (other) {
             if (other === el || !other.parentElement) return;
+            if (other.classList.contains('card-slot')) {
+              /* слот — только из помеченного ряда (видимые: display:none
+               * дают нулевой rect и отсеиваются сами) */
+              if (!other.parentElement.dataset.dndcont) return;
+              var sr = other.getBoundingClientRect();
+              if (!sr || sr.width <= 0 || sr.height <= 0) return;
+              hits.push({ el: other, r: sr, op: other.parentElement, slot: true });
+              return;
+            }
             var hr = other.getBoundingClientRect();
             if (!hr || hr.width <= 0 || hr.height <= 0) return;
             hits.push({ el: other, r: hr, op: other.parentElement });
@@ -5011,6 +5045,7 @@
           if (ev.shiftKey) {
             for (var hi = 0; hi < hits.length; hi++) {
               var h = hits[hi];
+              if (h.slot) continue;
               if (ev.clientX < h.r.left || ev.clientX > h.r.right || ev.clientY < h.r.top || ev.clientY > h.r.bottom) continue;
               var op = h.op;
               var inStack = op.classList.contains('card-stack');
@@ -5027,6 +5062,10 @@
             lastStackHint.classList.remove('stack-drop-hint-after');
             lastStackHint = null;
           }
+          /* подсветку слотов гасим каждый кадр — кому надо, зажжётся ниже */
+          Array.prototype.forEach.call(document.querySelectorAll('.slot-over'), function (x) {
+            x.classList.remove('slot-over');
+          });
           if (stackTarget) {
             if (ph.parentElement) ph.parentElement.removeChild(ph);
             /* два варианта подсветки: верхняя половина — встанет первой,
@@ -5048,6 +5087,15 @@
           var placed = false;
           for (var pi = 0; pi < hits.length; pi++) {
             var p = hits[pi];
+            if (p.slot) {
+              /* слот — бросок в конец его ряда (плейсхолдер перед слотом) */
+              if (ev.clientX < p.r.left || ev.clientX > p.r.right || ev.clientY < p.r.top || ev.clientY > p.r.bottom) continue;
+              if (!sameView(p.op, srcCont) || !p.op.dataset.dndcont) continue;
+              p.el.classList.add('slot-over');
+              if (!(ph.parentElement === p.op && ph.nextSibling === p.el)) p.op.insertBefore(ph, p.el);
+              placed = true;
+              break;
+            }
             var other = p.el, r = p.r;
             if (ev.clientX < r.left - 8 || ev.clientX > r.right + 8 ||
                 ev.clientY < r.top - 8 || ev.clientY > r.bottom + 8) continue;
@@ -5145,6 +5193,9 @@
             lastStackHint.classList.remove('stack-drop-hint-after');
             lastStackHint = null;
           }
+          Array.prototype.forEach.call(document.querySelectorAll('.slot-over'), function (x) {
+            x.classList.remove('slot-over');
+          });
           if (sdrop && sdrop.ref && document.contains(sdrop.ref)) {
             /* Shift-drop: вертикальная стопка (позиция уже показана подсветкой) */
             var before = (typeof sdrop.before === 'boolean') ? sdrop.before : (function () {
@@ -5232,6 +5283,7 @@
   renderPkg();
   cardOrderBoot();
   cardResizeBoot();
+  slotBoot();
   taHeightBoot();
   (function evtBarBoot() {
     var cur = document.querySelector('#evtBar [data-f="' + evtFilter + '"]');
