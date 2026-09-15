@@ -2389,7 +2389,10 @@
     liveGo('procs', liveFetchExp('procs.cgi'), applyFullProcs);
     /* Packages summary for stats card */
     livePkgLoad();
-    /* Bridge modules */
+    /* Bridge modules: данные жили один тик за сессию (loaded-флаг) —
+     * карточки на статистике были статичны. Обновляем ~раз в минуту
+     * (каждый 9-й тик), кроме момента перетаскивания. */
+    if (liveTickN % 9 === 1 && !document.body.classList.contains('card-dragging')) bridgeState.loaded = false;
     liveBridgeLoad();
     /* WAN-скорость: источника нет — мок не продвигаем, значение «—» */
     paintMeters();
