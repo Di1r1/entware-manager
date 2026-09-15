@@ -1062,23 +1062,30 @@
     if (ah === 'warning') return '<span class="badge warn">' + esc(h) + '</span>';
     return '<span class="badge ok">' + esc(h) + '</span>';
   }
-  /* SMART как «Тома»: каждый диск — полоска с барами температуры
-   * и наработки (data-mid стабилен, ручки навешивает cardResizeBoot). */
-  function smartTempBar(t) {
-    if (t === null || t === undefined) return '<div class="vol"><div class="vol-h"><b>Температура</b><span>—</span></div></div>';
-    var pct = Math.min(100, Math.round(t / 70 * 100));
-    var col = t > 55 ? 'var(--crit)' : (t > 45 ? 'var(--warn)' : 'var(--accent)');
-    return '<div class="vol"><div class="vol-h"><b>Температура</b><span>' + t + '°</span>' +
-      '<span class="mut">шкала до 70°</span></div>' +
-      '<div class="prog"><i style="width:' + pct + '%;background:' + col + '"></i></div></div>';
+  /* SMART как «Тома»: каждый диск — полоска с барами заполненности
+   * разделов (data-mid стабилен, ручки навешивает cardResizeBoot).
+   * Температура баром бессмысленна — идёт строкой фактов. */
+  function smartPartsHTML(parts) {
+    if (!parts || !parts.length) return '<div class="vol"><div class="vol-h"><b>Разделы</b><span class="mut">—</span></div></div>';
+    var html = '';
+    parts.forEach(function (p) {
+      var pct = parseInt(p.pct, 10) || 0;
+      if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+      html += '<div class="vol"><div class="vol-h"><b>' + esc(p.part) + '</b><span>' +
+        esc(p.used) + ' / ' + esc(p.size) + '</span><span class="mut">' + pct + '%</span></div>' +
+        '<div class="prog"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="vol-f mut">' + esc(p.mnt || '—') + ' · своб. ' + esc(p.avail || '—') + '</div></div>';
+    });
+    return html;
   }
-  function smartHoursBar(h) {
-    if (!h) return '<div class="vol"><div class="vol-h"><b>Наработка</b><span>—</span></div></div>';
-    var pct = Math.min(100, Math.round(h / 43800 * 100));
-    var years = (h / 8760).toFixed(1).replace('.', ',');
-    return '<div class="vol"><div class="vol-h"><b>Наработка</b><span>' + h + ' ч</span>' +
-      '<span class="mut">≈' + years + ' г · шкала 5 лет</span></div>' +
-      '<div class="prog"><i style="width:' + pct + '%"></i></div></div>';
+  function smartFillParts(card, dev) {
+    var box = card.querySelector('[data-parts]');
+    if (!box || box.dataset.loaded) return;
+    liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
+      if (!box.parentNode) return;
+      box.dataset.loaded = '1';
+      box.innerHTML = smartPartsHTML((d && d.partitions) || []);
+    });
   }
   function smartRenderCards(disks) {
     var wrap = document.getElementById('smartCards');
@@ -1086,22 +1093,23 @@
     if (!disks.length) { wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>'; return; }
     var html = '';
     disks.forEach(function (d) {
-      html += '<div class="card" data-mid="smart-' + esc(d.device) + '">' +
+      var facts = [];
+      if (d.temperature !== null && d.temperature !== undefined) facts.push(d.temperature + '°');
+      if (d.power_on_hours) facts.push(d.power_on_hours + ' ч');
+      facts.push(d.serial || '—');
+      facts.push(d.type || '—');
+      facts.push(d.size || '—');
+      html += '<div class="card" data-mid="smart-' + esc(d.device) + '" data-device="' + esc(d.device) + '">' +
         '<div class="panel-h"><h3>/dev/' + esc(d.device) + '</h3>' + smartHealthBadge(d) +
         '<span class="mut mono" style="margin-left:auto">' + esc(d.model || '—') + '</span></div>' +
-        '<div class="vol-list mono">' +
-        smartTempBar(d.temperature) +
-        smartHoursBar(d.power_on_hours) +
-        '<div class="vol-f mut" style="font-size:10.5px">' +
-        esc(d.serial || '—') + ' · ' + esc(d.type || '—') + ' · ' + esc(d.size || '—') + '</div>' +
-        '</div>' +
+        '<div class="vol-list mono" data-parts><div class="vol"><div class="vol-h"><b>Разделы</b><span class="mut">Загрузка…</span></div></div></div>' +
+        '<div class="mut mono" style="font-size:11px;margin-top:4px">' + esc(facts.join(' · ')) + '</div>' +
         '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
         '<button class="btn sm ghost" data-sact="info">Информация</button> ' +
         '<button class="btn sm ghost" data-sact="health">Проверка</button> ' +
         '<button class="btn sm ghost" data-sact="usage">Разделы</button> ' +
         '<button class="btn sm ghost" data-sact="attrs">Атрибуты</button> ' +
         '<button class="btn sm ghost" data-sact="tests">Тесты</button></span></div>' +
-        '<div class="smart-use mono" hidden></div>' +
         '</div>';
     });
     wrap.innerHTML = html;
@@ -1114,6 +1122,9 @@
     } catch (err) {}
     cardBootIds();
     cardResizeBoot();
+    Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
+      smartFillParts(c, c.getAttribute('data-device'));
+    });
     smartApplyFilter();
   }
   function smartApplyFilter() {
@@ -1158,22 +1169,11 @@
     });
   }
   function smartToggleUsage(card, dev) {
-    var box = card.querySelector('.smart-use');
+    var box = card.querySelector('[data-parts]');
     if (!box) return;
     if (!box.hidden) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = '<span class="mut">Загрузка разделов…</span>';
-    liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
-      if (box.hidden) return;
-      var parts = (d && d.partitions) || [];
-      if (!parts.length) { box.innerHTML = '<span class="mut">Разделы не найдены</span>'; return; }
-      var h = '<table class="tbl mono"><thead><tr><th>Раздел</th><th>Точка</th><th>Размер</th><th>Исп.</th><th>Своб.</th><th>Занято</th></tr></thead><tbody>';
-      parts.forEach(function (p) {
-        h += '<tr><td class="l">' + esc(p.part) + '</td><td class="l">' + esc(p.mnt) + '</td><td>' +
-          esc(p.size) + '</td><td>' + esc(p.used) + '</td><td>' + esc(p.avail) + '</td><td>' + esc(p.pct) + '%</td></tr>';
-      });
-      box.innerHTML = h + '</tbody></table>';
-    });
+    smartFillParts(card, dev);
   }
   function smartShowAttrs(dev) {
     nocModal('<div class="c-head">Атрибуты · ' + esc(dev) + ' <span class="mut">клик по имени — справка</span></div>' +
@@ -1247,9 +1247,9 @@
     }
     var btn = t.closest ? t.closest('[data-sact]') : null;
     if (!btn) return;
-    var card = btn.closest ? btn.closest('.card') : null;
+    var card = btn.closest ? btn.closest('.card[data-device]') : null;
     if (!card) return;
-    var mid = (card.getAttribute('data-mid') || '').replace(/^smart-/, '');
+    var mid = card.getAttribute('data-device');
     if (!mid) return;
     var act = btn.getAttribute('data-sact');
     if (act === 'info') smartShowInfo(mid);
@@ -4994,7 +4994,11 @@
            * убираем. Без Shift — обычное переупорядочивание. */
           /* ОДИН скан карточек за кадр: rect считаем один раз и делим между
            * Shift-веткой (стопка) и обычной (переупорядочивание) — раньше было
-           * два полных прохода по DOM с getBoundingClientRect на каждую. */
+           * два полных прохода по DOM с getBoundingClientRect на каждую.
+           * Плейсхолдер на время замера прячем: иначе он сам сдвигает ряд
+           * и следующий кадр считает уже сдвинутые rect — слот осциллирует
+           * (мерцание соседних карточек). */
+          ph.style.display = 'none';
           var hits = [];
           Array.prototype.forEach.call(document.querySelectorAll('.card'), function (other) {
             if (other === el || !other.parentElement) return;
@@ -5002,6 +5006,7 @@
             if (!hr || hr.width <= 0 || hr.height <= 0) return;
             hits.push({ el: other, r: hr, op: other.parentElement });
           });
+          ph.style.display = '';
           var stackTarget = null;
           if (ev.shiftKey) {
             for (var hi = 0; hi < hits.length; hi++) {
@@ -5060,7 +5065,14 @@
             if (yFrac > 0.25 && yFrac < 0.75) before = (ev.clientX - r.left) < r.width / 2;
             else before = yFrac < 0.5;
             /* плейсхолдер уже на месте — не трогаем DOM, иначе каждый
-             * pointermove дёргает вёрстку и соседние карточки мерцают */
+             * pointermove дёргает вёрстку и соседние карточки мерцают.
+             * В flex-ряду превью делаем гибким: жёсткий полноширинный
+             * плейсхолдер сразу переносился бы строкой ниже, и «зоны»
+             * для 2–3 в ряд не было видно (на сбросе ширина ужмётся
+             * авто-flex'ом из up). */
+            if (oc.classList.contains('dnd-flow') && ph.style.flex === 'none') {
+              ph.style.width = ''; ph.style.flex = '';
+            }
             var refNode = before ? other : other.nextSibling;
             if (!(ph.parentElement === oc && ph.nextSibling === refNode)) oc.insertBefore(ph, refNode);
             placed = true;
@@ -5089,7 +5101,13 @@
                 dest = cc;
               });
             }
-            if (dest && dest !== ph.parentElement) dest.appendChild(ph);
+            if (dest && dest !== ph.parentElement) {
+              /* в не-flex контейнер — жёсткое превью по размеру карточки */
+              if (!dest.classList.contains('dnd-flow') && el.classList.contains('card-fixedw') && el.style.width) {
+                ph.style.width = el.style.width; ph.style.flex = 'none';
+              }
+              dest.appendChild(ph);
+            }
           }
         };
         var up = function (ev) {
