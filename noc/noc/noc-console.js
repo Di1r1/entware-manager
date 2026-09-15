@@ -1449,7 +1449,7 @@
           '</div>' +
         '</div>';
     });
-    box.innerHTML = '<div class="svc-list mods-on-stats">' + html + '</div>';
+    box.innerHTML = '<div class="svc-list mods-on-stats" id="statModsList">' + html + '</div>';
     var cnt = document.getElementById('statModCnt');
     if (cnt) cnt.textContent = on + ' активных · ' + MODS.length + ' всего';
     applyDashModsVisible();
@@ -2390,9 +2390,9 @@
     /* Packages summary for stats card */
     livePkgLoad();
     /* Bridge modules: данные жили один тик за сессию (loaded-флаг) —
-     * карточки на статистике были статичны. Обновляем ~раз в минуту
-     * (каждый 9-й тик), кроме момента перетаскивания. */
-    if (liveTickN % 9 === 1 && !document.body.classList.contains('card-dragging')) bridgeState.loaded = false;
+     * карточки на статистике были статичны. Обновляем каждые ~30 секунд
+     * (каждый 4-й тик), кроме момента перетаскивания. */
+    if (liveTickN % 4 === 1 && !document.body.classList.contains('card-dragging')) bridgeState.loaded = false;
     liveBridgeLoad();
     /* WAN-скорость: источника нет — мок не продвигаем, значение «—» */
     paintMeters();
@@ -4780,7 +4780,9 @@
    * новые (непривязанные) шапки, иначе полный проход на каждый тик/ввод */
   function cardOrderReboot(scope) {
     var root = scope || document;
-    if (root.querySelector && !root.querySelector('.panel-h:not([data-dnd]),.c-head:not([data-dnd])')) {
+    /* шапки переноса: обычные (.panel-h/.c-head) И модульные
+     * (.mod-top на статистике, .mod-mini-row на вкладке Модули) */
+    if (root.querySelector && !root.querySelector('.panel-h:not([data-dnd]),.c-head:not([data-dnd]),.mod-top:not([data-dnd]),.mod-mini-row:not([data-dnd])')) {
       slotBoot();
       return;
     }
