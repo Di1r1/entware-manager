@@ -477,7 +477,9 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
  * У flex-контейнеров свой gap; у #view-stats/.stats-main тоже свой.
  * Стопки исключены: внутри стопки зазор — только column-gap, иначе двойные отступы. */
 [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card { margin-bottom: 12px; }
-#view-stats > .card, .stats-main > .card { margin-bottom: 0; }
+#view-stats > .card, .stats-main > .card, #view-services > .card { margin-bottom: 0; }
+/* Службы и Cron: вертикальный ритм прямых потомков (hero/секции/карточка) */
+#view-services { display: flex; flex-direction: column; gap: var(--gap-main); }
 [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-fixedw { margin-right: 8px; }
 /* стопор для полей ввода: не вылезают за грани карточки/модалки при растягивании */
 .card textarea, .pal textarea { max-width: 100%; }
@@ -567,6 +569,7 @@ body.card-dragging [data-dndcont]:empty {
   padding: 5px 7px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 .tbl tr:last-child td { border-bottom: none; }
 .tbl td.l { text-align: left; }
