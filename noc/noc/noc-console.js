@@ -1125,8 +1125,7 @@
     cardBootIds();
     cardResizeBoot();
     /* перерисовка убила шапки с привязанным переносом — перепривязать */
-    cardOrderBoot();
-    slotBoot();
+    cardOrderReboot(wrap);
     Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
       smartFillParts(c, c.getAttribute('data-device'));
     });
@@ -1278,8 +1277,7 @@
     cardBootIds();
     cardResizeBoot();
     /* перерисовка убила шапки с привязанным переносом — перепривязать */
-    cardOrderBoot();
-    slotBoot();
+    cardOrderReboot(modGrid);
   }
   renderMods('');
   document.getElementById('modSearch').oninput = function (e) { renderMods(e.target.value); };
@@ -1501,8 +1499,7 @@
     cardBootIds();
     cardResizeBoot();
     /* перерисовка убила шапки с привязанным переносом — перепривязать */
-    cardOrderBoot();
-    slotBoot();
+    cardOrderReboot(box);
   }
 
   /* DnD reorder module cards */
@@ -4871,6 +4868,17 @@
       c.appendChild(s);
     });
   }
+  /* Перезапуск привязки после перерисовки — только если реально есть
+   * новые (непривязанные) шапки, иначе полный проход на каждый тик/ввод */
+  function cardOrderReboot(scope) {
+    var root = scope || document;
+    if (root.querySelector && !root.querySelector('.panel-h:not([data-dnd]),.c-head:not([data-dnd])')) {
+      slotBoot();
+      return;
+    }
+    cardOrderBoot();
+    slotBoot();
+  }
   /* Собрать стопку: target остаётся в ряду, el встаёт до/после него внутри. */
   function stackWrap(target, el, before) {
     var row = target.parentElement;
@@ -4889,6 +4897,14 @@
     else if (kids.length === 1) { st.parentElement.insertBefore(kids[0], st); st.parentElement.removeChild(st); }
   }
   function cardApplyOrder() {
+    /* посреди перетаскивания порядок не трогаем — иначе тик выдернет
+     * карточку из-под курсора */
+    if (document.body.classList.contains('card-dragging')) return;
+    /* пустые обёртки стопок от прошлых apply — убрать, иначе копятся
+     * и занимают место в рядах */
+    Array.prototype.forEach.call(document.querySelectorAll('.card-stack'), function (st) {
+      if (st.parentElement && !contCards(st).length) st.parentElement.removeChild(st);
+    });
     var saved = cardOrderLoad();
     var keys = Object.keys(saved);
     if (!keys.length) return;
