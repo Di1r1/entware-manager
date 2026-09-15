@@ -2475,6 +2475,7 @@
     liveLogin();
   }
   function liveTick() {
+    if (!window.__NOC_LIVE_STATS) return; /* сессия потеряна — не спамим 401 */
     if (livePending > 4) return; /* прошлый тик ещё висит — не копим запросы */
     liveTickN++;
     liveTickErr = [];
