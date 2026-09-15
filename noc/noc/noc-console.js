@@ -526,7 +526,7 @@
   window.__MODS_REF = MODS;
 
   /* порядок карточек модулей (localStorage) */
-  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function modCard(m) {
     var live = m.on ? (m.state === 'degraded' ? 'warn' : 'ok') : '';
     return '<div class="card mod mod-mini' + (m.on ? '' : ' off') + '" data-mid="' + esc(m.id) + '">' +
@@ -1090,13 +1090,8 @@
         '</div>';
     });
     wrap.innerHTML = html;
-    /* чистим сохранённые ширины эпохи «карточки в ряд» — полоски всегда
-     * во всю ширину, старые значения только мешали бы */
-    try {
-      var wm = cardWLoad(), dirty = false;
-      Object.keys(wm).forEach(function (k) { if (k.indexOf('mid:smart-') === 0) { delete wm[k]; dirty = true; } });
-      if (dirty) cardWSave(wm);
-    } catch (err) {}
+    /* старые ширины эпохи «карточки в ряд» игнорирует сам cardResizeBoot
+     * (полоски всегда во всю ширину) — дубль чистки здесь не нужен */
     cardBootIds();
     cardResizeBoot();
     /* перерисовка убила шапки с привязанным переносом — перепривязать */
@@ -1112,16 +1107,6 @@
     if (!q || !wrap) return;
     var s = q.value.toLowerCase();
     Array.prototype.forEach.call(wrap.querySelectorAll('.card'), function (c) {
-      c.style.display = (!s || c.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
-    });
-  }
-  function smartApplyFilter() {
-    var q = document.getElementById('smartSearch');
-    var wrap = document.getElementById('smartCards');
-    if (!q || !wrap) return;
-    var s = q.value.toLowerCase();
-    Array.prototype.forEach.call(wrap.querySelectorAll('.card'), function (c) {
-      if (!c.querySelector('tr[data-device]')) return;
       c.style.display = (!s || c.textContent.toLowerCase().indexOf(s) >= 0) ? '' : 'none';
     });
   }
@@ -1426,9 +1411,8 @@
       if (m.on && m.fields && m.fields.length) {
         m.fields.forEach(function (f) {
           if (f.tile === false) return;
-          /* show tile fields + default-tile (tile true or undefined for key metrics already listed) */
-          if (f.tile !== true && f.tile !== undefined) return;
-          if (f.tile !== true) return; /* only explicit tile:true from manifest */
+          /* only explicit tile:true from manifest */
+          if (f.tile !== true) return;
           var style = f.color ? ' style="color:' + esc(f.color) + '"' : '';
           tiles += '<div class="tile mono"><label>' + esc(f.label) + '</label><b' + style + '>' + esc(formatField(f)) + '</b></div>';
         });
@@ -1439,12 +1423,12 @@
       html +=
         '<div class="card mod' + (m.on ? '' : ' off') + '" data-mid="' + esc(m.id) + '">' +
           '<div class="mod-top">' +
-            '<span class="mod-drag" title="Перетащить" draggable="false">⠿</span>' +
+            '<span class="mod-drag" title="Перетащить">⠿</span>' +
             '<span class="dot ok" title="работает"></span>' +
             '<b>' + esc(m.name) + '</b>' +
             '<span class="tag mono">' + esc(m.id) + '</span>' +
           '</div>' +
-          '<div class="mod-state" style="color:' + m.color + '">● ' + esc(m.label) + '</div>' +
+          '<div class="mod-state" style="color:' + esc(m.color) + '">● ' + esc(m.label) + '</div>' +
           '<div class="mod-detail">' + esc(m.on ? m.detail : 'модуль выключен · манифест: /opt/web_entware/bridge/' + m.id + '.json') +
             (m.on && m.fields ? (function () {
               var extra = [];
@@ -1726,6 +1710,8 @@
       for (var i = 0; i < bookmarks.length; i++) if (bookmarks[i].id === id) b = bookmarks[i];
       var url = b ? b.url : a.getAttribute('href');
       if (!url || url === '#') { e.preventDefault(); toast('Нет адреса', 'warn'); return; }
+      /* только http(s) и локальные пути — без javascript:/data: из links.json */
+      if (!/^(https?:\/\/|\/[^/])/i.test(url)) { e.preventDefault(); toast('Недопустимый адрес', 'warn'); return; }
       e.preventDefault();
       window.open(url, '_blank', 'noopener');
     });
@@ -2379,6 +2365,7 @@
   function liveStop() {
     if (!window.__NOC_LIVE_STATS) return;
     window.__NOC_LIVE_STATS = false;
+    if (window.__NOC_TICK) { clearInterval(window.__NOC_TICK); window.__NOC_TICK = null; }
     mockRestore();
     toast('Сессия потеряна — мок', 'warn');
     liveLogin();
@@ -3510,10 +3497,10 @@
       if (badge) {
         if (d.failed_24h > 0) {
           badge.textContent = d.failed_24h + ' неудачных попыток за 24ч';
-          badge.style.cssText = 'display:inline-block;background:#e53e3e;color:#fff;border-radius:12px;padding:2px 10px;font-size:0.8rem;';
+          badge.className = 'pill-crit';
         } else {
           badge.textContent = '';
-          badge.style.cssText = '';
+          badge.className = '';
         }
       }
       if (!entries.length) { tb.innerHTML = '<tr><td colspan="3" class="mut">Попыток входа не зафиксировано</td></tr>'; return; }
