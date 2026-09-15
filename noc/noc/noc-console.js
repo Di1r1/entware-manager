@@ -2094,10 +2094,20 @@
     if (d.wan) {
       var w = document.querySelector('[data-metric="wan"] .res-h span');
       if (w) { w.textContent = String(d.wan); w.className = String(d.wan).indexOf('up') >= 0 ? 'ok-t' : 'warn-t'; }
-      var wf = document.querySelector('[data-metric="wan"] .res-f');
-      if (wf) wf.textContent = String(d.wan);
       var kw2 = document.getElementById('kpiWan');
-      if (kw2) kw2.textContent = d.wan_speed || '—';
+      /* крупно — входящий поток, единица — отдельно (без дубля «Мбит Мбит») */
+      var rxm = String(d.wan_rx || '').match(/([\d.]+)\s*(.*)/);
+      if (kw2 && rxm) {
+        kw2.textContent = rxm[1];
+        var kwu = document.getElementById('kpiWanUnit');
+        if (kwu) kwu.textContent = ' ' + (rxm[2] || 'Мбит');
+      } else if (kw2) kw2.textContent = d.wan_speed || '—';
+      /* внизу — оба потока без графика: ↓ входящий · ↑ исходящий */
+      var wf2 = document.querySelector('[data-metric="wan"] .res-f');
+      if (wf2) {
+        var iface = String(d.wan || '').split(' ')[0] || 'wan';
+        wf2.textContent = '↓ ' + (d.wan_rx || '—') + ' · ↑ ' + (d.wan_tx || '—') + ' · ' + iface;
+      }
       /* push numeric speed to sparkline */
       var ws = d.wan_speed;
       if (ws && typeof ws === 'string') {

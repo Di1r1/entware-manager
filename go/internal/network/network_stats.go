@@ -54,6 +54,8 @@ type NetworkStatsResponse struct {
 	WiFiInfo   []wifiBridge  `json:"wifi_info"`
 	WAN        string        `json:"wan"`
 	WANSpeed   string        `json:"wan_speed,omitempty"`
+	WANRx      string        `json:"wan_rx,omitempty"`
+	WANTx      string        `json:"wan_tx,omitempty"`
 	Ports      []portInfo    `json:"ports"`
 	Networks   []networkInfo `json:"networks"`
 }
@@ -107,7 +109,7 @@ func buildNetworkStats() NetworkStatsResponse {
 	resp.LAN = buildLAN(resp.Interfaces)
 	resp.WiFi = getWiFiStatus()
 	resp.WAN = getWANStatus()
-	resp.WANSpeed = getWANSpeed()
+	resp.WANSpeed, resp.WANRx, resp.WANTx = getWANSpeeds()
 
 	return resp
 }
@@ -501,18 +503,33 @@ func buildNetworkInfo(bridge string, members []string) networkInfo {
 	}
 }
 
-func getWANSpeed() string {
+func fmtBps(bps float64) string {
+	if bps >= 1_000_000_000 {
+		return fmt.Sprintf("%.0f Гбит/с", bps/1_000_000_000)
+	}
+	if bps >= 1_000_000 {
+		return fmt.Sprintf("%.0f Мбит/с", bps/1_000_000)
+	}
+	if bps >= 1_000 {
+		return fmt.Sprintf("%.0f Кбит/с", bps/1_000)
+	}
+	return fmt.Sprintf("%.0f бит/с", bps)
+}
+
+/* getWANSpeeds — входящая, исходящая и суммарная скорости WAN за один
+ * проход (один апдейт кэша; два отдельных вызова дали бы dt≈0). */
+func getWANSpeeds() (combined, rx, tx string) {
 	wanIface := getWANInterface()
 	if wanIface == "—" || wanIface == "" {
-		return ""
+		return "", "", ""
 	}
 
 	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {
-		return ""
+		return "", "", ""
 	}
 
-	var rx, tx uint64
+	var rxB, txB uint64
 	found := false
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
@@ -523,14 +540,14 @@ func getWANSpeed() string {
 		if len(fields) < 10 {
 			continue
 		}
-		rx, _ = strconv.ParseUint(fields[1], 10, 64)
-		tx, _ = strconv.ParseUint(fields[9], 10, 64)
+		rxB, _ = strconv.ParseUint(fields[1], 10, 64)
+		txB, _ = strconv.ParseUint(fields[9], 10, 64)
 		found = true
 		break
 	}
 
 	if !found {
-		return ""
+		return "", "", ""
 	}
 
 	now := time.Now()
@@ -542,32 +559,36 @@ func getWANSpeed() string {
 	}
 
 	if cache.Iface != wanIface || cache.Time.IsZero() {
-		cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+		cache = wanSpeedCache{RX: rxB, TX: txB, Time: now, Iface: wanIface}
 		os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
-		return "0 Мбит/с"
+		return "0 Мбит/с", "0 Мбит/с", "0 Мбит/с"
 	}
 
 	dt := now.Sub(cache.Time).Seconds()
 	if dt <= 0 {
-		cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+		cache = wanSpeedCache{RX: rxB, TX: txB, Time: now, Iface: wanIface}
 		os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
-		return "0 Мбит/с"
+		return "0 Мбит/с", "0 Мбит/с", "0 Мбит/с"
 	}
 
-	speedBps := float64((rx - cache.RX) + (tx - cache.TX)) * 8 / dt
-	cache = wanSpeedCache{RX: rx, TX: tx, Time: now, Iface: wanIface}
+	rxBps := float64(rxB-cache.RX) * 8 / dt
+	txBps := float64(txB-cache.TX) * 8 / dt
+	/* счётчики не мотаются назад (пересоздание интерфейса): без отрицательных */
+	if rxB < cache.RX {
+		rxBps = 0
+	}
+	if txB < cache.TX {
+		txBps = 0
+	}
+	cache = wanSpeedCache{RX: rxB, TX: txB, Time: now, Iface: wanIface}
 	os.WriteFile(wanSpeedCacheFile, mustMarshal(cache), 0644)
 
-	if speedBps >= 1_000_000_000 {
-		return fmt.Sprintf("%.0f Гбит/с", speedBps/1_000_000_000)
-	}
-	if speedBps >= 1_000_000 {
-		return fmt.Sprintf("%.0f Мбит/с", speedBps/1_000_000)
-	}
-	if speedBps >= 1_000 {
-		return fmt.Sprintf("%.0f Кбит/с", speedBps/1_000)
-	}
-	return fmt.Sprintf("%.0f бит/с", speedBps)
+	return fmtBps(rxBps + txBps), fmtBps(rxBps), fmtBps(txBps)
+}
+
+func getWANSpeed() string {
+	combined, _, _ := getWANSpeeds()
+	return combined
 }
 
 func mustMarshal(v interface{}) []byte {
