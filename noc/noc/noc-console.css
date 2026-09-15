@@ -1585,6 +1585,10 @@ html[data-density="comfortable"] .meter b { font-size: 12.5px; }
 html[data-density="comfortable"] .bm-label { font-size: 13.5px; }
 html[data-density="comfortable"] .smart-frame { font-size: 12.5px; }
 html[data-density="comfortable"] .evt { font-size: 12.5px; }
+/* комфорт: пункты левого меню */
+html[data-density="comfortable"] .ri { font-size: 13.5px; }
+html[data-density="comfortable"] .ri i { font-size: 15px; }
+html[data-density="comfortable"] .rg-title { font-size: 10.5px; }
 html[data-density="compact"] .log { height: 130px; }
 html[data-density="compact"] .topbar { height: 40px; }
 html[data-density="compact"] .hero h2 { font-size: 15px; }
