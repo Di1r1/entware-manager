@@ -4781,8 +4781,8 @@
   function cardOrderReboot(scope) {
     var root = scope || document;
     /* шапки переноса: обычные (.panel-h/.c-head) И модульные
-     * (.mod-top на статистике, .mod-mini-row на вкладке Модули) */
-    if (root.querySelector && !root.querySelector('.panel-h:not([data-dnd]),.c-head:not([data-dnd]),.mod-top:not([data-dnd]),.mod-mini-row:not([data-dnd])')) {
+     * (.mod-top в зоне модулей на статистике) */
+    if (root.querySelector && !root.querySelector('.panel-h:not([data-dnd]),.c-head:not([data-dnd]),.mod-top:not([data-dnd])')) {
       slotBoot();
       return;
     }
@@ -4917,9 +4917,9 @@
     cardApplyOrder();
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
-      /* шапка переноса: обычные панели + шапки модульных карточек
-       * (.mod-top на статистике, .mod-mini-row на вкладке Модули) */
-      var head = el.querySelector(':scope > .panel-h, :scope > .c-head, :scope > .mod-top, :scope > .mod-mini-row');
+      /* шапка переноса: обычные панели + шапки карточек модулей на
+       * статистике (.mod-top). На вкладке «Модули» перенос не нужен. */
+      var head = el.querySelector(':scope > .panel-h, :scope > .c-head, :scope > .mod-top');
       if (!head || head.dataset.dnd) return;
       head.dataset.dnd = '1';
       head.addEventListener('pointerdown', function (e) {
