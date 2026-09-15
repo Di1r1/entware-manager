@@ -4985,10 +4985,10 @@
           /* ОДИН скан карточек за кадр: rect считаем один раз и делим между
            * Shift-веткой (стопка) и обычной (переупорядочивание) — раньше было
            * два полных прохода по DOM с getBoundingClientRect на каждую.
-           * Плейсхолдер на время замера прячем: иначе он сам сдвигает ряд
-           * и следующий кадр считает уже сдвинутые rect — слот осциллирует
-           * (мерцание соседних карточек). */
-          ph.style.display = 'none';
+           * Плейсхолдер на время замера прячем через visibility (место
+           * остаётся!): display схлопывал бы место, всё ниже ехало вверх
+           * и подсветка зажигалась ниже курсора. Синхронно возвращаем. */
+          ph.style.visibility = 'hidden';
           var hits = [];
           Array.prototype.forEach.call(document.querySelectorAll('.card,.card-slot'), function (other) {
             if (other === el || !other.parentElement) return;
@@ -5005,7 +5005,7 @@
             if (!hr || hr.width <= 0 || hr.height <= 0) return;
             hits.push({ el: other, r: hr, op: other.parentElement });
           });
-          ph.style.display = '';
+          ph.style.visibility = '';
           var stackTarget = null;
           if (ev.shiftKey) {
             for (var hi = 0; hi < hits.length; hi++) {
