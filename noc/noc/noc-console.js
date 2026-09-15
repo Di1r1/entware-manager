@@ -4859,6 +4859,8 @@
    * есть куда бросить (идея владельца). Слоты не .card: порядок, ресайз
    * и сканы их не видят. */
   function slotBoot() {
+    /* сначала маркировка: ряды из свежих перерисовок тоже получают слот */
+    markDndCont();
     Array.prototype.forEach.call(document.querySelectorAll('[data-dndcont]'), function (c) {
       if (c.classList.contains('card-stack')) return;
       var s = c.querySelector(':scope > .card-slot');
@@ -4961,12 +4963,16 @@
     }
     return true;
   }
-  function cardOrderBoot() {
-    cardBootIds();
-    /* маркировка раньше apply: ключи cont:N должны существовать до чтения */
-    var markCards = document.querySelectorAll('.card');
+  /* Маркировка рядов-контейнеров (ключи cont:N для сохранения порядка).
+   * Отдельной функцией: новые контейнеры появляются и после boot
+   * (перерисовки), slotBoot подхватывает их тоже. */
+  function markDndCont() {
     var ncont = 0;
-    Array.prototype.forEach.call(markCards, function (el) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-nocont]'), function (c) {
+      var n = parseInt(c.dataset.nocont, 10);
+      if (n >= ncont) ncont = n + 1;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.card'), function (el) {
       if (el.parentElement) {
         el.parentElement.dataset.dndcont = '1';
         /* свободная раскладка — ТОЛЬКО двухколоночным секциям
@@ -4978,6 +4984,11 @@
         if (!el.parentElement.dataset.nocont) el.parentElement.dataset.nocont = '' + (ncont++);
       }
     });
+  }
+  function cardOrderBoot() {
+    cardBootIds();
+    /* маркировка раньше apply: ключи cont:N должны существовать до чтения */
+    markDndCont();
     cardApplyOrder();
     var cards = document.querySelectorAll('.card');
     Array.prototype.forEach.call(cards, function (el) {
@@ -5264,6 +5275,8 @@
             map[contKey(c)] = contCardsDeep(c);
           });
           cardOrderSave(map);
+          /* слот — снова строго в конец своего ряда */
+          slotBoot();
         };
         /* move/up — на document: без захвата указателя шапка перестаёт
          * получать события, как только карточка уходит из-под курсора
