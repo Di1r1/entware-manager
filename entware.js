@@ -1048,9 +1048,21 @@ function focusTtydFrame(id) {
             }
         } catch (e) { /* cross-origin или ещё не готово — игнорируем */ }
     };
+    // Принудительный refit: клиент ttyd вызывает fit() один раз при open,
+    // иногда до готовности раскладки/шрифтов — терминал выходит за рамку.
+    // Повторный resize после загрузки дотягивает xterm под размер iframe.
+    const refitInner = () => {
+        try {
+            const w = frame.contentWindow;
+            if (!w) return;
+            w.dispatchEvent(new w.Event('resize'));
+        } catch (e) { /* игнорируем */ }
+    };
     frame.addEventListener('load', () => {
         setTimeout(focusInner, 400);
         setTimeout(focusInner, 1200);
+        setTimeout(refitInner, 600);
+        setTimeout(refitInner, 1500);
     });
 }
 

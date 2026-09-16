@@ -3930,6 +3930,16 @@
       termStateKey = key;
       if (t.state === 'running') {
         wrap.innerHTML = '<iframe id="termFrame" src="/terminal/" width="100%" height="480" style="border:none;border-radius:8px" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>';
+        /* Принудительный refit: клиент ttyd вызывает fit() один раз при open,
+         * иногда до готовности раскладки/шрифтов — терминал выходит за рамку.
+         * Повторный resize после загрузки дотягивает xterm под размер iframe. */
+        var fr = document.getElementById('termFrame');
+        if (fr) {
+          fr.addEventListener('load', function () {
+            setTimeout(function () { termRefit(); }, 600);
+            setTimeout(function () { termRefit(); }, 1500);
+          });
+        }
       } else {
         wrap.innerHTML = '<div class="mut mono">Терминал не запущен. Откройте <b>Настройки → Терминал</b>, задайте пароль и нажмите <b>Запустить</b>.</div>';
       }
@@ -3939,7 +3949,16 @@
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     liveFetch('ttyd_control.cgi').then(termRender);
   }
-  /* Переключение режима прямо из вкладки Терминал (seg termModeSeg):
+  /* termRefit: дёрнуть resize внутри iframe терминала — клиент ttyd
+   * на него вызывает fit() и подгоняет xterm под размер рамки. */
+  function termRefit() {
+    try {
+      var fr = document.getElementById('termFrame');
+      var w = fr ? fr.contentWindow : null;
+      if (!w) return;
+      w.dispatchEvent(new w.Event('resize'));
+    } catch (e) { /* cross-origin или ещё не готово — игнорируем */ }
+  }  /* Переключение режима прямо из вкладки Терминал (seg termModeSeg):
    * один общий пароль на оба режима — поле termPass здесь же во вкладке
    * (как в RDP), запасной вариант — поле Настроек. Отдельного пароля
    * для telnet нет. Пароль для старта обязателен (бэкенд без него
