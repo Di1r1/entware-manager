@@ -14,6 +14,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,6 +32,11 @@ import (
 type backend struct {
 	prefix string // URL-префикс на панели, напр. /terminal/
 	target string // http://127.0.0.1:9089
+	// ttydPort — порт ttyd-бэкенда (9089/8089). Если > 0, для встроенного
+	// вида (iframe) прокси сам подставляет Basic Auth из cmdline процесса
+	// ttyd, чтобы браузер не показывал системное окно пароля при каждой
+	// загрузке вкладки. 0 — без подстановки (rdp, прочие).
+	ttydPort int
 }
 
 var proxyBackends []backend
@@ -73,8 +80,8 @@ func rdpProxyPort() int {
 // смену порта без перезапуска entware-server.
 func registerProxyBackends() {
 	proxyBackends = []backend{
-		{prefix: "/terminal/", target: "http://127.0.0.1:9089"},
-		{prefix: "/htop/", target: "http://127.0.0.1:8089"},
+		{prefix: "/terminal/", target: "http://127.0.0.1:9089", ttydPort: 9089},
+		{prefix: "/htop/", target: "http://127.0.0.1:8089", ttydPort: 8089},
 		{prefix: "/rdp/", target: "http://127.0.0.1:" + strconv.Itoa(rdpProxyPort())},
 	}
 }
@@ -98,6 +105,11 @@ func handleRemoteProxy(b backend) http.Handler {
 			}
 			httputil.NewSingleHostReverseProxy(t).ServeHTTP(w, r)
 		})
+	}
+	// ttyd-бэкенд: подстановка Basic Auth для встроенного вида (iframe),
+	// чтобы вкладка Терминал/htop открывалась без системного окна пароля.
+	if b.ttydPort > 0 {
+		return ttydAuthHandler(b.ttydPort, proxy)
 	}
 	return proxy
 }
@@ -131,4 +143,121 @@ func rdpPingHandler() http.Handler {
 		}
 		httputil.NewSingleHostReverseProxy(t).ServeHTTP(w, r)
 	})
+}
+
+// ttydAuthHandler подставляет Basic Auth ttyd для встроенного вида
+// (iframe во вкладках Терминал/htop), чтобы браузер не показывал системное
+// окно пароля при каждой загрузке вкладки.
+//
+// Правило: подстановка — только если это НЕ навигация верхнего уровня
+// (Sec-Fetch-Dest != "document") и у запроса ещё нет своего Authorization.
+// Прямое открытие /terminal/ или /htop/ в новой вкладке/адресной строке
+// (Sec-Fetch-Dest: document) идёт как раньше — ttyd отвечает 401 и пароль
+// спрашивает браузер. Свой Authorization (введён в диалоге нового окна
+// и закэширован браузером) никогда не перезаписывается.
+//
+// Пароль берётся из cmdline процесса ttyd (-c user:pass, см. startTTYD):
+// он и так виден в ps на роутере, подстановка в loopback-запрос новой
+// поверхности не создаёт. Доступ через прокси уже закрыт authGate панели.
+func ttydAuthHandler(port int, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" &&
+			r.Header.Get("Sec-Fetch-Dest") != "" &&
+			r.Header.Get("Sec-Fetch-Dest") != "document" {
+			if cred, ok := ttydCredLookup(port); ok {
+				r.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(cred)))
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// ttydCredLookup — точка подстановки пароля ttyd (var для stub'ов в тестах).
+var ttydCredLookup = ttydCredFromProc
+
+type ttydCred struct {
+	cred    string // "user:pass" из -c
+	checked time.Time
+}
+
+var (
+	ttydCredCache = map[int]ttydCred{}
+	ttydCredMu    sync.Mutex
+)
+
+// ttydCredFromProc ищет процесс ttyd на порту и возвращает его credential
+// из флага -c/--credential. Результат кэшируется на 10 секунд, чтобы не
+// сканировать /proc на каждый субресурс iframe.
+func ttydCredFromProc(port int) (string, bool) {
+	ttydCredMu.Lock()
+	if c, ok := ttydCredCache[port]; ok && time.Since(c.checked) < 10*time.Second {
+		ttydCredMu.Unlock()
+		return c.cred, c.cred != ""
+	}
+	ttydCredMu.Unlock()
+
+	cred, ok := scanTTYDCredential(port)
+
+	ttydCredMu.Lock()
+	ttydCredCache[port] = ttydCred{cred: cred, checked: time.Now()}
+	ttydCredMu.Unlock()
+	return cred, ok
+}
+
+// scanTTYDCredential читает /proc и извлекает значение -c/--credential
+// процесса ttyd, слушающего указанный порт. Аргументы разбираются по
+// NUL-разделителю argv, поэтому пароль с пробелами не ломает парсинг.
+func scanTTYDCredential(port int) (string, bool) {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return "", false
+	}
+	portStr := strconv.Itoa(port)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := strconv.Atoi(e.Name()); err != nil {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join("/proc", e.Name(), "cmdline"))
+		if err != nil || len(raw) == 0 {
+			continue
+		}
+		argv := strings.Split(string(raw), "\x00")
+		if len(argv) == 0 || filepath.Base(argv[0]) != "ttyd" {
+			continue
+		}
+		if !ttydArgvHasPort(argv, portStr) {
+			continue
+		}
+		for i := 0; i < len(argv); i++ {
+			if (argv[i] == "-c" || argv[i] == "--credential") && i+1 < len(argv) && argv[i+1] != "" {
+				return argv[i+1], true
+			}
+		}
+	}
+	return "", false
+}
+
+// ttydArgvHasPort проверяет, что argv запуска ttyd относится к порту:
+// -p/--port <port>, --port=<port> или голый <port>. Матчинг по подстроке
+// запрещён — он ловит чужие процессы (паритет с isTTYDOnPort в services).
+func ttydArgvHasPort(argv []string, portStr string) bool {
+	for i := 0; i < len(argv); i++ {
+		a := argv[i]
+		if a == "-p" || a == "--port" {
+			if i+1 < len(argv) && argv[i+1] == portStr {
+				return true
+			}
+			continue
+		}
+		if strings.HasPrefix(a, "--port=") && a[len("--port="):] == portStr {
+			return true
+		}
+		if a == portStr {
+			return true
+		}
+	}
+	return false
 }
