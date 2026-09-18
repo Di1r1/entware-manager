@@ -18,8 +18,12 @@ jobs:
           cache-dependency-path: go/go.mod
       - name: Check dependencies
         run: |
-          which go tar find tee python3
+          which go tar find tee python3 node
       - name: Go vet
         run: cd go && go vet ./...
-      - name: Go test
-        run: cd go && go test ./...
+      - name: Project tests
+        run: make test
+      - name: JavaScript syntax
+        run: |
+          find . -type f -name '*.js' -not -path './.git/*' -print0 \
+            | xargs -0 -n1 node --check
