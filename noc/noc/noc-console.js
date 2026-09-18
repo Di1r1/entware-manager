@@ -243,6 +243,7 @@
       var tab = b.getAttribute('data-tab');
       lsSet('entware_noc_tab', tab);
       crumbs.textContent = CRUMBS[tab] || ('мок / ' + b.getAttribute('data-name').toLowerCase());
+      if (tab === 'rdp') crumbs.textContent += rdpTitleSuffix();
       Object.keys(VIEWS).forEach(function (k) {
         var el = document.getElementById(VIEWS[k]);
         if (el) el.hidden = (k !== tab);
@@ -3794,13 +3795,12 @@
   function rdpNeedSession() { if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return false; } return true; }
   function rdpPass() { var el = document.getElementById('rdpPass'); return el ? el.value : ''; }
   function rdpPassClear() { var el = document.getElementById('rdpPass'); if (el) el.value = ''; }
-  function rdpRender(running, port, pid, ver) {
+  function rdpRender(running, port, pid) {
     var v = document.getElementById('rdpVerdict');
     if (v) {
-      v.innerHTML = '<span class="live-dot"></span>' + (running ? ('прокси :' + esc(port) + (pid ? ' · PID ' + esc(pid) : '')) : 'прокси остановлен') + (ver ? ' · <span class="mut">' + esc(ver) + '</span>' : '');
+      v.innerHTML = '<span class="live-dot"></span>' + (running ? ('прокси :' + esc(port) + (pid ? ' · PID ' + esc(pid) : '')) : 'прокси остановлен');
       v.className = 'verdict ' + (running ? 'ok-t' : 'mut');
     }
-    rdpMenuBadge(ver);
     function dis(id, val) { var el = document.getElementById(id); if (el) el.disabled = !!val; }
     dis('rdpStartBtn', running);
     dis('rdpStopBtn', !running);
@@ -3838,7 +3838,9 @@
     liveFetch('rdp_status.cgi').then(function (d) {
       if (!d) return;
       var running = d.state === 'running';
-      rdpRender(running, d.port || (rdpCfg && rdpCfg.proxy_port) || 9199, d.pid, rdpVersion(d));
+      rdpVerTitle = rdpVersion(d);
+      rdpCrumbUpdate();
+      rdpRender(running, d.port || (rdpCfg && rdpCfg.proxy_port) || 9199, d.pid);
     });
   }
   /* Версия RDP для заголовка вкладки: «v0.9.8 · сб.70».
@@ -3851,22 +3853,19 @@
     var lib = d && d.grdp_version ? String(d.grdp_version) : '';
     if (!lib) return '';
     var build = rdpClientBuild();
-    return 'v' + lib + (build ? ' · сб.' + build : '');
+    return 'v' + lib + (build ? ' (сб.' + build + ')' : '');
   }
-  function rdpMenuBadge(ver) {
+  var rdpVerTitle = '';
+  /* Суффикс крошки «сеть / rdp · v0.9.8 (сб.70)». Пусто, пока версия не загрузилась. */
+  function rdpTitleSuffix() { return (typeof rdpVerTitle !== 'undefined' && rdpVerTitle) ? ' · ' + rdpVerTitle : ''; }
+  function rdpCrumbUpdate() {
     try {
-      if (!ver) return;
-      var btn = document.querySelector('.ri[data-tab="rdp"]');
+      var crumbs = document.getElementById('crumbs');
+      if (!crumbs) return;
+      var btn = document.querySelector('.ri.active[data-tab="rdp"]');
       if (!btn) return;
-      var badge = btn.querySelector('.ri-ver');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'ri-ver mut';
-        badge.setAttribute('style', 'font-size:11px;margin-left:6px;white-space:nowrap;');
-        btn.appendChild(badge);
-      }
-      badge.textContent = ver;
-    } catch (e) { /* бейдж необязателен — молча пропускаем */ }
+      crumbs.textContent = 'сеть / rdp' + rdpTitleSuffix();
+    } catch (e) { /* крошка необязательна — молча пропускаем */ }
   }
   function rdpBoot() {
     if (!window.__NOC_LIVE_STATS) return;

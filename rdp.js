@@ -34,7 +34,7 @@ const RDP = {
                         <use href="/entware-manager/icons.svg?v=6#icon-vpn"/>
                     </svg>
                 </span>
-                RDP
+                RDP <span id="rdpTitleVer" class="rdp-meta" style="font-size:.6em;color:var(--text-muted);font-weight:400;white-space:nowrap;"></span>
             </h2>
             <div class="rdp-panel" id="rdpPanel">
                 <div class="rdp-toolbar">
@@ -156,24 +156,17 @@ const RDP = {
         return m ? m[1] : '';
     },
 
-    // Бейдж версии в заголовке вкладки меню: «RDP v0.9.8 · сб.70».
-    // Версия библиотеки — из rdp_status.cgi, сборка — своя. Нет данных — нет бейджа.
-    updateMenuBadge(data) {
+    // Версия прямо в заголовке вкладки: «RDP v0.9.8 · сб.70».
+    // Версия библиотеки — из rdp_status.cgi, сборка — своя. Нет данных — пусто.
+    updateTitle(data) {
         try {
+            const el = document.getElementById('rdpTitleVer');
+            if (!el) return;
             const lib = data && data.grdp_version ? String(data.grdp_version) : '';
-            if (!lib) return;
-            const item = document.querySelector('li[data-tab="rdp"] .menu-text');
-            if (!item) return;
-            let badge = item.querySelector('.menu-ver');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'menu-ver';
-                badge.style.cssText = 'font-size:.75em;opacity:.75;margin-left:6px;color:var(--text-muted);white-space:nowrap;';
-                item.appendChild(badge);
-            }
+            if (!lib) { el.textContent = ''; return; }
             const build = this.clientBuild();
-            badge.textContent = 'v' + lib + (build ? ' · сб.' + build : '');
-        } catch (e) { /* бейдж необязателен — молча пропускаем */ }
+            el.textContent = 'v' + lib + (build ? ' (сб.' + build + ')' : '');
+        } catch (e) { /* заголовок необязателен — молча пропускаем */ }
     },
 
     // Статус от бэкенда rdp_status.cgi (PID, порт, enabled, grdp_version).
@@ -181,7 +174,7 @@ const RDP = {
         try {
             const data = await apiGet('/rdp_status.cgi');
             const running = data.state === 'running';
-            this.updateMenuBadge(data);
+            this.updateTitle(data);
             this.renderStatus(running, data.port || (this.cfg && this.cfg.proxy_port), data);
             this.bindProxyControl(running);
             return;
@@ -197,7 +190,6 @@ const RDP = {
         const st = document.getElementById('rdpStatus');
         if (!st) return;
         const cfg = this.cfg || {};
-        const verLine = this.versionLine(data);
 
         if (running) {
             const proxyPort = (data && data.port) || port || cfg.proxy_port;
@@ -210,7 +202,6 @@ const RDP = {
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(proxyPort))}</b></span>
                     ${pid ? `<span class="rdp-meta" style="white-space: nowrap;">PID: ${escapeHtml(String(pid))}</span>` : ''}
-                    ${verLine}
                     <span class="rdp-meta rdp-url" id="rdpClientUrl" style="cursor:pointer; white-space:nowrap;" title="Кликните, чтобы показать полный адрес клиента">Клиент: показать</span>
                 </div>
             `;
@@ -236,21 +227,11 @@ const RDP = {
                         Прокси не запущен
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(port))}</b></span>
-                    ${verLine}
                     <span class="rdp-meta rdp-url">Запустите прокси, чтобы подключиться к ПК по RDP.</span>
                 </div>
             `;
             this.showFrame(false);
         }
-    },
-
-    // Строка версии для блока статуса: «Версия: v0.9.8 (сборка 70)».
-    // Пусто, если бэкенд версию не отдал. escapeHtml — данные извне.
-    versionLine(data) {
-        const lib = data && data.grdp_version ? String(data.grdp_version) : '';
-        if (!lib) return '';
-        const build = this.clientBuild();
-        return `<span class="rdp-meta" style="white-space: nowrap;">Версия: <b>${escapeHtml('v' + lib + (build ? ' (сборка ' + build + ')' : ''))}</b></span>`;
     },
 
     showFrame(show) {
