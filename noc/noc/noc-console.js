@@ -3832,7 +3832,47 @@
         if (f && f.getAttribute('src') !== rdpFrameUrl) f.setAttribute('src', rdpFrameUrl);
       }
     }
+    if (running) rdpFitFrame();
   }
+  /* rdpFitFrame: дотянуть iframe под высоту карточки.
+   * Баг: у iframe захардкожен height=480 — карточка росла, кадр стоял.
+   * Карточка с фикс. высотой (ручка снизу) — считаем от неё; без фикса —
+   * от окна как в классике (иначе кадр раздует карточку по кругу).
+   * Порог 2px гасит колебания ResizeObserver. */
+  function rdpCardOfWrap(wrap) {
+    var el = wrap ? wrap.parentElement : null;
+    while (el && !(el.classList && el.classList.contains('card'))) el = el.parentElement;
+    return el;
+  }
+  function rdpFitFrame() {
+    try {
+      var wrap = document.getElementById('rdpFrameWrap');
+      var f = document.getElementById('rdpFrame');
+      if (!wrap || !f || wrap.hidden || !wrap.offsetParent) return;
+      var h;
+      var card = rdpCardOfWrap(wrap);
+      if (card && (card.classList.contains('card-fixedh') || (card.style && card.style.height))) {
+        h = Math.round(card.getBoundingClientRect().bottom - f.getBoundingClientRect().top - 12);
+      } else {
+        h = Math.round(window.innerHeight - wrap.getBoundingClientRect().top - 12);
+      }
+      if (h < 300) h = 300;
+      var cur = parseInt(f.style.height, 10) || parseInt(f.getAttribute('height'), 10) || 0;
+      if (Math.abs(cur - h) > 2) f.style.height = h + 'px';
+    } catch (e) {}
+  }
+  function rdpFitBoot() {
+    if (rdpFitBoot._done) return;
+    rdpFitBoot._done = true;
+    if (window.addEventListener) window.addEventListener('resize', function () { rdpFitFrame(); });
+    try {
+      if (typeof ResizeObserver === 'undefined') return;
+      var card = rdpCardOfWrap(document.getElementById('rdpFrameWrap'));
+      if (!card) return;
+      new ResizeObserver(function () { rdpFitFrame(); }).observe(card);
+    } catch (e) {}
+  }
+  rdpFitBoot();
   function rdpStatus() {
     if (!window.__NOC_LIVE_STATS) return;
     liveFetch('rdp_status.cgi').then(function (d) {
