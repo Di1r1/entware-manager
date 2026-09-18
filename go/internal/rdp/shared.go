@@ -19,6 +19,11 @@ const (
 	ProxyPidFile     = "/opt/var/run/grdp-proxy.pid"
 	ProxyInitScript  = "/opt/etc/init.d/S90grdp-proxy"
 	defaultProxyPort = 9099
+
+	// GrdpVersion — версия библиотеки grdp в third_party (форк Di1r1/grdpwasm).
+	// Отдаётся в rdp_status.cgi, фронт показывает её в заголовке вкладки RDP.
+	// При мерже нового апстрима обновить вместе с third_party.
+	GrdpVersion = "0.9.8"
 )
 
 // Config — единый конфиг RDP-модуля (без паролей).

@@ -35,12 +35,13 @@ func HandleStatus() {
 	inst := Status()
 	cfg, _ := LoadConfig()
 	cgiutil.WriteJSON(map[string]interface{}{
-		"status":     "ok",
-		"state":      inst.State,
-		"pid":        inst.PID,
-		"port":       inst.Port,
-		"enabled":    cfg.Enabled,
-		"proxy_port": cfg.ProxyPort,
+		"status":       "ok",
+		"state":        inst.State,
+		"pid":          inst.PID,
+		"port":         inst.Port,
+		"enabled":      cfg.Enabled,
+		"proxy_port":   cfg.ProxyPort,
+		"grdp_version": GrdpVersion,
 	})
 }
 

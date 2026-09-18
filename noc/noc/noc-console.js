@@ -3794,12 +3794,13 @@
   function rdpNeedSession() { if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return false; } return true; }
   function rdpPass() { var el = document.getElementById('rdpPass'); return el ? el.value : ''; }
   function rdpPassClear() { var el = document.getElementById('rdpPass'); if (el) el.value = ''; }
-  function rdpRender(running, port, pid) {
+  function rdpRender(running, port, pid, ver) {
     var v = document.getElementById('rdpVerdict');
     if (v) {
-      v.innerHTML = '<span class="live-dot"></span>' + (running ? ('прокси :' + esc(port) + (pid ? ' · PID ' + esc(pid) : '')) : 'прокси остановлен');
+      v.innerHTML = '<span class="live-dot"></span>' + (running ? ('прокси :' + esc(port) + (pid ? ' · PID ' + esc(pid) : '')) : 'прокси остановлен') + (ver ? ' · <span class="mut">' + esc(ver) + '</span>' : '');
       v.className = 'verdict ' + (running ? 'ok-t' : 'mut');
     }
+    rdpMenuBadge(ver);
     function dis(id, val) { var el = document.getElementById(id); if (el) el.disabled = !!val; }
     dis('rdpStartBtn', running);
     dis('rdpStopBtn', !running);
@@ -3837,12 +3838,39 @@
     liveFetch('rdp_status.cgi').then(function (d) {
       if (!d) return;
       var running = d.state === 'running';
-      rdpRender(running, d.port || (rdpCfg && rdpCfg.proxy_port) || 9199, d.pid);
+      rdpRender(running, d.port || (rdpCfg && rdpCfg.proxy_port) || 9199, d.pid, rdpVersion(d));
     });
+  }
+  /* Версия RDP для заголовка вкладки: «v0.9.8 · сб.70».
+   * Библиотека — из rdp_status.cgi, сборка — из собственного frameUrl. */
+  function rdpClientBuild() {
+    var m = /\/rdp\/\?v=(\d+)/.exec(rdpFrameUrl || '');
+    return m ? m[1] : '';
+  }
+  function rdpVersion(d) {
+    var lib = d && d.grdp_version ? String(d.grdp_version) : '';
+    if (!lib) return '';
+    var build = rdpClientBuild();
+    return 'v' + lib + (build ? ' · сб.' + build : '');
+  }
+  function rdpMenuBadge(ver) {
+    try {
+      if (!ver) return;
+      var btn = document.querySelector('.ri[data-tab="rdp"]');
+      if (!btn) return;
+      var badge = btn.querySelector('.ri-ver');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'ri-ver mut';
+        badge.setAttribute('style', 'font-size:11px;margin-left:6px;white-space:nowrap;');
+        btn.appendChild(badge);
+      }
+      badge.textContent = ver;
+    } catch (e) { /* бейдж необязателен — молча пропускаем */ }
   }
   function rdpBoot() {
     if (!window.__NOC_LIVE_STATS) return;
-    rdpFrameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=18';
+    rdpFrameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=70';
     liveFetch('rdp_config.cgi').then(function (d) {
       if (d && d.status === 'ok') {
         rdpCfg = d;
