@@ -59,7 +59,6 @@ var classicWhitelist = map[string]bool{
 	"/logger/system_sources.json": true,
 	"/logger/style.css":           true,
 	"/logger/style-noc.css":       true,
-	"/noc/":                       true,
 	"/noc/index.html":             true,
 	"/noc/noc-console.css":        true,
 	"/noc/noc-console.js":         true,
@@ -86,6 +85,12 @@ func handleStaticClassic(w http.ResponseWriter, r *http.Request) {
 	p = strings.TrimPrefix(p, "/entware-manager")
 	if p == "" || p == "/" {
 		p = "/index.html"
+	}
+	// NOC-консоль — единый origin через Go (без lighttpd):
+	// голый /noc и /noc/ отдаём как index.html, иначе /noc без
+	// слэша давал бы 404 (его нет в whitelist).
+	if p == "/noc" || p == "/noc/" {
+		p = "/noc/index.html"
 	}
 	serveClassicFile(w, r, p)
 }

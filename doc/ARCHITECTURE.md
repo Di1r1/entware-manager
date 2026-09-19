@@ -51,7 +51,7 @@
 - `/opt/var/log/entware/` — архив логов после ротации.
 - `/tmp/temp_history/` — история температур за последние 7 дней.
 - `/opt/web_entware/noc/` — NOC-консоль внутри менеджера (исходники: `noc/` в корне проекта).
-- `/opt/web_entware/noc/` (URL `/entware-manager/noc/`) — веб-консоль NOC: 8086 (полная, + `procs.cgi`) и 8087 (статика из whitelist Go-сервера).
+- `/opt/web_entware/noc/` (URL `/entware-manager/noc/`) — веб-консоль NOC: единый origin с панелью (go-режим — entware-server :8087 из whitelist; lighttpd-режим — общий lighttpd :8087 через 91-конф).
 
 ## 4. Потоки данных
 
@@ -87,12 +87,13 @@
 3. Получение истории: GET `action=history`.
 4. UI строит графики на Canvas.
 
-### 4.6. NOC-консоль (порт 8086)
+### 4.6. NOC-консоль (единый origin с панелью)
 
-1. Общий lighttpd (порт-хранитель 8086) отдаёт `/entware-manager/noc/` из `/opt/web_entware/noc/`.
-2. API панели NOC получает same-origin через прокси `/entware-cgi/ → 127.0.0.1:8087` (пакетный `dashboard.cgi` — один тик вместо семи).
-3. Топ процессов — локальный `noc/cgi-bin/procs.cgi` (shell, без авторизации).
-4. Go-бинарники общие с панелью (`cgi-bin/go` — симлинк), статика панели — симлинки `entware-manager/`.
+1. go-режим: `entware-server` (:8087) отдаёт `/entware-manager/noc/` из `/opt/web_entware/noc/` (whitelist в `go/internal/server/static.go`); общий lighttpd не используется, `91-*.conf` удаляется установкой.
+2. lighttpd-режим (`EWM_MODE=lighttpd`): общий lighttpd (:8087 через 90-конф) отдаёт `/entware-manager/noc/` по алиасу из `91-*.conf`.
+3. API панели NOC получает same-origin через `/entware-cgi/` (go-режим — нативно, lighttpd-режим — прокси `→ 127.0.0.1:8087`).
+4. Топ процессов — Go-эндпоинт `/entware-cgi/monitor/procs.cgi` (shell `noc/cgi-bin/procs.cgi` больше не исполняется, файл — референс).
+5. Go-бинарники общие с панелью (`cgi-bin/go` — симлинк), статика панели — симлинки `entware-manager/`.
 
 ## 5. Принципы реализации
 

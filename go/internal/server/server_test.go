@@ -350,6 +350,18 @@ func TestStaticWhitelistNOC(t *testing.T) {
 			t.Errorf("GET %s = %d, want 200 (NOC-консоль в whitelist)", p, resp.StatusCode)
 		}
 	}
+	// Индекс NOC — единый origin через Go (без lighttpd 91-conf):
+	// и со слэшем, и голый /noc отдают index.html.
+	for _, p := range []string{"/entware-manager/noc/", "/entware-manager/noc"} {
+		resp, err := http.Get(srv.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s = %d, want 200 (NOC-индекс через Go)", p, resp.StatusCode)
+		}
+	}
 	for _, p := range []string{"/entware-manager/noc/cgi-bin/procs.cgi", "/entware-manager/noc/network_config.json", "/entware-manager/noc/lib/common.sh"} {
 		resp, err := http.Get(srv.URL + p)
 		if err != nil {

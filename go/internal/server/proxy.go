@@ -94,6 +94,7 @@ func handleRemoteProxy(b backend) http.Handler {
 		return http.NotFoundHandler()
 	}
 	proxy := httputil.NewSingleHostReverseProxy(u)
+	proxy.FlushInterval = -1
 	// Для /rdp/ порт grdp-proxy может смениться в rdp_config.json — берём
 	// актуальный при каждом запросе.
 	if b.prefix == "/rdp/" {
@@ -103,7 +104,9 @@ func handleRemoteProxy(b backend) http.Handler {
 				http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 				return
 			}
-			httputil.NewSingleHostReverseProxy(t).ServeHTTP(w, r)
+			rdpProxy := httputil.NewSingleHostReverseProxy(t)
+			rdpProxy.FlushInterval = -1
+			rdpProxy.ServeHTTP(w, r)
 		})
 	}
 	// ttyd-бэкенд: подстановка Basic Auth для встроенного вида (iframe),
@@ -117,14 +120,18 @@ func handleRemoteProxy(b backend) http.Handler {
 // newWebSocketProxy проксирует WebSocket grdp-proxy (/ws).
 // Клиент grdpwasm hardcoded'ит путь /ws и подключается на location.host,
 // поэтому на панели монтируем ровно /ws (без префикса).
+// Порт берём при каждом запросе (паритет с /rdp/ и rdpPingHandler):
+// смена порта в rdp_config.json подхватывается без рестарта сервера.
 func newWebSocketProxy() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, err := url.Parse("http://127.0.0.1:" + strconv.Itoa(rdpProxyPort()))
 		if err != nil {
-			http.NotFound(w, r)
+			http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 			return
 		}
-		httputil.NewSingleHostReverseProxy(u).ServeHTTP(w, r)
+		proxy := httputil.NewSingleHostReverseProxy(u)
+		proxy.FlushInterval = -1
+		proxy.ServeHTTP(w, r)
 	})
 }
 
@@ -141,7 +148,9 @@ func rdpPingHandler() http.Handler {
 			http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 			return
 		}
-		httputil.NewSingleHostReverseProxy(t).ServeHTTP(w, r)
+		p := httputil.NewSingleHostReverseProxy(t)
+		p.FlushInterval = -1
+		p.ServeHTTP(w, r)
 	})
 }
 

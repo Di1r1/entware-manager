@@ -19,8 +19,8 @@ func hasQuery(key string) bool {
 }
 
 // staticBaseHTML — <base> для статики.
-// base=/entware-manager/ работает везде: классика (8087) напрямую,
-// NOC (8086, iframe) — через прокси /entware-manager/ → 8087.
+// base=/entware-manager/ работает везде: классика и NOC на едином origin
+// (:8087 — entware-server в go-режиме, общий lighttpd в lighttpd-режиме).
 // Все asset-ссылки ниже должны быть ОТНОСИТЕЛЬНЫМИ (без ведущего /),
 // чтобы резолвиться через <base>, а не через URL страницы
 // (/entware-cgi/logger/ — там статики нет).

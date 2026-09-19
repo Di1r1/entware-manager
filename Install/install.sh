@@ -931,7 +931,8 @@ else
 fi
 
 # ========== 5b. NOC — внутри менеджера (без сторонних папок) ==========
-# Цель: $TARGET_DIR/noc (веб-консоль + форки + 91-conf).
+# Цель: $TARGET_DIR/noc (веб-консоль; фронт — entware-server :8087 в go-режиме,
+# 91-conf ставится только при EWM_MODE=lighttpd).
 # Классика не тронута; вход в NOC только через кнопку (opt-in).
 # Конфиги NOC (*_config.json) переносим (только отсутствующие), не создаём.
 step "Установка NOC (внутри менеджера)"
@@ -982,39 +983,74 @@ else
 			&& ok "NOC: S85entware-noc переключён на менеджер" || warn "NOC: не удалось обновить S85entware-noc"
 	fi
 
-	# Lighttpd-конф NOC (алиас /entware-manager/noc/, прокси /entware-cgi/ → 8087,
-	# локальный procs.cgi, deny кода/конфигов). Чужие conf.d не трогаем.
-	if [ -f "$NOC_CONF_SRC" ]; then
-		mkdir -p "$(dirname "$NOC_CONF_DST")" 2>/dev/null
-		cp -a "$NOC_CONF_SRC" "$NOC_CONF_DST" 2>/dev/null && ok "NOC: 91-entware-commander.conf установлен"
-	fi
+	# NOC — единый origin (без стороннего фронта в go-режиме):
+	# go-режим — NOC отдаёт entware-server (:8087, whitelist в
+	# go/internal/server/static.go), общий lighttpd не используется →
+	# наш 91-conf удаляем (бэкап через backup_file, чужие conf.d не трогаем,
+	# порт-хранитель 8086 не меняем). Перезагрузка общего lighttpd — только
+	# если файл реально был и удалён, и только HUP (щадим koffe и соседей;
+	# полный restart здесь не нужен — панель от lighttpd не зависит).
+	# lighttpd-режим (EWM_MODE=lighttpd) — панель сама на общем lighttpd
+	# (:8087 через 90-conf), алиас NOC нужен → 91-conf ставим как раньше.
+	if [ "${WEB_PATH:-go}" = "lighttpd" ]; then
+		if [ -f "$NOC_CONF_SRC" ]; then
+			mkdir -p "$(dirname "$NOC_CONF_DST")" 2>/dev/null
+			cp -a "$NOC_CONF_SRC" "$NOC_CONF_DST" 2>/dev/null && ok "NOC: 91-entware-commander.conf установлен (lighttpd-режим)"
+		fi
 
-	# Валидация + мягкая перезагрузка lighttpd (держит 8086 с NOC)
-	if command -v lighttpd >/dev/null 2>&1; then
-		if [ -n "${LIGHTTPD_CONF:-}" ] && [ -f "$LIGHTTPD_CONF" ]; then
-			if lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
-				if [ -x /opt/etc/init.d/S80lighttpd ]; then
-					/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1 && ok "NOC: lighttpd перезапущен (8086)" || warn "NOC: не удалось перезапустить lighttpd — перезапусти вручную"
-				else
-					p=$(lighttpd_pid 2>/dev/null | head -1)
-					if [ -n "$p" ]; then
-						kill -HUP "$p" 2>/dev/null && ok "NOC: lighttpd перечитал конфиг (HUP)" || warn "NOC: HUP не удался — перезапусти lighttpd вручную"
+		# Валидация + мягкая перезагрузка lighttpd (панель и NOC на нём).
+		if command -v lighttpd >/dev/null 2>&1; then
+			if [ -n "${LIGHTTPD_CONF:-}" ] && [ -f "$LIGHTTPD_CONF" ]; then
+				if lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
+					if [ -x /opt/etc/init.d/S80lighttpd ]; then
+						/opt/etc/init.d/S80lighttpd restart >/dev/null 2>&1 && ok "NOC: lighttpd перезапущен (8087)" || warn "NOC: не удалось перезапустить lighttpd — перезапусти вручную"
 					else
-						warn "NOC: lighttpd не запущен — запусти вручную (S80lighttpd start)"
+						p=$(lighttpd_pid 2>/dev/null | head -1)
+						if [ -n "$p" ]; then
+							kill -HUP "$p" 2>/dev/null && ok "NOC: lighttpd перечитал конфиг (HUP)" || warn "NOC: HUP не удался — перезапусти lighttpd вручную"
+						else
+							warn "NOC: lighttpd не запущен — запусти вручную (S80lighttpd start)"
+						fi
+					fi
+				else
+					warn "NOC: lighttpd -t не прошёл — конфиг 91 проверь вручную"
+				fi
+			fi
+		fi
+	else
+		if [ -f "$NOC_CONF_DST" ]; then
+			backup_file "$NOC_CONF_DST" "91-entware-commander.conf" 2>/dev/null || true
+			rm -f "$NOC_CONF_DST" 2>/dev/null && ok "NOC: 91-entware-commander.conf удалён (go-режим: NOC на :8087 через entware-server)"
+			# Снимаем алиас/прокси NOC с общего lighttpd без его рестарта.
+			if command -v lighttpd >/dev/null 2>&1; then
+				if [ -n "${LIGHTTPD_CONF:-}" ] && [ -f "$LIGHTTPD_CONF" ]; then
+					if lighttpd -t -f "$LIGHTTPD_CONF" 2>/dev/null; then
+						p=$(lighttpd_pid 2>/dev/null | head -1)
+						if [ -n "$p" ]; then
+							kill -HUP "$p" 2>/dev/null && ok "NOC: lighttpd перечитал конфиг (HUP)" || warn "NOC: HUP не удался — перезапусти lighttpd вручную"
+						else
+							ok "NOC: lighttpd не запущен — перезагрузка не нужна"
+						fi
+					else
+						warn "NOC: lighttpd -t не прошёл — проверь conf.d вручную"
 					fi
 				fi
-			else
-				warn "NOC: lighttpd -t не прошёл — конфиг 91 проверь вручную"
 			fi
+		else
+			ok "NOC: общий lighttpd не задействован (go-режим: NOC на :8087)"
 		fi
 	fi
 
-	# Проверка доступности NOC (мягкая — не валим установку)
+	# Проверка доступности NOC (мягкая — не валим установку).
+	# Порт панели — из server_config.json, по умолчанию 8087.
+	# В lighttpd-режиме панель тоже на 8087 (90-conf), проверка единая.
 	if command -v curl >/dev/null 2>&1; then
-		if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8086/entware-manager/noc/ 2>/dev/null)" = "200" ]; then
-			ok "NOC: отвечает на 8086 (200)"
+		NOC_PORT=$(jq -r '.port // 8087' "$TARGET_DIR/server_config.json" 2>/dev/null || echo 8087)
+		[ -n "$NOC_PORT" ] || NOC_PORT=8087
+		if [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$NOC_PORT/entware-manager/noc/" 2>/dev/null)" = "200" ]; then
+			ok "NOC: отвечает на $NOC_PORT (200)"
 		else
-			warn "NOC: нет 200 на 8086/entware-manager/noc/ — проверь после перезапуска lighttpd"
+			warn "NOC: нет 200 на $NOC_PORT/entware-manager/noc/ — проверь после запуска entware-server"
 		fi
 	fi
 fi
