@@ -29,32 +29,32 @@
                     <span>
                         <span id="cpuTempWidget">
                             <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <use href="/entware-manager/icons.svg?v=7#icon-thermometer"/>
+                                <use href="/entware-manager/icons.svg?v=8#icon-thermometer"/>
                             </svg>
                             CPU: <span id="tempValue">--</span><span id="tempUnit">°C</span>
                         </span>
                         &nbsp;&nbsp;
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                            <use href="/entware-manager/icons.svg?v=7#icon-wifi"/>
+                            <use href="/entware-manager/icons.svg?v=8#icon-wifi"/>
                         </svg>
                         WiFi: <span id="wifiTempValue">--</span>
                     </span>
                 </div>
                 <div class="sidebar-icon">
                     <svg class="icon" width="40" height="40">
-                        <use href="/entware-manager/icons.svg?v=7#icon-logo"/>
+                        <use href="/entware-manager/icons.svg?v=8#icon-logo"/>
                     </svg>
                 </div>
             </div>
 
             <button class="collapse-btn" id="collapseToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=7#icon-chevron-left"/>
+                    <use href="/entware-manager/icons.svg?v=8#icon-chevron-left"/>
                 </svg>
             </button>
             <button class="theme-toggle-edge" id="themeToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=7#icon-sun"/>
+                    <use href="/entware-manager/icons.svg?v=8#icon-sun"/>
                 </svg>
             </button>
             <div class="theme-popup" id="themePopup"></div>
@@ -70,19 +70,19 @@
             <div class="sidebar-footer">
                 <a href="#" onclick="checkSystemDeps();return false" class="sidebar-btn">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=7#icon-info"/>
+                        <use href="/entware-manager/icons.svg?v=8#icon-info"/>
                     </svg>
                     <span class="sidebar-btn-text">Проверка системы</span>
                 </a>
                 <a href="#" id="nocBtn" class="sidebar-btn" data-collapsed-icon="link" style="opacity:0.5;" title="Проверка NOC…">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=7#icon-link"/>
+                        <use href="/entware-manager/icons.svg?v=8#icon-link"/>
                     </svg>
                     <span class="sidebar-btn-text">NOC-панель</span>
                 </a>
                 <a href="#" onclick="doLogout();return false" id="logoutBtn" class="sidebar-btn" style="display:none;" data-collapsed-icon="logout">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=7#icon-lock"/>
+                        <use href="/entware-manager/icons.svg?v=8#icon-lock"/>
                     </svg>
                     <span class="sidebar-btn-text">Выйти</span>
                 </a>
@@ -109,7 +109,7 @@
     </div>
 
     <script src="/entware-manager/menu/menu.js?v=3"></script>
-    <script src="/entware-manager/entware.js?v=230"></script>
+    <script src="/entware-manager/entware.js?v=233"></script>
     <script>
         function updateTemp() {
             fetch('/entware-cgi/temperature.cgi?_=' + Date.now())

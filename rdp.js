@@ -31,7 +31,7 @@ const RDP = {
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
                     <svg class="icon" width="28" height="28">
-                        <use href="/entware-manager/icons.svg?v=6#icon-vpn"/>
+                        <use href="/entware-manager/icons.svg?v=8#icon-vpn"/>
                     </svg>
                 </span>
                 RDP <span id="rdpTitleVer" class="rdp-meta" style="font-size:.6em;color:var(--text-muted);font-weight:400;white-space:nowrap;"></span>
@@ -43,19 +43,19 @@ const RDP = {
                     </div>
                     <div class="rdp-actions">
                         <button id="rdpStartBtn" class="packages-delete-btn rdp-btn-start" disabled>
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-play"/></svg> Запустить прокси
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-play"/></svg> Запустить прокси
                         </button>
                         <button id="rdpStopBtn" class="packages-delete-btn rdp-btn-stop" disabled>
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-stop"/></svg> Остановить
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-stop"/></svg> Остановить
                         </button>
                         <a id="rdpOpenLink" href="#" target="_blank" rel="noopener noreferrer" class="packages-delete-btn rdp-btn-open" style="display:none;">
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-link"/></svg> Открыть в новой вкладке
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-link"/></svg> Открыть в новой вкладке
                         </a>
                     </div>
                     <div class="rdp-port-config" id="rdpPortConfig" style="display:none;">
                         <input type="number" id="rdpPortInput" class="settings-input" min="1" max="65535" style="width: 80px;" title="Порт прокси (измените, если 9099 занят, например AWG)">
                         <button id="rdpPortSaveBtn" class="packages-delete-btn rdp-btn-save">
-                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=6#icon-check"/></svg> Порт
+                            <svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-check"/></svg> Порт
                         </button>
                     </div>
                 </div>
@@ -146,7 +146,7 @@ const RDP = {
         // Клиент grdpwasm загружается с того же origin панели (reverse-proxy /rdp/):
         // WS он строит как location.host + /ws?target=… сам, статику тянет относительно.
         // Прямой порт прокси (9099) наружу не публикуем — только через панель.
-        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=70';
+        this.frameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=72';
     },
 
     // Номер сборки WASM-клиента из собственного frameUrl (/rdp/?v=N).
@@ -197,7 +197,7 @@ const RDP = {
             st.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <span class="status-badge status-running">
-                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=6#icon-check"/></svg>
+                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=8#icon-check"/></svg>
                         Прокси запущен
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(proxyPort))}</b></span>
@@ -223,7 +223,7 @@ const RDP = {
             st.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
                     <span class="status-badge status-stopped">
-                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=6#icon-cross"/></svg>
+                        <svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=8#icon-cross"/></svg>
                         Прокси не запущен
                     </span>
                     <span class="rdp-meta" style="white-space: nowrap;">Порт: <b>${escapeHtml(String(port))}</b></span>

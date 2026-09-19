@@ -1662,7 +1662,10 @@
     s = String(s || '').toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-+|-+$/g, '');
     return s || 'link';
   }
-  /* Серверная ссылка {name,url,icon} → пункт rail. meta — порт или путь. */
+  /* Серверная ссылка {name,url,icon} → пункт rail. meta — порт или путь.
+   * icon с сервера — id из спрайта (router, shield…); короткие глифы (⧉, эмодзи)
+   * оставляем текстом. Спрайт общий с классикой. */
+  var BM_ICONS = '/entware-manager/icons.svg?v=8';
   function bmFromServer(list) {
     var out = [];
     list.forEach(function (l) {
@@ -1674,9 +1677,11 @@
         var p = url.replace(/^https?:\/\/[^\/]+/i, '');
         if (p && p !== '/') meta = p.length > 18 ? p.slice(0, 18) + '…' : p;
       }
-      var ico = '⧉';
-      if (l.icon && String(l.icon).length <= 4) ico = String(l.icon);
-      out.push({ id: 'srv-' + bmSlug(url), ico: ico, label: l.name || url, meta: meta, url: url });
+      var raw = l.icon ? String(l.icon) : '';
+      var ico = '⧉', sprite = '';
+      if (/^[a-z0-9-]{1,32}$/i.test(raw)) sprite = 'icon-' + raw.toLowerCase();
+      else if (raw && raw.length <= 4) ico = raw;
+      out.push({ id: 'srv-' + bmSlug(url), ico: ico, sprite: sprite, label: l.name || url, meta: meta, url: url });
     });
     return out;
   }
@@ -1722,7 +1727,7 @@
       html +=
         '<a class="bm" href="' + esc(b.url || '#') + '" target="_blank" rel="noopener" data-id="' + esc(b.id) + '" data-idx="' + idx + '"' +
         ' title="' + esc(b.label + (b.meta ? ' ' + b.meta : '') + ' · долгое нажатие — переставить') + '">' +
-        '<span class="bm-ico">' + esc(b.ico || '⧉') + '</span>' +
+        '<span class="bm-ico">' + (b.sprite ? '<svg width="18" height="18" aria-hidden="true"><use href="' + BM_ICONS + '#' + esc(b.sprite) + '"/></svg>' : esc(b.ico || '⧉')) + '</span>' +
         '<span class="bm-label">' + esc(b.label) + '</span>' +
         (b.meta ? '<span class="bm-meta">' + esc(b.meta) + '</span>' : '') +
         '<span class="bm-handle" aria-hidden="true"></span></a>';
@@ -2484,6 +2489,9 @@
     liveTick();
     bootLiveTab();
     bmRefreshFromServer(); /* rail закладок — из Настроек (links_load.cgi) */
+    /* Настройки могли открыться до логина (setBoot за гейтом __NOC_LIVE_STATS) —
+     * секция Безопасности осталась бы пустой. Догружаем, если таб активен. */
+    if (document.querySelector('.ri.active[data-tab="settings"]')) setBoot();
   }
   function liveLogin() {
     var old = document.getElementById('liveLogin');
@@ -3480,7 +3488,7 @@
   }
   function nsecLoad() {
     if (!window.__NOC_LIVE_STATS) return;
-    liveFetch('auth_config.cgi').then(function (d) {
+    liveFetch('auth_config.cgi?_=' + Date.now()).then(function (d) {
       if (!d || typeof d !== 'object') return;
       var en = !!d.enabled;
       NSEC_AUTH_ON = !!(d.configured || en);
@@ -3520,7 +3528,7 @@
   }
   function ntlsLoad() {
     if (!window.__NOC_LIVE_STATS) return;
-    liveFetch('tls_config.cgi').then(function (d) {
+    liveFetch('tls_config.cgi?_=' + Date.now()).then(function (d) {
       if (!d || typeof d !== 'object') return;
       var cb = document.getElementById('ntlsEnabled');
       if (cb) cb.checked = !!d.tls;
@@ -3529,10 +3537,17 @@
         if (p) p.value = d.tls_port;
       }
       var hint = [];
-      if (!d.server_running) hint.push('режим lighttpd — недоступно');
-      if (d.has_cert) hint.push('сертификат создан');
+      if (!d.server_running) {
+        hint.push('<span class="warn-t">режим lighttpd — недоступно</span>');
+      } else {
+        hint.push('<span class="ok-t">Go-режим (entware-server)</span>');
+        if (d.tls) hint.push('<span class="ok-t">TLS включён, порт ' + esc(String(d.tls_port)) + '</span>');
+        else hint.push('<span class="warn-t">TLS выключен</span>');
+        if (d.has_cert) hint.push('<span class="ok-t">сертификат создан</span>');
+        else hint.push('<span class="crit-t">сертификата нет</span>');
+      }
       var m = document.getElementById('ntlsMsg');
-      if (m) m.textContent = hint.join(' · ');
+      if (m) m.innerHTML = hint.join(' · ');
       if (cb) cb.disabled = !d.server_running;
       var sb = document.getElementById('ntlsSave');
       if (sb) sb.disabled = !d.server_running;
@@ -3909,7 +3924,7 @@
   }
   function rdpBoot() {
     if (!window.__NOC_LIVE_STATS) return;
-    rdpFrameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=70';
+    rdpFrameUrl = window.location.protocol + '//' + window.location.host + '/rdp/?v=72&skin=noc';
     liveFetch('rdp_config.cgi').then(function (d) {
       if (d && d.status === 'ok') {
         rdpCfg = d;
@@ -4983,6 +4998,29 @@
       var ids = saved[ck];
       var cont = contByKey[ck];
       if (!cont || !ids || !ids.length) return;
+      /* Порядок уже совпадает — DOM не трогаем. Лишний appendChild
+       * отсоединяет карточку и вставляет заново, а это убивает
+       * browsing context у iframe внутри (RDP-форма и сессия
+       * сбрасывались на каждом liveBridgeLoad, ~28 с).
+       * Сравниваем только прямые .card (стопки — отдельная ветка
+       * ниже, их поведение не меняем: при стопках идём старым путём). */
+      var want = [];
+      ids.forEach(function (entry) {
+        if (Array.isArray(entry)) return;
+        var w = byId[entry];
+        if (w && sameView(w.parentElement, cont)) want.push(w);
+      });
+      var cur = [];
+      Array.prototype.forEach.call(cont.children, function (ch) {
+        if (ch.classList && ch.classList.contains('card')) cur.push(ch);
+      });
+      var inPlace = want.length === cur.length;
+      if (inPlace) {
+        for (var k = 0; k < want.length; k++) {
+          if (want[k] !== cur[k]) { inPlace = false; break; }
+        }
+      }
+      if (inPlace) return;
       ids.forEach(function (entry) {
         if (Array.isArray(entry)) {
           /* вертикальная стопка: пересоздаём обёртку */

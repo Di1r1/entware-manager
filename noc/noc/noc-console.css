@@ -1429,6 +1429,12 @@ body.card-dragging [data-dndcont]:not(.dnd-flow):not(.card-stack) > .card-slot.s
   line-height: 1;
   color: var(--accent);
 }
+.bm-ico svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 0 auto;
+}
 .bm-label {
   font-size: 12.5px;
   font-weight: 600;

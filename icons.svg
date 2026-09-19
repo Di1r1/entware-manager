@@ -56,10 +56,12 @@
     <path d="M2 4h3l1-2h4l1 2h3v8H2V4z" fill="none" stroke="currentColor"/>
   </symbol>
   <symbol id="icon-router" viewBox="0 0 16 16">
-    <circle cx="8" cy="4" r="2" fill="none" stroke="currentColor"/>
-    <line x1="8" y1="6" x2="8" y2="12" stroke="currentColor"/>
-    <circle cx="4" cy="12" r="2" fill="none" stroke="currentColor"/>
-    <circle cx="12" cy="12" r="2" fill="none" stroke="currentColor"/>
+    <line x1="5" y1="7" x2="3.5" y2="3" stroke="currentColor"/>
+    <line x1="11" y1="7" x2="12.5" y2="3" stroke="currentColor"/>
+    <rect x="2" y="7" width="12" height="6" rx="1.5" fill="none" stroke="currentColor"/>
+    <circle cx="5.5" cy="10" r="0.9" fill="currentColor"/>
+    <circle cx="8" cy="10" r="0.9" fill="currentColor"/>
+    <circle cx="10.5" cy="10" r="0.9" fill="currentColor" opacity="0.45"/>
   </symbol>
   <symbol id="icon-shield" viewBox="0 0 16 16">
     <path d="M8 2l5 3v3c0 4-3 6-5 6s-5-2-5-6V5z" fill="none" stroke="currentColor"/>
