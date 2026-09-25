@@ -89,8 +89,8 @@ func handleDaemonAction(action string) {
 
 func handleKill(pidStr string) {
 	pid, err := strconv.Atoi(strings.TrimSpace(pidStr))
-	if err != nil || !pidAlive(pid) {
-		logMonitor("WARN", "Попытка убить несуществующий процесс "+pidStr)
+	if err != nil || !pidKillable(pid) || !pidAlive(pid) {
+		logMonitor("WARN", "Попытка убить недопустимый или несуществующий процесс "+pidStr)
 		cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Процесс не найден"})
 		return
 	}

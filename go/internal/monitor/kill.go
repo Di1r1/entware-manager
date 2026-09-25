@@ -11,6 +11,17 @@ import (
 	"entware-manager/internal/auth"
 )
 
+// pidKillable — можно ли завершать этот PID из панели.
+// Запрещены 0/отрицательные, init (1) и процессы самого CGI-сервера:
+// панель не должна уметь убить систему или себя (убийство HTTP-сервера
+// роняет все CGI сразу).
+func pidKillable(pid int) bool {
+	if pid <= 1 {
+		return false
+	}
+	return pid != os.Getpid() && pid != os.Getppid()
+}
+
 func HandleKillPID() {
 	var pidStr string
 
@@ -35,7 +46,7 @@ func HandleKillPID() {
 	}
 
 	pid, err := strconv.Atoi(pidStr)
-	if err != nil || pid <= 0 {
+	if err != nil || !pidKillable(pid) {
 		cgiutil.WriteJSON(map[string]string{"status": "error", "error": "PID не указан или неверный"})
 		return
 	}

@@ -101,10 +101,10 @@ func scanTmpClean() {
 	dirs := make([]CleanDir, 0, len(entries))
 	for _, e := range entries {
 		name := e.Name()
-		if tmpfsProtected[name] {
+		full := path + "/" + name
+		if isProtectedPath(full) {
 			continue
 		}
-		full := path + "/" + name
 		info, err := os.Lstat(full)
 		if err != nil {
 			continue
@@ -168,8 +168,8 @@ func deleteTmpClean() {
 			jsonClean("Доступ запрещен")
 			return
 		}
-		if tmpfsProtected[filepath.Base(p)] {
-			logDeleteAction("WARN", fmt.Sprintf("Попытка очистки защищённого каталога: %s", p))
+		if isProtectedPath(p) {
+			logDeleteAction("WARN", "Попытка очистки защищённого каталога: "+p)
 			jsonClean("Доступ запрещен")
 			return
 		}
@@ -219,6 +219,22 @@ func deleteTmpClean() {
 func cleanableRoot(p string) bool {
 	return p == "/tmp" || p == "/dev/shm" ||
 		strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
+}
+
+// isProtectedPath — путь является защищённым каталогом или лежит внутри него.
+// Проверяются ВСЕ компоненты пути, а не только последний: /tmp/entware/logs
+// содержит в имени «logs», но принадлежит защищённому /tmp/entware.
+func isProtectedPath(p string) bool {
+	for dir := filepath.Clean(p); ; {
+		if tmpfsProtected[filepath.Base(dir)] {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
 }
 
 // isCleanablePath — допустимость пути для удаления: только подпапки
