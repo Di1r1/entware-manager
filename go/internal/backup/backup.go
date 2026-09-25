@@ -249,6 +249,13 @@ func HandleRestore() {
 		if err := os.WriteFile(dst, data, mode); err != nil {
 			continue
 		}
+		// os.WriteFile не меняет режим уже существующего файла — секрет,
+		// развёрнутый старой версией или созданный с 0644, остался бы
+		// читаемым всеми. Приводим права явно.
+		if err := os.Chmod(dst, mode); err != nil {
+			logRestoreAction("WARN", "Не удалось выставить права "+mode.String()+" на "+dest+": "+err.Error())
+			continue
+		}
 		restored = append(restored, dest)
 	}
 
