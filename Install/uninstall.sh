@@ -10,12 +10,20 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-TARGET_DIR="/opt/web_entware"
+# Все пути — переменные в начале (RULES §4) и переопределяются из
+# окружения (EWM_*): так uninstall.sh можно прогнать в песочнице из
+# test/uninstall_backup.sh, не трогая реальный роутер.
+TARGET_DIR="${EWM_TARGET_DIR:-/opt/web_entware}"
 BACKUP_DIR="$TARGET_DIR/backup"
-LIGHTTPD_CONF="/opt/etc/lighttpd/lighttpd.conf"
-CGI_CONF="/opt/etc/lighttpd/conf.d/30-cgi.conf"
-LOG_DIR="/tmp/entware"
-SUDOERS_FILE="/opt/etc/sudoers.d/entware-smartctl"
+# Каталог для бэкапов, переживающих удаление панели (ВНЕ $TARGET_DIR).
+KEEP_DIR="${EWM_KEEP_DIR:-/opt/var/lib/entware-manager/backup}"
+LIGHTTPD_CONF="${EWM_LIGHTTPD_CONF:-/opt/etc/lighttpd/lighttpd.conf}"
+CGI_CONF="${EWM_CGI_CONF:-/opt/etc/lighttpd/conf.d/30-cgi.conf}"
+LOG_DIR="${EWM_LOG_DIR:-/tmp/entware}"
+SUDOERS_FILE="${EWM_SUDOERS_FILE:-/opt/etc/sudoers.d/entware-smartctl}"
+CONFD_OUR="${EWM_CONFD_OUR:-/opt/etc/lighttpd/conf.d/90-entware-manager.conf}"
+S85_INIT="${EWM_S85_INIT:-/opt/etc/init.d/S85entware-watchdogs}"
+LIGHTTPD_INIT="${EWM_LIGHTTPD_INIT:-/opt/etc/init.d/S80lighttpd}"
 
 # Миграционные функции порт-хранителя. Source ДО удаления $TARGET_DIR.
 MIGRATE_LIB=""
@@ -73,7 +81,7 @@ echo "${BOLD}[2/8] Остановка сервисов${NC}"
 echo "────────────────────────────────────────"
 
 # Останавливаем наш entware-server (если установлен)
-EWM_SERVER_INIT="/opt/etc/init.d/S80entware-server"
+EWM_SERVER_INIT="${EWM_SERVER_INIT:-/opt/etc/init.d/S80entware-server}"
 EWM_SERVER_RAN=0
 if [ -x "$EWM_SERVER_INIT" ]; then
 	if $EWM_SERVER_INIT stop 2>/dev/null; then
@@ -86,7 +94,7 @@ else
 	warn "entware-server не установлен (S80entware-server нет)"
 fi
 
-LIGHTTPD_PIDF=/opt/var/run/lighttpd.pid
+LIGHTTPD_PIDF="${EWM_LIGHTTPD_PIDF:-/opt/var/run/lighttpd.pid}"
 LIGHTTPD_PID=""
 if [ -f "$LIGHTTPD_PIDF" ]; then
 	LIGHTTPD_PID=$(cat "$LIGHTTPD_PIDF" 2>/dev/null | tr -d ' ')
@@ -95,7 +103,7 @@ fi
 
 # Если есть наш init-скрипт — останавливаем ТОЛЬКО свой экземпляр (по pid-файлу),
 # не трогая чужой lighttpd (например zapret). Иначе — стандартный S80lighttpd.
-EWM_INIT="/opt/etc/init.d/S80entware-lighttpd"
+EWM_INIT="${EWM_INIT:-/opt/etc/init.d/S80entware-lighttpd}"
 if [ "$EWM_SERVER_RAN" = "1" ]; then
 	# Режим entware-server: lighttpd не наш, чужой (nfqws/zapret) не трогаем
 	warn "lighttpd не трогаю (режим entware-server)"
@@ -110,7 +118,7 @@ elif [ -n "$LIGHTTPD_PID" ] || [ -x "$EWM_INIT" ]; then
 		rm -f "$LIGHTTPD_PIDF" 2>/dev/null
 		ok "lighttpd остановлен (pid $LIGHTTPD_PID)"
 	fi
-elif /opt/etc/init.d/S80lighttpd stop 2>/dev/null; then
+elif "$LIGHTTPD_INIT" stop 2>/dev/null; then
 	sleep 1
 	ok "lighttpd остановлен"
 else
@@ -121,6 +129,37 @@ fi
 echo ""
 echo "${BOLD}[3/7] Удаление файлов${NC}"
 echo "────────────────────────────────────────"
+
+# Откатные копии конфигов лежат ВНУТРИ $TARGET_DIR, поэтому до удаления
+# выносим их в $KEEP_DIR — иначе они исчезают вместе с панелью, а итог
+# обещал обратное. Правка install.sh здесь не нужна: он эти копии и так
+# сохраняет при обновлении, если backup/ лежит рядом с панелью.
+BACKUP_SAVED=""
+BACKUP_LOST=""
+if [ -d "$BACKUP_DIR" ]; then
+	# Копируем во временный каталог и подменяем целиком: так в $KEEP_DIR
+	# не остаётся огрызков от прошлой копии и не появляется частичный архив.
+	KEEP_TMP="$KEEP_DIR.tmp.$$"
+	if mkdir -p "$KEEP_TMP" 2>/dev/null && cp -a "$BACKUP_DIR/." "$KEEP_TMP/" 2>/dev/null; then
+		if rm -rf "$KEEP_DIR" 2>/dev/null && mv "$KEEP_TMP" "$KEEP_DIR" 2>/dev/null; then
+			BACKUP_SAVED="$KEEP_DIR"
+			ok "Бэкап конфигов сохранён: $KEEP_DIR"
+		else
+			rm -rf "$KEEP_TMP" 2>/dev/null
+			BACKUP_LOST=1
+			warn "Не удалось сохранить бэкап конфигов в $KEEP_DIR — копии будут удалены вместе с панелью"
+		fi
+	else
+		rm -rf "$KEEP_TMP" 2>/dev/null
+		BACKUP_LOST=1
+		warn "Не удалось сохранить бэкап конфигов в $KEEP_DIR — копии будут удалены вместе с панелью"
+	fi
+fi
+# Конфигурация самой панели (пароль, ссылки, настройки модулей) удаляется
+# вместе с панелью всегда — предупреждаем, чтобы владелец скачал бэкап.
+if [ -f "$TARGET_DIR/auth_config.json" ]; then
+	warn "Конфигурация панели (пароль, ссылки, модули) удаляется вместе с панелью. Если резервная копия не скачана — восстановить будет нечем."
+fi
 
 if [ -d "$TARGET_DIR" ]; then
 	rm -rf "$TARGET_DIR"
@@ -141,29 +180,29 @@ echo "────────────────────────�
 # 90-entware-manager.conf: порт-хранитель НЕ удаляем — иначе общий lighttpd
 # упадёт на занятый порт 80 вместе с koffe/web4static. Полноценную lighttpd-
 # панель заменяем порт-хранителем (S9b), чтобы чужие conf.d-сервисы жили.
-if migrate_is_portkeeper "/opt/etc/lighttpd/conf.d/90-entware-manager.conf"; then
+if migrate_is_portkeeper "$CONFD_OUR"; then
 	ok "порт-хранитель сохранён (общий lighttpd остаётся на стабильном порту)"
-elif [ -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" ]; then
+elif [ -f "$CONFD_OUR" ]; then
 	PK=$(migrate_choose_portkeeper)
 	if [ -n "$PK" ]; then
 		migrate_write_portkeeper "$PK"
 		ok "90-entware-manager.conf заменён порт-хранителем (:$PK)"
 	else
-		rm -f "/opt/etc/lighttpd/conf.d/90-entware-manager.conf" 2>/dev/null
+		rm -f "$CONFD_OUR" 2>/dev/null
 		ok "90-entware-manager.conf удалён (порт свободен)"
 	fi
 fi
 
 # Наш init-скрипт entware-server
-rm -f "/opt/etc/init.d/S80entware-server" 2>/dev/null
+rm -f "$EWM_SERVER_INIT" 2>/dev/null
 ok "S80entware-server удалён"
 
 # Старый init-скрипт entware-lighttpd
-rm -f "/opt/etc/init.d/S80entware-lighttpd" 2>/dev/null
+rm -f "$EWM_INIT" 2>/dev/null
 ok "S80entware-lighttpd удалён"
 
 # Автозапуск демонов мониторинга
-rm -f "/opt/etc/init.d/S85entware-watchdogs" 2>/dev/null
+rm -f "$S85_INIT" 2>/dev/null
 ok "S85entware-watchdogs удалён"
 
 # 30-cgi.conf — удаляем ТОЛЬКО если это наш файл (точное совпадение с шаблоном).
@@ -213,15 +252,15 @@ echo "────────────────────────�
 if [ "$EWM_SERVER_RAN" = "1" ]; then
 	# Режим entware-server: светтитхтd чужой, ничего не перезапускаем
 	warn "lighttpd не перезапускаю (режим entware-server, он не наш)"
-elif [ -x "/opt/etc/init.d/S80entware-lighttpd" ]; then
-	if /opt/etc/init.d/S80entware-lighttpd start 2>/dev/null; then
+elif [ -x "$EWM_INIT" ]; then
+	if "$EWM_INIT" start 2>/dev/null; then
 		sleep 1
 		ok "lighttpd запущен (S80entware-lighttpd)"
 	else
 		warn "Не удалось запустить lighttpd (S80entware-lighttpd)"
 	fi
-elif [ -f /opt/etc/init.d/S80lighttpd ]; then
-	if /opt/etc/init.d/S80lighttpd start 2>/dev/null; then
+elif [ -f "$LIGHTTPD_INIT" ]; then
+	if "$LIGHTTPD_INIT" start 2>/dev/null; then
 		sleep 1
 		ok "lighttpd запущен"
 	else
@@ -244,8 +283,18 @@ echo "  они могут использоваться другими прогр
 echo "  Если хочешь удалить вручную:"
 echo "    opkg remove lighttpd lighttpd-mod-cgi jq curl sudo smartmontools ..."
 echo ""
-if [ -d "$BACKUP_DIR" ]; then
-	echo "  Бэкап конфигов: $BACKUP_DIR/ (не удалён)"
-	echo "  При переустановке install.sh восстановит их."
+if [ -n "$BACKUP_SAVED" ]; then
+	echo "  Бэкап конфигов сохранён: $BACKUP_SAVED"
+	echo "  При переустановке положи его обратно в $BACKUP_DIR — install.sh"
+	echo "  сохранит эти копии при обновлении."
+else
+	echo "  Бэкап конфигов: не сохранялся (удалён вместе с панелью)."
 fi
 echo ""
+
+# Код возврата: панель удалена успешно, но бэкап конфигов пропадёт —
+# сообщаем об этом кодом, чтобы вызывающий (человек или скрипт) заметил.
+if [ -d "$BACKUP_DIR" ] || [ -n "$BACKUP_LOST" ]; then
+	exit 1
+fi
+exit 0

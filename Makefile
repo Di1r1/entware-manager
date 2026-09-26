@@ -93,6 +93,8 @@ test:
 	@echo "=== Shell unit tests ==="
 	@sh "$(MAKEFILE_DIR)/test/migrate_tests.sh" 2>&1
 	@sh "$(MAKEFILE_DIR)/test/dispatch_parity.sh" 2>&1
+	@echo "=== Uninstall backup tests ==="
+	@sh "$(MAKEFILE_DIR)/test/uninstall_backup.sh" 2>&1
 
 lint:
 	@echo "=== Go vet ==="

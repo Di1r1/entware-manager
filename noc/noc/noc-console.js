@@ -1091,7 +1091,7 @@
     198: 'Uncorrectable Sector Count — неисправимые сектора.',
     199: 'UDMA CRC Error Count — ошибки CRC на интерфейсе.'
   };
-  var smartLoaded = false, smartTestTimer = null;
+  var smartLoaded = false, smartTestTimer = null, smartLastDisks = {};
   function smartNeedSession() { if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return false; } return true; }
   function smartBoot(force) {
     if (!smartNeedSession()) return;
@@ -1102,9 +1102,19 @@
   function smartLoadDisks(force) {
     if (!smartNeedSession()) return;
     var wrap = document.getElementById('smartCards');
-    if (wrap) wrap.innerHTML = '<div class="card"><div class="mut">Загрузка…</div></div>';
+    var hasCards = !!(wrap && wrap.querySelector('.card[data-device]'));
+    /* Первый заход — карточек ещё нет, показываем заглушку «Загрузка…».
+     * Дальше карточки остаются на месте и только помечаются «Загрузка…»:
+     * раньше контейнер затирался целиком, и при каждом фоновом
+     * до-обновлении (раз в 5 с) карточки исчезали и появлялись заново. */
+    if (wrap && !hasCards) wrap.innerHTML = '<div class="card"><div class="mut">Загрузка…</div></div>';
+    else smartMarkCardsLoading(true);
     liveFetch('smart.cgi?action=list' + (force ? '&refresh=1' : ''), null, 60000).then(function (d) {
-      var disks = (d && d.disks) || [];
+      /* liveFetchRaw для не-JSON ответа (страница ошибки lighttpd/entware-server,
+       * 401) отдаёт строку — она truthy, но дисков в ней нет. Проверяем
+       *  именно наличие d.disks, иначе карточки затёрлись бы «не найдены». */
+      if (!d || !d.disks) { smartMarkCardsLoading(false); return; }
+      var disks = d.disks || [];
       smartRenderCards(disks);
       var pend = disks.some(function (x) { return x.attr_health === 'loading' || x.attr_health === 'busy'; });
       if (pend) setTimeout(function () { smartLoadDisks(true); }, 5000);
@@ -1135,48 +1145,121 @@
     });
     return html;
   }
-  function smartFillParts(card, dev) {
+  /* SMART_PARTS_TTL — как часто перерисовывать «Разделы» фоновым тиком.
+   * Раньше карточка пересоздавалась на каждом тике и разделы запрашивались
+   * заново (лишняя нагрузка на df и мигание). Теперь карточка живёт, поэтому
+   * свежесть держим по времени: пользователь всегда видит не древние данные,
+   * а кнопка «Разделы» обновляет принудительно. */
+  var SMART_PARTS_TTL = 60000;
+  function smartFillParts(card, dev, force) {
     var box = card.querySelector('[data-parts]');
-    if (!box || box.dataset.loaded) return;
+    if (!box) return;
+    if (!force && box.dataset.loaded && (Date.now() - (+box.dataset.at || 0)) < SMART_PARTS_TTL) return;
     liveFetch('smart.cgi?action=usage&device=' + encodeURIComponent(dev), null, 30000).then(function (d) {
       if (!box.parentNode) return;
       box.dataset.loaded = '1';
+      box.dataset.at = String(Date.now());
       box.innerHTML = smartPartsHTML((d && d.partitions) || []);
+    });
+  }
+  function smartFrames(d) {
+    var frames = '';
+    if (d.temperature !== null && d.temperature !== undefined) {
+      var tcls = d.temperature > 55 ? ' crit' : (d.temperature > 45 ? ' warn' : '');
+      frames += '<span class="smart-frame' + tcls + '">' + esc(d.temperature) + '°</span>';
+    }
+    if (d.power_on_hours) frames += '<span class="smart-frame">' + esc(d.power_on_hours) + ' ч</span>';
+    return frames;
+  }
+  function smartFacts(d) {
+    return [d.serial || '—', d.type || '—', d.size || '—'].join(' · ');
+  }
+  /* Шапка карточки целиком: h3 + бейдж + модель + рамки. Один источник для
+   * первичной отрисовки и для обновления на месте. */
+  function smartCardHead(d) {
+    return '<h3>/dev/' + esc(d.device) + '</h3>' +
+      '<span data-health>' + smartHealthBadge(d) + '</span>' +
+      '<span class="mut mono">' + esc(d.model || '—') + '</span>' +
+      '<span class="smart-frames" data-frames>' + smartFrames(d) + '</span>';
+  }
+  function smartCardHTML(d) {
+    return '<div class="card" data-mid="smart-' + esc(d.device) + '" data-device="' + esc(d.device) + '">' +
+      '<div class="panel-h">' + smartCardHead(d) + '</div>' +
+      '<div class="vol-list mono" data-parts><div class="vol"><div class="vol-h"><b>Разделы</b><span class="mut">Загрузка…</span></div></div></div>' +
+      '<div class="mut mono" data-facts style="font-size:11px;margin-top:4px">' + esc(smartFacts(d)) + '</div>' +
+      '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
+      '<button class="btn sm ghost" data-sact="info">Информация</button> ' +
+      '<button class="btn sm ghost" data-sact="health">Проверка</button> ' +
+      '<button class="btn sm ghost" data-sact="usage">Разделы</button> ' +
+      '<button class="btn sm ghost" data-sact="attrs">Атрибуты</button> ' +
+      '<button class="btn sm ghost" data-sact="tests">Тесты</button></span></div>' +
+      '</div>';
+  }
+  /* Обновление существующей карточки на месте: узел карточки сохраняется,
+   * меняются только данные внутри. Диск исчез из ответа — карточка
+   * удаляется (это делает smartRenderCards). */
+  function smartUpdateCard(card, d) {
+    var head = card.querySelector('.panel-h');
+    if (head) head.innerHTML = smartCardHead(d);
+    var facts = card.querySelector('[data-facts]');
+    if (facts) facts.textContent = smartFacts(d);
+  }
+  /* Помечает карточки обновляемыми: бейдж → «Загрузка…». Размер и разметка
+   * карточки не меняются, ничего не исчезает. */
+  function smartMarkCardsLoading(on) {
+    var wrap = document.getElementById('smartCards');
+    if (!wrap) return;
+    Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
+      var h = c.querySelector('[data-health]');
+      if (!h) return;
+      h.innerHTML = smartHealthBadge(on
+        ? { attr_health: 'loading' }
+        : (smartLastDisks[c.getAttribute('data-device')] || { attr_health: 'inactive' }));
     });
   }
   function smartRenderCards(disks) {
     var wrap = document.getElementById('smartCards');
     if (!wrap) return;
-    if (!disks.length) { wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>'; return; }
-    var html = '';
-    disks.forEach(function (d) {
-      var frames = '';
-      if (d.temperature !== null && d.temperature !== undefined) {
-        var tcls = d.temperature > 55 ? ' crit' : (d.temperature > 45 ? ' warn' : '');
-        frames += '<span class="smart-frame' + tcls + '">' + d.temperature + '°</span>';
-      }
-      if (d.power_on_hours) frames += '<span class="smart-frame">' + d.power_on_hours + ' ч</span>';
-      var facts = [d.serial || '—', d.type || '—', d.size || '—'];
-      html += '<div class="card" data-mid="smart-' + esc(d.device) + '" data-device="' + esc(d.device) + '">' +
-        '<div class="panel-h"><h3>/dev/' + esc(d.device) + '</h3>' + smartHealthBadge(d) +
-        '<span class="mut mono">' + esc(d.model || '—') + '</span>' +
-        '<span class="smart-frames">' + frames + '</span></div>' +
-        '<div class="vol-list mono" data-parts><div class="vol"><div class="vol-h"><b>Разделы</b><span class="mut">Загрузка…</span></div></div></div>' +
-        '<div class="mut mono" style="font-size:11px;margin-top:4px">' + esc(facts.join(' · ')) + '</div>' +
-        '<div class="toolbar" style="margin-top:8px"><span class="t-right" style="margin-left:0">' +
-        '<button class="btn sm ghost" data-sact="info">Информация</button> ' +
-        '<button class="btn sm ghost" data-sact="health">Проверка</button> ' +
-        '<button class="btn sm ghost" data-sact="usage">Разделы</button> ' +
-        '<button class="btn sm ghost" data-sact="attrs">Атрибуты</button> ' +
-        '<button class="btn sm ghost" data-sact="tests">Тесты</button></span></div>' +
-        '</div>';
+    smartLastDisks = {};
+    var i;
+    for (i = 0; i < disks.length; i++) {
+      if (disks[i] && disks[i].device) smartLastDisks[disks[i].device] = disks[i];
+    }
+    if (!disks.length) {
+      wrap.innerHTML = '<div class="card"><div class="mut">Диски не найдены или smartmontools не установлен</div></div>';
+      smartApplyFilter();
+      return;
+    }
+
+    /* Ключевая правка: не пересоздаём карточки. Для каждого диска берём
+     * уже нарисованную карточку и обновляем её содержимое; новые — рисуем,
+     * исчезнувшие — удаляем. Так карточки не мигают при до-загрузке. */
+    var existing = {};
+    Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
+      existing[c.getAttribute('data-device')] = c;
     });
-    wrap.innerHTML = html;
+    var holder = document.createElement('div');
+    var seen = {};
+    for (i = 0; i < disks.length; i++) {
+      var d = disks[i];
+      if (!d || !d.device) continue;
+      var card = existing[d.device];
+      if (card) { smartUpdateCard(card, d); delete existing[d.device]; continue; }
+      if (seen[d.device]) continue; /* диск продублирован в ответе */
+      seen[d.device] = 1;
+      holder.innerHTML = smartCardHTML(d);
+      if (holder.children[0]) wrap.appendChild(holder.children[0]);
+    }
+    for (var dev in existing) {
+      if (!Object.prototype.hasOwnProperty.call(existing, dev)) continue;
+      var old = existing[dev];
+      if (old.parentNode) old.parentNode.removeChild(old);
+    }
+
     /* старые ширины эпохи «карточки в ряд» игнорирует сам cardResizeBoot
      * (полоски всегда во всю ширину) — дубль чистки здесь не нужен */
     cardBootIds();
     cardResizeBoot();
-    /* перерисовка убила шапки с привязанным переносом — перепривязать */
     cardOrderReboot(wrap);
     Array.prototype.forEach.call(wrap.querySelectorAll('.card[data-device]'), function (c) {
       smartFillParts(c, c.getAttribute('data-device'));
@@ -1219,7 +1302,7 @@
     if (!box) return;
     if (!box.hidden) { box.hidden = true; return; }
     box.hidden = false;
-    smartFillParts(card, dev);
+    smartFillParts(card, dev, true);
   }
   function smartShowAttrs(dev) {
     nocModal('<div class="c-head">Атрибуты · ' + esc(dev) + ' <span class="mut">клик по имени — справка</span></div>' +
