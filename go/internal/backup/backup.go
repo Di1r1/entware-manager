@@ -10,10 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"entware-manager/internal/auth"
+	"entware-manager/internal/cgiutil"
 )
 
 var webRoot = "/opt/web_entware"
@@ -52,19 +54,29 @@ func secretDest(dest string) bool {
 
 // BuildArchive собирает архив бэкапа конфигурации в памяти
 // (конфиги + список пакетов + info). Экспортировано для чат-бота.
-func BuildArchive() ([]byte, error) {
-	cleanupOldTemp("entware-backup-")
-	tmpDir, err := os.MkdirTemp("", "entware-backup-*")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(tmpDir)
+// backupFileName — имя файла, который отдаёт панель при скачивании
+// (Content-Disposition и ?list=1 берут его отсюда).
+const backupFileName = "entware-manager-backup.tar.gz"
 
+// archiveEntry — одна запись будущего архива.
+type archiveEntry struct {
+	Name string
+	Data []byte
+}
+
+// collectEntries собирает содержимое архива. Единый источник истины для
+// BuildArchive и HandleList: список в панели всегда совпадает с тем, что
+// реально попадёт в tar.gz.
+func collectEntries() []archiveEntry {
+	var out []archiveEntry
+	add := func(name string, data []byte) {
+		out = append(out, archiveEntry{Name: name, Data: data})
+	}
+
+	// Конфиги панели (плоские имена: logger/config.json → logger_config.json).
 	for _, cf := range configs {
-		src := filepath.Join(webRoot, cf.Path)
-		dst := filepath.Join(tmpDir, strings.ReplaceAll(cf.Path, "/", "_"))
-		if data, err := os.ReadFile(src); err == nil {
-			os.WriteFile(dst, data, 0644)
+		if data, err := os.ReadFile(filepath.Join(webRoot, cf.Path)); err == nil {
+			add(strings.ReplaceAll(cf.Path, "/", "_"), data)
 		}
 	}
 
@@ -75,63 +87,100 @@ func BuildArchive() ([]byte, error) {
 			if e.IsDir() || filepath.Ext(e.Name()) != ".json" || strings.HasSuffix(e.Name(), ".tmp") {
 				continue
 			}
-			data, err := os.ReadFile(filepath.Join(webRoot, "bridge", e.Name()))
-			if err != nil {
-				continue
+			if data, err := os.ReadFile(filepath.Join(webRoot, "bridge", e.Name())); err == nil {
+				add("bridge_"+e.Name(), data)
 			}
-			os.WriteFile(filepath.Join(tmpDir, "bridge_"+e.Name()), data, 0600)
 		}
 	}
 
 	// Секреты панели: хеш пароля и токен Telegram-бота.
 	for _, name := range []string{"auth_config.json", "telegram_config.json"} {
 		if data, err := os.ReadFile(filepath.Join(webRoot, name)); err == nil {
-			os.WriteFile(filepath.Join(tmpDir, name), data, 0600)
+			add(name, data)
 		}
 	}
 
 	// Пользовательские источники системных логов логгера.
 	if data, err := os.ReadFile(filepath.Join(webRoot, "logger", "system_sources.json")); err == nil {
-		os.WriteFile(filepath.Join(tmpDir, "logger_system_sources.json"), data, 0644)
+		add("logger_system_sources.json", data)
 	}
 
+	// Ошибку игнорируем (opkg может отсутствовать или отработать с !=0 при
+	// частичном выводе) — как было раньше; важен сам факт непустого вывода.
 	pkgList, _ := exec.Command("opkg", "list-installed").Output()
 	if len(pkgList) > 0 {
-		os.WriteFile(filepath.Join(tmpDir, "packages.txt"), pkgList, 0644)
+		add("packages.txt", pkgList)
 	}
 
-	info := backupInfo()
-	infoJSON, _ := json.MarshalIndent(info, "", "  ")
-	os.WriteFile(filepath.Join(tmpDir, "backup.json"), infoJSON, 0644)
+	if infoJSON, err := json.MarshalIndent(backupInfo(), "", "  "); err == nil {
+		add("backup.json", infoJSON)
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// BuildArchive собирает gzip-tar с конфигами в памяти.
+// Промежуточных файлов на диске не создаёт (раньше — каталог в /tmp).
+func BuildArchive() ([]byte, error) {
+	// Подчищаем каталоги от старых версий, которые их ещё создавали.
+	cleanupOldTemp("entware-backup-")
+	entries := collectEntries()
 
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gw)
-
-	entries, _ := os.ReadDir(tmpDir)
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(tmpDir, entry.Name()))
-		if err != nil {
-			continue
-		}
+	for _, e := range entries {
 		tw.WriteHeader(&tar.Header{
-			Name: entry.Name(),
-			Size: int64(len(data)),
+			Name: e.Name,
+			Size: int64(len(e.Data)),
 			Mode: 0644,
 		})
-		tw.Write(data)
+		tw.Write(e.Data)
 	}
-
 	tw.Close()
 	gw.Close()
 
 	return buf.Bytes(), nil
 }
 
+// HandleList — GET backup.cgi?list=1: JSON со списком записей архива и
+// именем файла. Панель печатает его в карточку «Вывод», чтобы было видно,
+// что именно уходит в бэкап. Содержимое берётся из collectEntries() —
+// того же кода, что собирает tar.gz, поэтому список не может разойтись
+// с архивом.
+// listEntry — одна запись в ответе ?list=1.
+type listEntry struct {
+	Name  string `json:"name"`
+	Bytes int    `json:"bytes"`
+}
+
+func HandleList() {
+	// G3: чтение — только GET.
+	if !cgiutil.IsGET() {
+		cgiutil.NotAllowed()
+		return
+	}
+	entries := collectEntries()
+	list := make([]listEntry, 0, len(entries))
+	total := 0
+	for _, e := range entries {
+		list = append(list, listEntry{Name: e.Name, Bytes: len(e.Data)})
+		total += len(e.Data)
+	}
+	cgiutil.WriteJSON(map[string]interface{}{
+		"filename":    backupFileName,
+		"count":       len(entries),
+		"total_bytes": total,
+		"entries":     list,
+	})
+}
+
 func HandleCreate() {
+	if cgiutil.GetQueryParam("list") == "1" {
+		HandleList()
+		return
+	}
 	data, err := BuildArchive()
 	if err != nil {
 		fmt.Print("Content-type: text/plain; charset=utf-8\n\n")
@@ -139,7 +188,7 @@ func HandleCreate() {
 		return
 	}
 	fmt.Println("Content-type: application/gzip; charset=utf-8")
-	fmt.Println("Content-Disposition: attachment; filename=entware-manager-backup.tar.gz")
+	fmt.Println("Content-Disposition: attachment; filename=" + backupFileName)
 	fmt.Println("Content-Length:", len(data))
 	fmt.Println()
 	os.Stdout.Write(data)

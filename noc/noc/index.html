@@ -482,18 +482,20 @@
             <div class="card" style="margin-bottom:12px"><div class="c-head">Бэкап и восстановление</div>
               <div class="mut mono" style="margin-bottom:8px">Сохраняется: ссылки, настройки монитора, сети, watchdog и лога. Скачайте бэкап перед сбросом роутера или для переноса на новое устройство.</div>
               <div class="toolbar"><span class="t-right" style="margin-left:0">
-                <a class="btn sm" href="/entware-cgi/backup.cgi" download="entware-manager-backup.tar.gz">Скачать бэкап</a>
+                <a class="btn sm" id="nmntBackupDl" href="/entware-cgi/backup.cgi" download="entware-manager-backup.tar.gz">Скачать бэкап</a>
                 <label class="btn sm ghost" style="cursor:pointer">Восстановить<input type="file" id="nmntRestoreFile" accept=".tar.gz" hidden></label>
                 <button class="btn sm ghost" id="nmntOffline">Подготовить офлайн-пакет</button>
-                <span class="mut mono" id="nmntBackupStatus"></span></span></div>
-              <div class="mut mono" style="margin-top:8px">Офлайн-пакет: перенесите tar.gz на целевой роутер в <b>/opt/tmp/</b> и выполните там: <span class="mono">tar xzf &lt;файл&gt; && cd &lt;каталог&gt; && sh install-offline.sh</span></div></div>
+                <span class="mut mono" id="nmntBackupStatus"></span></span></div></div>
             <div class="card"><div class="c-head">Обновление <span class="mut">Текущая версия: <span id="nmntCurrent">загрузка…</span></span></div>
               <div class="toolbar"><span class="t-right" style="margin-left:0">
                 <button class="btn sm ghost" id="nmntCheck">Проверить</button>
                 <button class="btn sm" id="nmntRun" hidden>Обновить до <span id="nmntVersion"></span></button>
                 <button class="btn sm ghost" id="nmntReinstall">Переустановить</button></span></div>
-              <div class="mut mono" id="nmntStatus" style="margin-top:8px"></div>
-              <pre class="log mono" id="nmntLog" hidden style="margin-top:8px"></pre></div>
+              <div class="mut mono" id="nmntStatus" style="margin-top:8px"></div></div>
+            <div class="card" style="margin-top:12px"><div class="c-head">Вывод <span class="mut">бэкап, офлайн-пакет, обновление и переустановка</span></div>
+              <div class="toolbar"><span class="t-right" style="margin-left:0"><button class="btn sm ghost" id="nmntOutClear">Очистить</button></span></div>
+              <div class="mut mono" style="margin-bottom:8px">Офлайн-пакет ставится на целевой роутер: перенесите <span class="mono" id="nmntOfflineName">tar.gz</span> в <b>/opt/tmp/</b> и выполните там <span class="mono" id="nmntOfflineCmd">tar xzf &lt;файл&gt; && sh install-offline.sh</span></div>
+              <pre class="log mono" id="nmntOut" style="margin-top:8px"></pre></div>
           </div>
         </div>
       </div>
@@ -609,7 +611,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=137"></script>
+<script src="/entware-manager/noc/noc-console.js?v=140"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>

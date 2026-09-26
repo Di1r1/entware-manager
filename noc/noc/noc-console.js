@@ -3607,13 +3607,109 @@
    * GET prepare_offline.cgi (blob), update_check/update_run/update_status.cgi с поллингом 2с.
    * Бинарные ответы качаем голым fetch: liveFetchRaw испортил бы tar.gz через .text(). */
   var NMNT_POLL = null;
+  var NMNT_LAST_LINE = null;
+  var backupFileNameDefault = 'entware-manager-backup.tar.gz';
+  var NMNT_OUT_MAX = 400;
+  /* Общий журнал обслуживания (карточка «Вывод»). Раньше эти сообщения
+   * терялись в мелких строках рядом с кнопками: у офлайн-пакета вообще
+   * была одна строка, а инструкция по установке — в подписи под кнопкой.
+   * Пишем текстовыми узлами (без innerHTML), с потолком по числу строк. */
+  function nmntP2(n) { return (n < 10 ? '0' : '') + n; }
+  function nmntPlain(html) {
+    var d = document.createElement('div');
+    d.innerHTML = html;
+    return (d.textContent || '').replace(/^\s+|\s+$/g, '');
+  }
+  function nmntAppend(text) {
+    var el = document.getElementById('nmntOut');
+    if (!el) return;
+    el.appendChild(document.createTextNode(text + '\n'));
+    while (el.childNodes.length > NMNT_OUT_MAX) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }
+  /* Строка без таймстампа — для продолжений (например, списка файлов). */
+  function nmntOutPlain(msg) {
+    nmntAppend((msg === null || msg === undefined) ? '' : String(msg));
+  }
+  function nmntOut(msg) {
+    var text = (msg === null || msg === undefined) ? '' : String(msg);
+    if (text) {
+      var d = new Date();
+      text = '[' + nmntP2(d.getHours()) + ':' + nmntP2(d.getMinutes()) + ':' + nmntP2(d.getSeconds()) + '] ' + text;
+    }
+    nmntAppend(text);
+  }
+  /* Сервер отдаёт скользящее окно последних 20 строк, поэтому считать
+   * «сколько уже показали» по длине нельзя: окно упрётся в 20 и хвост
+   * пропадёт. Дедуп по содержимому — ищем последнюю уже показанную строку. */
+  function nmntPushLines(lines) {
+    if (!lines || !lines.length) return;
+    var start = 0;
+    if (NMNT_LAST_LINE !== null) {
+      for (var k = lines.length - 1; k >= 0; k--) {
+        if (lines[k] === NMNT_LAST_LINE) { start = k + 1; break; }
+      }
+    }
+    for (var i = start; i < lines.length; i++) nmntOut(lines[i]);
+    NMNT_LAST_LINE = lines[lines.length - 1];
+  }
+  function nmntOutClear() {
+    var el = document.getElementById('nmntOut');
+    if (el) { el.textContent = ''; }
+    NMNT_LAST_LINE = null;
+  }
   function nmntBackupStatus(msg, ok) {
     var el = document.getElementById('nmntBackupStatus');
     if (el) { el.textContent = msg; el.style.color = ok === false ? '#e53e3e' : ok === true ? '#2ecc71' : ''; }
+    nmntOut(msg);
   }
-  function nmntUpdStatus(html) {
+  /* quiet — не дублировать в журнал: пассивный прогресс и статус при
+   * загрузке вкладки иначе забивают карточку за секунды. */
+  function nmntUpdStatus(html, quiet) {
     var el = document.getElementById('nmntStatus');
     if (el) el.innerHTML = html;
+    if (!quiet) nmntOut(nmntPlain(html));
+  }
+  /* Форматтер байт уже есть в formatField (type='bytes') — свой дубль
+   * не заводим (RULES §1). */
+  function nmntBytes(n) { return formatField({ value: n, type: 'bytes' }); }
+  /* Состав бэкапа: спрашиваем у бэка-endpoint'а список записей
+   * (backup.cgi?list=1 — тот же код, что собирает tar.gz) и печатаем
+   * его в «Вывод»: видно имя файла-архива и что именно в него уходит.
+   * Само скачивание не трогаем — это обычная ссылка с download. */
+  function nmntBackupList() {
+    liveFetch('backup.cgi?list=1').then(function (d) {
+      if (!d || !d.entries || !d.entries.length) {
+        nmntOut('Бэкап: не удалось получить список файлов');
+        return;
+      }
+      nmntOut('');
+      nmntOut('— Бэкап: ' + (d.filename || backupFileNameDefault) +
+        ' — файлов: ' + (d.count || d.entries.length) + ', данных: ' + nmntBytes(d.total_bytes) + ' —');
+      for (var i = 0; i < d.entries.length; i++) {
+        nmntOutPlain('  ' + d.entries[i].name + ' — ' + nmntBytes(d.entries[i].bytes));
+      }
+      nmntOutPlain('  итого данных: ' + nmntBytes(d.total_bytes));
+    });
+  }
+  /* Имя офлайн-пакета в постоянной подсказке карточки. Имя генерируется
+   * на роутере (entware-manager-offline-<arch>-v<версия>.tar.gz), поэтому
+   * подставляем то, что реально пришло в Content-Disposition, и запоминаем:
+   * после перезагрузки страницы подсказка остаётся заполненной. */
+  var NMNT_OFFLINE_LS = 'entware_noc_offline_pkg';
+  function nmntOfflineHint(name) {
+    if (!name) return;
+    lsSet(NMNT_OFFLINE_LS, name);
+    var n = document.getElementById('nmntOfflineName');
+    var c = document.getElementById('nmntOfflineCmd');
+    if (n) n.textContent = name;
+    /* В архиве deploy/, packages/ и install-offline.sh без обёрточного
+     * каталога — распаковываем в текущий каталог, cd не нужен. */
+    if (c) c.textContent = 'tar xzf ' + name + ' && sh install-offline.sh';
+  }
+  function nmntOfflineHintRestore() {
+    var saved = lsGet(NMNT_OFFLINE_LS);
+    if (saved) nmntOfflineHint(saved);
   }
   function nmntRestore(input) {
     var file = input.files && input.files[0];
@@ -3651,11 +3747,18 @@
       document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
       nmntBackupStatus('✓ Офлайн-пакет готов: ' + o.name + ' (сохранён в Загрузки)', true);
+      nmntOfflineHint(o.name);
+      /* Инструкция по установке — в журнал вывода: в карточке бэкапа её
+       * почти не было видно, и она терялась при обновлении страницы. */
+      nmntOut('');
+      nmntOut('— Установка офлайн-пакета на целевой роутер —');
+      nmntOut('1) Перенесите ' + o.name + ' на целевой роутер в /opt/tmp/');
+      nmntOut('2) Выполните там: tar xzf ' + o.name + ' && sh install-offline.sh');
     }).catch(function (e) {
       nmntBackupStatus('Ошибка: ' + (e && e.message ? e.message : e), false);
     });
   }
-  function nmntApplyCheck(d, btn) {
+  function nmntApplyCheck(d, btn, quiet) {
     var cur = document.getElementById('nmntCurrent');
     var run = document.getElementById('nmntRun');
     if (!d || typeof d !== 'object') {
@@ -3668,18 +3771,18 @@
       var v = document.getElementById('nmntVersion');
       if (v) v.textContent = d.latest;
       if (run) run.hidden = false;
-      nmntUpdStatus('<span style="color:#2ecc71">Доступна версия ' + esc(d.latest) + '</span>');
+      nmntUpdStatus('<span style="color:#2ecc71">Доступна версия ' + esc(d.latest) + '</span>', quiet);
     } else if (d.error) {
-      nmntUpdStatus('<span style="color:#e53e3e">' + esc(d.error) + '</span>');
+      nmntUpdStatus('<span style="color:#e53e3e">' + esc(d.error) + '</span>', quiet);
     } else {
       if (run) run.hidden = true;
-      nmntUpdStatus('<span class="mut">Установлена последняя версия</span>');
+      nmntUpdStatus('<span class="mut">Установлена последняя версия</span>', quiet);
     }
     if (btn) btn.disabled = false;
   }
   function nmntInfo() {
     if (!window.__NOC_LIVE_STATS) return;
-    liveFetch('update_check.cgi').then(function (d) { nmntApplyCheck(d, null); });
+    liveFetch('update_check.cgi').then(function (d) { nmntApplyCheck(d, null, true); });
   }
   function nmntCheck() {
     if (!setNeedSession()) return;
@@ -3694,11 +3797,7 @@
     NMNT_POLL = setInterval(function () {
       liveFetch('update_status.cgi').then(function (d) {
         if (!d || typeof d !== 'object') return;
-        var log = document.getElementById('nmntLog');
-        if (log && d.lines && d.lines.length) {
-          log.textContent = d.lines.join('\n');
-          log.scrollTop = log.scrollHeight;
-        }
+        nmntPushLines(d.lines);
         if (d.status === 'done') {
           clearInterval(NMNT_POLL);
           if (typeof pkgCacheClearAll === 'function') { try { pkgCacheClearAll(); } catch (e) {} }
@@ -3719,7 +3818,7 @@
           var ts = el >= 60 ? Math.floor(el / 60) + ' мин ' + (el % 60) + ' с' : el + ' с';
           var prog = d.progress || (d.lines && d.lines.length ? d.lines[d.lines.length - 1] : '');
           nmntUpdStatus('<span style="color:#f59e0b"><b>' + esc(prog) + '</b> ' +
-            '<span class="mut">(' + ts + ' — обычно до 1 минуты; не закрывайте страницу)</span></span>');
+            '<span class="mut">(' + ts + ' — обычно до 1 минуты; не закрывайте страницу)</span></span>', true);
         }
       });
     }, 2000);
@@ -3727,8 +3826,9 @@
   function nmntRun(mode) {
     if (!setNeedSession()) return;
     if (mode === 'reinstall' && !confirm('Переустановить текущую версию Entware Manager?\nБудет повторно скачана и установлена установленная версия. Конфигурация сохранится.')) return;
-    var log = document.getElementById('nmntLog');
-    if (log) { log.hidden = false; log.textContent = mode === 'reinstall' ? 'Запуск переустановки…' : 'Запуск обновления…'; }
+    var startMsg = mode === 'reinstall' ? 'Запуск переустановки…' : 'Запуск обновления…';
+    NMNT_LAST_LINE = null;
+    nmntOut('▸ ' + startMsg);
     nmntUpdStatus('<span style="color:#f59e0b">Запущено…</span>');
     var run = document.getElementById('nmntRun');
     if (run) run.disabled = true;
@@ -3751,6 +3851,7 @@
     ntgLoad();
     nsecLoad();
     nmntInfo();
+    nmntOfflineHintRestore();
   }
   (function setBind() {
     function on(id, fn) { var el = document.getElementById(id); if (el) el.onclick = fn; }
@@ -3794,6 +3895,8 @@
     on('ntlsSave', ntlsSave);
     on('nalRefresh', nalLoad);
     on('nmntOffline', nmntOffline);
+    on('nmntOutClear', nmntOutClear);
+    on('nmntBackupDl', nmntBackupList);
     on('nmntCheck', nmntCheck);
     on('nmntRun', function () { nmntRun('update'); });
     on('nmntReinstall', function () { nmntRun('reinstall'); });
