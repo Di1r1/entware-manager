@@ -14,7 +14,7 @@
 - Монитор (`internal/monitor/kill.go`): `pidKillable()` — запрет `pid <= 1` (init), собственного PID CGI и PID родителя (HTTP-сервер). Закрыты оба обхода: `kill_pid.cgi` и `monitor_action.cgi?action=kill`.
 - Восстановление бэкапа (`internal/backup/backup.go`): после `os.WriteFile` вызывается `os.Chmod` — раньше режим существующего файла не менялся, и секреты после restore оставались 0644. При ошибке chmod файл считается восстановленным, а проблема попадает в `perm_warnings` и в текст ответа (иначе единственный файл давал ложное «конфигов нет в архиве»).
 - `logger/clear.cgi` (`internal/logger/clear.go`): ошибки `os.Remove` считаются (`failed`), недоступный каталог логов больше не выглядит как «очищено 0 файлов», ответ содержит `deleted`/`failed`.
-- Тесты: 13 новых кейсов в 5 файлах (`deletefile_protected_test.go`, `tmpfs_clean_protected_test.go`, `kill_guard_test.go`, `clear_test.go`, `backup_restore_test.go`). Кросс-сборка arm64/mips/mipsel, `-race` и `-count=3` — чисто.
+- Тесты: 15 новых кейсов в 5 файлах (`deletefile_protected_test.go`, `tmpfs_clean_protected_test.go`, `kill_guard_test.go`, `clear_test.go`, `backup_restore_test.go`) — 3 в `6800e5e`, 7 в `eaf3078`, 5 в `75129ca`. Кросс-сборка arm64/mips/mipsel, `-race` и `-count=3` — чисто.
 
 Известные (не в этом релизе): зелёный тост при `status:"error"` в `entware.js:1232` и `monitor.js:206,217`; `P1-06` закрыт наполовину (нет allowlist по имени/командной строке процесса); pre-existing gofmt-дрифт в `network_stats.go`/`packages/log.go`, `gofmt` не входит в `make ci`.
 
