@@ -12,6 +12,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"entware-manager/internal/auth"
@@ -325,10 +326,50 @@ func handleAction() {
 		cgiutil.WriteJSON(map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
+	// Недоступный сервис и HTTP >= 400 лежат в StatusProxy, а не в err: без
+	// actionVerdict мёртвый модуль отчитывался «действие выполнено» в лог и в
+	// Telegram, а UI получал status:"ok" (P1-08).
+	status, message := actionVerdict(res)
+	if status != "ok" {
+		// message уже начинается с «не выполнено:» — свой префикс в шаблоне
+		// давал бы «не выполнено — не выполнено: HTTP 500».
+		bridge.AppendDailyLog(fmt.Sprintf("[%s] [WARN] [127.0.0.1] [%d] [bridge] Модуль «%s»: действие «%s» — %s",
+			time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), logSafe(m.Name), logSafe(act.Label), message))
+		cgiutil.WriteJSON(map[string]interface{}{
+			"status":  status,
+			"message": message,
+			"result":  res,
+		})
+		return
+	}
 	bridge.AppendDailyLog(fmt.Sprintf("[%s] [INFO] [127.0.0.1] [%d] [bridge] Модуль «%s»: действие «%s» выполнено",
-		time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), m.Name, act.Label))
+		time.Now().Format("2006-01-02 15:04:05"), os.Getpid(), logSafe(m.Name), logSafe(act.Label)))
 	cgiutil.WriteJSON(map[string]interface{}{
 		"status": "ok",
 		"result": res,
 	})
 }
+
+// actionVerdict — вердикт по результату действия: что показать в UI и что
+// записать в лог моста. Успешный путь (2xx) не меняется: раньше он тоже
+// отдавал status:"ok" с тем же result.
+//
+// nil трактуется как сбой, а не как успех (fail-closed, как в auth):
+// RunAction при err==nil всегда отдаёт не-nil, но «нет результата» не должно
+// никогда читаться как «сделано».
+func actionVerdict(res *bridge.StatusProxy) (status, message string) {
+	if res == nil {
+		return "error", "не выполнено: нет результата от сервиса"
+	}
+	if res.Failed() {
+		return "error", "не выполнено: " + res.FailMessage()
+	}
+	return "ok", ""
+}
+
+// logSafe — одна строка лога. Имя модуля и подпись действия приходят из
+// манифеста, а ValidateManifest проверяет только длину: перевод строки
+// прошёл бы и дописал в суточный лог поддельную запись (например, «выполнено»).
+var logReplacer = strings.NewReplacer("\r", " ", "\n", " ")
+
+func logSafe(s string) string { return logReplacer.Replace(s) }

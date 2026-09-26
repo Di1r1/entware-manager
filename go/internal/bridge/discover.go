@@ -333,6 +333,33 @@ type StatusProxy struct {
 	Error    string          `json:"error,omitempty"`
 }
 
+// Failed — действие/статус не удались: сервис не ответил либо ответил HTTP >= 400.
+// RunAction кладёт transport-ошибку и код ответа в сам StatusProxy, а в error --
+// только невалидный URL, поэтому проверять надо здесь. Без этого вызывающий писал
+// «выполнено» в лог для мёртвого сервиса и отдавал UI status:"ok".
+// Статусные карточки это НЕ используют: там http_code информационный (503 — это
+// «сервис поднят, но деградировал»), решает вызывающий.
+func (sp *StatusProxy) Failed() bool {
+	if sp == nil {
+		return false
+	}
+	return sp.Error != "" || sp.HTTPCode >= 400
+}
+
+// FailMessage — короткая причина для сообщения пользователю и строки лога.
+func (sp *StatusProxy) FailMessage() string {
+	if sp == nil {
+		return "неизвестная ошибка"
+	}
+	if sp.Error != "" {
+		return sp.Error
+	}
+	if sp.HTTPCode == 0 {
+		return "сервис не ответил"
+	}
+	return fmt.Sprintf("сервис ответил HTTP %d", sp.HTTPCode)
+}
+
 func proxyEndpoint(dir, id string, ep *Endpoint) (*StatusProxy, error) {
 	m, err := LoadManifest(dir, id)
 	if err != nil {

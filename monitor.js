@@ -203,7 +203,7 @@ const MONITOR = {
     async sendAction(action) {
         try {
             var res = await apiPost('/monitor/action.cgi', 'action=' + action);
-            Toast.show(res.message);
+            Toast.show(res.message || res.error || 'Ошибка', res.status !== 'ok');
             this.updateStatus();
         } catch (err) {
             Toast.show('Ошибка: ' + err.message, true);
@@ -214,7 +214,7 @@ const MONITOR = {
         if (confirm('Убить процесс ' + pid + '?')) {
             try {
                 var res = await apiPost('/monitor/action.cgi', 'action=kill&pid=' + pid);
-                Toast.show(res.message);
+                Toast.show(res.message || res.error || 'Ошибка', res.status !== 'ok');
                 this.updateStatus();
             } catch (err) {
                 Toast.show('Ошибка: ' + err.message, true);

@@ -1229,7 +1229,7 @@ function loadLogsTab() {
     document.getElementById('clearOldLogsBtn').addEventListener('click', async () => {
         if (!confirm('Удалить все логи старше 30 дней?')) return;
         const data = await apiPost('/logger/clear.cgi', '');
-        Toast.show(data.message);
+        Toast.show(data.message || data.error || 'Ошибка', data.status !== 'ok');
         logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now();
     });
 
@@ -1240,7 +1240,7 @@ function loadLogsTab() {
             const lines = data.rotated.map(f => f.path + ' (' + fmtBytesJS(f.size) + ')');
             Toast.show(data.message + '\n' + lines.join('\n'), false, 6000);
         } else {
-            Toast.show(data.message);
+            Toast.show(data.message || data.error || 'Ошибка', data.status !== 'ok');
         }
         setTimeout(() => logsFrame.src = API_BASE + '/logger/view.cgi?_=' + Date.now(), 1000);
     });
@@ -1345,7 +1345,7 @@ window.controlTtyd = async function(action, port, pass, mode) {
     if (mode) formData.append('mode', mode);
     try {
         const data = await apiPost('/ttyd_control.cgi', formData.toString());
-        Toast.show(data.message);
+        Toast.show(data.message || data.error || 'Ошибка', data.status !== 'ok');
         // Очищаем поле пароля после запуска/остановки, чтобы не оставался в DOM.
         if (action === 'start' || action === 'stop' || action === 'restart') {
             const passId = port === 8089 ? 'htopPass' : 'termPass';
@@ -1594,7 +1594,7 @@ function bindBridgeCards(container) {
                 Toast.show('Модуль «' + cb.dataset.id + '»: ' + (cb.checked ? 'включён' : 'выключен'));
                 renderBridgeTab(); // перерисовать с учётом состояния
             } catch(e) {
-                Toast.show('Ошибка: ' + e.message);
+                Toast.show('Ошибка: ' + e.message, true);
                 cb.disabled = false;
             }
         });
@@ -1605,7 +1605,7 @@ function bindBridgeCards(container) {
                 await saveBridgePref(cb.dataset.id, 'notifications', cb.checked);
                 Toast.show('Уведомления для «' + cb.dataset.id + '»: ' + (cb.checked ? 'вкл' : 'выкл'));
             } catch(e) {
-                Toast.show('Ошибка: ' + e.message);
+                Toast.show('Ошибка: ' + e.message, true);
                 cb.checked = !cb.checked;
             }
         });
@@ -1621,7 +1621,7 @@ function bindBridgeCards(container) {
                 await saveBridgePref(cb.dataset.id, 'control', cb.checked);
                 Toast.show('Управление «' + cb.dataset.id + '»: ' + (cb.checked ? 'разрешено' : 'запрещено'));
             } catch(e) {
-                Toast.show('Ошибка: ' + e.message);
+                Toast.show('Ошибка: ' + e.message, true);
                 cb.checked = !cb.checked;
             }
         });
@@ -1640,9 +1640,9 @@ function bindBridgeCards(container) {
                     setTimeout(refreshProcsCpu, 1500); // обновить аптайм/CPU после действия
                 } else {
                     const out = res.output ? '\n' + res.output : '';
-                    Toast.show((res.message || res.error || res.status || 'ошибка') + out);
+                    Toast.show((res.message || res.error || res.status || 'ошибка') + out, true);
                 }
-            } catch(e) { Toast.show('Ошибка: ' + e.message); }
+            } catch(e) { Toast.show('Ошибка: ' + e.message, true); }
             btn.disabled = false;
         });
     });
@@ -1662,8 +1662,8 @@ function bindBridgeCards(container) {
                     'id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action) +
                     '&password=' + encodeURIComponent(password));
                 if (res.status === 'ok') Toast.show('Выполнено (' + (res.result && res.result.raw || 'ok') + ')');
-                else Toast.show(res.message || res.error || res.status || "error");
-            } catch(e) { Toast.show('Ошибка: ' + e.message); }
+                else Toast.show(res.message || res.error || res.status || "error", true);
+            } catch(e) { Toast.show('Ошибка: ' + e.message, true); }
             btn.disabled = false;
         });
     });
@@ -1677,8 +1677,8 @@ function bindBridgeCards(container) {
             try {
                 const res = await apiPost('/bridge_delete.cgi', 'id=' + encodeURIComponent(id) + '&password=' + encodeURIComponent(password));
                 if (res.status === 'ok') { Toast.show('Удалён'); renderBridgeTab(); }
-                else Toast.show(res.message || res.error || res.status || "error");
-            } catch(e) { Toast.show('Ошибка: ' + e.message); }
+                else Toast.show(res.message || res.error || res.status || "error", true);
+            } catch(e) { Toast.show('Ошибка: ' + e.message, true); }
             btn.disabled = false;
         });
     });
@@ -1879,9 +1879,9 @@ function bindAghToggle() {
         try {
             const res = await apiPost('/bridge_action.cgi',
                 'id=adguard&action=protection_toggle&password=' + encodeURIComponent(password));
-            Toast.show(res.status === 'ok' ? 'Применено (' + ((res.result||{}).raw||'ok') + ')' : (res.message || res.error || res.status || "error"));
+            Toast.show(res.status === 'ok' ? 'Применено (' + ((res.result||{}).raw||'ok') + ')' : (res.message || res.error || res.status || "error"), res.status !== 'ok');
             setTimeout(loadAdGuardZone, 1200);
-        } catch(e) { Toast.show('Ошибка: ' + e.message); this.disabled = false; }
+        } catch(e) { Toast.show('Ошибка: ' + e.message, true); this.disabled = false; }
     });
 }
 
@@ -4595,7 +4595,7 @@ function loadMonitorTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/monitor.js?v=9';
+    script.src = '/entware-manager/monitor.js?v=10';
     script.onload = () => {
         if (typeof initMonitorTab === 'function') initMonitorTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля защиты</p>';
