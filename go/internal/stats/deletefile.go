@@ -95,6 +95,12 @@ func isAllowedDeletePath(p string) bool {
 	if filepath.Clean(p) != p {
 		return false
 	}
+	// Каталоги демонов и состояние менеджера (/tmp/entware, koffe, nginx)
+	// удалять нельзя: там pid-файлы и логи, без которых система пойдёт
+	// вразнобой. Проверка та же, что у очистки tmpfs (isProtectedPath).
+	if isProtectedPath(p) {
+		return false
+	}
 	return p == "/tmp" || p == "/dev/shm" ||
 		strings.HasPrefix(p, "/tmp/") || strings.HasPrefix(p, "/dev/shm/")
 }

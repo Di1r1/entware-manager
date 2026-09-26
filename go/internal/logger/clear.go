@@ -27,8 +27,15 @@ func HandleClear() {
 
 	now := time.Now()
 	var deleted, failed int
+	// filepath.Walk возвращает nil, даже если корень не читаем: ошибка
+	// приходит в walkFn. Поэтому копим её сами, иначе «очищено 0 файлов»
+	// будет выглядеть как успех.
+	var walkErr error
 	filepath.Walk(logDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			if walkErr == nil {
+				walkErr = err
+			}
 			return nil
 		}
 		if info.IsDir() {
@@ -47,6 +54,17 @@ func HandleClear() {
 		deleted++
 		return nil
 	})
+
+	// Каталог недоступен/не существует — это ошибка, а не «очищено 0 файлов».
+	if walkErr != nil {
+		cgiutil.WriteJSON(map[string]interface{}{
+			"status":  "error",
+			"message": "Не удалось прочитать каталог логов: " + walkErr.Error(),
+			"deleted": deleted,
+			"failed":  failed,
+		})
+		return
+	}
 
 	if failed > 0 {
 		cgiutil.WriteJSON(map[string]interface{}{

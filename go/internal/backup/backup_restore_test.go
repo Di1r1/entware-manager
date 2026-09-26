@@ -98,3 +98,29 @@ func TestRestoreChmodsExistingSecrets(t *testing.T) {
 		t.Errorf("links.json: права %v, want 0644", fi.Mode().Perm())
 	}
 }
+
+// Регрессия: при ошибке chmod файл уже был записан, но не попадал в
+// restored — если он единственный, ответ врал «конфигов нет в архиве».
+func TestRestoreChmodFailureStillCountsAsRestored(t *testing.T) {
+	archive := buildArchive(t, []struct {
+		name     string
+		typeflag byte
+		data     string
+		size     int64
+	}{
+		{"auth_config.json", tar.TypeReg, `{"enabled":true}`, 0},
+	})
+
+	oldChmod := chmodFile
+	chmodFile = func(string, os.FileMode) error { return os.ErrPermission }
+	t.Cleanup(func() { chmodFile = oldChmod })
+
+	s := runRestore(t, archive)
+
+	if !strings.Contains(s, `"status":"ok"`) {
+		t.Fatalf("восстановленный файл должен учитываться, ответ: %s", s)
+	}
+	if !strings.Contains(s, "auth_config.json") {
+		t.Errorf("ожидался auth_config.json в списке восстановленных: %s", s)
+	}
+}

@@ -2,6 +2,32 @@
 
 Правила проекта: [`RULES.md`](../RULES.md)
 
+## 1.16.126 (2026-09-26)
+
+### Безопасность: защита служебных каталогов, права секретов, честные ответы
+
+По итогам полного аудита (`doc/AUDIT.md`) закрыты P1-05, P1-06 (частично), P1-03 и P2-06.
+Каждый фикс закрыт регрессионным тестом; тесты проверены мутационно (откат правки → падение теста).
+
+- `delete_file.cgi` (файловый менеджер) больше не пропускает пути `/tmp/entware/**`, `/tmp/koffe/**`, `/dev/shm/nginx/**` — `isAllowedDeletePath` (`internal/stats/deletefile.go:88`) переиспользует `isProtectedPath`. Раньше через него удалялись pid-файлы демонов, логи и состояние менеджера. **Это дополняет `eaf3078`:** защита tmpfs-очистки была неполной, пока соседний эндпоинт оставался открытым.
+- Очистка tmpfs (`internal/stats/tmpfs_clean.go`): новая `isProtectedPath()` проверяет **все** компоненты пути, а не только последний. `/tmp/entware/logs` больше не удаляется (раньше проходил по имени `logs`).
+- Монитор (`internal/monitor/kill.go`): `pidKillable()` — запрет `pid <= 1` (init), собственного PID CGI и PID родителя (HTTP-сервер). Закрыты оба обхода: `kill_pid.cgi` и `monitor_action.cgi?action=kill`.
+- Восстановление бэкапа (`internal/backup/backup.go`): после `os.WriteFile` вызывается `os.Chmod` — раньше режим существующего файла не менялся, и секреты после restore оставались 0644. При ошибке chmod файл считается восстановленным, а проблема попадает в `perm_warnings` и в текст ответа (иначе единственный файл давал ложное «конфигов нет в архиве»).
+- `logger/clear.cgi` (`internal/logger/clear.go`): ошибки `os.Remove` считаются (`failed`), недоступный каталог логов больше не выглядит как «очищено 0 файлов», ответ содержит `deleted`/`failed`.
+- Тесты: 13 новых кейсов в 5 файлах (`deletefile_protected_test.go`, `tmpfs_clean_protected_test.go`, `kill_guard_test.go`, `clear_test.go`, `backup_restore_test.go`). Кросс-сборка arm64/mips/mipsel, `-race` и `-count=3` — чисто.
+
+Известные (не в этом релизе): зелёный тост при `status:"error"` в `entware.js:1232` и `monitor.js:206,217`; `P1-06` закрыт наполовину (нет allowlist по имени/командной строке процесса); pre-existing gofmt-дрифт в `network_stats.go`/`packages/log.go`, `gofmt` не входит в `make ci`.
+
+## 1.16.125 (2026-09-22)
+
+### SMART: настраиваемый тип подключения USB-дисков (-d)
+
+- Диски за USB-адаптерами (JMicron и т.п.) не читались: бэкенд всегда вызывал `smartctl -d sat`, мост отвечал `unsupported scsi opcode / Read Device Identity failed`.
+- Новый конфиг `smart_config.json` (`devices: {sda: sntjmicron}`) + эндпоинт `smart_config.cgi` (GET отдаёт маппинг и список типов, POST сохраняет один диск, `auto` = сброс). Маппинг в 3 местах: `go.cgi`, `cgi.go flatDispatch`, `build-deploy.sh`.
+- Автоперебор в `entware-smart`: ручной тип первым, затем `sat → usbjmicron → sntjmicron → scsi` до первого пригодного вывода; `nvme` — только `nvme`. Все действия (`list/info/attributes/health/selftest`) используют общий `smartctlWithFallback`.
+- `DiskInfo` отдаёт `driver` (фактический -d) + `driver_auto`; в таблице SMART колонка типа кликабельна и показывает драйвер, диалог выбора типа с сохранением/сбросом.
+- Кэш: `smart.js?v=11→12`, `entware.js?v=233→234`.
+
 ## 1.16.124 (2026-09-19)
 
 ### NOC на едином origin через Go (go-режим без lighttpd)

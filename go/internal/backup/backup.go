@@ -18,6 +18,10 @@ import (
 
 var webRoot = "/opt/web_entware"
 
+// chmodFile — os.Chmod как переменная (подменяется в тестах, чтобы
+// проверить ветку «права выставить не удалось»).
+var chmodFile = os.Chmod
+
 // Лимиты размера для распаковки бэкапа (защита от gzip-bomb и DoS).
 const (
 	maxEntrySize   = 16 << 20 // 16 MiB на запись
@@ -212,6 +216,7 @@ func HandleRestore() {
 	// Старые имена (links/monitor/...) совместимы; новые — мост (bridge_*),
 	// секреты панели и источники логов. Секреты получают 0600.
 	var restored []string
+	var permWarnings []string
 	entries, _ := os.ReadDir(tmpDir)
 	for _, e := range entries {
 		if e.IsDir() {
@@ -252,9 +257,12 @@ func HandleRestore() {
 		// os.WriteFile не меняет режим уже существующего файла — секрет,
 		// развёрнутый старой версией или созданный с 0644, остался бы
 		// читаемым всеми. Приводим права явно.
-		if err := os.Chmod(dst, mode); err != nil {
+		if err := chmodFile(dst, mode); err != nil {
+			// Файл УЖЕ восстановлен — считаем его восстановленным, но
+			// сообщаем, что права выставить не удалось (иначе в ответе
+			// будет «конфигов нет в архиве», хотя конфиг на месте).
 			logRestoreAction("WARN", "Не удалось выставить права "+mode.String()+" на "+dest+": "+err.Error())
-			continue
+			permWarnings = append(permWarnings, dest)
 		}
 		restored = append(restored, dest)
 	}
@@ -262,11 +270,19 @@ func HandleRestore() {
 	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 	if len(restored) > 0 {
 		logRestoreAction("INFO", "Восстановление конфигов: "+strings.Join(restored, ", "))
-		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		msg := fmt.Sprintf("Restored: %s", strings.Join(restored, ", "))
+		if len(permWarnings) > 0 {
+			msg += fmt.Sprintf(" (не удалось выставить права: %s)", strings.Join(permWarnings, ", "))
+		}
+		resp := map[string]interface{}{
 			"status":   "ok",
-			"message":  fmt.Sprintf("Restored: %s", strings.Join(restored, ", ")),
+			"message":  msg,
 			"restored": restored,
-		})
+		}
+		if len(permWarnings) > 0 {
+			resp["perm_warnings"] = permWarnings
+		}
+		json.NewEncoder(os.Stdout).Encode(resp)
 	} else {
 		logRestoreAction("WARN", "Восстановление: не найдены конфиги в архиве")
 		fmt.Println(`{"status":"error","message":"No config files found in backup"}`)

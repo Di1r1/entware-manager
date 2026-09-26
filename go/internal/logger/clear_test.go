@@ -100,3 +100,18 @@ func TestClearLogsReportsFailure(t *testing.T) {
 		t.Errorf("лог не должен был исчезнуть при read-only: %v", err)
 	}
 }
+
+// Регрессия: ошибка filepath.Walk игнорировалась — при недоступном
+// каталоге логов обработчик отвечал «удалено» при deleted=0.
+func TestClearLogsWalkErrorNotHidden(t *testing.T) {
+	setLogDir(t, filepath.Join(t.TempDir(), "no-such-log-dir"))
+
+	t.Setenv("REQUEST_METHOD", "POST")
+	out := captureOut(t, HandleClear)
+	if strings.Contains(out, `"status":"ok"`) {
+		t.Fatalf("при недоступном каталоге ответ не должен быть ok: %s", out)
+	}
+	if !strings.Contains(out, `"message"`) {
+		t.Errorf("ожидалось сообщение об ошибке, получено: %s", out)
+	}
+}
