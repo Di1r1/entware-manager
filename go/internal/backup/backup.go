@@ -63,6 +63,38 @@ func secretDest(dest string) bool {
 // (Content-Disposition и ?list=1 берут его отсюда).
 const backupFileName = "entware-manager-backup.tar.gz"
 
+// authorizedSecrets -- можно ли отдавать/принимать бэкап: сессия панели
+// ИЛИ верный пароль (в query-параметре password).
+//
+// В go-режиме это дублирует authGate (go/internal/server/cgi.go:158), но
+// обязательно для lighttpd-режима: там /entware-cgi/ отдаётся анонимно.
+// Без проверки backup.cgi отдавал архив (хеш пароля, токен бота,
+// bridge/*.auth.json) любому в сети, а backup_restore.cgi позволял
+// подменить auth_config.json — то есть забрать панель под свой пароль.
+// Токен сессии приходит в HTTP_COOKIE, и lighttpd его тоже передаёт, поэтому
+// обычный вход в панель работает без изменений на фронте.
+func authorizedSecrets(password string) bool {
+	if !auth.Enabled() {
+		return true // пароль не настроен — панель открыта
+	}
+	if auth.SessionValidCookie(auth.TokenFromHeader(os.Getenv("HTTP_COOKIE"))) {
+		return true
+	}
+	return password != "" && auth.CheckPassword(password)
+}
+
+// denyNoAuth -- единый отказ для всех трёх входов бэкапа.
+// Status: 401 понимает lighttpd (в go-режиме гейт отвечает раньше, а
+// writeCGIOutput этот заголовок просто игнорирует). Ключ message --
+// его читает фронт (entware.js:3655, noc-console.js nmntRestore); error
+// оставлен для совместимости.
+func denyNoAuth(action string) {
+	logRestoreAction("WARN", "Попытка "+action+" без входа в панель")
+	fmt.Print("Status: 401 Unauthorized\n")
+	fmt.Print("Content-type: application/json; charset=utf-8\n\n")
+	fmt.Println(`{"status":"error","message":"Требуется вход в панель","error":"Требуется вход в панель"}`)
+}
+
 // archiveEntry — одна запись будущего архива.
 type archiveEntry struct {
 	Name string
@@ -182,6 +214,10 @@ func HandleList() {
 }
 
 func HandleCreate() {
+	if !authorizedSecrets(cgiutil.GetQueryParam("password")) {
+		denyNoAuth("скачивания бэкапа")
+		return
+	}
 	if cgiutil.GetQueryParam("list") == "1" {
 		HandleList()
 		return
@@ -209,6 +245,13 @@ func HandleRestore() {
 	if auth.IsCrossSiteOrigin() {
 		fmt.Print("Content-type: application/json; charset=utf-8\n\n")
 		fmt.Printf(`{"status":"error","message":%q}`+"\n", auth.CrossSiteDeny)
+		return
+	}
+
+	// Тело запроса -- сам архив, пароль сюда положить нельзя, поэтому он
+	// передаётся в query. Обычный вход в панель не требует ничего.
+	if !authorizedSecrets(cgiutil.GetQueryParam("password")) {
+		denyNoAuth("восстановления из бэкапа")
 		return
 	}
 
