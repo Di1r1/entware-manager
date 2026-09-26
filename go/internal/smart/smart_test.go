@@ -21,6 +21,107 @@ func TestDetectType_SATA(t *testing.T) {
 	}
 }
 
+func TestResolveType_ConfigOverride(t *testing.T) {
+	orig := smartConfigFile
+	dir := t.TempDir()
+	smartConfigFile = dir + "/smart_config.json"
+	defer func() { smartConfigFile = orig }()
+	os.WriteFile(smartConfigFile, []byte(`{"devices":{"sda":"sntjmicron"}}`), 0644)
+	if got := resolveType("sda"); got != "sntjmicron" {
+		t.Errorf("expected sntjmicron from config, got %q", got)
+	}
+	if got := resolveType("sdb"); got != "sat" {
+		t.Errorf("expected sat for unconfigured sdb, got %q", got)
+	}
+}
+
+func TestCandidatesFor_NVMeOnly(t *testing.T) {
+	orig := smartConfigFile
+	smartConfigFile = filepath.Join(t.TempDir(), "missing.json")
+	defer func() { smartConfigFile = orig }()
+	c := candidatesFor("nvme0n1")
+	if len(c) != 1 || c[0] != "nvme" {
+		t.Errorf("nvme should probe only nvme, got %v", c)
+	}
+}
+
+func TestCandidatesFor_ConfigFirst(t *testing.T) {
+	orig := smartConfigFile
+	dir := t.TempDir()
+	smartConfigFile = dir + "/smart_config.json"
+	defer func() { smartConfigFile = orig }()
+	os.WriteFile(smartConfigFile, []byte(`{"devices":{"sda":"sntjmicron"}}`), 0644)
+	c := candidatesFor("sda")
+	if len(c) == 0 || c[0] != "sntjmicron" {
+		t.Fatalf("configured type must be first, got %v", c)
+	}
+	seen := map[string]bool{}
+	for _, v := range c {
+		if seen[v] {
+			t.Errorf("duplicate candidate %q in %v", v, c)
+		}
+		seen[v] = true
+	}
+}
+
+func TestIsSmartOutputUsable(t *testing.T) {
+	if !isSmartOutputUsable("Device Model: SSD\nSMART overall-health: PASSED") {
+		t.Error("valid output should be usable")
+	}
+	for _, bad := range []string{
+		"Read Device Identity failed: scsi error unsupported scsi opcode",
+		"Unknown USB bridge [0x1234:0x5678]",
+		"A mandatory SMART command failed: exiting",
+		"",
+	} {
+		if isSmartOutputUsable(bad) {
+			t.Errorf("output %q should NOT be usable", bad)
+		}
+	}
+}
+
+func TestValidDeviceTypes(t *testing.T) {
+	for _, good := range []string{"sat", "sat,12", "usbjmicron", "sntjmicron", "scsi", "auto"} {
+		if !isValidDeviceType(good) {
+			t.Errorf("type %q should be valid", good)
+		}
+	}
+	if isValidDeviceType("sda;rm") {
+		t.Error("injection type must be invalid")
+	}
+}
+
+func TestHandleSmartConfig_GET(t *testing.T) {
+	orig := smartConfigFile
+	dir := t.TempDir()
+	smartConfigFile = dir + "/smart_config.json"
+	defer func() { smartConfigFile = orig }()
+	os.WriteFile(smartConfigFile, []byte(`{"devices":{"sda":"sntjmicron"}}`), 0644)
+	os.Setenv("REQUEST_METHOD", "GET")
+	defer os.Unsetenv("REQUEST_METHOD")
+	body := captureStdout(t, HandleSmartConfig)
+	if !strings.Contains(string(body), "sntjmicron") {
+		t.Errorf("GET should return configured type, got: %s", body)
+	}
+	if !strings.Contains(string(body), "allowed") {
+		t.Errorf("GET should return allowed list, got: %s", body)
+	}
+}
+
+func TestHandleSmartConfig_POSTInvalid(t *testing.T) {
+	orig := smartConfigFile
+	smartConfigFile = filepath.Join(t.TempDir(), "smart_config.json")
+	defer func() { smartConfigFile = orig }()
+	os.Setenv("REQUEST_METHOD", "POST")
+	defer os.Unsetenv("REQUEST_METHOD")
+	restore := setStdin(t, `{"device":"sda;rm","dev_type":"sat"}`)
+	defer restore()
+	body := captureStdout(t, HandleSmartConfig)
+	if !strings.Contains(string(body), `"status":"error"`) {
+		t.Errorf("expected error for invalid device, got: %s", body)
+	}
+}
+
 func TestIsDisk_SDA(t *testing.T) {
 	if !isDisk("sda") {
 		t.Error("sda should be a disk")

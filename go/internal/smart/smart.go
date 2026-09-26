@@ -45,6 +45,8 @@ type DiskInfo struct {
 	Temperature  *int   `json:"temperature"`
 	PowerOnHours *int   `json:"power_on_hours"`
 	AttrHealth   string `json:"attr_health"`
+	Driver       string `json:"driver,omitempty"`
+	DriverAuto   bool   `json:"driver_auto,omitempty"`
 }
 
 var criticalAttrIDs = map[int]bool{5: true, 10: true, 187: true, 196: true, 197: true, 198: true}
@@ -224,6 +226,73 @@ func smartctlRunTimeout(device string, timeout time.Duration, args ...string) (s
 	return outStr, fmt.Errorf("smartctl failed: %w (sudo: %v)", err, err2)
 }
 
+// smartFallbackBudget — суммарный лимит на цепочку -d для одного диска.
+// До появления перебора один вызов стоил ≤2×таймаута (smartctl + повтор
+// через sudo). С цепочкой из 4 кандидатов это доходило до 480 с при
+// diskSmartctlTimeout=60 — entware-server рвёт соединение на 300 с
+// (server.go), CGI-процесс убивается, а smartctl остаются сиротами и
+// держат диск в состоянии busy. Бюджет делает цепочку независимой от
+// числа кандидатов; фактическое время ≤2× бюджета, т.к. внутри одной
+// попытки есть повтор через sudo.
+const smartFallbackBudget = 60 * time.Second
+
+// smartctlRunTimeoutFn — seam для тестов (конвенция пакета: smartctlBin,
+// dfBin, sudoBin, attrCacheDir).
+var smartctlRunTimeoutFn = smartctlRunTimeout
+
+// smartctlWithFallback пробует цепочку -d типов до первого пригодного вывода.
+// Возвращает вывод и фактически СРАБОТАВШИЙ тип ("","" если ни один не подошёл).
+//
+// Два важных отличия от первого варианта:
+//   - пустой вывод больше не считается «диск подвешен» — дальше идёт следующий
+//     кандидат, потому что USB-мост может ответить пустотой, и раньше цепочка
+//     на нём обрывалась (диск оставался без данных);
+//   - тип возвращается только для реально сработавшего кандидата, иначе UI
+//     показывал драйвер, который не дал ни одной строки.
+func smartctlWithFallback(devName, devpath string, timeout time.Duration, baseArgs ...string) (string, string) {
+	// Бюджет не превышает 2× намерения вызывающего: «точные» действия
+	// (info/health/selftest) с таймаутом 8 с не должны висеть минутами.
+	budget := 2 * timeout
+	if budget > smartFallbackBudget {
+		budget = smartFallbackBudget
+	}
+	deadline := time.Now().Add(budget)
+	last := ""
+	for _, typ := range candidatesFor(devName) {
+		left := time.Until(deadline)
+		if left <= 0 {
+			return last, ""
+		}
+		slice := timeout
+		if left < slice {
+			slice = left
+		}
+		args := append(append([]string{}, baseArgs...), "-d", typ)
+		out, err := smartctlRunTimeoutFn(devpath, slice, args...)
+		if isSmartOutputUsable(out) {
+			return out, typ
+		}
+		if err != nil {
+			// Диск подвешен (busy) или не уложились в отведённое время —
+			// следующие -d уже не помогут, бюджет кончится на них же.
+			if errors.Is(err, errDeviceBusy) || isTimeoutErr(err) {
+				return out, ""
+			}
+		}
+		last = out
+	}
+	return last, ""
+}
+
+// isTimeoutErr — отличил ли smartctlRunTimeout неуспех по таймауту.
+func isTimeoutErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "timeout") || strings.Contains(msg, "timed out")
+}
+
 // busyDiskInfo — карточка диска, на котором висит незавершённый smartctl.
 // Данные только из /sys (не блокируются), health «—», attr_health «busy».
 func busyDiskInfo(name, devpath, diskType string) DiskInfo {
@@ -259,10 +328,17 @@ func busyDiskInfo(name, devpath, diskType string) DiskInfo {
 }
 
 func detectType(device string) string {
-	if strings.HasPrefix(device, "nvme") {
-		return "nvme"
+	return resolveType(device)
+}
+
+// invalidateSmartList сбрасывает кеш списка дисков (после смены типа) и
+// кеш атрибутов устройства: атрибуты лежат в файле на 5 минут, и без
+// сброса «Атрибуты» до 5 минут показывали бы таблицу, снятую старым -d.
+func invalidateSmartList(device string) {
+	cache.Invalidate("smart_list")
+	if device != "" {
+		os.Remove(filepath.Join(attrCacheDir, device))
 	}
-	return "sat"
 }
 
 func discoverDisks() []string {
@@ -581,27 +657,27 @@ func loadingDiskInfo(name, devpath, diskType string) DiskInfo {
 
 func diskInfo(name string, probeTimeout time.Duration) DiskInfo {
 	devpath := "/dev/" + name
-	diskType := detectType(name)
-	output, err := smartctlRunTimeout(devpath, probeTimeout, "-a", "-d", diskType)
-	if errors.Is(err, errDeviceBusy) {
-		// На диске висит незавершённый smartctl (подвешенное устройство) —
-		// отдаём базовые данные из /sys, чтобы не блокировать список.
+	configured := configuredType(name)
+	diskType := resolveType(name)
+	// Быстрая проверка busy до перебора (чтобы не плодить smartctl на подвешенном диске).
+	if smartctlBusy(devpath) {
+		return busyDiskInfo(name, devpath, diskType)
+	}
+	output, usedType := smartctlWithFallback(name, devpath, probeTimeout, "-a")
+	// usedType == "" → ни один -d не ответил пригодным выводом. Драйвер НЕ
+	// подменяем значением по умолчанию: UI обязан показать «—», иначе на
+	// неисправном диске будет стоять «sat» как будто он рабочий.
+	// Подвешен во время перебора — базовые данные из /sys.
+	if output == "" && smartctlBusy(devpath) {
 		return busyDiskInfo(name, devpath, diskType)
 	}
 
 	displayType := diskType
-	if isRemovable(name) {
-		displayType = "usb"
+	if usedType == "nvme" || diskType == "nvme" {
+		displayType = "nvme"
 	}
-
-	// If USB and error/keywords, try -d scsi
-	if displayType == "usb" && (output == "" || strings.Contains(strings.ToLower(output), "unknown usb bridge") ||
-		strings.Contains(strings.ToLower(output), "unsupported scsi opcode") ||
-		strings.Contains(strings.ToLower(output), "device lacks smart")) {
-		out2, err2 := smartctlRunTimeout(devpath, probeTimeout, "-a", "-d", "scsi")
-		if err2 == nil {
-			output = out2
-		}
+	if isRemovable(name) && displayType != "nvme" {
+		displayType = "usb"
 	}
 
 	model := extractFieldAfter(output, "Device Model")
@@ -705,6 +781,8 @@ func diskInfo(name string, probeTimeout time.Duration) DiskInfo {
 		Temperature:  parseIntPtr(temperature),
 		PowerOnHours: parseIntPtr(powerOn),
 		AttrHealth:   attrHealth,
+		Driver:       usedType,
+		DriverAuto:   configured == "",
 	}
 }
 
@@ -714,8 +792,7 @@ func handleInfo(device string) {
 		return
 	}
 	devpath := "/dev/" + device
-	diskType := detectType(device)
-	output, _ := smartctlRun(devpath, "-i", "-d", diskType)
+	output, _ := smartctlWithFallback(device, devpath, shortSmartctlTimeout, "-i")
 	cgiutil.WriteJSON(map[string]string{"info": output})
 }
 
@@ -784,13 +861,12 @@ func handleAttributes(device string) {
 		return
 	}
 	devpath := "/dev/" + device
-	diskType := detectType(device)
 
 	// Сначала свежий кеш (5 мин) — не дёргаем smartctl на спящем диске.
 	output, ok := readAttrCache(device)
 	if !ok {
 		// Длинный таймаут (60 сек): спящий диск может «просыпаться».
-		output, _ = smartctlRunTimeout(devpath, diskSmartctlTimeout, "-A", "-d", diskType)
+		output, _ = smartctlWithFallback(device, devpath, diskSmartctlTimeout, "-A")
 		if output != "" {
 			writeAttrCache(device, output)
 		}
@@ -872,8 +948,7 @@ func handleHealth(device string) {
 		return
 	}
 	devpath := "/dev/" + device
-	diskType := detectType(device)
-	output, _ := smartctlRun(devpath, "-H", "-d", diskType)
+	output, _ := smartctlWithFallback(device, devpath, shortSmartctlTimeout, "-H")
 
 	healthLine := extractField(output, "SMART overall-health", -1)
 	if healthLine == "" {
@@ -954,8 +1029,7 @@ func handleSelftestStart(device string, testType string) {
 		return
 	}
 	devpath := "/dev/" + device
-	diskType := detectType(device)
-	output, _ := smartctlRun(devpath, "-t", testType, "-d", diskType)
+	output, _ := smartctlWithFallback(device, devpath, shortSmartctlTimeout, "-t", testType)
 
 	status := "error"
 	msg := ""
@@ -981,8 +1055,7 @@ func handleSelftestStatus(device string) {
 		return
 	}
 	devpath := "/dev/" + device
-	diskType := detectType(device)
-	output, _ := smartctlRun(devpath, "-l", "selftest", "-d", diskType)
+	output, _ := smartctlWithFallback(device, devpath, shortSmartctlTimeout, "-l", "selftest")
 
 	status := "No tests logged"
 	progress := 100

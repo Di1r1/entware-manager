@@ -36,6 +36,7 @@ type configFile struct {
 
 var configs = []configFile{
 	{Path: "links.json"},
+	{Path: "smart_config.json"},
 	{Path: "monitor_config.json"},
 	{Path: "network_config.json"},
 	{Path: "service_config.json"},
@@ -48,7 +49,11 @@ var configs = []configFile{
 // secretDest — файлы, которые при восстановлении обязаны получить 0600
 // (хеш пароля панели, токен бота, пароли приложений моста, его настройки).
 func secretDest(dest string) bool {
+	// smart_config.json секретом не является, но по аудиту (P1-05/P1-09)
+	// восстанавливается с 0600: файл описывает типы дисков, лишних прав
+	// на него не нужно.
 	return dest == "auth_config.json" || dest == "telegram_config.json" ||
+		dest == "smart_config.json" ||
 		dest == "bridge/_prefs.json" || strings.HasSuffix(dest, ".auth.json")
 }
 
@@ -276,7 +281,7 @@ func HandleRestore() {
 		switch name {
 		case "links.json", "monitor_config.json", "network_config.json", "service_config.json",
 			"auth_config.json", "telegram_config.json", "rdp_config.json", "server_config.json",
-			"version.json":
+			"smart_config.json", "version.json":
 			dest = name
 		case "logger_config.json":
 			dest = "logger/config.json"

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -129,13 +130,34 @@ func unhex(c byte) int {
 // WriteFileAtomic атомарно записывает файл: данные пишутся во временный
 // файл в том же каталоге, затем temp переименовывается поверх целевого.
 // При ошибке переименования временный файл удаляется.
+// WriteFileAtomic пишет файл через уникальный временный файл + rename.
+// Именно os.CreateTemp, а не фиксированный "path.tmp": два конкурентных
+// писателя (например две вкладки панели) на общем .tmp перетирали друг
+// друга — в итоге чужой или недописанный контент, а rename одного из них
+// падал с ENOENT. Уникальный tmp исключает гонку; rename атомарен.
 func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, mode); err != nil {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		os.Remove(tmpName)
 		return err
 	}
 	return nil

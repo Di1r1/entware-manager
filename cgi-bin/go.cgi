@@ -113,6 +113,8 @@ cgi-bin)
 		ENDPOINT="$name" exec "$(go_bin monitor)" ;;
 	smart)
 		exec "$(go_bin smart)" ;;
+	smart_config)
+		ENDPOINT="smart_config" exec "$(go_bin smart)" ;;
 	rdp_status|rdp_start|rdp_stop|rdp_config)
 		ENDPOINT="$name" exec "$(go_bin rdp)" ;;
 	telegram_config|telegram_test)

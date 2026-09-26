@@ -26,6 +26,7 @@ func TestResolveEndpointFlat(t *testing.T) {
 		{name: "temperature", dir: "cgi-bin", binary: "monitor", endpoint: "temperature", ok: true},
 		{name: "api", dir: "cgi-bin", binary: "pkg", endpoint: "api", ok: true},
 		{name: "smart", dir: "cgi-bin", binary: "smart", endpoint: "", ok: true},
+		{name: "smart_config", dir: "cgi-bin", binary: "smart", endpoint: "smart_config", ok: true},
 		{name: "unknown", dir: "cgi-bin", binary: "", endpoint: "", ok: false},
 	}
 	for _, c := range cases {

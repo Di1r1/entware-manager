@@ -25,6 +25,10 @@ function enableSmartTableSorting() {
 const SMART = {
     testPollInterval: null,
 
+    // Типы -d smartctl для USB-мостов (зеркало allowedDeviceTypes в smart_config.go).
+    // auto = конфига нет, бэкенд сам выбирает (конфиг > nvme > sat + автоперебор).
+    DRIVER_TYPES: ['auto', 'sat', 'sat,12', 'scsi', 'nvme', 'ata', 'usbjmicron', 'usbcypress', 'usbsunplus', 'sntjmicron', 'sntasmedia', 'sntrealtek', 'jmb39x-q', 'jms56x'],
+
     // Описания атрибутов для всплывающих подсказок
     ATTR_DESC: {
         1:   'Read Error Rate — частота ошибок чтения с головок.',
@@ -200,6 +204,17 @@ const SMART = {
             const typeLower = (disk.type || '').toLowerCase();
             const typeClass = TYPE_CLASSES[typeLower] || '';
             const healthBorderClass = disk.health === 'PASSED' ? 'smart-health-ok' : 'smart-health-critical';
+            // Драйвер -d: только то, что бэкенд реально применил.
+            // Раньше: driverAuto = driver_auto !== false && !disk.driver — условие
+            // срабатывало наоборот (метка стояла там, где драйвер НЕизвестен, и
+            // никогда там, где известен). При пустом driver (ни один -d не ответил)
+            // показываем «—», а не тип по умолчанию: иначе битый диск выглядит
+            // как рабочий с драйвером sat.
+            const driver = disk.driver || '';
+            const driverAuto = disk.driver_auto === true;
+            const driverLabel = driver
+                ? (driverAuto ? `${escapeHtml(driver)} (авто)` : escapeHtml(driver))
+                : '<span class="mut">—</span>';
 
             return `
                 <tr data-device="${escapeHtml(disk.device)}" class="${healthBorderClass}">
@@ -207,7 +222,7 @@ const SMART = {
                     <td>${escapeHtml(disk.model || '—')}</td>
                     <td>${escapeHtml(disk.serial || '—')}</td>
                     <td class="clickable-usage"><span class="usage-arrow"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=8#icon-arrow-right"/></svg></span> ${formatSize(disk.size)}</td>
-                    <td class="${typeClass}">${escapeHtml(disk.type || '—')}</td>
+                    <td class="${typeClass} clickable-drivertype" title="Нажмите, чтобы выбрать тип подключения (sat/usbjmicron/sntjmicron...)">${escapeHtml(disk.type || '—')}<br><small style="color: var(--text-muted);">${driverLabel}</small></td>
                     <td class="clickable-health">${healthClass ? `<span class="status-badge ${healthClass}"><svg class="icon" width="12" height="12"><use href="/entware-manager/icons.svg?v=8#${healthIcon}"/></svg> ${escapeHtml(healthText)}</span>` : `<span style="color: var(--text-muted);">${escapeHtml(healthText)}</span>`}</td>
                     <td class="clickable-temp ${tempClass}">${tempText}</td>
                     <td>${powerOn}</td>
@@ -232,7 +247,9 @@ const SMART = {
             const row = e.target.closest('tr');
             if (!row || !row.dataset.device) return;
             const device = row.dataset.device;
-            if (e.target.closest('.clickable-health')) {
+            if (e.target.closest('.clickable-drivertype')) {
+                this.showDriverDialog(device);
+            } else if (e.target.closest('.clickable-health')) {
                 this.showHealth(device);
             } else if (e.target.closest('.clickable-temp')) {
                 this.showTestDialog(device);
@@ -445,6 +462,62 @@ ${escapeHtml(data.message || data.health || 'Нет данных')}
             Modal.show(html, false, `SMART Health — ${escapeHtml(device)}`);
         } catch (err) {
             Modal.error('Ошибка: ' + err.message);
+        }
+    },
+
+    showDriverDialog(device) {
+        const short = String(device || '').replace(/^\/dev\//, '');
+        let html = `
+            <h3 style="margin-bottom: 12px;">Тип подключения: ${escapeHtml(device)}</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Если диск за USB-адаптером не читается (ошибка <span style="font-family: monospace;">unsupported scsi opcode</span>), выберите тип моста. Подходит для JMicron обычно <span style="font-family: monospace;">sntjmicron</span> или <span style="font-family: monospace;">usbjmicron</span>. «авто» — бэкенд переберёт сам.</p>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <select id="smartDriverSelect" style="flex: 1; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--input-border); border-radius: 6px; padding: 10px;">
+                    ${this.DRIVER_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t === 'auto' ? 'авто (перебор)' : t)}</option>`).join('')}
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="packages-delete-btn btn-neutral" id="smartDriverSave" data-device="${escapeHtml(device)}">Сохранить</button>
+                <button class="packages-delete-btn btn-neutral" id="smartDriverReset" data-device="${escapeHtml(device)}">Сбросить в авто</button>
+            </div>
+            <div id="smartDriverStatus" style="font-size: 13px; color: var(--text-muted); margin-top: 12px;">Диск: ${escapeHtml(short)}</div>
+        `;
+        Modal.show(html, false, `SMART тип — ${escapeHtml(device)}`);
+        // Подтягиваем текущий выбор из конфига.
+        apiGet('/smart_config.cgi').then(cfg => {
+            const sel = document.getElementById('smartDriverSelect');
+            if (!sel || !cfg || !cfg.devices) return;
+            const cur = cfg.devices[short];
+            if (cur && this.DRIVER_TYPES.indexOf(cur) > -1) sel.value = cur;
+        }).catch(() => {});
+        document.getElementById('smartDriverSave').addEventListener('click', (ev) => {
+            const sel = document.getElementById('smartDriverSelect');
+            this.saveDriver(ev.target.dataset.device, sel ? sel.value : 'auto');
+        });
+        document.getElementById('smartDriverReset').addEventListener('click', (ev) => {
+            this.saveDriver(ev.target.dataset.device, 'auto');
+        });
+    },
+
+    async saveDriver(device, devType) {
+        const statusDiv = document.getElementById('smartDriverStatus');
+        const short = String(device || '').replace(/^\/dev\//, '');
+        if (statusDiv) statusDiv.textContent = 'Сохранение...';
+        try {
+            const data = await apiPostJSON('/smart_config.cgi', {device: short, dev_type: devType || 'auto'});
+            if (data.error || (data.status === 'error')) {
+                if (statusDiv) statusDiv.textContent = 'Ошибка: ' + (data.error || data.message);
+                return;
+            }
+            if (statusDiv) statusDiv.textContent = data.message || 'Сохранено';
+            Modal.hide();
+            Toast.show(data.message || 'Тип сохранён', false, 3000);
+            // Рефреш мог быть проглочен гардом reloading (если в момент
+            // сохранения шла перезагрузка списка) — тогда тип остался бы
+            // старым до ручного «Обновить», без всякой ошибки. Повторяем.
+            this.loadDisks(true, true);
+            setTimeout(() => this.loadDisks(true, true), 400);
+        } catch (err) {
+            if (statusDiv) statusDiv.textContent = 'Ошибка: ' + err.message;
         }
     },
 

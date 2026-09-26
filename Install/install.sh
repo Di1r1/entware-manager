@@ -473,7 +473,7 @@ $HTTP["url"] =~ "^/entware-manager/" {
     $HTTP["url"] =~ "^/entware-manager/cgi-bin/go/" {
         url.access-deny = ( "" )
     }
-    $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config|telegram_config|rdp_config)\.json$" {
+    $HTTP["url"] =~ "^/entware-manager/(auth_config|server_config|service_config|monitor_config|network_config|links|logger/config|telegram_config|rdp_config|smart_config)\.json$" {
         url.access-deny = ( "" )
     }
     # Мост сервисов: манифесты и СЕКРЕТНЫЕ файлы (auth.json/prefs/state) —

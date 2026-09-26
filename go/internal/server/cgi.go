@@ -53,7 +53,7 @@ var flatDispatch = map[string]string{
 	"temperature": "monitor", "wifi_temp": "monitor", "temp_history": "monitor",
 	"wifi_temp_history": "monitor", "kill_pid": "monitor",
 	// smart
-	"smart": "smart",
+	"smart": "smart", "smart_config": "smart",
 	// rdp
 	"rdp_status": "rdp", "rdp_start": "rdp", "rdp_stop": "rdp", "rdp_config": "rdp",
 	// telegram
@@ -92,7 +92,7 @@ func resolveEndpoint(dir, name string) (endpointResult, bool) {
 			return endpointResult{}, false
 		}
 		ep := name
-		if bin == "smart" {
+		if bin == "smart" && name == "smart" {
 			ep = "" // go.cgi вызывает entware-smart без ENDPOINT
 		}
 		return endpointResult{binary: bin, endpoint: ep}, true
