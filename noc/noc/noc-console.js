@@ -2234,11 +2234,10 @@
         var kwu = document.getElementById('kpiWanUnit');
         if (kwu) kwu.textContent = ' ' + (rxm[2] || 'Мбит');
       } else if (kw2) kw2.textContent = d.wan_speed || '—';
-      /* внизу — исходящий поток и интерфейс (входящий уже крупно выше, дубль убран) */
+      /* внизу — только интерфейс (оба потока цифрами выше, дублей нет) */
       var wf2 = document.querySelector('[data-metric="wan"] .res-f');
       if (wf2) {
-        var iface = String(d.wan || '').split(' ')[0] || 'wan';
-        wf2.textContent = '↑ ' + (d.wan_tx || '—') + ' · ' + iface;
+        wf2.textContent = String(d.wan || '').split(' ')[0] || 'wan';
       }
       /* мелко под входящим — исходящий поток строкой с сервера */
       var kptx = document.getElementById('kpiWanTx');
