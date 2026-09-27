@@ -100,6 +100,29 @@ lint:
 	@echo "=== Go vet ==="
 	@cd "$(MAKEFILE_DIR)/go" && go vet ./... 2>&1
 	@echo "  [✓] go vet пройден"
+	@echo "=== gofmt ==="; \
+	goroot=$$(go env GOROOT 2>/dev/null); \
+	gofmt_bin=""; \
+	if [ -n "$$goroot" ] && [ -x "$$goroot/bin/gofmt" ]; then \
+		gofmt_bin="$$goroot/bin/gofmt"; \
+	elif command -v gofmt >/dev/null 2>&1; then \
+		gofmt_bin=$$(command -v gofmt); \
+	fi; \
+	if [ -z "$$gofmt_bin" ]; then \
+		echo "  [✗] gofmt не найден — форматирование не проверяется (нужен Go с gofmt)"; \
+		exit 1; \
+	fi; \
+	drift=$$(cd "$(MAKEFILE_DIR)/go" && "$$gofmt_bin" -l . 2>&1) || { \
+		echo "  [✗] gofmt не отработал:"; \
+		echo "$$drift" | sed 's/^/        /'; \
+		exit 1; \
+	}; \
+	if [ -n "$$drift" ]; then \
+		echo "  [✗] gofmt: не отформатированы (лечится: cd go && gofmt -w <файл>):"; \
+		echo "$$drift" | sed 's/^/        /'; \
+		exit 1; \
+	fi; \
+	echo "  [✓] gofmt пройден"
 	@if command -v shellcheck &>/dev/null; then \
 		echo "=== ShellCheck ==="; \
 		shellcheck --severity=warning $(MAKEFILE_DIR)/*.sh $(MAKEFILE_DIR)/Install/*.sh $(MAKEFILE_DIR)/lib/*.sh $(MAKEFILE_DIR)/logger/scripts/*.sh $(MAKEFILE_DIR)/tools/*.sh 2>&1 && \
@@ -145,7 +168,7 @@ help:
 	@echo "  version        показать версию"
 	@echo "  check          проверка инструментов"
 	@echo "  test           go test ./..."
-	@echo "  lint           go vet + shellcheck"
+	@echo "  lint           go vet + gofmt + shellcheck"
 	@echo "  ci             check → lint → test"
 	@echo "  install-router собрать и установить на роутер"
 	@echo ""

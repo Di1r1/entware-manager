@@ -92,10 +92,10 @@ func HandleNetworkStats() {
 const wanSpeedCacheFile = "/tmp/wan_speed_cache.json"
 
 type wanSpeedCache struct {
-	RX      uint64    `json:"rx"`
-	TX      uint64    `json:"tx"`
-	Time    time.Time `json:"time"`
-	Iface   string    `json:"iface"`
+	RX    uint64    `json:"rx"`
+	TX    uint64    `json:"tx"`
+	Time  time.Time `json:"time"`
+	Iface string    `json:"iface"`
 }
 
 func buildNetworkStats() NetworkStatsResponse {
