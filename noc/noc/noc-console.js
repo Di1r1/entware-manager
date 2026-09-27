@@ -16,7 +16,7 @@
   if (logEl) logEl.textContent = lines.join('\n');
 
   /* --- живая имитация метров + sparklines --- */
-  var cpu = 23, ram = 61, disk = 38, wan = 94, temp = 58;
+  var cpu = 23, ram = 61, disk = 38, wan = 94, wantx = 28, temp = 58;
   var SPARK_N = 24;
   function seedSeries(base, spread) {
     var a = [], i, v = base;
@@ -32,6 +32,7 @@
     ram: seedSeries(ram, 3),
     disk: seedSeries(disk, 0.4),
     wan: seedSeries(wan, 6),
+    wantx: seedSeries(wantx, 3),
     temp: seedSeries(temp, 1.5)
   };
   function barColor(v) {
@@ -44,7 +45,18 @@
     a.push(val);
     if (a.length > SPARK_N) a.shift();
   }
-  function drawSpark(svgIdOrEl, data, maxHint, height) {
+  /* Мбит/с из строки вида "12 Мбит/с" — NaN, если не разобралось. */
+  function parseSpeedMbit(s) {
+    if (!s || typeof s !== 'string') return NaN;
+    var m = s.match(/([\d.]+)\s*(Мбит|Гбит|Кбит|бит)/);
+    if (!m) return NaN;
+    var v = parseFloat(m[1]);
+    if (m[2] === 'Гбит') v *= 1000;
+    else if (m[2] === 'Кбит') v /= 1000;
+    else if (m[2] === 'бит') v /= 1000000;
+    return v;
+  }
+  function drawSpark(svgIdOrEl, data, maxHint, height, data2) {
     var el = typeof svgIdOrEl === 'string' ? document.getElementById(svgIdOrEl) : svgIdOrEl;
     if (!el || !data || !data.length) return;
     var w = 120, h = height || 36, pad = 2;
@@ -54,8 +66,13 @@
     var max = isPct ? maxHint : 0;
     var min = 0;
     var i, n = data.length;
+    var n2 = (data2 && data2.length) ? data2.length : 0;
     for (i = 0; i < n; i++) {
       if (data[i] > max) max = data[i];
+    }
+    /* второй ряд (исходящий WAN) — в тот же масштаб, своей линией без заливки */
+    for (i = 0; i < n2; i++) {
+      if (data2[i] > max) max = data2[i];
     }
     if (max <= 0) max = 1;
     /* минимальный maxHint для авто-масштабируемых — чтобы график не был слишком плоским */
@@ -70,17 +87,26 @@
     fill = line + ' L' + x(n - 1).toFixed(1) + ' ' + (h - pad) +
       ' L' + x(0).toFixed(1) + ' ' + (h - pad) + ' Z';
     var lastX = x(n - 1), lastY = y(data[n - 1]);
+    var extra = '';
+    if (n2) {
+      var line2 = '';
+      for (i = 0; i < n2; i++) {
+        line2 += (i ? ' L' : 'M') + x(i).toFixed(1) + ' ' + y(data2[i]).toFixed(1);
+      }
+      extra = '<path class="line tx" d="' + line2 + '"/>';
+    }
     el.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
     el.innerHTML =
       '<path class="fill" d="' + fill + '"/>' +
       '<path class="line" d="' + line + '"/>' +
-      '<circle class="dot" cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="2"/>';
+      '<circle class="dot" cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="2"/>' +
+      extra;
   }
   function paintSparks() {
     drawSpark('sparkCpu', series.cpu, 100);
     drawSpark('sparkRam', series.ram, 100);
     drawSpark('sparkDisk', series.disk, 100);
-    drawSpark('sparkWan', series.wan, 120);
+    drawSpark('sparkWan', series.wan, 120, 36, series.wantx);
     drawSpark('sparkTemp', series.temp, 90);
     paintModSparks();
   }
@@ -148,6 +174,8 @@
     var kw = document.getElementById('kpiWan');
     /* WAN-скорость: источника нет — в LIVE цифру не рисуем */
     if (kw && !window.__NOC_LIVE_STATS) kw.textContent = String(Math.round(wan));
+    var ktx = document.getElementById('kpiWanTx');
+    if (ktx && !window.__NOC_LIVE_STATS) ktx.textContent = String(Math.round(wantx)) + ' Мбит';
     var kt = document.getElementById('kpiTemp');
     if (kt) kt.textContent = String(Math.round(temp));
     paintSparks();
@@ -163,12 +191,14 @@
     ram = Math.max(40, Math.min(90, ram + Math.round(Math.random() * 2 - 1)));
     disk = Math.max(30, Math.min(50, disk + (Math.random() * 0.3 - 0.1)));
     wan = Math.max(60, Math.min(110, wan + Math.round(Math.random() * 8 - 4)));
+    wantx = Math.max(10, Math.min(45, wantx + Math.round(Math.random() * 4 - 2)));
     temp = Math.max(48, Math.min(72, temp + (Math.random() * 1.2 - 0.6)));
     pushSeries('cpu', cpu);
     pushSeries('ram', ram);
     pushSeries('disk', disk);
     jitterModSeries();
     pushSeries('wan', wan);
+    pushSeries('wantx', wantx);
     pushSeries('temp', temp);
     paintMeters();
   }
@@ -2204,24 +2234,20 @@
         var kwu = document.getElementById('kpiWanUnit');
         if (kwu) kwu.textContent = ' ' + (rxm[2] || 'Мбит');
       } else if (kw2) kw2.textContent = d.wan_speed || '—';
-      /* внизу — оба потока без графика: ↓ входящий · ↑ исходящий */
+      /* внизу — исходящий поток и интерфейс (входящий уже крупно выше, дубль убран) */
       var wf2 = document.querySelector('[data-metric="wan"] .res-f');
       if (wf2) {
         var iface = String(d.wan || '').split(' ')[0] || 'wan';
-        wf2.textContent = '↓ ' + (d.wan_rx || '—') + ' · ↑ ' + (d.wan_tx || '—') + ' · ' + iface;
+        wf2.textContent = '↑ ' + (d.wan_tx || '—') + ' · ' + iface;
       }
-      /* push numeric speed to sparkline */
-      var ws = d.wan_speed;
-      if (ws && typeof ws === 'string') {
-        var m = ws.match(/([\d.]+)\s*(Мбит|Гбит|Кбит|бит)/);
-        if (m) {
-          var val = parseFloat(m[1]), unit = m[2];
-          if (unit === 'Гбит') val *= 1000;
-          else if (unit === 'Кбит') val /= 1000;
-          else if (unit === 'бит') val /= 1000000;
-          if (!isNaN(val)) pushSeries('wan', val);
-        }
-      }
+      /* мелко под входящим — исходящий поток строкой с сервера */
+      var kptx = document.getElementById('kpiWanTx');
+      if (kptx) kptx.textContent = d.wan_tx || '—';
+      /* оба потока — в тот же график: входящий линией с заливкой, исходящий второй линией */
+      var wsv = parseSpeedMbit(d.wan_speed);
+      if (!isNaN(wsv)) pushSeries('wan', wsv);
+      var txv = parseSpeedMbit(d.wan_tx);
+      if (!isNaN(txv)) pushSeries('wantx', txv);
       var sbp = document.getElementById('sbPpp');
       if (sbp) sbp.innerHTML = '<i class="dot ' + (String(d.wan).indexOf('up') >= 0 ? 'ok' : 'warn') + '"></i> ' + esc(String(d.wan));
     }

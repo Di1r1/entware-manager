@@ -1102,7 +1102,19 @@ body.card-dragging [data-dndcont]:empty {
   fill: color-mix(in srgb, var(--ok) 22%, transparent);
 }
 .spark-wan path.line { stroke: var(--ok); }
+.spark-wan path.line.tx { stroke: var(--warn); }
 .spark-wan circle.dot { fill: var(--ok); }
+.res-val-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: none;
+}
+.res-sub {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .res-f {
   font-size: 10.5px;
   white-space: nowrap;
