@@ -129,13 +129,6 @@ func classify(code int, contentType string, body []byte) ServiceState {
 	}
 }
 
-func isJSONBody(ct string, body []byte) bool {
-	if strings.Contains(ct, "json") {
-		return true
-	}
-	return looksLikeJSON(body)
-}
-
 func looksLikeJSON(b []byte) bool {
 	s := strings.TrimSpace(string(b))
 	return len(s) > 0 && (s[0] == '{' || s[0] == '[')

@@ -192,12 +192,6 @@ func waitOutcome(out io.ReadCloser, done <-chan error, timeout time.Duration, ki
 	}
 }
 
-// smartctlRun вызывает smartctl с коротким таймаутом (8 сек) — для точечных
-// действий (info/attributes/health), где ждать пробуждение диска не нужно.
-func smartctlRun(device string, args ...string) (string, error) {
-	return smartctlRunTimeout(device, shortSmartctlTimeout, args...)
-}
-
 // smartctlRunTimeout запускает smartctl с указанным таймаутом. Длинный таймаут
 // (diskSmartctlTimeout) используется в diskInfo: спящий диск «просыпается»
 // за 13–60 сек, и первый же вызов должен успеть вернуть полные данные.

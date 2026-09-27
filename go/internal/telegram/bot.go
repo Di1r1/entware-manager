@@ -379,13 +379,6 @@ func recipients(cfg Config) []string {
 	return out
 }
 
-// forEachRecipient — выполнить fn для каждого получателя уведомлений.
-func forEachRecipient(cfg Config, fn func(chatID string)) {
-	for _, to := range recipients(cfg) {
-		fn(to)
-	}
-}
-
 // allowedChat — сообщение или нажатие кнопки должно прийти ровно
 // из настроенного chat_id.
 func allowedChat(u tgUpdate, chatID string) bool {

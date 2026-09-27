@@ -22,9 +22,6 @@ var initNameRe = regexp.MustCompile(`^[a-z0-9._-]{1,64}$`)
 
 const ctlTimeout = 15 * time.Second
 
-// ValidInitName — имя сервиса манифеста проходит regex.
-func ValidInitName(name string) bool { return initNameRe.MatchString(name) }
-
 // FindInitScript — исполняемый скрипт сервиса в каталоге init.d:
 // S??name / K??name / name. Пустая строка = не найден.
 func FindInitScript(name string) string {

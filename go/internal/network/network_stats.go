@@ -586,11 +586,6 @@ func getWANSpeeds() (combined, rx, tx string) {
 	return fmtBps(rxBps + txBps), fmtBps(rxBps), fmtBps(txBps)
 }
 
-func getWANSpeed() string {
-	combined, _, _ := getWANSpeeds()
-	return combined
-}
-
 func mustMarshal(v interface{}) []byte {
 	b, _ := json.Marshal(v)
 	return b

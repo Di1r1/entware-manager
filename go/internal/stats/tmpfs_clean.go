@@ -38,12 +38,6 @@ type cleanScanResponse struct {
 	Dirs         []CleanDir `json:"dirs"`
 }
 
-type cleanDeleteResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-	Deleted int    `json:"deleted"`
-}
-
 func HandleTmpClean() {
 	switch os.Getenv("REQUEST_METHOD") {
 	case "GET":
