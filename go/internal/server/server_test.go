@@ -3,11 +3,13 @@ package server
 import (
 	"crypto/sha256"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"entware-manager/internal/auth"
 )
@@ -155,9 +157,27 @@ func TestProxyRoutesRegistered(t *testing.T) {
 	}
 }
 
+// shortProxyTransport подменяет транспорт обратного прокси на тот, что
+// отказывается от dial за 300 мс вместо 30 с дефолта. Без этого тесты, бьющие
+// в отсутствующие loopback-бэкенды, висели по 30 с на запрос: на некоторых
+// машинах SYN на закрытый порт loopback дропается вместо RST, и дефолтный
+// dialer net/http ждал полного таймаута (пакет internal/server — ~300 с, риск
+// флейка в CI без TTY). На маршрут и код ответа (502) подмена не влияет:
+// меняется только время ожидания. Восстанавливается через t.Cleanup.
+func shortProxyTransport(t *testing.T) {
+	t.Helper()
+	old := proxyTransport
+	proxyTransport = &http.Transport{
+		DialContext:         (&net.Dialer{Timeout: 300 * time.Millisecond}).DialContext,
+		TLSHandshakeTimeout: 300 * time.Millisecond,
+	}
+	t.Cleanup(func() { proxyTransport = old })
+}
+
 // TestProxyRoutingGoMode проверяет, что entware-server (go-режим) монтирует
 // подпути /terminal/, /htop/, /rdp/, /ws и не конфликтует со статикой.
 func TestProxyRoutingGoMode(t *testing.T) {
+	shortProxyTransport(t)
 	webRoot = t.TempDir() + "/web"
 	cgiGoDir = t.TempDir() + "/go"
 	os.MkdirAll(webRoot, 0755)
@@ -194,6 +214,7 @@ func TestProxyRoutingGoMode(t *testing.T) {
 // TestProxyAuthGate проверяет, что при настроенном пароле панели
 // прокси-маршруты закрыты без валидной сессии (401), а с сессией — доступны.
 func TestProxyAuthGate(t *testing.T) {
+	shortProxyTransport(t)
 	webRoot = t.TempDir() + "/web"
 	cgiGoDir = t.TempDir() + "/go"
 	os.MkdirAll(webRoot, 0755)
@@ -251,6 +272,7 @@ func testHash(password string) string {
 // RDP-пинг (/rdp/ping, /ping) открыт БЕЗ сессии (паритет с lighttpd-режимом:
 // клиент grdpwasm шлёт ping без cookie), а сам клиент /rdp/ — под гейтом.
 func TestProxyRDPPingOpen(t *testing.T) {
+	shortProxyTransport(t)
 	webRoot = t.TempDir() + "/web"
 	cgiGoDir = t.TempDir() + "/go"
 	os.MkdirAll(webRoot, 0755)
@@ -327,10 +349,37 @@ func TestStaticWhitelistRDP(t *testing.T) {
 	}
 }
 
+// TestStaticRemovedNocStyleCSS: /noc/style.css удалён из белого списка как
+// недостижимый (файла нет). Возврат записи дал бы 200 на несуществующий путь.
+func TestStaticRemovedNocStyleCSS(t *testing.T) {
+	webRoot = t.TempDir() + "/web"
+	os.MkdirAll(filepath.Join(webRoot, "noc"), 0755)
+	// Даже если бы файл каким-то образом появился — отдаваться он не должен.
+	if err := os.WriteFile(filepath.Join(webRoot, "noc", "style.css"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { webRoot = "/opt/web_entware" }()
+
+	srv := httptest.NewServer(NewHandler())
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/entware-manager/noc/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /entware-manager/noc/style.css = %d, want 404 (запись убрана из whitelist)", resp.StatusCode)
+	}
+}
+
 func TestStaticWhitelistNOC(t *testing.T) {
 	webRoot = t.TempDir() + "/web"
 	os.MkdirAll(filepath.Join(webRoot, "noc"), 0755)
-	for _, f := range []string{"index.html", "noc-console.css", "noc-console.js", "style.css", "theme-bridge.js"} {
+	// style.css здесь нет намеренно: файла noc/noc/style.css не существует ни в
+	// репозитории, ни в deploy, ни на роутере (install.sh копирует только
+	// реальные файлы noc/noc/*), и он убран из classicWhitelist как недостижимый.
+	for _, f := range []string{"index.html", "noc-console.css", "noc-console.js", "theme-bridge.js"} {
 		if err := os.WriteFile(filepath.Join(webRoot, "noc", f), []byte("x"), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -341,7 +390,7 @@ func TestStaticWhitelistNOC(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	for _, p := range []string{"/entware-manager/noc/index.html", "/entware-manager/noc/noc-console.css", "/entware-manager/noc/noc-console.js", "/entware-manager/noc/style.css", "/entware-manager/noc/theme-bridge.js"} {
+	for _, p := range []string{"/entware-manager/noc/index.html", "/entware-manager/noc/noc-console.css", "/entware-manager/noc/noc-console.js", "/entware-manager/noc/theme-bridge.js"} {
 		resp, err := http.Get(srv.URL + p)
 		if err != nil {
 			t.Fatalf("GET %s: %v", p, err)

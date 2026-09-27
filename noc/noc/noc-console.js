@@ -1994,12 +1994,25 @@
     if (typeof AbortController !== 'undefined') {
       var ctl = new AbortController();
       var timer = setTimeout(function () { ctl.abort(); }, timeoutMs || LIVE_TIMEOUT_MS);
-      return fetch(url, opts).then(function (r) {
+      /* Копия opts: signal нельзя класть в объект вызывающего — иначе один и тот
+         же литерал/объект получил бы чужой AbortSignal. for..in, без spread:
+         NOC живёт в ES5-изоляте. */
+      var o = {};
+      if (opts) { for (var k in opts) { if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k]; } }
+      o.signal = ctl.signal;
+      try {
+        return fetch(url, o).then(function (r) {
+          clearTimeout(timer);
+          var ct = r.headers.get('content-type') || '';
+          if (ct.indexOf('application/json') < 0) return r.text();
+          return r.json();
+        }).catch(function () { clearTimeout(timer); return null; });
+      } catch (e) {
+        /* Синхронный throw (кривой URL) или не-Promise из fetch: гасим таймер и
+           возвращаем null, чтобы тик не падал. */
         clearTimeout(timer);
-        var ct = r.headers.get('content-type') || '';
-        if (ct.indexOf('application/json') < 0) return r.text();
-        return r.json();
-      }).catch(function () { clearTimeout(timer); return null; });
+        return Promise.resolve(null);
+      }
     }
     return fetch(url, opts).then(function (r) {
       var ct = r.headers.get('content-type') || '';
@@ -2537,7 +2550,10 @@
     liveGo('wifitemp', liveFetch('wifi_temp.cgi'), applyWifiTemp);
     liveGo('net', liveFetch('network_stats.cgi'), applyNet);
     liveGo('updcheck', liveFetch('update_check.cgi'), applyUpdateCheck);
-    liveGo('upgradable', liveFetch('upgradable.cgi'), applyUpgradable);
+    /* 45 с: upgradable.cgi не кэшируется на сервере (в отличие от
+       update_check.cgi) и дергает opkg с ретраями и sleep — 12 с обрывали бы
+       запрос на медленном роутере, и бейдж err:upgradable горел бы вечно. */
+    liveGo('upgradable', liveFetch('upgradable.cgi', null, 45000), applyUpgradable);
     liveGo('version', liveFetch('version.cgi'), applyVersion);
     liveGo('events', liveFetch('network_events.cgi?limit=200&tag=all'), applyEvents);
     liveGo('monlog', liveFetch('monitor/log.cgi'), applyMonLog);
@@ -4325,7 +4341,19 @@
   }
   function pkgAct(endpoint, body, label) {
     pkgStatus(label + '…');
-    livePost(endpoint, body, 300000).then(function (html) {
+    /* 290 с, а не 300: столько же, сколько отдаёт CGI на сервере. При равенстве
+       сработает тот, кто первый, и «не дождались» не отличить от «ответили
+       ошибкой» — берём с запасом на стороне клиента. */
+    livePost(endpoint, body, 290000).then(function (html) {
+      /* null отдаёт liveFetchRaw на таймауте и обрыве. Пока таймаут был
+         мёртвым, сюда попадал только успех; с живым таймаутом null — это «не
+         дождались», а opkg на роутере, возможно, ещё работает. Сообщать
+         «готово» здесь нельзя: ход команд виден в карточке «Вывод»
+         вкладки «Обслуживание». */
+      if (html === null) {
+        pkgStatus(label + ': нет ответа (таймаут или обрыв). Ход команд — в «Обслуживание».');
+        return;
+      }
       pkgStatus(label + ': готово.\n' + htmlToText(html));
       pkgReload();
     });

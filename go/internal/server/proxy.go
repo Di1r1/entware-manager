@@ -41,6 +41,23 @@ type backend struct {
 
 var proxyBackends []backend
 
+// proxyTransport — транспорт обратного прокси. nil (интерфейс, не указатель!)
+// = http.DefaultTransport, то есть поведение по умолчанию. Тип обязан быть
+// http.RoundTripper: поле Transport у httputil.ReverseProxy — интерфейс, и
+// типизированный nil-указатель попал бы в него как НЕ-nil интерфейс, что
+// даёт панику в RoundTrip вместо дефолта (проверено на реальном бэкенде).
+var proxyTransport http.RoundTripper
+
+// newReverseProxy — единственная точка сборки обратного прокси. Через неё идут
+// все маршруты (/terminal/, /htop/, /rdp/, /ws, /ping), иначе подмена
+// транспорта в тестах молча теряется в новом маршруте.
+func newReverseProxy(u *url.URL) *httputil.ReverseProxy {
+	p := httputil.NewSingleHostReverseProxy(u)
+	p.FlushInterval = -1
+	p.Transport = proxyTransport
+	return p
+}
+
 // rdpConfig — локальная копия полей rdp_config.json, нужных для прокси.
 type rdpConfig struct {
 	ProxyPort int `json:"proxy_port"`
@@ -93,8 +110,7 @@ func handleRemoteProxy(b backend) http.Handler {
 		log.Printf("proxy: bad target %q: %v", b.target, err)
 		return http.NotFoundHandler()
 	}
-	proxy := httputil.NewSingleHostReverseProxy(u)
-	proxy.FlushInterval = -1
+	proxy := newReverseProxy(u)
 	// Для /rdp/ порт grdp-proxy может смениться в rdp_config.json — берём
 	// актуальный при каждом запросе.
 	if b.prefix == "/rdp/" {
@@ -104,9 +120,7 @@ func handleRemoteProxy(b backend) http.Handler {
 				http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 				return
 			}
-			rdpProxy := httputil.NewSingleHostReverseProxy(t)
-			rdpProxy.FlushInterval = -1
-			rdpProxy.ServeHTTP(w, r)
+			newReverseProxy(t).ServeHTTP(w, r)
 		})
 	}
 	// ttyd-бэкенд: подстановка Basic Auth для встроенного вида (iframe),
@@ -129,9 +143,7 @@ func newWebSocketProxy() http.Handler {
 			http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 			return
 		}
-		proxy := httputil.NewSingleHostReverseProxy(u)
-		proxy.FlushInterval = -1
-		proxy.ServeHTTP(w, r)
+		newReverseProxy(u).ServeHTTP(w, r)
 	})
 }
 
@@ -148,9 +160,7 @@ func rdpPingHandler() http.Handler {
 			http.Error(w, "proxy: bad rdp target", http.StatusBadGateway)
 			return
 		}
-		p := httputil.NewSingleHostReverseProxy(t)
-		p.FlushInterval = -1
-		p.ServeHTTP(w, r)
+		newReverseProxy(t).ServeHTTP(w, r)
 	})
 }
 
