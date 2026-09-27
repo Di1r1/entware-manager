@@ -1061,7 +1061,7 @@
       askPanelPasswordNoc('Пароль панели:', function (pw) {
         if (!pw) return;
         livePost('bridge_auth.cgi', 'id=' + encodeURIComponent(id) + '&clear=1&password=' + encodeURIComponent(pw), 30000).then(function (r) {
-          toast((r && r.status === 'ok') ? 'Авторизация сброшена' : ((r && (r.message || r.error)) || 'ошибка'));
+          toast((r && r.status === 'ok') ? 'Авторизация сброшена' : ((r && (r.message || r.error)) || 'ошибка'), (r && r.status === 'ok') ? 'ok' : 'warn');
           if (r && r.status === 'ok') nocModalClose();
         });
       });
@@ -1651,11 +1651,11 @@
   var kpiGo = document.getElementById('kpiPkgGo');
   if (kpiGo) kpiGo.onclick = function () { goTab('packages'); };
   document.getElementById('pkgUpdateLists').onclick = function () {
-    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия'); return; }
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     pkgAct('update.cgi', 'run=1', 'Обновление списков');
   };
   document.getElementById('pkgUpgradeAll').onclick = function () {
-    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия'); return; }
+    if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     if (confirm('Обновить все пакеты? Это может занять продолжительное время.')) {
       pkgAct('upgrade.cgi', 'upgrade_all=1', 'Обновление всех пакетов');
     }
@@ -4152,7 +4152,7 @@
       if (!/^\d+$/.test(raw)) { toast('Введите номер порта цифрами (1-65535)', 'warn'); return; }
       var port = parseInt(raw, 10);
       if (port < 1 || port > 65535) { toast('Порт должен быть в диапазоне 1-65535', 'warn'); return; }
-      if (rdpCfg && rdpCfg.proxy_port === port) { toast('Этот порт уже используется'); return; }
+      if (rdpCfg && rdpCfg.proxy_port === port) { toast('Этот порт уже используется', 'warn'); return; }
       var pw = rdpPass();
       if (!pw) { toast('Введите пароль панели', 'warn'); return; }
       livePost('rdp_config.cgi', 'proxy_port=' + encodeURIComponent(port) + '&password=' + encodeURIComponent(pw)).then(function (t) {
@@ -4690,7 +4690,7 @@
     var pact = e.target && e.target.closest ? e.target.closest('[data-pact]') : null;
     if (pact) {
       var pn = pact.getAttribute('data-pkg'), pa = pact.getAttribute('data-pact');
-      if (!pn || !window.__NOC_LIVE_STATS) { toast('Нужна сессия'); return; }
+      if (!pn || !window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
       if (pa === 'upgrade') {
         if (confirm('Обновить пакет ' + pn + '?')) pkgAct('upgrade.cgi', 'package=' + encodeURIComponent(pn), 'Обновление ' + pn);
       } else if (pa === 'remove') {
