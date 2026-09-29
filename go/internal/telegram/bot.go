@@ -163,6 +163,10 @@ func BotRun() error {
 	lastDigest := readDigestDate()
 	netPrev := scanNetDevices()
 	netBase := false
+	// Когда слали про MAC в последний раз: повторный «новый» по тому же
+	// MAC в течение суток не шлём (флап WiFi, чих RCI, возврат из сна) —
+	// иначе старые устройства объявляются новыми при каждом переподключении.
+	netNotified := map[string]time.Time{}
 	diskAlerted := false
 	wanPrev, wanSet := "", false
 	lastBg := time.Time{}
@@ -294,15 +298,30 @@ func BotRun() error {
 			// Новое устройство в сети
 			devs := scanNetDevices()
 			if netBase {
+				now := time.Now()
 				for k, h := range devs {
 					if _, known := netPrev[k]; !known {
-						sendOrQueue(fmt.Sprintf("🔴 Новое устройство в сети!\n📱 %s\n🌐 IP: %s\n🔖 MAC: %s",
-							cleanHostDisplay(h), h.IP, strings.ToUpper(h.MAC)))
+						if last, ok := netNotified[k]; !ok || now.Sub(last) > 24*time.Hour {
+							sendOrQueue(fmt.Sprintf("🔴 Новое устройство в сети!\n📱 %s\n🌐 IP: %s\n🔖 MAC: %s",
+								cleanHostDisplay(h), h.IP, strings.ToUpper(h.MAC)))
+							netNotified[k] = now
+						}
+					}
+				}
+				// Чистка старых отметок, чтобы карта не росла бесконечно.
+				for k, t := range netNotified {
+					if now.Sub(t) > 7*24*time.Hour {
+						delete(netNotified, k)
 					}
 				}
 			}
-			netPrev = devs
-			netBase = true
+			// Пустой скан = чих RCI (таймаут/ошибка), а не пустая сеть:
+			// базу не трогаем, иначе следующее восстановление даст потоп
+			// «новых устройств» по всем записям сразу.
+			if len(devs) > 0 {
+				netPrev = devs
+				netBase = true
+			}
 
 			// Мало места на /opt (Entware)
 			pct := dfUsedPct(runDF(), "/opt")
