@@ -299,6 +299,12 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка мёртвых HTML-id, партия 2: 11 атрибутов без обращений (2026-09-27)
+
+Сняты только атрибуты `id` (элементы, стили и логика на месте) — у каждого ноль обращений во всех формах (getElementById, хелперы on()/s(), косвенные строковые аргументы, querySelector, CSS #id, href="#id"): `helpList` (noc/index.html), `br-ed-exists`/`bridge-grid`/`htop-title` (entware.js), `monitor-log`/`-settings`/`-status-panel` (monitor.js), `network-status-panel` (network.js), `networkCard` (stats.go), `packagesTable`+`tableBody` (installed.go).
+Проверено дважды (кворум PASS + APPROVE, обратная проверка в песочнице зелёная). Кэш: `entware.js?v=236→237`, `monitor.js?v=10→11`, `network.js?v=17→18`.
+Отложено: `searchInput` (блок поиска целиком — дописать фильтр/удалить/оставить) и `static-base` (shared-константа на 3 страницы) — нужно решение владельца.
+
 ### Фикс детекта потери интернета в watchdog (2026-09-27)
 
 - `network_watchdog.sh:80-81` и `noc/network_watchdog.sh:82-83`: паттерн `local ping_result=$(ping …); local ping_ok=$?` всегда давал `ping_ok=0` (семантика `$?` после встроенной команды `local` — это код самого `local`, а не `ping`), поэтому `check_internet()` никогда не срабатывала на потерю интернета. Заменено на `ping … >/dev/null 2>&1 || ping_ok=$?`; мёртвый `ping_result` удалён.

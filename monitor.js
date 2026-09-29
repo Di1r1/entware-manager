@@ -34,7 +34,7 @@ const MONITOR = {
                 </span>
                 Защита от зависших процессов
             </h2>
-            <div id="monitor-status-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+            <div style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <span><strong>Статус демона:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
                     <button id="monitor-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-play"/></svg> Запустить</button>
@@ -66,7 +66,7 @@ const MONITOR = {
                     </table>
                 </div>
             </div>
-                <div id="monitor-settings">
+                <div>
                 <h3>Настройки защиты</h3>
                 <form id="monitor-settings-form">
                     <label class="monitor-toggle" title="Включить защиту (глобально)">
@@ -97,7 +97,7 @@ const MONITOR = {
                     <button type="submit" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-disk"/></svg> Сохранить настройки</button>
                 </form>
             </div>
-            <div id="monitor-log">
+            <div>
                 <h3>Лог событий</h3>
                 <pre id="log-content" style="background: var(--pre-bg); padding: 0.5rem; height: 200px; overflow-y: auto;">Загрузка...</pre>
                 <button id="clear-log" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-trash"/></svg> Очистить лог</button>

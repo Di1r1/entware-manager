@@ -509,7 +509,7 @@ func renderDiskCard(b *strings.Builder, disk DiskInfo) {
 
 func renderNetworkPlaceholder(b *strings.Builder) {
 	b.WriteString(`
-<div class="stat-card network" id="networkCard">
+<div class="stat-card network">
     <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=8#icon-router"/></svg></span>Сеть</h3>
     <div id="networkTable"><div style="padding: 0.5rem 1rem;">Загрузка...</div></div>
     <div style="margin-top: 8px; display: flex; gap: 8px;">

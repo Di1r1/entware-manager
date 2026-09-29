@@ -24,7 +24,7 @@ const NETWORK = {
                 </span>
                 Сеть
             </h2>
-            <div id="network-status-panel" style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+            <div style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <span><strong>Демон:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
                     <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-play"/></svg> Запустить</button>

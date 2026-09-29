@@ -64,9 +64,9 @@ func Installed() {
     </div>
 </div>
 <div class="packages-table-wrapper">
-    <table class="packages-table" id="packagesTable">
+    <table class="packages-table">
         <thead><th>Пакет</th><th>Версия</th><th>Установлен</th><th>Действие</th></thead>
-        <tbody id="tableBody">
+        <tbody>
 `
 
 	installedTimes := readInstalledTimes()

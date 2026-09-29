@@ -962,7 +962,7 @@ function renderProcessesTab() {
             <span class="stat-icon" style="width: 28px; height: 28px;">
                 <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=8#icon-process"/></svg>
             </span>
-            <span id="htop-title">Процессы (htop)</span>
+            <span>Процессы (htop)</span>
         </h2>
         <div id="htop-content"><div class="loading-spinner"></div></div>
     `;
@@ -1725,7 +1725,7 @@ async function renderBridgeTab() {
         html += '<p>Ничего не найдено.</p>';
     } else {
         const prefs = bridgePrefsCache;
-        html += '<div class="stats-grid" id="bridge-grid">' + services.map(s => renderBridgeCard(s, prefs)).join('') + '</div>';
+        html += '<div class="stats-grid">' + services.map(s => renderBridgeCard(s, prefs)).join('') + '</div>';
     }
     html += '<button class="packages-delete-btn" style="background:var(--btn-muted);margin-top:16px;" onclick="renderBridgeTab()">' +
         '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Пересканировать</button>' +
@@ -1965,7 +1965,7 @@ function renderBridgeEditor(title, editId, jsonText) {
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">' +
         '<label>ID файла: <input type="text" id="br-ed-id" class="settings-input" value="' + escapeHtml(editId) + '"' + (editId ? ' readonly style="background:var(--input-bg);"' : '') + '></label>' +
         '<span style="font-size:0.75rem;color:var(--text-muted);">строчные латинские: a-z, 0-9, «-», «_»</span>' +
-        '<span id="br-ed-exists" style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
+        '<span style="font-size:0.8rem;color:var(--text-muted);"></span></div>' +
         '<textarea id="br-ed-json" class="settings-input" style="width:100%;min-height:380px;font-family:monospace;font-size:13px;white-space:pre;">' + escapeHtml(jsonText) + '</textarea>' +
         '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">' +
         '<button class="packages-delete-btn" style="background:var(--btn-success);" onclick="saveBridgeManifest()">Сохранить</button>' +
@@ -4580,7 +4580,7 @@ function loadNetworkTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/network.js?v=17';
+    script.src = '/entware-manager/network.js?v=18';
     script.onload = () => {
         if (typeof initNetworkTab === 'function') initNetworkTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля сети</p>';
@@ -4595,7 +4595,7 @@ function loadMonitorTab() {
         return;
     }
     const script = document.createElement('script');
-    script.src = '/entware-manager/monitor.js?v=10';
+    script.src = '/entware-manager/monitor.js?v=11';
     script.onload = () => {
         if (typeof initMonitorTab === 'function') initMonitorTab();
         else document.getElementById('content').innerHTML = '<p class="error">Ошибка загрузки модуля защиты</p>';
