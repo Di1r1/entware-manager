@@ -79,8 +79,8 @@ check_interfaces() {
 }
 
 check_internet() {
-    local ping_result=$(ping -c 1 -W "$PING_TIMEOUT" "$PING_HOST" 2>/dev/null)
-    local ping_ok=$?
+    local ping_ok=0
+    ping -c 1 -W "$PING_TIMEOUT" "$PING_HOST" >/dev/null 2>&1 || ping_ok=$?
     
     local previous_internet=$(jq -r '.internet // true' "$STATE_FILE" 2>/dev/null)
     
