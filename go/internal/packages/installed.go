@@ -57,15 +57,9 @@ func Installed() {
 		return
 	}
 
-	html += `<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 20px;">
-    <div class="search-container" style="display: flex; gap: 8px; align-items: center; flex: 1; background: var(--input-bg); border: 2px solid var(--input-border); border-radius: 40px; padding: 0 12px; transition: border-color 0.3s ease, box-shadow 0.3s ease;">
-        <svg class="icon" width="18" height="18" style="color: var(--text-muted);"><use href="/entware-manager/icons.svg?v=8#icon-search"/></svg>
-        <input type="text" id="searchInput" placeholder="Поиск по названию..." style="flex: 1; background: transparent; border: none; outline: none; padding: 14px 0; font-size: 16px; color: var(--text-primary);">
-    </div>
-</div>
-<div class="packages-table-wrapper">
+	html += `<div class="packages-table-wrapper">
     <table class="packages-table">
-        <thead><th>Пакет</th><th>Версия</th><th>Установлен</th><th>Действие</th></thead>
+        <thead><th>Пакет</th><th>Версия</th><th>Установлен</th></thead>
         <tbody>
 `
 
@@ -90,8 +84,8 @@ func Installed() {
 		if ts, ok := installedTimes[pkg]; ok {
 			instDate = time.Unix(ts, 0).Format("2006-01-02 15:04")
 		}
-		html += fmt.Sprintf("            <tr>\n                <td>%s</td>\n                <td>%s</td>\n                <td>%s</td>\n                <td>\n                    <form method=\"post\" style=\"margin:0;\" onsubmit=\"opkgAction(event, 'remove', this.package.value); return false;\">\n                        <input type=\"hidden\" name=\"package\" value=\"%s\">\n                        <input type=\"submit\" value=\"Удалить\" class=\"packages-delete-btn\">\n                    </form>\n                </td>\n            </tr>\n",
-			htmlEscape(pkg), htmlEscape(ver), htmlEscape(instDate), htmlEscape(pkg))
+		html += fmt.Sprintf("            <tr>\n                <td>%s</td>\n                <td>%s</td>\n                <td>%s</td>\n            </tr>\n",
+			htmlEscape(pkg), htmlEscape(ver), htmlEscape(instDate))
 	}
 
 	html += `        </tbody>

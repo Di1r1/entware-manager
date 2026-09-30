@@ -529,7 +529,7 @@ func renderTable(b *strings.Builder, id, title, icon string, entries []DFEntry, 
 			action := ""
 			if cleanable && cleanableRoot(e.Mount) {
 				q := url.QueryEscape(e.Mount)
-				action = fmt.Sprintf(` <button class="packages-delete-btn tmpfs-clean-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;" onclick="tmpfsClean('%s')">Очистка</button>`, q)
+				action = fmt.Sprintf(` <button class="packages-delete-btn tmpfs-clean-btn" style="padding:2px 8px;font-size:12px;margin-left:6px;" onclick="window.tmpfsClean?tmpfsClean('%s'):window.open('/entware-cgi/tmpfs.cgi?path=%s','_blank')">Очистка</button>`, q, q)
 			}
 			rows.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><span class="stat-value-%s">%s</span></td><td><a href="/entware-cgi/tmpfs.cgi?path=%s" style="text-decoration:none; color:inherit;">%s</a>%s</td></tr>`,
 				esc(e.FS), esc(e.Size), esc(e.Used), esc(e.Avail),
