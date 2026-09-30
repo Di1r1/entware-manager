@@ -307,6 +307,12 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Схема network_config.json приведена к вложенной + CSS логгера (2026-09-27)
+
+- Go писал плоские ключи (`interval/ping_host/...` в корне), а демоны читают вложенные (`.watchdog.*`) — пересечение нулевое, демон работал на дефолтах, а round-trip панели мог затереть `.watchdog`. Теперь `defaultConfig` вложенный (зеркало эталона), GET одноразово мигрирует плоские ключи в `.watchdog` с записью (вложенное приоритетно, `sidebar/paths/autostart` и NOC-ключи целы). Shell и фронт не тронуты. Тесты: 2 новых (миграция, приоритет вложенного), оба доказаны мутацией.
+- `logger/config.go:107` → `style.css?v=71` (панельный CSS); `system_logs.go:59` + `view.go:55` → `logger/style.css?v=3` (свой файл, у него была правка без бампа). Проверено: остальное в этих файлах сходится, сирот нет.
+- Проверки: рекурсивная (поймала 2 лишних таба в литералах — исправлено) + реверсивная на враждебных входах (битый `.watchdog`, пустой объект, дубли) + `make ci` зелёный. Кворум: PASS + APPROVE.
+
 ### Чистка мёртвых HTML-id, партия 2: 11 атрибутов без обращений (2026-09-27)
 
 Сняты только атрибуты `id` (элементы, стили и логика на месте) — у каждого ноль обращений во всех формах (getElementById, хелперы on()/s(), косвенные строковые аргументы, querySelector, CSS #id, href="#id"): `helpList` (noc/index.html), `br-ed-exists`/`bridge-grid`/`htop-title` (entware.js), `monitor-log`/`-settings`/`-status-panel` (monitor.js), `network-status-panel` (network.js), `networkCard` (stats.go), `packagesTable`+`tableBody` (installed.go).

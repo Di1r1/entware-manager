@@ -52,7 +52,7 @@ func HandleView() {
 		else if (window.Theme) Theme.init();
 	</script>`)
 	} else {
-		fmt.Print(`	<link rel="stylesheet" href="logger/style.css?v=2">
+		fmt.Print(`	<link rel="stylesheet" href="logger/style.css?v=3">
 	<script src="theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();
