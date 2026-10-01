@@ -3731,7 +3731,7 @@ function pollUpdateStatus() {
                     : '?';
             } else if (data.status === 'error') {
                 clearInterval(updatePollInterval);
-                statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + (data.error || 'Неизвестная ошибка') + '</span>';
+                statusEl.innerHTML = '<span style="color:#e53e3e;">Ошибка: ' + escapeHtml(data.error || 'Неизвестная ошибка') + '</span>';
                 document.getElementById('update-run-btn').disabled = false;
                 const rbtn = document.getElementById('update-reinstall-btn');
                 if (rbtn) rbtn.disabled = false;
