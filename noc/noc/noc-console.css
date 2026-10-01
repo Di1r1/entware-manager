@@ -25,9 +25,6 @@ html[data-console="noc-dark"] {
   --ok: #22c55e;
   --warn: #f59e0b;
   --crit: #ef4444;
-  --tx: #38bdf8;
-  --rx: #4ade80;
-  --scrollbar: #1e2d4d;
   --scrollbar-thumb: #2d4066;
   --selection: rgba(139,92,246,.28);
 }
@@ -44,9 +41,6 @@ html[data-console="ops-light"] {
   --ok: #15803d;
   --warn: #b45309;
   --crit: #b91c1c;
-  --tx: #0284c7;
-  --rx: #059669;
-  --scrollbar: #d0d7e4;
   --scrollbar-thumb: #a0adc2;
   --selection: rgba(14,165,233,.2);
   --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
@@ -65,9 +59,6 @@ html[data-console="hc"] {
   --ok: #4ade80;
   --warn: #facc15;
   --crit: #ff6b6b;
-  --tx: #22d3ee;
-  --rx: #4ade80;
-  --scrollbar: #222;
   --scrollbar-thumb: #facc15;
   --selection: rgba(250,204,21,.25);
 }
@@ -771,23 +762,6 @@ body.card-dragging [data-dndcont]:empty {
 /* processes: то же для вкладки Процессы */
 #procTable { table-layout: fixed; }
 #procTable td.cmd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ========== SCANNER ========== */
-.scan { margin-bottom: 10px; }
-.scan-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
-.st {
-  background: none;
-  border: 1px solid var(--line);
-  color: var(--mut);
-  border-radius: var(--radius-sm);
-  padding: 4px 11px;
-  cursor: pointer;
-  transition: border-color var(--transition), color var(--transition);
-  font-size: 12px;
-}
-.st b { color: var(--text); }
-.st:hover { border-color: var(--accent); color: var(--text); }
-.st.active { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
 
 
 /* Modules tab — minimal cards */

@@ -104,7 +104,7 @@ func showPrettyConfig() {
 	<meta charset="UTF-8">
 	<title>Настройки логирования</title>
 	` + staticBaseHTML + `
-	<link rel="stylesheet" href="style.css?v=71">
+	<link rel="stylesheet" href="style.css?v=72">
 	<script src="theme.js?v=2"></script>
 	<script>
 		if (window.Theme) Theme.init();

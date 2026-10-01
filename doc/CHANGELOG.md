@@ -307,6 +307,10 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка CSS: мёртвые классы и переменные (партия 6a, 2026-10-01)
+
+- `.tab-toggle` ×9 (тумблеры вынесены из `#network-tabs`), `.theme-toggle` ×4 (живой `theme-toggle-edge` не тронут), `.packages-search` ×4 + `.search-icon`, секция SCANNER, `--app-border` ×2, `--tx/--rx/--scrollbar` ×9 (живой `--scrollbar-thumb` не тронут). Два comma-списка с живыми селекторами резались точечно. Кэш `style.css?v=71→72` (6 мест) + `noc-console.css?v=50→51`, пересобраны entware-stats/entware-pkg/entware-logger. Проверено: прямая + reverse (assert'ы, баланс скобок, живые контроли), кворум PASS + APPROVE, `make ci` зелёный.
+
 ### Чистка NOC: 6 мёртвых мест (партия 5a, 2026-10-01)
 
 - Мок-бутстрап `lines[6]` + `#fakeLog` (элемента нет ни в одном HTML), `kpiGo` (карточка снесена в v1.16.51), `setTermMode` ×2 (селектора нет в разметке), параметр `cls` у `liveRow`, локалы `viewStats`/`viewMods`, параметр `modeId` + ветка у `setTtydAct` (6 вызовов шлют `null`). Кэш `noc-console.js?v=147→148` (+ sync `deploy/`). Проверено: прямая + reverse в песочнице (assert'ы, `node --check`, ES5-нули, баланс), кворум PASS + APPROVE, `make ci` зелёный.

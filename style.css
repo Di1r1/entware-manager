@@ -8,7 +8,6 @@
     /* Более мягкая и приятная светлая тема (не вырви глаз) */
     --bg-gradient: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
     --app-bg: #f8fafc;
-    --app-border: #e2e8f0;
     --sidebar-bg: #ffffff;
     --sidebar-border: #e2e8f0;
     --content-bg: #f8fafc;
@@ -150,7 +149,6 @@
 html.night {
     --bg-gradient: linear-gradient(135deg, #1a202c, #2d3748);
     --app-bg: rgba(26, 32, 44, 0.95);
-    --app-border: rgba(74, 85, 104, 0.6);
     --sidebar-bg: rgba(26, 32, 44, 0.9);
     --sidebar-border: rgba(74, 85, 104, 0.6);
     --content-bg: rgba(26, 32, 44, 0.8);
@@ -200,8 +198,7 @@ html.night {
 }
 
 html.night .monitor-toggle .toggle-slider,
-html.night .service-watch-toggle .toggle-slider,
-html.night #network-tabs .tab-toggle .toggle-slider {
+html.night .service-watch-toggle .toggle-slider {
     background-color: var(--input-bg);
 }
 
@@ -311,8 +308,7 @@ body {
     transition: padding 0.3s ease, margin 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar .sidebar-header,
-.sidebar .collapse-btn,
-.sidebar .theme-toggle {
+.sidebar .collapse-btn {
     transition: padding 0.3s ease, margin 0.3s ease;
 }
 .sidebar.collapsed .menu-text,
@@ -391,48 +387,11 @@ body {
 #network-tabs .tab-button:hover:not(.active) {
     background: var(--accent-soft);
 }
-#network-tabs .tab-toggle {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
 /* Табы логов («Действия менеджера» / «Системные логи»): активный чуть темнее
    акцентного стиля. filter вместо цвета — работает на любом пресете и дне/ночи. */
 #tab-manager.active,
 #tab-system.active {
     filter: brightness(0.75);
-}
-#network-tabs .tab-toggle .toggle-slider {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-}
-#network-tabs .tab-toggle input {
-    display: none;
-}
-#network-tabs .tab-toggle .toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-#network-tabs .tab-toggle input:checked + .toggle-slider {
-    background-color: var(--accent);
-}
-#network-tabs .tab-toggle input:checked + .toggle-slider:before {
-    transform: translateX(20px);
-}
-#network-tabs .tab-toggle .toggle-slider {
-    background-color: var(--input-border);
-    border-radius: 24px;
-    transition: 0.3s;
 }
 .service-watch-toggle {
     display: flex;
@@ -504,17 +463,6 @@ body {
 }
 .monitor-toggle input:checked + .toggle-slider:before {
     transform: translateX(20px);
-}
-#network-tabs .tab-toggle[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    background: #333;
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 100;
 }
 #network-content .tab-content {
     display: none;
@@ -782,28 +730,6 @@ body {
     text-align: center;
     border-top: 1px solid var(--border-color);
     padding-top: 10px;
-}
-
-.theme-toggle {
-    display: inline-block;
-    cursor: pointer;
-    padding: 8px 12px;
-    background: var(--input-bg);
-    border-radius: 30px;
-    font-size: 18px;
-    line-height: 1;
-    user-select: none;
-    transition: background 0.2s, transform 0.1s;
-    box-shadow: var(--shadow);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-.theme-toggle:hover {
-    background: color-mix(in srgb, var(--input-bg) 90%, white);
-    transform: scale(1.05);
-}
-.theme-toggle:active {
-    transform: scale(0.95);
 }
 
 h2 {
@@ -1634,27 +1560,6 @@ html.night .net-counter-status.bad { color: #fca5a5; background: rgba(185, 28, 2
     margin-bottom: 30px;
 }
 
-.packages-search {
-    width: 100%;
-    padding: 14px 20px;
-    margin-bottom: 24px;
-    border: 2px solid var(--input-border);
-    border-radius: 40px;
-    font-size: 16px;
-    background: var(--input-bg);
-    box-shadow: var(--shadow);
-    color: var(--text-primary);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-.packages-search:focus {
-    border-color: var(--input-focus);
-    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.2);
-    outline: none;
-}
-.packages-search::placeholder {
-    color: var(--text-muted);
-}
-
 .modal {
     display: none;
     position: fixed;
@@ -2070,10 +1975,6 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
     .collapse-btn { display: none; }
     .content { padding: 16px; }
     .stats-grid { grid-template-columns: 1fr; }
-    .packages-search {
-        font-size: 14px;
-        padding: 12px 16px;
-    }
     th, td {
         padding: 8px 6px;
         font-size: 12px;
@@ -2400,14 +2301,6 @@ th.sort-desc::after {
         opacity: 1;
         transform: translateX(0) scale(1);
     }
-}
-
-/* Иконка поиска в поле ввода */
-.search-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
 }
 
 .search-container:focus-within {
