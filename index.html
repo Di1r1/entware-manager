@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="/entware-manager/style.css?v=72">
     <script src="/entware-manager/theme.js?v=2"></script>
     <script>if (window.Theme) Theme.init();</script>
-    <script src="/entware-manager/modal.js?v=4"></script>
-    <script src="/entware-manager/lib/utils.js?v=8"></script>
+    <script src="/entware-manager/modal.js?v=5"></script>
+    <script src="/entware-manager/lib/utils.js?v=9"></script>
 </head>
 <body>
     <div class="app-container">
@@ -29,32 +29,32 @@
                     <span>
                         <span id="cpuTempWidget">
                             <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <use href="/entware-manager/icons.svg?v=8#icon-thermometer"/>
+                                <use href="/entware-manager/icons.svg?v=9#icon-thermometer"/>
                             </svg>
                             CPU: <span id="tempValue">--</span><span id="tempUnit">°C</span>
                         </span>
                         &nbsp;&nbsp;
                         <svg class="icon" width="14" height="14" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                            <use href="/entware-manager/icons.svg?v=8#icon-wifi"/>
+                            <use href="/entware-manager/icons.svg?v=9#icon-wifi"/>
                         </svg>
                         WiFi: <span id="wifiTempValue">--</span>
                     </span>
                 </div>
                 <div class="sidebar-icon">
                     <svg class="icon" width="40" height="40">
-                        <use href="/entware-manager/icons.svg?v=8#icon-logo"/>
+                        <use href="/entware-manager/icons.svg?v=9#icon-logo"/>
                     </svg>
                 </div>
             </div>
 
             <button class="collapse-btn" id="collapseToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=8#icon-chevron-left"/>
+                    <use href="/entware-manager/icons.svg?v=9#icon-chevron-left"/>
                 </svg>
             </button>
             <button class="theme-toggle-edge" id="themeToggle">
                 <svg class="icon" width="20" height="20">
-                    <use href="/entware-manager/icons.svg?v=8#icon-sun"/>
+                    <use href="/entware-manager/icons.svg?v=9#icon-sun"/>
                 </svg>
             </button>
             <div class="theme-popup" id="themePopup"></div>
@@ -70,19 +70,19 @@
             <div class="sidebar-footer">
                 <a href="#" onclick="checkSystemDeps();return false" class="sidebar-btn">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=8#icon-info"/>
+                        <use href="/entware-manager/icons.svg?v=9#icon-info"/>
                     </svg>
                     <span class="sidebar-btn-text">Проверка системы</span>
                 </a>
                 <a href="#" id="nocBtn" class="sidebar-btn" data-collapsed-icon="link" style="opacity:0.5;" title="Проверка NOC…">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=8#icon-link"/>
+                        <use href="/entware-manager/icons.svg?v=9#icon-link"/>
                     </svg>
                     <span class="sidebar-btn-text">NOC-панель</span>
                 </a>
                 <a href="#" onclick="doLogout();return false" id="logoutBtn" class="sidebar-btn" style="display:none;" data-collapsed-icon="logout">
                     <svg class="icon" width="14" height="14">
-                        <use href="/entware-manager/icons.svg?v=8#icon-lock"/>
+                        <use href="/entware-manager/icons.svg?v=9#icon-lock"/>
                     </svg>
                     <span class="sidebar-btn-text">Выйти</span>
                 </a>
@@ -108,8 +108,8 @@
         </div>
     </div>
 
-    <script src="/entware-manager/menu/menu.js?v=3"></script>
-    <script src="/entware-manager/entware.js?v=239"></script>
+    <script src="/entware-manager/menu/menu.js?v=4"></script>
+    <script src="/entware-manager/entware.js?v=240"></script>
     <script>
         function updateTemp() {
             fetch('/entware-cgi/temperature.cgi?_=' + Date.now())

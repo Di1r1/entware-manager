@@ -208,7 +208,7 @@ func renderCPUCard(b *strings.Builder, cpu CPUInfo) {
 // отдаёт эндпоинт cpu.cgi для живого обновления каждые 5 секунд.
 func renderCPUCardInner(b *strings.Builder, cpu CPUInfo) {
 	b.WriteString(fmt.Sprintf(`
-        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=8#icon-chart"/></svg></span>Процессор (CPU)</h3>
+        <h3><span class="stat-icon"><svg class="icon" width="24" height="24"><use href="/entware-manager/icons.svg?v=9#icon-chart"/></svg></span>Процессор (CPU)</h3>
         <table class="stat-table">
             <tr><td>Загрузка:</td><td><span class="%s">%s</span></td></tr>
             <tr><td>Средняя нагрузка:</td><td>%s</td></tr>

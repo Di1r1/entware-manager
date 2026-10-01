@@ -1762,7 +1762,7 @@
   /* Серверная ссылка {name,url,icon} → пункт rail. meta — порт или путь.
    * icon с сервера — id из спрайта (router, shield…); короткие глифы (⧉, эмодзи)
    * оставляем текстом. Спрайт общий с классикой. */
-  var BM_ICONS = '/entware-manager/icons.svg?v=8';
+  var BM_ICONS = '/entware-manager/icons.svg?v=9';
   function bmFromServer(list) {
     var out = [];
     list.forEach(function (l) {
@@ -3960,12 +3960,12 @@
   }
   (function setBind() {
     function on(id, fn) { var el = document.getElementById(id); if (el) el.onclick = fn; }
-    on('setHtopStart', function () { setTtydAct('start', 8089, 'setTermPass', null); });
-    on('setHtopStop', function () { setTtydAct('stop', 8089, 'setTermPass', null); });
-    on('setHtopRestart', function () { setTtydAct('restart', 8089, 'setTermPass', null); });
-    on('setTermStart', function () { setTtydAct('start', 9089, 'setTermPass', null); });
-    on('setTermStop', function () { setTtydAct('stop', 9089, 'setTermPass', null); });
-    on('setTermRestart', function () { setTtydAct('restart', 9089, 'setTermPass', null); });
+    on('setHtopStart', function () { setTtydAct('start', 8089, 'setTermPass'); });
+    on('setHtopStop', function () { setTtydAct('stop', 8089, 'setTermPass'); });
+    on('setHtopRestart', function () { setTtydAct('restart', 8089, 'setTermPass'); });
+    on('setTermStart', function () { setTtydAct('start', 9089, 'setTermPass'); });
+    on('setTermStop', function () { setTtydAct('stop', 9089, 'setTermPass'); });
+    on('setTermRestart', function () { setTtydAct('restart', 9089, 'setTermPass'); });
     on('setLinkAdd', function () {
       if (!setNeedSession()) return;
       var tb = document.getElementById('setLinksBody');

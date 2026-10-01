@@ -161,7 +161,7 @@ func viewFileResult(path, content string, isXHR bool) {
 }
 
 func backButton() string {
-	return `<p style="margin-top:1rem;"><a href="#" onclick="history.back(); return false" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=8#icon-arrow-left"/></svg> Назад</a></p>`
+	return `<p style="margin-top:1rem;"><a href="#" onclick="history.back(); return false" class="packages-delete-btn" style="background:#4a5568;"><svg class="icon" width="14" height="14"><use href="/entware-manager/icons.svg?v=9#icon-arrow-left"/></svg> Назад</a></p>`
 }
 
 // logViewFileAction пишет событие (например, неверный пароль) в суточный лог

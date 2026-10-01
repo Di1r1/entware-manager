@@ -20,16 +20,16 @@ const NETWORK = {
         content.innerHTML = `
             <h2 style="display: flex; align-items: center; gap: 8px;">
                 <span class="stat-icon" style="width: 28px; height: 28px;">
-                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=8#icon-router"/></svg>
+                    <svg class="icon" width="28" height="28"><use href="/entware-manager/icons.svg?v=9#icon-router"/></svg>
                 </span>
                 Сеть
             </h2>
             <div style="background: var(--command-block-bg); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <span><strong>Демон:</strong> <span id="daemon-status" class="stat-value-normal">загрузка...</span></span>
-                    <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-play"/></svg> Запустить</button>
-                    <button id="network-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-stop"/></svg> Остановить</button>
-                    <button id="network-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Перезапустить</button>
+                    <button id="network-start" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-play"/></svg> Запустить</button>
+                    <button id="network-stop" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-stop"/></svg> Остановить</button>
+                    <button id="network-restart" class="packages-delete-btn"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-refresh"/></svg> Перезапустить</button>
                     <label class="service-watch-toggle" title="Запускать демон при загрузке роутера">
                         <input type="checkbox" id="network-autostart" style="display: none;">
                         <span class="toggle-slider"></span>
@@ -47,7 +47,7 @@ const NETWORK = {
                 <button class="tab-button" data-tab="arp" id="tab-btn-arp">ARP</button>
                 <button class="tab-button" data-tab="wifi" id="tab-btn-wifi">Wi-Fi</button>
                 <button class="tab-button" data-tab="events" id="tab-btn-events">События</button>
-                <button id="refresh-wifi" class="packages-delete-btn" style="margin-left:auto;display:none;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Обновить</button>
+                <button id="refresh-wifi" class="packages-delete-btn" style="margin-left:auto;display:none;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-refresh"/></svg> Обновить</button>
             </div>
             <div id="network-content">
                 <div id="tab-interfaces" class="tab-content active">
@@ -110,7 +110,7 @@ const NETWORK = {
                     <div id="events-list" style="background: var(--pre-bg); padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto;">
                         <p>Загрузка событий...</p>
                     </div>
-                    <button id="refresh-events" class="packages-delete-btn" style="margin-top: 1rem;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Обновить</button>
+                    <button id="refresh-events" class="packages-delete-btn" style="margin-top: 1rem;"><svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-refresh"/></svg> Обновить</button>
                 </div>
             </div>
         `;
@@ -216,7 +216,7 @@ const NETWORK = {
         const btn = document.getElementById('refresh-wifi');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Обновление…';
+            btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-refresh"/></svg> Обновление…';
         }
         try {
             const data = await apiGet('/network/wifi.cgi');
@@ -246,7 +246,7 @@ const NETWORK = {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=8#icon-refresh"/></svg> Обновить';
+                btn.innerHTML = '<svg class="icon" width="16" height="16"><use href="/entware-manager/icons.svg?v=9#icon-refresh"/></svg> Обновить';
             }
         }
     },

@@ -307,6 +307,11 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка SVG: 6 мёртвых символов + каскад icons.svg?v=8→9 (партия 6b, 2026-10-01)
+
+- `icon-close`, `icon-chevron-up/down` (хвост кнопок moveLink), `icon-sort-asc/desc` (заменены текстовыми стрелками), `icon-cursor` (RDP-опция убита; жив только cookie в клиенте). 9 иконок пикера ссылок не тронуты. Собственные версии 10 файлов +1 (entware 239→240, rdp 84→85, smart 13→14, network 18→19, monitor 11→12, utils 8→9, modal 4→5, menu 3→4, noc-console 148→149), `icons.svg?v` в 19 исходниках, пересобраны stats/pkg/logger. Хвосты `, null` в 6 вызовах setTtydAct сняты. Проверено: прямая + reverse (XML 56 символов, node, ES5, негативы), кворум PASS + APPROVE, `make ci` зелёный.
+
+
 ### Чистка CSS: мёртвые классы и переменные (партия 6a, 2026-10-01)
 
 - `.tab-toggle` ×9 (тумблеры вынесены из `#network-tabs`), `.theme-toggle` ×4 (живой `theme-toggle-edge` не тронут), `.packages-search` ×4 + `.search-icon`, секция SCANNER, `--app-border` ×2, `--tx/--rx/--scrollbar` ×9 (живой `--scrollbar-thumb` не тронут). Два comma-списка с живыми селекторами резались точечно. Кэш `style.css?v=71→72` (6 мест) + `noc-console.css?v=50→51`, пересобраны entware-stats/entware-pkg/entware-logger. Проверено: прямая + reverse (assert'ы, баланс скобок, живые контроли), кворум PASS + APPROVE, `make ci` зелёный.
