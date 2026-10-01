@@ -180,7 +180,7 @@ send_tg() {
         --data-urlencode "text=$msg" \
         --data-urlencode "parse_mode=HTML" \
         --data-urlencode "disable_web_page_preview=true" \
-        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" 2>/dev/null
+        "${API}${BOT_TOKEN}/sendMessage" 2>/dev/null
 }
 
 # --- Отправка готового HTML-сообщения как есть (без format_message) ---
@@ -198,7 +198,7 @@ send_raw() {
         --data-urlencode "text=$msg" \
         --data-urlencode "parse_mode=HTML" \
         --data-urlencode "disable_web_page_preview=true" \
-        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" 2>/dev/null
+        "${API}${BOT_TOKEN}/sendMessage" 2>/dev/null
 }
 
 # --- Извлечение источника из строки лога "[tag]" или "[network] ..." ---
