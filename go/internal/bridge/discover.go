@@ -95,6 +95,8 @@ func InvalidateCache() {
 }
 
 // clientBridge — транспорт без редиректов и keep-alive.
+// Редиректы отключены осознанно: 302 с loopback на произвольный
+// хост пробил бы гейт urlgate (см. CheckRedirect ниже).
 func clientBridge() *http.Client {
 	return &http.Client{
 		CheckRedirect: func(*http.Request, []*http.Request) error {

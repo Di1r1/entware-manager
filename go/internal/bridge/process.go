@@ -30,10 +30,9 @@ var timeNow = time.Now().Unix
 
 const maxProcScan = 4096 // защита от аномально огромного /proc
 
-// procEntry — один живой (не-зомби) процесс: имя из comm, basename argv[0], pid.
+// procEntry — один живой (не-зомби) процесс: имя из comm, pid.
 type procEntry struct {
 	comm string
-	base string
 	pid  int
 }
 

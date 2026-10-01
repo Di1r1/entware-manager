@@ -83,7 +83,3 @@ func ValidateBridgeURL(raw, base string) (*url.URL, error) {
 	}
 	return u, nil
 }
-
-// noRedirects — транспорт моста не следует редиректам: 302 с loopback на
-// произвольный хост пробил бы гейт.
-const noRedirects = "redirects disabled"
