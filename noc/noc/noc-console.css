@@ -564,6 +564,12 @@ body.card-dragging [data-dndcont]:empty {
 }
 .tbl tr:last-child td { border-bottom: none; }
 .tbl td.l { text-align: left; }
+/* Сортируемые заголовки (пакеты th[data-ps]): указатель + направление */
+.tbl th[data-ps] { cursor: pointer; }
+.tbl th.sort-asc::after { content: " \25B2"; color: var(--accent); }
+.tbl th.sort-desc::after { content: " \25BC"; color: var(--accent); }
+/* Липкая шапка таблиц: столбцы зафиксированы при прокрутке */
+.tbl thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; }
 .tbl td:not(.l), .tbl th:not(:nth-child(2)) { text-align: right; }
 .tbl th:nth-child(2) { text-align: left; }
 .tbl tbody tr {

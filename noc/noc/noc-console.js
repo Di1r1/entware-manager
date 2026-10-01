@@ -4577,6 +4577,15 @@
       html += '<tr data-pkg="' + esc(r.name) + '"><td class="l">' + esc(r.name) + '</td><td>' + esc(r.ver || '—') + '</td><td>' + esc(r.date) + '</td><td>' + badge[r.st] + '</td><td>' + act[r.st].replace('data-pact="', 'data-pkg="' + esc(r.name) + '" data-pact="') + '</td></tr>';
     });
     body.innerHTML = html || '<tr><td colspan="5" class="mut">Нет данных (нужна сессия) или пусто.</td></tr>';
+    /* Подсветка активного столбца сортировки (шапка обещает «сортировка — по шапке») */
+    var ptab = body.closest ? body.closest('table') : null;
+    if (ptab) {
+      Array.prototype.forEach.call(ptab.querySelectorAll('th[data-ps]'), function (t) {
+        t.classList.remove('sort-asc');
+        t.classList.remove('sort-desc');
+        if (t.getAttribute('data-ps') === pkgState.sortKey) t.classList.add(pkgState.sortDir === 1 ? 'sort-asc' : 'sort-desc');
+      });
+    }
     var verdictTxt = '', verdictCls = '', subTxt = '';
     if (!pkgState.loaded) { verdictTxt = '3 обновления доступны'; verdictCls = 'verdict warn-t'; }
     else if (!pkgState.installed.length && !pkgState.available.length) { verdictTxt = 'нет данных'; verdictCls = 'verdict mut'; }
