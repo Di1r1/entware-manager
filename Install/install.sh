@@ -1331,7 +1331,6 @@ fi
 
 # Проверка симлинков .cgi
 echo "  ${BOLD}Симлинки .cgi:${NC}"
-CGI_COUNT=$(find "$TARGET_DIR/cgi-bin" -maxdepth 1 -name "*.cgi" ! -name "go.cgi" | wc -l)
 SYMLINK_OK=0
 SYMLINK_BAD=0
 for f in "$TARGET_DIR"/cgi-bin/*.cgi; do

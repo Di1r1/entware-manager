@@ -48,7 +48,6 @@ load_config() {
                 3) CHAT_ID=$_v ;;
                 4) LEVEL=$_v ;;
                 5) SOURCES=$_v ;;
-                6) AUTOSTART=$_v ;;
                 7) PROXY_URL=$_v ;;
                 8) T_CPU_TEMP_EN=$_v ;;
                 9) T_CPU_TEMP_VAL=$_v ;;
@@ -79,7 +78,6 @@ EOF
         CHAT_ID=""
         LEVEL="ERROR"
         SOURCES="system|monitor|service|network|packages"
-        AUTOSTART=false
         PROXY_URL=""
         T_CPU_TEMP_EN=false; T_CPU_TEMP_VAL=90
         T_WIFI0_EN=false;    T_WIFI0_VAL=100
@@ -135,9 +133,8 @@ source_emoji() {
     case "$1" in
         network) echo "🌐" ;;
         service) echo "⚙️" ;;
-        monitor) echo "📊" ;;
-        smart)   echo "💾" ;;
-        packages) echo "📦" ;;
+           monitor) echo "📊" ;;
+           packages) echo "📦" ;;
         login)   echo "🔐" ;;
         bridge)  echo "🧩" ;;
         *)       echo "🖥️" ;;
@@ -213,9 +210,8 @@ detect_source() {
         *"[network]"*) echo "network" ;;
         *"[packages]"*) echo "packages" ;;
         *"[login.cgi]"*) echo "login" ;;
-        *"[bridge]"*) echo "bridge" ;;
-        *"[update]"*|*"[backup]"*|*"[rdp]"*|*"[links_save.cgi]"*|*"[delete_file.cgi]"*|*"[view_file.cgi]"*|*"[crontab_update.cgi]"*|*"[logger"*) echo "system" ;;
-        *) echo "system" ;;
+           *"[bridge]"*) echo "bridge" ;;
+           *) echo "system" ;;
     esac
 }
 

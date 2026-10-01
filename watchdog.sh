@@ -25,13 +25,11 @@ read_config() {
             case "$i" in
                 1) ENABLED=$_v ;;
                 2) INTERVAL=$_v ;;
-                3) INDIVIDUAL_ENABLED=$_v ;;
                 4) INDIVIDUAL_CPU=$_v ;;
                 5) INDIVIDUAL_TIME=$_v ;;
                 6) IGNORE_PS=$_v ;;
                 7) MAX_PROCESSES=$_v ;;
                 8) IGNORE_LIST=$_v ;;
-                9) AUTOSTART=$_v ;;
             esac
         done << EOF
 $(jq -r '.enabled // true, (.interval // 30), (.individual.enabled // true), (.individual.threshold_cpu // 20), (.individual.threshold_time // 120), (.ignore_ps // true), (.max_processes // 200), (if (.ignore|type)=="array" then (.ignore|join("|")) else "lighttpd|cron|ttyd|watchdog|ps|top" end), (.autostart // false)' "$CONFIG")
@@ -46,22 +44,18 @@ EOF
     else
         ENABLED=true
         INTERVAL=30
-        INDIVIDUAL_ENABLED=true
         INDIVIDUAL_CPU=20
         INDIVIDUAL_TIME=120
         IGNORE_LIST="lighttpd|cron|ttyd|watchdog|ps|top"
         IGNORE_PS=true
-        AUTOSTART=false
         log_message "WARN" "[monitor] jq не найден, использую настройки по умолчанию"
     fi
 
     [ -z "$ENABLED" ] || [ "$ENABLED" = "null" ] && ENABLED=true
     [ -z "$INTERVAL" ] || [ "$INTERVAL" = "null" ] && INTERVAL=30
-    [ -z "$INDIVIDUAL_ENABLED" ] || [ "$INDIVIDUAL_ENABLED" = "null" ] && INDIVIDUAL_ENABLED=true
     [ -z "$INDIVIDUAL_CPU" ] || [ "$INDIVIDUAL_CPU" = "null" ] && INDIVIDUAL_CPU=20
     [ -z "$INDIVIDUAL_TIME" ] || [ "$INDIVIDUAL_TIME" = "null" ] && INDIVIDUAL_TIME=120
     [ -z "$IGNORE_LIST" ] || [ "$IGNORE_LIST" = "null" ] && IGNORE_LIST="lighttpd|cron|ttyd|watchdog|ps|top"
-    [ -z "$AUTOSTART" ] || [ "$AUTOSTART" = "null" ] && AUTOSTART=false
 }
 
 kill_process() {
@@ -110,7 +104,6 @@ daemon_loop() {
             after="${line#*)}"
             set -- $after
             [ $# -lt 13 ] && continue
-            ppid=$2
             shift 11
             utime=$1
             stime=$2

@@ -13,7 +13,6 @@ set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$PROJECT_DIR/deploy"
-TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 
 ARCH_NAMES=(arm64 mips mipsel)
 ARCH_GOARCH=(arm64 mips mipsle)

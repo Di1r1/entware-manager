@@ -16,7 +16,6 @@ CONFIG_FILE="/opt/web_entware/network_config.json"
 PID_FILE="/tmp/entware/pid/network_watchdog.pid"
 STATE_FILE="/tmp/entware/pid/network_watchdog_state.json"
 LOG_FILE="/tmp/entware/logs/network_events.log"
-LOG_MAX_SIZE=1048576
 
 load_config() {
     if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
@@ -27,7 +26,6 @@ load_config() {
                 1) INTERVAL=$_v ;;
                 2) PING_HOST=$_v ;;
                 3) PING_TIMEOUT=$_v ;;
-                4) AUTOSTART=$_v ;;
             esac
         done << EOF
 $(jq -r '.watchdog.interval // 30, .watchdog.ping_host // "8.8.8.8", .watchdog.ping_timeout // 5, .autostart // false' "$CONFIG_FILE")
@@ -36,7 +34,6 @@ EOF
         INTERVAL=30
         PING_HOST="8.8.8.8"
         PING_TIMEOUT=5
-        AUTOSTART=false
     fi
     
     [ -z "$INTERVAL" ] && INTERVAL=30

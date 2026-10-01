@@ -307,6 +307,12 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка мёртвых переменных демонов и кода панели, партии 3–4 (2026-09-27)
+
+- Shell (7 файлов): убраны только мёртвые локальные — `LOG_MAX_SIZE`×3, `INDIVIDUAL_ENABLED`, `LOG_TO_MONITOR`, локальные `AUTOSTART`×5 файлов, `ppid`, `CGI_COUNT`, `TIMESTAMP`, ветка `smart)` и дубль-`case` в `detect_source`. `jq`-строки, JSON-ключи `.autostart`, читатель `S85entware-watchdogs`, живой `MAX_PROCESSES` — не тронуты. Цепочка чекбокс→`.autostart`→S85→демон цела end-to-end (проверено кворумом поименно).
+- `entware.js` (−76 строк `buildServiceDetails` + `renderBridgeRows`, `switchProbeTab`, локал `contentDiv`, 2 пустых `update-progress`): живые соседи целы (`switchProbeTabAt`, `renderBridgeDetails`, `renderBridgeEditor`, глобальный `contentDiv`). Кэш `entware.js?v=237→238`.
+- Проверено: `sh -n`, `shellcheck`, `node --check`, `make ci` зелёный. Кворум: PASS + PASS + APPROVE. По ходу пойманы и исправлены 2 собственные ошибки (путаница str/list-индексов, устаревшие номера строк) — обе до записи.
+
 ### Чистка сиротских страниц: кнопки без обработчиков убраны (2026-09-27)
 
 - `installed.go` (страница `packages.cgi`, из панели не залинкована): удалены форма «Удалить» с мёртвым `opkgAction` (функции нет на странице — только `style.css`+`theme.js`) вместе с колонкой «Действие», и блок поиска `searchInput` без обработчиков. Страница — честный read-only отчёт. Удаление в панели живёт отдельно (`entware.js:798-809`, `opkgAction`, JSON-путь `InstalledJSON()` цел).

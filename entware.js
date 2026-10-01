@@ -1734,7 +1734,6 @@ async function renderBridgeTab() {
     contentDiv.innerHTML = html;
     bindBridgeCards(contentDiv);
 
-
     // Спец-карточка AdGuard Home: статистика + управление защитой
     const agh = services.find(s => s.id === 'adguard');
     if (agh && agh.state !== 'auth_required') {
@@ -1896,7 +1895,6 @@ const BRIDGE_TEMPLATE = `{
 }`;
 
 function openBridgeEditor(editId) {
-    const contentDiv = document.getElementById('content');
     let existingJson = BRIDGE_TEMPLATE;
     let title = 'Новый модуль - Альфа тест';
     if (editId) {
@@ -2211,11 +2209,6 @@ function switchProbeTabAt(i) {
     if (!sources[i]) return;
     bridgeProbeTab = sources[i].name;
     renderProbeResult(bridgeProbeCache);
-}
-
-function switchProbeTab(name) {
-    bridgeProbeTab = name;
-    if (bridgeProbeCache) renderProbeResult(bridgeProbeCache);
 }
 
 // currentBasePort — порт из base текущего текста манифеста (для подсветки).
@@ -2706,83 +2699,6 @@ function startKoffeSparkTimer() {
     koffeSparkTimer = setInterval(updateKoffeSparkLive, 10000);
 }
 
-// buildServiceDetails — структурированное наполнение карточки моста:
-//   tiles: крупные числа (сетка 2×N), rows: пары метка→значение, chips: бейджи списков.
-function buildServiceDetails(id, body) {
-    const out = { tiles: [], rows: [], chips: [] };
-    if (!body || typeof body !== 'object') return out;
-    const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
-
-    if (id === 'adguard') {
-        const q = Number(body.num_dns_queries) || 0;
-        const blk = Number(body.num_blocked_filtering) || 0;
-        const pct = q > 0 ? Math.round(blk / q * 1000) / 10 : 0;
-        out.tiles = [
-            { label: 'Запросов за сутки', value: fmtN(q) },
-            { label: 'Заблокировано',     value: fmtN(blk), color: '#d69e2e' },
-            { label: 'Доля блокировок',   value: String(pct).replace('.', ',') + '%' },
-            { label: 'Ответ DNS',         value: '~' + Math.round(Number(body.avg_processing_time) * 1000) + ' мс' }
-        ];
-        out.rows.push(['Версия', body.version ? String(body.version).replace(/^v/, '') : '—']);
-        const tc = bridgeTopEntries(body.top_clients, 3);
-        if (tc.length) out.rows.push(['Топ клиенты', tc.join(', ')]);
-        const tb = bridgeTopEntries(body.top_blocked_domains, 5);
-        if (tb.length) out.rows.push(['Топ блокировок', tb.join(', ')]);
-        return out;
-    }
-
-    // Transmission RPC: session-stats
-    if (id === 'transmission') {
-        const a = body.arguments || {};
-        const cum = a['cumulative-stats'] || {};
-        out.tiles = [
-            { label: 'Активные торренты', value: fmtN(a.activeTorrentCount) },
-            { label: 'Всего торрентов',   value: fmtN(a.torrentCount) },
-            { label: 'Загрузка',          value: fmtRate(a.downloadSpeed), color: '#8b5cf6' },
-            { label: 'Отдача',            value: fmtRate(a.uploadSpeed),   color: '#38a169' }
-        ];
-        if (Number(a.pausedTorrentCount) > 0) {
-            out.rows.push(['На паузе', fmtN(a.pausedTorrentCount)]);
-        }
-        if (Number(cum.downloadedBytes) > 0) {
-            out.rows.push(['Скачано за всё время', fmtBytesJS(Number(cum.downloadedBytes))]);
-        }
-        if (Number(cum.uploadedBytes) > 0) {
-            out.rows.push(['Отдано за всё время', fmtBytesJS(Number(cum.uploadedBytes))]);
-        }
-        return out;
-    }
-
-    // Syncthing: /rest/system/status (+ connections отдельным блоком)
-    if (id === 'syncthing') {
-        const up = Number(body.uptime) || 0;
-        const dd = Math.floor(up / 86400), hh = Math.floor((up % 86400) / 3600);
-        const mm = Math.floor((up % 3600) / 60);
-        let t = [];
-        if (dd) t.push(dd + ' дн');
-        if (hh || dd) t.push(hh + ' ч');
-        t.push(mm + ' мин');
-        out.rows.push(['Аптайм', t.join(' ')]);
-        if (body.myID) out.rows.push(['ID устройства', String(body.myID).slice(0, 7)]);
-        return out;
-    }
-
-    // Koffe VPN
-    if (typeof body.running === 'boolean') {
-        out.rows.push(['Туннель', body.running ? 'активен' : 'остановлен']);
-    }
-    if (body.mode) out.rows.push(['Режим', body.mode]);
-    if (body.server) out.rows.push(['Сервер', body.server]);
-    const chipMap = [['split_count','сплит'],['device_bypass','байпас'],['device_tunnel','туннель'],
-                     ['device_hysteria2','hysteria2'],['device_custom','внешний']];
-    chipMap.forEach(([k, label]) => {
-        const n = Number(body[k]) || 0;
-        if (n > 0) out.chips.push(label + ' ' + fmtN(n));
-    });
-    if (body.uptime) out.rows.push(['Аптайм', body.uptime]);
-    return out;
-}
-
 async function renderBridgeCardsOnStats() {
     const statsContent = document.querySelector('.stats-grid');
     if (!statsContent || document.querySelector('#bridge-stats-zone')) return;
@@ -2987,11 +2903,6 @@ function renderBridgeDetails(d) {
         }).join('') + '</div>';
     }
     return html;
-}
-
-// Совместимость со старыми вызовами.
-function renderBridgeRows(rows) {
-    return renderBridgeDetails({ rows: rows });
 }
 
 async function renderLinksOnStats() {
@@ -3754,7 +3665,7 @@ async function runUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Обновление... <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
 
         // Poll status every 2 seconds
         pollUpdateStatus();
@@ -3785,7 +3696,7 @@ async function reinstallUpdate() {
             btn.disabled = false;
             return;
         }
-        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span id="update-progress"></span> <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
+        statusEl.innerHTML = '<span style="color:#f59e0b;">Переустановка... <span style="color:var(--text-muted); font-size:0.85em;">(обычно до 1 минуты при хорошей сети; не закрывайте страницу)</span></span>';
 
         pollUpdateStatus();
     } catch (err) {
