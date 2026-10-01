@@ -3253,6 +3253,43 @@
     if (!window.__NOC_LIVE_STATS) return;
     liveFetch('network/status.cgi').then(function (d) { if (d) netBadge(!!d.running, d.pid); });
   }
+  /* Сортировка сетевых таблиц кликом по шапке (состояние на таблицу,
+   * индикация теми же классами sort-asc/desc, что у пакетов). */
+  var netSort = {};
+  function netVal(t, r, k) {
+    var v = (t === 'wf' && k === 'name') ? (r.name || r.hostname || '') : r[k];
+    return (v === undefined || v === null) ? '' : String(v);
+  }
+  function netCmp(a, b) {
+    var ip4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+    if (ip4.test(a) && ip4.test(b)) {
+      var pa = a.split('.'), pb = b.split('.'), i;
+      for (i = 0; i < 4; i++) { if (+pa[i] !== +pb[i]) return +pa[i] - +pb[i]; }
+      return 0;
+    }
+    var num = /^-?\d+(\.\d+)?$/;
+    if (num.test(a) && num.test(b)) return parseFloat(a) - parseFloat(b);
+    var ma = a.match(/^(-?\d+(\.\d+)?)/), mb = b.match(/^(-?\d+(\.\d+)?)/);
+    if (ma && mb && parseFloat(ma[1]) !== parseFloat(mb[1])) return parseFloat(ma[1]) - parseFloat(mb[1]);
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  }
+  function netSortList(t, list) {
+    var st = netSort[t];
+    if (!st || !st.key) return list;
+    return list.slice().sort(function (x, y) { return netCmp(netVal(t, x, st.key), netVal(t, y, st.key)) * st.dir; });
+  }
+  function netMarkSort(tb, t) {
+    var tab = tb.closest ? tb.closest('table') : null;
+    if (!tab) return;
+    var st = netSort[t] || {};
+    Array.prototype.forEach.call(tab.querySelectorAll('th[data-ns]'), function (th) {
+      th.classList.remove('sort-asc');
+      th.classList.remove('sort-desc');
+      if (th.getAttribute('data-ns') === t + ':' + st.key) th.classList.add(st.dir === -1 ? 'sort-desc' : 'sort-asc');
+    });
+  }
   function netIfaces() {
     var tb = document.getElementById('netIfBody');
     if (!tb || !window.__NOC_LIVE_STATS) return;
@@ -3260,6 +3297,8 @@
     hideUn = hideUn ? hideUn.checked : false;
     liveFetch('network/interfaces.cgi').then(function (d) {
       var list = d && Array.isArray(d.interfaces) ? d.interfaces : [];
+      netMarkSort(tb, 'if');
+      list = netSortList('if', list);
       if (hideUn) list = list.filter(function (i) { return i.state !== 'UNKNOWN'; });
       if (!list.length) { tb.innerHTML = '<tr><td colspan="6" class="mut">Нет данных</td></tr>'; return; }
       var html = '';
@@ -3278,6 +3317,8 @@
     if (!tb || !window.__NOC_LIVE_STATS) return;
     liveFetch('network/routes.cgi').then(function (d) {
       var list = d && Array.isArray(d.routes) ? d.routes : [];
+      netMarkSort(tb, 'rt');
+      list = netSortList('rt', list);
       if (!list.length) { tb.innerHTML = '<tr><td colspan="4" class="mut">Нет данных</td></tr>'; return; }
       var html = '';
       list.forEach(function (r) {
@@ -3292,6 +3333,8 @@
     if (!tb || !window.__NOC_LIVE_STATS) return;
     liveFetch('network/arp.cgi').then(function (d) {
       var list = d && Array.isArray(d.entries) ? d.entries : [];
+      netMarkSort(tb, 'arp');
+      list = netSortList('arp', list);
       if (!list.length) { tb.innerHTML = '<tr><td colspan="5" class="mut">Таблица пуста</td></tr>'; return; }
       var html = '';
       list.forEach(function (e) {
@@ -3307,6 +3350,8 @@
     if (!tb || !window.__NOC_LIVE_STATS) return;
     liveFetch('network/wifi.cgi').then(function (d) {
       var list = d && Array.isArray(d.clients) ? d.clients : [];
+      netMarkSort(tb, 'wf');
+      list = netSortList('wf', list);
       if (!list.length) { tb.innerHTML = '<tr><td colspan="7" class="mut">Клиентов Wi-Fi не найдено</td></tr>'; return; }
       var html = '';
       list.forEach(function (c) {
@@ -4718,6 +4763,17 @@
       s.classList.add('active');
       pkgState.filter = s.getAttribute('data-pf');
       renderPkg();
+      return;
+    }
+    var nsth = e.target && e.target.closest ? e.target.closest('th[data-ns]') : null;
+    if (nsth) {
+      var nsp = nsth.getAttribute('data-ns').split(':');
+      var nst = netSort[nsp[0]] || (netSort[nsp[0]] = {});
+      if (nst.key === nsp[1]) nst.dir = -nst.dir; else { nst.key = nsp[1]; nst.dir = 1; }
+      if (nsp[0] === 'if') netIfaces();
+      else if (nsp[0] === 'rt') netRoutes();
+      else if (nsp[0] === 'arp') netArp();
+      else if (nsp[0] === 'wf') netWifi();
       return;
     }
     var th = e.target && e.target.closest ? e.target.closest('th[data-ps]') : null;

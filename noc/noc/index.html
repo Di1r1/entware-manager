@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entware Manager — NOC Console (бета)</title>
-<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=52">
+<link rel="stylesheet" href="/entware-manager/noc/noc-console.css?v=53">
 <script>(function(){try{if(localStorage.getItem('entware_noc_pinned')==='1'){document.documentElement.setAttribute('data-noc-pinned','1');}}catch(e){}})()</script>
 </head>
 <body>
@@ -360,16 +360,16 @@
             <button class="sg active" data-sp="if">Интерфейсы</button><button class="sg" data-sp="rt">Маршруты</button><button class="sg" data-sp="arp">ARP</button><button class="sg" data-sp="wf">Wi-Fi</button><button class="sg" data-sp="ev">События</button></span>
             <span class="t-right"><button class="btn sm ghost" id="netRefreshBtn">Обновить</button></span>
           </div>
-          <div class="card" data-pp="if"><table class="tbl mono"><thead><tr><th>Интерфейс</th><th>Состояние</th><th>IP адрес</th><th>MAC</th><th>Тип</th><th>Скорость</th></tr></thead><tbody id="netIfBody">
+          <div class="card" data-pp="if"><table class="tbl mono"><thead><tr><th data-ns="if:name">Интерфейс</th><th data-ns="if:state">Состояние</th><th data-ns="if:ip">IP адрес</th><th data-ns="if:mac">MAC</th><th data-ns="if:type">Тип</th><th data-ns="if:speed">Скорость</th></tr></thead><tbody id="netIfBody">
             <tr><td colspan="6" class="mut">Загрузка…</td></tr>
           </tbody></table></div>
-          <div class="card" data-pp="rt" hidden><table class="tbl mono"><thead><tr><th>Назначение</th><th>Шлюз</th><th>Интерфейс</th><th>Метрика</th></tr></thead><tbody id="netRtBody">
+          <div class="card" data-pp="rt" hidden><table class="tbl mono"><thead><tr><th data-ns="rt:destination">Назначение</th><th data-ns="rt:gateway">Шлюз</th><th data-ns="rt:interface">Интерфейс</th><th data-ns="rt:metric">Метрика</th></tr></thead><tbody id="netRtBody">
             <tr><td colspan="4" class="mut">Загрузка…</td></tr>
           </tbody></table></div>
-          <div class="card" data-pp="arp" hidden><table class="tbl mono"><thead><tr><th>IP адрес</th><th>Имя</th><th>MAC адрес</th><th>Интерфейс</th><th>Состояние</th></tr></thead><tbody id="netArpBody">
+          <div class="card" data-pp="arp" hidden><table class="tbl mono"><thead><tr><th data-ns="arp:ip">IP адрес</th><th data-ns="arp:name">Имя</th><th data-ns="arp:mac">MAC адрес</th><th data-ns="arp:interface">Интерфейс</th><th data-ns="arp:state">Состояние</th></tr></thead><tbody id="netArpBody">
             <tr><td colspan="5" class="mut">Загрузка…</td></tr>
           </tbody></table></div>
-          <div class="card" data-pp="wf" hidden><table class="tbl mono"><thead><tr><th>Имя</th><th>IP адрес</th><th>MAC адрес</th><th>Сигнал</th><th>Стандарт</th><th>Мбит/с</th><th>Сегмент</th></tr></thead><tbody id="netWfBody">
+          <div class="card" data-pp="wf" hidden><table class="tbl mono"><thead><tr><th data-ns="wf:name">Имя</th><th data-ns="wf:ip">IP адрес</th><th data-ns="wf:mac">MAC адрес</th><th data-ns="wf:rssi">Сигнал</th><th data-ns="wf:mode">Стандарт</th><th data-ns="wf:txrate">Мбит/с</th><th data-ns="wf:segment">Сегмент</th></tr></thead><tbody id="netWfBody">
             <tr><td colspan="7" class="mut">Загрузка…</td></tr>
           </tbody></table></div>
           <div class="card" data-pp="ev" hidden><table class="tbl mono"><tbody id="netEvBody">
@@ -614,7 +614,7 @@
 </div>
 <div class="toast mono" id="toast" hidden></div>
 
-<script src="/entware-manager/noc/noc-console.js?v=150"></script>
+<script src="/entware-manager/noc/noc-console.js?v=151"></script>
 <script src="/entware-manager/noc/theme-bridge.js?v=2"></script>
 </body>
 </html>
