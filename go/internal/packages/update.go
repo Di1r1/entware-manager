@@ -69,7 +69,7 @@ func acquireUpdateLock(path string, pid int) bool {
 
 func Update() {
 	if !cgiutil.IsPOST() {
-		cgiutil.NotAllowed()
+		writeHTML(`<p class="error">Ошибка: требуется POST-запрос</p>`)
 		return
 	}
 
@@ -77,7 +77,7 @@ func Update() {
 	// (auth.IsCrossSiteOrigin) — здесь не дублируем.
 
 	if !acquireUpdateLock(opkgUpdatePidFile, os.Getpid()) {
-		cgiutil.WriteError("Обновление списков пакетов уже выполняется")
+		writeHTML(`<p class="error">Обновление списков пакетов уже выполняется</p>`)
 		return
 	}
 	defer os.Remove(opkgUpdatePidFile)
