@@ -4039,8 +4039,6 @@ function initLinksDrag() {
     });
 }
 
-window.moveLink = null;
-
 async function saveAllLinks() {
     const rows = document.querySelectorAll('#linksTable tbody tr');
     const links = [];

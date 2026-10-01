@@ -307,6 +307,10 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка: хвост drag-and-drop ссылок `window.moveLink` (2026-09-27)
+
+- Одна строка `entware.js:4042` (`window.moveLink = null;`): функция кнопок перемещения ссылок родилась и умерла в v1.09.22 (заменена drag-and-drop), осталась null-заглушка. Обращений ноль во всех формах. Кэш `entware.js?v=238→239` (+ sync `deploy/`). Проверено: кворум PASS + APPROVE, `node --check`, негативный grep пуст.
+
 ### Чистка мёртвых переменных демонов и кода панели, партии 3–4 (2026-09-27)
 
 - Shell (7 файлов): убраны только мёртвые локальные — `LOG_MAX_SIZE`×3, `INDIVIDUAL_ENABLED`, `LOG_TO_MONITOR`, локальные `AUTOSTART`×5 файлов, `ppid`, `CGI_COUNT`, `TIMESTAMP`, ветка `smart)` и дубль-`case` в `detect_source`. `jq`-строки, JSON-ключи `.autostart`, читатель `S85entware-watchdogs`, живой `MAX_PROCESSES` — не тронуты. Цепочка чекбокс→`.autostart`→S85→демон цела end-to-end (проверено кворумом поименно).
