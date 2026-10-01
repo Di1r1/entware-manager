@@ -1843,6 +1843,15 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
     margin: 10px 0;
 }
 
+/* === Системный лог (system_log.cgi) ===
+ * Отдача — полный HTML-документ со <style>, но панель вставляет
+ * doc.body.innerHTML (entware.js:1292-1297), и <head> вместе со стилями
+ * отбрасывается. Дублируем нужное здесь; цвета — только переменные темы.
+ * padding у .syslog-wrap обнуляем: у #systemLogContent он уже инлайном. */
+#systemLogContent .syslog-wrap { padding: 0; }
+#systemLogContent .syslog { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: 'Courier New', monospace; font-size: 13px; }
+#systemLogContent .syslog-empty { text-align: center; padding: 20px; opacity: .65; }
+
 /* === Стили для страницы справки (help.cgi) === */
 .command-block {
     background: var(--command-block-bg);
