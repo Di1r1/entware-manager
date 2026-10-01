@@ -1,19 +1,7 @@
-/* NOC-мок: только фейковые данные и переключение тем. Никаких fetch к CGI. */
 (function () {
   'use strict';
   var root = document.documentElement;
 
-  /* --- фейковый лог --- */
-  var lines = [
-    '[08:12:01] watchdog: check ok (cpu 12%, mem 61%)',
-    '[08:12:31] monitor: top snapshot (5 procs)',
-    '[08:13:02] network: br0 carrier 1, ppp0 up 94 Mbit/s',
-    '[08:14:44] opkg: 3 upgrades available (htop, jq, ttyd)',
-    '[08:15:00] ttyd: session open :9089 (entware)',
-    '[08:15:20] backup: skipped (no changes since 02:00)'
-  ];
-  var logEl = document.getElementById('fakeLog');
-  if (logEl) logEl.textContent = lines.join('\n');
 
   /* --- живая имитация метров + sparklines --- */
   var cpu = 23, ram = 61, disk = 38, wan = 94, wantx = 28, temp = 58;
@@ -262,8 +250,6 @@
   /* --- rail: переключение экранов --- */
   var railItems = Array.prototype.slice.call(document.querySelectorAll('.ri'));
   var crumbs = document.getElementById('crumbs');
-  var viewStats = document.getElementById('view-stats');
-  var viewMods = document.getElementById('view-modules');
   var CRUMBS = { stats: 'обзор / статистика', packages: 'система / пакеты', processes: 'система / процессы', terminal: 'система / терминал', 'system-services': 'система / службы и cron', network: 'сеть / сеть', bridge: 'сеть / модули', smart: 'сеть / smart', rdp: 'сеть / rdp', settings: 'администрирование / настройки', monitor: 'администрирование / защита', help: 'администрирование / справка', logs: 'администрирование / логи' };
   var VIEWS = { stats: 'view-stats', bridge: 'view-modules', packages: 'view-packages', processes: 'view-processes', terminal: 'view-terminal', 'system-services': 'view-services', network: 'view-network', smart: 'view-smart', rdp: 'view-rdp', settings: 'view-settings', monitor: 'view-monitor', help: 'view-help', logs: 'view-logs' };
   railItems.forEach(function (b) {
@@ -1678,8 +1664,6 @@
     if (b) b.click();
   }
   document.getElementById('statModsManage').onclick = function () { goTab('bridge'); };
-  var kpiGo = document.getElementById('kpiPkgGo');
-  if (kpiGo) kpiGo.onclick = function () { goTab('packages'); };
   document.getElementById('pkgUpdateLists').onclick = function () {
     if (!window.__NOC_LIVE_STATS) { toast('Нужна сессия', 'warn'); return; }
     pkgAct('update.cgi', 'run=1', 'Обновление списков');
@@ -2059,7 +2043,7 @@
     cmd = String(cmd || '—');
     return cmd.length > (n || 40) ? cmd.slice(0, n || 40) + '…' : cmd;
   }
-  function liveRow(cells, cls) {
+  function liveRow(cells) {
     return '<tr>' + cells.map(function (c, i) {
       return '<td class="' + (i < 2 ? 'l' : '') + (i === 0 ? ' mut' : '') + '">' + c + '</td>';
     }).join('') + '</tr>';
@@ -3420,16 +3404,13 @@
       dis('setTermStart', t.state === 'running');
       dis('setTermStop', t.state !== 'running');
       dis('setTermRestart', t.state !== 'running');
-      var ms = document.getElementById('setTermMode');
-      if (ms && t.state === 'running') ms.value = t.mode === 'telnet' ? 'telnet' : 'entware';
     });
   }
-  function setTtydAct(action, port, passId, modeId) {
+  function setTtydAct(action, port, passId) {
     if (!setNeedSession()) return;
     var body = 'action=' + encodeURIComponent(action) + '&port=' + encodeURIComponent(port);
     var passEl = passId ? document.getElementById(passId) : null;
     if (passEl && passEl.value) body += '&pass=' + encodeURIComponent(passEl.value);
-    if (modeId) { var me = document.getElementById(modeId); if (me && me.value) body += '&mode=' + encodeURIComponent(me.value); }
     livePost('ttyd_control.cgi', body || 'action=' + encodeURIComponent(action)).then(function (t) {
       toast((t && t.message) || (action + ': готово'), (t && t.status === 'ok') || typeof t === 'string' ? undefined : 'warn');
       if (passEl && (action === 'start' || action === 'stop' || action === 'restart')) passEl.value = '';
@@ -4309,8 +4290,6 @@
         var ok = r && r.status === 'ok';
         toast((r && r.message) || (ok ? 'Режим ' + label + ' включён' : 'Ошибка переключения'), ok ? undefined : 'warn');
         termPassClear();
-        var ms = document.getElementById('setTermMode');
-        if (ms) ms.value = mode;
         liveFetch('ttyd_control.cgi').then(termRender);
       });
     });

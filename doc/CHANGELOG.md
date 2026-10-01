@@ -307,6 +307,10 @@ lighttpd — до этого режим был описан одной стро�
 
 ## Unreleased
 
+### Чистка NOC: 6 мёртвых мест (партия 5a, 2026-10-01)
+
+- Мок-бутстрап `lines[6]` + `#fakeLog` (элемента нет ни в одном HTML), `kpiGo` (карточка снесена в v1.16.51), `setTermMode` ×2 (селектора нет в разметке), параметр `cls` у `liveRow`, локалы `viewStats`/`viewMods`, параметр `modeId` + ветка у `setTtydAct` (6 вызовов шлют `null`). Кэш `noc-console.js?v=147→148` (+ sync `deploy/`). Проверено: прямая + reverse в песочнице (assert'ы, `node --check`, ES5-нули, баланс), кворум PASS + APPROVE, `make ci` зелёный.
+
 ### Чистка: хвост drag-and-drop ссылок `window.moveLink` (2026-09-27)
 
 - Одна строка `entware.js:4042` (`window.moveLink = null;`): функция кнопок перемещения ссылок родилась и умерла в v1.09.22 (заменена drag-and-drop), осталась null-заглушка. Обращений ноль во всех формах. Кэш `entware.js?v=238→239` (+ sync `deploy/`). Проверено: кворум PASS + APPROVE, `node --check`, негативный grep пуст.
