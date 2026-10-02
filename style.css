@@ -1851,6 +1851,10 @@ tr.usage-open .usage-arrow { transform: rotate(90deg); }
 #systemLogContent .syslog-wrap { padding: 0; }
 #systemLogContent .syslog { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: 'Courier New', monospace; font-size: 13px; }
 #systemLogContent .syslog-empty { text-align: center; padding: 20px; opacity: .65; }
+#systemLogContent { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+#systemLogContent::-webkit-scrollbar { width: 8px; }
+#systemLogContent::-webkit-scrollbar-track { background: transparent; margin-block: 4px; }
+#systemLogContent::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 
 /* === Стили для страницы справки (help.cgi) === */
 .command-block {
