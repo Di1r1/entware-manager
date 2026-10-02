@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"entware-manager/internal/auth"
 	"entware-manager/internal/cgiutil"
 	"io"
 	"net/http"
@@ -130,7 +131,10 @@ func extractJSONInt(json, key string) string {
 	return val
 }
 
-const tempBaseDir = "/tmp/entware/temp_history"
+// tempBaseDir — каталог истории. Переменная (не const), чтобы тесты
+// могли подменять путь и не писать в /tmp роутера.
+var tempBaseDir = "/tmp/entware/temp_history"
+
 const maxDays = 7
 
 func HandleTempHistory() {
@@ -139,10 +143,17 @@ func HandleTempHistory() {
 		action = "history"
 	}
 
-	os.MkdirAll(tempBaseDir, 0755)
-
 	switch action {
 	case "save":
+		if !cgiutil.IsPOST() {
+			cgiutil.NotAllowed()
+			return
+		}
+		if auth.IsCrossSiteOrigin() {
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
+		os.MkdirAll(tempBaseDir, 0755)
 		cleanupOldTemp("cpu", ".cpu_cleanup")
 		temp := GetParam("temp")
 		if isValidNum(temp) {
@@ -162,17 +173,24 @@ func HandleWifiTempHistory() {
 		action = "current"
 	}
 
-	os.MkdirAll(tempBaseDir, 0755)
-
 	switch action {
 	case "save":
+		if !cgiutil.IsPOST() {
+			cgiutil.NotAllowed()
+			return
+		}
+		if auth.IsCrossSiteOrigin() {
+			cgiutil.WriteJSON(map[string]string{"status": "error", "message": auth.CrossSiteDeny})
+			return
+		}
+		os.MkdirAll(tempBaseDir, 0755)
 		cleanupOldTemp("wifi", ".wifi_cleanup")
 		temp0 := GetParam("temp0")
 		temp1 := GetParam("temp1")
-		if temp0 == "" {
+		if temp0 == "" || !isValidNum(temp0) {
 			temp0 = "-"
 		}
-		if temp1 == "" {
+		if temp1 == "" || !isValidNum(temp1) {
 			temp1 = "-"
 		}
 		saveWifiTempPoint(temp0, temp1)
