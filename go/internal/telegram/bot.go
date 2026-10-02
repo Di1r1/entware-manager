@@ -948,7 +948,7 @@ func fetchUpdates(cfg Config, offset int64) ([]tgUpdate, error) {
 	if offset > 0 {
 		q.Set("offset", strconv.FormatInt(offset, 10))
 	}
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?%s", cfg.BotToken, q.Encode())
+	apiURL := apiBase + cfg.BotToken + "/getUpdates?" + q.Encode()
 
 	client := httpClient(cfg)
 	resp, err := client.Get(apiURL)

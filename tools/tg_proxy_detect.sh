@@ -7,6 +7,7 @@ set -u
 
 CONFIG="/opt/web_entware/telegram_config.json"
 CURL=/opt/bin/curl
+TG_API="https://api.telegram.org/bot"
 [ -x "$CURL" ] || CURL=curl
 
 TOKEN="${1:-}"
@@ -64,7 +65,7 @@ case "$CFG_PROXY" in
 esac
 
 echo "=== ПРЯМОЕ СОЕДИНЕНИЕ (без прокси) ==="
-d=$(curl -m 8 -s -o /dev/null -w '%{http_code}' "https://api.telegram.org/bot$TOKEN/getMe" 2>/dev/null)
+d=$(curl -m 8 -s -o /dev/null -w '%{http_code}' "${TG_API}${TOKEN}/getMe" 2>/dev/null)
 [ -n "$d" ] || d=timeout
 echo "DIRECT getMe: $d"
 
@@ -75,7 +76,7 @@ WORK=""
 REACH=""
 for u in $urls; do
   c=$(curl -m 8 -s -x "$u" -o /dev/null -w '%{http_code}' \
-        "https://api.telegram.org/bot$TOKEN/getMe" 2>/dev/null)
+        "${TG_API}${TOKEN}/getMe" 2>/dev/null)
   echo "$u -> ${c:-fail}"
   [ "$c" = "200" ] && WORK="$WORK $u"
   [ -n "$c" ] && [ "$c" != "000" ] && [ "$c" != "200" ] && REACH="$REACH $u=$c"
@@ -90,7 +91,7 @@ if [ -n "$WORK" ]; then
   esac
   echo "=== ПОЛУЧЕНИЕ chat_id ==="
   up=$(curl -m 8 -s -x "$u" \
-         "https://api.telegram.org/bot$TOKEN/getUpdates" 2>/dev/null)
+         "${TG_API}${TOKEN}/getUpdates" 2>/dev/null)
   cid=$(echo "$up" | sed -n 's/.*"chat":{"id":\(-\{0,1\}[0-9][0-9]*\).*/\1/p' | head -1)
   if [ -n "$cid" ]; then
     echo ">>> chat_id = $cid"

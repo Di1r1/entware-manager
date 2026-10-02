@@ -44,7 +44,7 @@
   - Назначение: обновление выбранного пакета.
   - Ответ: HTML.
 
-- `GET /entware-cgi/update.cgi`
+- `POST /entware-cgi/update.cgi`
   - Назначение: обновление индекса пакетов `opkg`.
   - Ответ: HTML.
 
@@ -163,7 +163,7 @@
 
 ## 6. Модуль защиты (monitor)
 
-- `GET|POST /entware-cgi/monitor/monitor_action.cgi`
+- `POST /entware-cgi/monitor/monitor_action.cgi`
   - Назначение: действия с демоном (`start`, `stop`, `restart`, очистка лога и т.д.).
   - Ответ: JSON.
 

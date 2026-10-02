@@ -93,7 +93,7 @@ func AnswerCallbackQuery(cfg Config, cbID, text string) bool {
 // postTelegram — POST формы на метод Bot API. Возвращает код и тело.
 // Ошибки сети уже маскированы (токен вырезан).
 func postTelegram(cfg Config, method string, form url.Values) (int, []byte, error) {
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/%s", cfg.BotToken, method)
+	apiURL := apiBase + cfg.BotToken + "/" + method
 	client := httpClient(cfg)
 	resp, err := client.Post(apiURL, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
 	if err != nil {
@@ -144,7 +144,7 @@ func SendDocumentBytes(cfg Config, filename string, data []byte, caption string)
 		mw.Close()
 	}()
 
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendDocument", cfg.BotToken)
+	apiURL := apiBase + cfg.BotToken + "/sendDocument"
 	client := httpClient(cfg)
 	resp, err := client.Post(apiURL, mw.FormDataContentType(), pr)
 	if err != nil {

@@ -13,6 +13,10 @@ const (
 	ConfigName     = "telegram_config.json"
 )
 
+// apiBase — базовый URL Bot API. RULES G1: адрес держим в константе,
+// а не в трёх вызов��х подряд.
+const apiBase = "https://api.telegram.org/bot"
+
 // Config — конфигурация Telegram-шлюза. bot_token не отдаётся наружу.
 type Config struct {
 	Enabled    bool       `json:"enabled"`
