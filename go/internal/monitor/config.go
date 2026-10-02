@@ -12,26 +12,17 @@ import (
 	"entware-manager/internal/auth"
 )
 
-const monitorConfigFile = "/opt/web_entware/monitor_config.json"
+// monitorConfigFile — путь к конфигу. Переменная (не const), чтобы тесты
+// могли подменять путь и не трогать /opt роутера.
+var monitorConfigFile = "/opt/web_entware/monitor_config.json"
+
 const monitorPIDFile = "/tmp/entware/pid/watchdog.pid"
 
 func HandleConfig() {
 	if cgiutil.IsGET() {
-		data := readConfigFromFile()
-		if data == nil {
-			data = defaultConfig()
-		} else {
-			// Auto-migrate: add max_processes/autostart if missing
-			if _, ok := data["max_processes"]; !ok {
-				data["max_processes"] = 200
-				_ = saveConfigToFile(data)
-			}
-			if _, ok := data["autostart"]; !ok {
-				data["autostart"] = false
-				_ = saveConfigToFile(data)
-			}
-		}
-		cgiutil.WriteJSON(data)
+		// Чтение без побочных эффектов (G3): дефолты сливаем в памяти,
+		// на диск не пишем. Демон имеет свои дефолты при чтении файла.
+		cgiutil.WriteJSON(withDefaults(readConfigFromFile()))
 		return
 	}
 
@@ -50,6 +41,14 @@ func HandleConfig() {
 		if err := json.Unmarshal(body, &cfg); err != nil {
 			cgiutil.WriteJSON(map[string]string{"status": "error", "message": "Invalid JSON"})
 			return
+		}
+
+		if existing := readConfigFromFile(); existing != nil {
+			for k, v := range existing {
+				if _, ok := cfg[k]; !ok {
+					cfg[k] = v
+				}
+			}
 		}
 
 		if err := saveConfigToFile(cfg); err != nil {
@@ -72,6 +71,34 @@ func HandleConfig() {
 	}
 
 	cgiutil.NotAllowed()
+}
+
+// withDefaults сливает прочитанный конфиг поверх дефолтов (два уровня:
+// топ-ключи и вложенный individual). Неизвестные ключи файла сохраняются,
+// диск не трогается.
+func withDefaults(data map[string]interface{}) map[string]interface{} {
+	merged := defaultConfig()
+	if data == nil {
+		return merged
+	}
+	for k, v := range data {
+		merged[k] = v
+	}
+	if ind, ok := data["individual"].(map[string]interface{}); ok {
+		if dind, ok := merged["individual"].(map[string]interface{}); ok {
+			base := map[string]interface{}{}
+			for k, v := range dind {
+				base[k] = v
+			}
+			for k, v := range ind {
+				base[k] = v
+			}
+			merged["individual"] = base
+		} else {
+			merged["individual"] = ind
+		}
+	}
+	return merged
 }
 
 func readConfigFromFile() map[string]interface{} {
