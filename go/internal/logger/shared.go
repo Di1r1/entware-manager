@@ -24,4 +24,4 @@ func hasQuery(key string) bool {
 // Все asset-ссылки ниже должны быть ОТНОСИТЕЛЬНЫМИ (без ведущего /),
 // чтобы резолвиться через <base>, а не через URL страницы
 // (/entware-cgi/logger/ — там статики нет).
-const staticBaseHTML = `<base id="static-base" href="/entware-manager/">`
+const staticBaseHTML = `<base href="/entware-manager/">`
