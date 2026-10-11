@@ -88,6 +88,36 @@ type procTick struct {
 	ticks uint64
 }
 
+// displayCmd — имя процесса для топа: базовое имя argv0; у ядерных потоков
+// cmdline пуст (а Base("") даёт "." — не показатель), поэтому показываем
+// [comm], как monitor/procs.cgi. Пусто — пропускать процесс.
+func displayCmd(argv0, comm string) string {
+	if argv0 != "" {
+		if b := filepath.Base(argv0); b != "" && b != "." {
+			return b
+		}
+	}
+	if comm == "" {
+		return ""
+	}
+	return "[" + comm + "]"
+}
+
+// statComm — имя процесса (comm) из /proc/<pid>/stat: между первой '('
+// и последней ')' (имя может содержать скобки, как в TestParseProcStatTicks).
+func statComm(data []byte) string {
+	s := string(data)
+	i := strings.LastIndex(s, ")")
+	if i < 0 {
+		return ""
+	}
+	o := strings.Index(s[:i], "(")
+	if o < 0 {
+		return ""
+	}
+	return s[o+1 : i]
+}
+
 // readCPUTicksAll — суммарные счётчики ядра.
 func readCPUTicksAll() (total, idle uint64) {
 	data, err := os.ReadFile("/proc/stat")
@@ -97,8 +127,9 @@ func readCPUTicksAll() (total, idle uint64) {
 	return parseCPUTotal(strings.SplitN(string(data), "\n", 2)[0])
 }
 
-// snapshotProcTicks — utime+stime всех процессов с осмысленным cmdline
-// (ядро-треды исключены). Один проход по /proc.
+// snapshotProcTicks — utime+stime всех процессов с ненулевыми тиками.
+// Ядерные потоки (пустой cmdline) идут как [comm] через displayCmd.
+// Один проход по /proc.
 func snapshotProcTicks() map[int]procTick {
 	out := map[int]procTick{}
 	entries, err := os.ReadDir("/proc")
@@ -113,9 +144,6 @@ func snapshotProcTicks() map[int]procTick {
 		}
 		scanned++
 		argv0 := readNullTerminated(fmt.Sprintf("/proc/%d/cmdline", pid))
-		if argv0 == "" {
-			continue
-		}
 		data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
 		if err != nil {
 			continue
@@ -124,7 +152,14 @@ func snapshotProcTicks() map[int]procTick {
 		if ticks == 0 {
 			continue
 		}
-		out[pid] = procTick{cmd: filepath.Base(argv0), ticks: ticks}
+		// Ядерный поток (пустой cmdline) показываем как [имя], иначе
+		// сетевая нагрузка (ksoftirqd/kworker) невидима в топе, хотя входит
+		// в общий итог — топы 2-3% при итоге 70-80%.
+		cmd := displayCmd(argv0, statComm(data))
+		if cmd == "" {
+			continue
+		}
+		out[pid] = procTick{cmd: cmd, ticks: ticks}
 	}
 	return out
 }
@@ -151,7 +186,8 @@ func collectCPU() CPUInfo {
 	if busy < 0 {
 		busy = 0
 	}
-	info.Percent = int(busy * 100 / int64(dt))
+	busyPct := float64(busy) * 100 / float64(dt)
+	info.Percent = int(busyPct)
 	info.Class = percentClass(info.Percent)
 	info.TextCls = "stat-value-" + info.Class
 
@@ -160,12 +196,15 @@ func collectCPU() CPUInfo {
 		pct  float64
 	}
 	var deltas []procDelta
+	var sumAll float64
 	for pid, s2 := range p2 {
 		s1, ok := p1[pid]
 		if !ok || s2.ticks < s1.ticks {
 			continue
 		}
-		deltas = append(deltas, procDelta{s2.cmd, float64(s2.ticks-s1.ticks) * 100 / float64(dt)})
+		pct := float64(s2.ticks-s1.ticks) * 100 / float64(dt)
+		sumAll += pct
+		deltas = append(deltas, procDelta{s2.cmd, pct})
 	}
 	sort.Slice(deltas, func(i, j int) bool { return deltas[i].pct > deltas[j].pct })
 	for _, d := range deltas {
@@ -181,7 +220,29 @@ func collectCPU() CPUInfo {
 		}
 		info.Top = append(info.Top, TopProcCPU{Cmd: d.name, Pcts: pcts})
 	}
+	if row, ok := remainderRow(busyPct, sumAll); ok {
+		info.Top = append(info.Top, row)
+	}
 	return info
+}
+
+// remainderRow — строка «прочее»: доля итога, не приписанная ни одному процессу
+// (irq-время без владельца, короткие процессы между слепками, округления).
+// Показываем только значимый остаток (>=0.5%), иначе топ и итог визуально
+// сходятся и строка — шум.
+func remainderRow(busyPct, sumAll float64) (TopProcCPU, bool) {
+	rem := busyPct - sumAll
+	if rem < 0 {
+		rem = 0
+	}
+	if rem < 0.5 {
+		return TopProcCPU{}, false
+	}
+	pcts := strconv.Itoa(int(rem+0.5)) + "%"
+	if rem < 1 {
+		pcts = "<1%"
+	}
+	return TopProcCPU{Cmd: "прочее (ядро, короткие процессы)", Pcts: pcts}, true
 }
 
 // HandleCPU — GET: HTML-фрагмент содержимого карточки (без обёртки) для
