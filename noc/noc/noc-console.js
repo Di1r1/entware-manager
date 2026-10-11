@@ -2069,6 +2069,7 @@
           w = liveNum(d.cpu.iowait), id = liveNum(d.cpu.idle);
       if (!isNaN(u) && !isNaN(s) && !isNaN(w) && !isNaN(id)) {
         cpu = Math.max(0, Math.min(100, Math.round(100 - id - w)));
+        window.__NOC_CPU_BUSY = cpu;
         pushSeries('cpu', cpu);
         var cf = document.querySelector('[data-metric="cpu"] .res-f');
         if (cf) {
@@ -2121,6 +2122,19 @@
         byCpu.slice(0, 7).forEach(function (p) {
           html += liveRow([esc(p.pid), esc(liveShort(p.command)), esc(p.pcpu) + '%', rssFmt(p.rss_kb), esc(p.time || '—')]);
         });
+        /* «Прочее»: доля итога без владельца (irq, всплески короче окна замера,
+         * округления) — иначе итог 70–80% при топах 2–3% выглядит ошибкой.
+         * Итог/busy — с прошлого тика (__NOC_CPU_BUSY), топы — с текущего. */
+        var busy = window.__NOC_CPU_BUSY;
+        if (typeof busy === 'number' && !isNaN(busy)) {
+          var sum = 0, k;
+          for (k = 0; k < liveFullProcs.length; k++) sum += liveNum(liveFullProcs[k].pcpu) || 0;
+          var rem = busy - sum;
+          if (rem >= 0.5) {
+            var rp = rem < 1 ? '&lt;1%' : Math.round(rem) + '%';
+            html += liveRow(['—', 'прочее (ядро, короткие процессы)', rp, '—', '—']);
+          }
+        }
         cb.innerHTML = html;
       }
       if (mb) {
