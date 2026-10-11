@@ -2048,6 +2048,22 @@
       return '<td class="' + (i < 2 ? 'l' : '') + (i === 0 ? ' mut' : '') + '">' + c + '</td>';
     }).join('') + '</tr>';
   }
+  /* remRowFor: строка «прочее» строго из того же слепка, что итог и топы.
+   * Баг v153: итог брался с прошлого тика (__NOC_CPU_BUSY), топы — с текущего,
+   * при скачке 70→5 строка показывала 60–80% рядом с итогом 5%. Теперь busy
+   * и сумма топов — из одного d, расхождение невозможно по построению. */
+  function remRowFor(d) {
+    if (!d || !d.cpu || typeof d.cpu !== 'object' || !Array.isArray(d.processes)) return '';
+    var u = liveNum(d.cpu.user), s = liveNum(d.cpu.system),
+        w = liveNum(d.cpu.iowait), id = liveNum(d.cpu.idle);
+    if (isNaN(u) || isNaN(s) || isNaN(w) || isNaN(id)) return '';
+    var busy = Math.max(0, Math.min(100, Math.round(100 - id - w)));
+    var sum = 0, k;
+    for (k = 0; k < d.processes.length; k++) sum += liveNum(d.processes[k].pcpu) || 0;
+    var rem = busy - sum;
+    if (rem < 0.5) return '';
+    return liveRow(['—', 'прочее (ядро, короткие процессы)', rem < 1 ? '&lt;1%' : Math.round(rem) + '%', '—', '—']);
+  }
   var liveMonProcs = [];
   var liveMemProcs = [];
   var liveFullProcs = [];
@@ -2061,6 +2077,7 @@
     /* полный слепок из своего procs.cgi: нулевые пропуски */
     if (!d || !Array.isArray(d.processes) || !d.processes.length) return;
     liveFullProcs = d.processes;
+    window.__NOC_REMROW = remRowFor(d);
     renderTops();
     procRender();
     /* CPU%: то же окно, что и топы (busy = 100 − idle − iowait, как панель) */
@@ -2069,7 +2086,6 @@
           w = liveNum(d.cpu.iowait), id = liveNum(d.cpu.idle);
       if (!isNaN(u) && !isNaN(s) && !isNaN(w) && !isNaN(id)) {
         cpu = Math.max(0, Math.min(100, Math.round(100 - id - w)));
-        window.__NOC_CPU_BUSY = cpu;
         pushSeries('cpu', cpu);
         var cf = document.querySelector('[data-metric="cpu"] .res-f');
         if (cf) {
@@ -2122,19 +2138,9 @@
         byCpu.slice(0, 7).forEach(function (p) {
           html += liveRow([esc(p.pid), esc(liveShort(p.command)), esc(p.pcpu) + '%', rssFmt(p.rss_kb), esc(p.time || '—')]);
         });
-        /* «Прочее»: доля итога без владельца (irq, всплески короче окна замера,
-         * округления) — иначе итог 70–80% при топах 2–3% выглядит ошибкой.
-         * Итог/busy — с прошлого тика (__NOC_CPU_BUSY), топы — с текущего. */
-        var busy = window.__NOC_CPU_BUSY;
-        if (typeof busy === 'number' && !isNaN(busy)) {
-          var sum = 0, k;
-          for (k = 0; k < liveFullProcs.length; k++) sum += liveNum(liveFullProcs[k].pcpu) || 0;
-          var rem = busy - sum;
-          if (rem >= 0.5) {
-            var rp = rem < 1 ? '&lt;1%' : Math.round(rem) + '%';
-            html += liveRow(['—', 'прочее (ядро, короткие процессы)', rp, '—', '—']);
-          }
-        }
+        /* «Прочее» — из того же слепка (см. remRowFor): итог, топы и строка
+         * всегда согласованы между собой. */
+        if (window.__NOC_REMROW) html += window.__NOC_REMROW;
         cb.innerHTML = html;
       }
       if (mb) {
