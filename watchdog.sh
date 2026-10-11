@@ -89,8 +89,13 @@ daemon_loop() {
     done
 
     while true; do
+        # Знаменатель — ДЕЛЬТА суммарных тиков за интервал, а не абсолютный
+        # счётчик с загрузки: иначе любой процесс даёт ~0% и порог не срабатывает.
         total_now=$(awk '/^cpu / {s=0; for(i=2;i<=9;i++) s+=$i; print s}' /proc/stat 2>/dev/null)
         [ -z "$total_now" ] && total_now=0
+        total_prev=$(cat "$CPU_DIR/total_prev" 2>/dev/null || echo 0)
+        echo "$total_now" > "$CPU_DIR/total_prev" 2>/dev/null
+        total_dt=$((total_now - total_prev))
 
         for pid_dir in /proc/[0-9]*/; do
             pid="${pid_dir%/}"; pid="${pid##*/}"
@@ -113,8 +118,8 @@ daemon_loop() {
             delta=$((current - prev))
             echo "$current" > "$CPU_DIR/$pid" 2>/dev/null
 
-            if [ "$total_now" -gt 0 ]; then
-                cpu=$((delta * 100 / total_now))
+            if [ "$total_dt" -gt 0 ]; then
+                cpu=$((delta * 100 / total_dt))
             else
                 cpu=0
             fi
