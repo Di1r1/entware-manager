@@ -4271,8 +4271,8 @@
         var fr = document.getElementById('termFrame');
         if (fr) {
           fr.addEventListener('load', function () {
-            setTimeout(function () { termRefit(); }, 600);
-            setTimeout(function () { termRefit(); }, 1500);
+            setTimeout(function () { termRefit(); termStyleScroll(); }, 600);
+            setTimeout(function () { termRefit(); termStyleScroll(); }, 1500);
           });
         }
       } else {
@@ -4292,6 +4292,47 @@
       var w = fr ? fr.contentWindow : null;
       if (!w) return;
       w.dispatchEvent(new w.Event('resize'));
+    } catch (e) { /* cross-origin или ещё не готово — игнорируем */ }
+  }
+  /* termFitBoot: карточка терминала тянется за нижнюю ручку (cardResizeBoot),
+   * iframe — flex (см. CSS #termFrameWrap), поэтому высоту выставлять не надо:
+   * достаточно дёрнуть resize внутри iframe, чтобы ttyd вызвал fit() и xterm
+   * встал в новый размер без внутренней полосы прокрутки страницы.
+   * Наблюдаем саму карточку (#termFrameWrap и есть .card): колбэк размер
+   * карточки не меняет, зацикливания ResizeObserver нет. */
+  function termFitBoot() {
+    if (termFitBoot._done) return;
+    termFitBoot._done = true;
+    if (window.addEventListener) window.addEventListener('resize', function () { termRefit(); });
+    try {
+      if (typeof ResizeObserver === 'undefined') return;
+      var wrap = document.getElementById('termFrameWrap');
+      if (!wrap) return;
+      new ResizeObserver(function () { termRefit(); }).observe(wrap);
+    } catch (e) {}
+  }
+  termFitBoot();
+  /* termStyleScroll: скроллбар внутри ttyd — отдельный документ, стили NOC
+   * туда не достают. Тот же origin (прокси /terminal/), поэтому кладём внутрь
+   * тонкий скроллбар в цвет темы (--scrollbar-thumb из нашего документа). */
+  function termStyleScroll() {
+    try {
+      var fr = document.getElementById('termFrame');
+      var doc = fr ? (fr.contentDocument || (fr.contentWindow && fr.contentWindow.document)) : null;
+      if (!doc || doc.getElementById('ewmTermScroll')) return;
+      var thumb = '';
+      try { thumb = String(window.getComputedStyle(document.documentElement).getPropertyValue('--scrollbar-thumb') || '').replace(/^\s+|\s+$/g, ''); } catch (e2) {}
+      if (!thumb) thumb = '#4a5568';
+      var st = doc.createElement('style');
+      st.id = 'ewmTermScroll';
+      st.type = 'text/css';
+      st.appendChild(doc.createTextNode(
+        '::-webkit-scrollbar{width:8px;height:8px}' +
+        '::-webkit-scrollbar-track{background:transparent}' +
+        '::-webkit-scrollbar-thumb{background:' + thumb + ';border-radius:4px;border:2px solid transparent;background-clip:padding-box}' +
+        '*{scrollbar-width:thin;scrollbar-color:' + thumb + ' transparent}'));
+      var head = doc.getElementsByTagName('head')[0] || doc.documentElement;
+      head.appendChild(st);
     } catch (e) { /* cross-origin или ещё не готово — игнорируем */ }
   }  /* Переключение режима прямо из вкладки Терминал (seg termModeSeg):
    * один общий пароль на оба режима — поле termPass здесь же во вкладке

@@ -498,6 +498,14 @@ body.card-dragging, body.card-dragging .panel-h, body.card-dragging .c-head {
 #logsFrame { flex: 1 1 auto; width: 100%; min-height: 420px; border: none; border-radius: 8px; }
 #view-logs .card-fixedh { overflow: hidden; }
 #view-logs .card-fixedh #logsFrame { min-height: 120px; }
+/* Терминал: iframe тянется за карточкой (как логи).
+ * Без ручки — 480px как раньше; потянул за низ — кадр растёт вместе с карточкой,
+ * ttyd дотягивается через termRefit (ResizeObserver в termFitBoot), внутренней
+ * полосы прокрутки страницы нет, скролл — только у самого xterm. */
+#view-terminal #termFrameWrap { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
+#termFrame { flex: 1 1 auto; width: 100%; min-height: 480px; border: none; border-radius: 8px; display: block; }
+#view-terminal #termFrameWrap.card-fixedh { overflow: hidden; }
+#view-terminal #termFrameWrap.card-fixedh #termFrame { min-height: 120px; }
 /* Службы и Cron → Последние события: заголовок зафиксирован при скролле карточки */
 .card:has(#svcEventsBody).card-fixedh > .c-head {
   position: sticky;
