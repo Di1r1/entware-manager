@@ -4,6 +4,12 @@ SHELL := /bin/bash
 ARCHS := arm64 mips mipsel
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# Мусор сборки Go складываем в проект, а не в общий $TMPDIR:
+# иначе папки go-build* накапливаются в /tmp вперемешку с чужими проектами
+# (наблюдение 2026-10-09: 23 наших папки против 33 чужих).
+export GOTMPDIR := $(MAKEFILE_DIR)tmp/go
+$(shell mkdir -p "$(GOTMPDIR)")
+
 VERSION := $(shell git describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//')
 ifeq ($(VERSION),)
   VERSION := $(shell jq -r '.version' $(MAKEFILE_DIR)/version.json 2>/dev/null || python3 -c "import json; print(json.load(open('$(MAKEFILE_DIR)/version.json'))['version'])" 2>/dev/null || grep -o '"version"[^,]*' $(MAKEFILE_DIR)/version.json | cut -d'"' -f4 || echo "unknown")

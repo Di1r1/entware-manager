@@ -206,7 +206,7 @@ func TestHumanSize(t *testing.T) {
 
 func withFakeStdin(t *testing.T, content string) *os.File {
 	t.Helper()
-	f, err := os.CreateTemp("", "cgiutil-stdin-*")
+	f, err := os.CreateTemp(t.TempDir(), "cgiutil-stdin-*")
 	if err != nil {
 		t.Fatalf("create temp stdin: %v", err)
 	}
