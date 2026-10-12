@@ -91,8 +91,11 @@ daemon_loop() {
     while true; do
         # Знаменатель — ДЕЛЬТА суммарных тиков за интервал, а не абсолютный
         # счётчик с загрузки: иначе любой процесс даёт ~0% и порог не срабатывает.
-        total_now=$(awk '/^cpu / {s=0; for(i=2;i<=9;i++) s+=$i; print s}' /proc/stat 2>/dev/null)
-        [ -z "$total_now" ] && total_now=0
+        # Суммарные тики без форков (read+арифметика вместо awk):
+        # user nice system idle iowait irq softirq steal guest.
+        cpu_u=0; cpu_n=0; cpu_s=0; cpu_id=0; cpu_io=0; cpu_ir=0; cpu_sq=0; cpu_st=0; cpu_g=0
+        read -r _ cpu_u cpu_n cpu_s cpu_id cpu_io cpu_ir cpu_sq cpu_st cpu_g _ < /proc/stat 2>/dev/null || true
+        total_now=$((cpu_u + cpu_n + cpu_s + cpu_id + cpu_io + cpu_ir + cpu_sq + cpu_st + cpu_g))
         total_prev=$(cat "$CPU_DIR/total_prev" 2>/dev/null || echo 0)
         echo "$total_now" > "$CPU_DIR/total_prev" 2>/dev/null
         total_dt=$((total_now - total_prev))
@@ -114,7 +117,11 @@ daemon_loop() {
             stime=$2
 
             current=$((utime + stime))
-            prev=$(cat "$CPU_DIR/$pid" 2>/dev/null || echo "$current")
+            # prev через встроенный read (без форка cat); мусор — как свежий процесс.
+            prev=$current
+            if read -r _prev < "$CPU_DIR/$pid" 2>/dev/null; then
+                case "$_prev" in ''|*[!0-9]*) ;; *) prev=$_prev ;; esac
+            fi
             delta=$((current - prev))
             echo "$current" > "$CPU_DIR/$pid" 2>/dev/null
 
@@ -125,7 +132,9 @@ daemon_loop() {
             fi
 
             if [ "$cpu" -lt "$INDIVIDUAL_CPU" ]; then
-                rm -f "$COUNTER_DIR/indiv_$pid" "$IGNORE_COUNTER_DIR/indiv_$pid" 2>/dev/null
+                # rm только если файлы есть: иначе 2 форка на процесс впустую.
+                [ -f "$COUNTER_DIR/indiv_$pid" ] && rm -f "$COUNTER_DIR/indiv_$pid" 2>/dev/null
+                [ -f "$IGNORE_COUNTER_DIR/indiv_$pid" ] && rm -f "$IGNORE_COUNTER_DIR/indiv_$pid" 2>/dev/null
                 continue
             fi
 
@@ -148,11 +157,9 @@ daemon_loop() {
             fi
 
             counter_file="$dir/indiv_$pid"
-            if [ -f "$counter_file" ]; then
-                count=$(cat "$counter_file")
-                count=$((count + INTERVAL))
-            else
-                count=$INTERVAL
+            count=$INTERVAL
+            if read -r _count < "$counter_file" 2>/dev/null; then
+                case "$_count" in ''|*[!0-9]*) ;; *) count=$((_count + INTERVAL)) ;; esac
             fi
             echo "$count" > "$counter_file"
 
