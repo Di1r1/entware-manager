@@ -17,6 +17,7 @@
 
     var STORAGE_KEY = 'entware_theme';
     var NIGHT_KEY = 'entware_night';
+    var POLISH_STYLE_ID = 'entware-ui-polish';
 
     function readStorage(key) {
         try { return localStorage.getItem(key); } catch (e) { return null; }
@@ -65,7 +66,41 @@
         applyTheme(currentTheme(), night);
     }
 
+    // Small visual/accessibility layer kept here so every panel surface that
+    // already loads theme.js (main UI, logger and embedded help pages) gets the
+    // same polish without another request or a new static-file whitelist entry.
+    function injectPolishStyles() {
+        if (document.getElementById(POLISH_STYLE_ID)) return;
+        var style = document.createElement('style');
+        style.id = POLISH_STYLE_ID;
+        style.textContent = [
+            ':root{--ui-radius:16px;--ui-radius-sm:12px;--ui-focus:0 0 0 3px rgba(var(--accent-rgb),.22);--ui-soft-shadow:0 10px 30px -18px rgba(15,23,42,.28)}',
+            'html.night{--ui-soft-shadow:0 14px 34px -20px rgba(0,0,0,.72)}',
+            '.sidebar{box-shadow:10px 0 35px -32px rgba(15,23,42,.45)}',
+            'html.night .sidebar{box-shadow:10px 0 35px -30px rgba(0,0,0,.9)}',
+            '.content{background-image:radial-gradient(circle at 92% 4%,rgba(var(--accent-rgb),.055),transparent 26rem)}',
+            '.menu li{margin:5px 10px;padding:8px 13px;border-radius:14px;border:1px solid transparent;box-shadow:none;transition:background-color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease}',
+            '.menu li:hover{transform:translateX(2px);border-color:rgba(var(--accent-rgb),.18);box-shadow:0 8px 22px -18px rgba(var(--accent-rgb),.9)}',
+            '.menu li.active{border-left:3px solid var(--accent);border-top-color:rgba(var(--accent-rgb),.18);border-right-color:rgba(var(--accent-rgb),.18);border-bottom-color:rgba(var(--accent-rgb),.18);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.04),0 8px 22px -20px rgba(var(--accent-rgb),.85)}',
+            '.stats-hero,.stat-card,.link-card,.packages-table-wrapper,.modal-content{border-radius:var(--ui-radius);box-shadow:var(--ui-soft-shadow)}',
+            '.stat-card,.link-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}',
+            '.stat-card:hover,.link-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(var(--accent-rgb),.75)}',
+            'table{border-radius:var(--ui-radius-sm);box-shadow:var(--ui-soft-shadow)}',
+            'th,td{padding-top:13px;padding-bottom:13px}',
+            'button,input[type="submit"],.packages-delete-btn{transition:transform .16s ease,box-shadow .16s ease,filter .16s ease}',
+            'button:hover:not(:disabled),input[type="submit"]:hover:not(:disabled),.packages-delete-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 9px 20px -12px rgba(var(--accent-rgb),.8);filter:saturate(1.04)}',
+            'button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:var(--ui-focus)}',
+            '.settings-input:focus-visible{outline:none;border-color:var(--accent);box-shadow:var(--ui-focus)}',
+            '.theme-toggle-edge:focus-visible,.collapse-btn:focus-visible{border-radius:50%}',
+            '::selection{background:rgba(var(--accent-rgb),.24)}',
+            '@media (max-width:800px){.content{padding:14px}.menu li{margin:4px 8px;border-radius:12px}.stat-card{padding:1.25rem}.stats-hero{padding:1.1rem}}',
+            '@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.menu li:hover,.stat-card:hover,.link-card:hover,button:hover:not(:disabled){transform:none!important}}'
+        ].join('');
+        (document.head || document.documentElement).appendChild(style);
+    }
+
     function init() {
+        injectPolishStyles();
         applyFromStorage();
         window.addEventListener('storage', function(e) {
             if (e.key === STORAGE_KEY || e.key === NIGHT_KEY) applyFromStorage();
