@@ -274,7 +274,8 @@ func writeCGIOutput(w http.ResponseWriter, out []byte) {
 	headers, body := parseCGIResponse(out)
 	statusHeader := headers.Get("Status")
 	if statusHeader != "" {
-		if code, err := strconv.Atoi(statusHeader); err == nil && code >= 100 && code <= 599 {
+		codeStr := strings.Fields(statusHeader)[0]
+		if code, err := strconv.Atoi(codeStr); err == nil && code >= 100 && code <= 599 {
 			// Valid status code
 			for key, values := range headers {
 				if strings.ToLower(key) == "status" {

@@ -51,8 +51,8 @@ func TestParseCGIResponse_NoHeaders(t *testing.T) {
 }
 
 func TestParseCGIResponse_Status401(t *testing.T) {
-	// Test 3: Status 401
-	out := []byte(`Status: 401
+	// Test 3: Status 401 with reason phrase (RFC 3875 format)
+	out := []byte(`Status: 401 Unauthorized
 Content-Type: text/plain
 
 Unauthorized
@@ -98,5 +98,29 @@ Hello
 `
 	if rec.Body.String() != expected {
 		t.Errorf("Expected body %q, got %q", expected, rec.Body.String())
+	}
+}
+
+func TestParseCGIResponse_Status400BadRequest(t *testing.T) {
+	// Test 5: Status "400 Bad Request" (real dashboard.go format)
+	out := []byte(`Status: 400 Bad Request
+Content-Type: application/json; charset=utf-8
+
+{"code":"bad_request"}
+`)
+	rec := httptest.NewRecorder()
+	writeCGIOutput(rec, out)
+	if rec.Code != 400 {
+		t.Errorf("Expected status 400, got %d", rec.Code)
+	}
+	if rec.Header().Get("Content-Type") != "application/json; charset=utf-8" {
+		t.Errorf("Expected Content-Type application/json; charset=utf-8, got %s", rec.Header().Get("Content-Type"))
+	}
+	if rec.Header().Get("Status") != "" {
+		t.Errorf("Unexpected Status header: %s", rec.Header().Get("Status"))
+	}
+	if rec.Body.String() != `{"code":"bad_request"}
+` {
+		t.Errorf("Unexpected body: %q", rec.Body.String())
 	}
 }
