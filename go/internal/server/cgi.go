@@ -242,35 +242,57 @@ func buildCGIEnv(r *http.Request, endpoint string) []string {
 	return env
 }
 
-// writeCGIOutput разбирает CGI-заголовки (до первой пустой строки)
-// и отдаёт тело с правильным Content-Type.
-func writeCGIOutput(w http.ResponseWriter, out []byte) {
+func parseCGIResponse(out []byte) (http.Header, []byte) {
 	idx := bytes.Index(out, []byte("\n\n"))
 	if idx < 0 {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write(out)
-		return
+		return http.Header{}, out
 	}
 	header := string(out[:idx])
 	body := out[idx+2:]
+	headers := make(http.Header)
 	for _, line := range strings.Split(header, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		k, v, ok := strings.Cut(line, ":")
+		key, value, ok := strings.Cut(line, ":")
 		if !ok {
 			continue
 		}
-		k = strings.TrimSpace(k)
-		v = strings.TrimSpace(v)
-		switch strings.ToLower(k) {
-		case "content-type":
-			w.Header().Set("Content-Type", v)
-		case "content-disposition":
-			w.Header().Set("Content-Disposition", v)
-		default:
-			w.Header().Set(k, v)
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		headers.Add(key, value)
+	}
+	// Ensure Content-Type default
+	if headers.Get("Content-Type") == "" {
+		headers.Set("Content-Type", "text/plain; charset=utf-8")
+	}
+	return headers, body
+}
+
+func writeCGIOutput(w http.ResponseWriter, out []byte) {
+	headers, body := parseCGIResponse(out)
+	statusHeader := headers.Get("Status")
+	if statusHeader != "" {
+		if code, err := strconv.Atoi(statusHeader); err == nil && code >= 100 && code <= 599 {
+			// Valid status code
+			for key, values := range headers {
+				if strings.ToLower(key) == "status" {
+					continue
+				}
+				for _, v := range values {
+					w.Header().Add(key, v)
+				}
+			}
+			w.WriteHeader(code)
+			w.Write(body)
+			return
+		}
+	}
+	// Fallback: behave as before
+	for key, values := range headers {
+		for _, v := range values {
+			w.Header().Set(key, v)
 		}
 	}
 	if w.Header().Get("Content-Type") == "" {
